@@ -15,6 +15,11 @@ namespace lader {
 class ReordererModel;
 class FeatureSet;
 
+
+template <class T>
+struct DescendingScore {
+  bool operator ()(T *lhs, T *rhs) { return rhs->GetScore() < lhs->GetScore(); }
+};
 typedef std::tr1::unordered_map<HyperEdge, FeatureVectorInt*, HyperEdgeHash> EdgeFeatureMap;
 typedef std::pair<HyperEdge, FeatureVectorInt*> EdgeFeaturePair;
 
@@ -22,10 +27,11 @@ class HyperGraph {
 public:
     
     friend class TestHyperGraph;
+    friend class TestDiscontinuousHyperGraph;
 
     HyperGraph() : features_(0), n_(-1) { }
 
-    ~HyperGraph() {
+    virtual ~HyperGraph() {
         if(features_) {
             BOOST_FOREACH(EdgeFeaturePair efp, *features_)
                 delete efp.second;
@@ -37,7 +43,7 @@ public:
     
     // Build the hypergraph using the specified model, features and sentence
     //  beam_size: the pop limit for cube pruning
-    //  save_trg: whether to save the target side for use in calculating loss
+    //  save_trg: whether to save the target side for use in calculating loss (false when testing)
     void BuildHyperGraph(ReordererModel & model,
                          const FeatureSet & features,
                          const Sentence & sent,
@@ -60,7 +66,7 @@ public:
     double Score(const ReordererModel & model, double loss_multiplier,
                  Hypothesis* hyp);
 
-    TargetSpan * GetTrgSpan(int l, int r, int rank) {
+    virtual TargetSpan * GetTrgSpan(int l, int r, int rank) {
 #ifdef LADER_SAFE
         if(l < 0 || r < 0 || rank < 0)
             THROW_ERROR("Bad GetTrgSpan (l="<<l<<", r="<<r<<")"<<std::endl);
@@ -132,7 +138,7 @@ protected:
         return r*(r+1)/2 + l;
     }
 
-    void SetStack(int l, int r, SpanStack * stack) {
+    virtual void SetStack(int l, int r, SpanStack * stack) {
 #ifdef LADER_SAFE
         if(l < 0 || r < 0)
             THROW_ERROR("Bad SetStack (l="<<l<<", r="<<r<<")"<<std::endl);
@@ -148,7 +154,6 @@ private:
 
     // A map containing feature vectors for each of the edges
     EdgeFeatureMap * features_;
-
     // Stacks containing the hypotheses for each span
     // The indexing for the outer vector is:
     //  0-0 -> 0, 0-1 -> 1, 1-1 -> 2, 0-2 -> 3 ...
@@ -156,6 +161,7 @@ private:
     // The inner vector contains target spans in descending rank of score
     std::vector<SpanStack*> stacks_;
 
+protected:
     // The length of the sentence
     int n_;
 

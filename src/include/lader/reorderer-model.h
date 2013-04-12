@@ -5,6 +5,7 @@
 #include <lader/feature-set.h>
 #include <lader/feature-vector.h>
 #include <lader/hyper-graph.h>
+#include <lader/discontinuous-hyper-graph.h>
 
 namespace lader {
 

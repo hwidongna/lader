@@ -74,8 +74,8 @@ public:
 private:
 
     std::string config_str_; // The configuration string
-    std::vector<FeatureBase*> feature_gens_; // Feature generators
     int max_term_; // The maximum length of a terminal
+    std::vector<FeatureBase*> feature_gens_; // Feature generators
     bool use_reverse_; // Reverse
 
 };

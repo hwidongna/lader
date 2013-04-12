@@ -10,6 +10,7 @@
 #include "test-loss-tau.h"
 #include "test-loss-bracket.h"
 #include "test-dictionary.h"
+#include "test-discontinuous-hyper-graph.h"
 #include <vector>
 
 using namespace std;
@@ -20,6 +21,7 @@ int main() {
     vector<TestBase*> tests;
     tests.push_back(new TestAlignmentsAndRanks());
     tests.push_back(new TestHyperGraph());
+    tests.push_back(new TestDiscontinuousHyperGraph());
     tests.push_back(new TestFeatureSequence());
     tests.push_back(new TestFeatureParse());
     tests.push_back(new TestFeatureAlign());

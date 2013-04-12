@@ -74,6 +74,7 @@ public:
     // Check to make sure that the feature template can be interpreted
     static bool FeatureTemplateIsLegal(const std::string & name);
 
+    friend class TestDiscontinuousHyperGraph;
 private:
 
     std::string GetSpanFeatureString(const FeatureDataSequence & sent,

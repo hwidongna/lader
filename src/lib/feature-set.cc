@@ -16,6 +16,7 @@ FeatureVectorInt * FeatureSet::MakeEdgeFeatures(
     // Otherwise generate the features
     FeatureVectorInt * feats = new FeatureVectorInt;
     for(int i = 0; i < (int)sent.size(); i++)
+//    	SafeAccess(feature_gens_, i)->GenerateEdgeFeatures(*sent[i], edge, feature_ids, add, *feats);
         feature_gens_[i]->GenerateEdgeFeatures(*sent[i], edge, feature_ids, add, *feats);
     return feats;
 }

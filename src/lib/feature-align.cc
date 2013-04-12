@@ -39,6 +39,7 @@ void FeatureAlign::GenerateEdgeFeatures(
                             SymbolSet<int> & feature_ids,
                             bool add,
                             FeatureVectorInt & feat) {
+	cerr << "FeatureAlign::GenerateEdgeFeatures" << endl;
     const FeatureDataAlign & align_data = (const FeatureDataAlign &)sent;
     feat.push_back(MakePair(feature_ids.GetId("TAU", add),
         loss_.AddLossToProduction(

@@ -14,11 +14,17 @@ void ReordererTask::Run() {
     // Save the original string
     vector<string> words = ((FeatureDataSequence*)datas[0])->GetSequence();
     // Build the hypergraph
-    HyperGraph hyper_graph;
-    hyper_graph.BuildHyperGraph(*model_, *features_, datas, beam_, false);
+    HyperGraph * hyper_graph;
+    if (gap_ > 0){
+    	hyper_graph = new DiscontinuousHyperGraph(gap_);
+    }
+    else{
+    	hyper_graph = new HyperGraph;
+    }
+    hyper_graph->BuildHyperGraph(*model_, *features_, datas, beam_, false);
     // Reorder
     std::vector<int> reordering;
-    hyper_graph.GetRoot()->GetReordering(reordering);
+    hyper_graph->GetRoot()->GetReordering(reordering);
     datas[0]->Reorder(reordering);
     // Print the string
     ostringstream oss;
@@ -27,9 +33,9 @@ void ReordererTask::Run() {
         if(outputs_->at(i) == ReordererRunner::OUTPUT_STRING) {
             oss << datas[0]->ToString();
         } else if(outputs_->at(i) == ReordererRunner::OUTPUT_PARSE) {
-            hyper_graph.GetRoot()->PrintParse(words, oss);
+            hyper_graph->GetRoot()->PrintParse(words, oss);
         } else if(outputs_->at(i) == ReordererRunner::OUTPUT_HYPERGRAPH) {
-            hyper_graph.PrintHyperGraph(words, oss);
+            hyper_graph->PrintHyperGraph(words, oss);
         } else if(outputs_->at(i) == ReordererRunner::OUTPUT_ORDER) {
             for(int j = 0; j < (int)reordering.size(); j++) {
                 if(j != 0) oss << " ";
@@ -55,8 +61,11 @@ void ReordererRunner::Run(const ConfigRunner & config) {
 
     std::string line;
     int id = 0, beam = config.GetInt("beam");
+    int gapSize = config.GetInt("gap-size");
+    if (config.GetInt("gap-size") > 0)
+    	cerr << "use discontinuous hyper-graph: D=" << config.GetInt("gap-size") << endl;
     while(std::getline(std::cin, line)) {
-        ReordererTask *task = new ReordererTask(id++, line, model_, features_, &outputs_, beam, &collector);
+        ReordererTask *task = new ReordererTask(id++, line, model_, features_, &outputs_, beam, &collector, gapSize);
         pool.Submit(task);
     }
     pool.Stop(true); 

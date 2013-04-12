@@ -6,7 +6,7 @@ namespace lader {
 class SpanStack {
 public:
 
-    ~SpanStack() {
+    virtual ~SpanStack() {
         BOOST_FOREACH(TargetSpan *span, spans_)
             delete span;
     }

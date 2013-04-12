@@ -14,11 +14,6 @@ using namespace lader;
 using namespace std;
 using namespace boost;
 
-template <class T>
-struct DescendingScore {
-  bool operator ()(T *lhs, T *rhs) { return rhs->GetScore() < lhs->GetScore(); }
-};
-
 // Return the edge feature vector
 const FeatureVectorInt * HyperGraph::GetEdgeFeatures(
                                 ReordererModel & model,

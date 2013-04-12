@@ -7,6 +7,7 @@
 #include <boost/foreach.hpp>
 #include <boost/tokenizer.hpp>
 #include <boost/algorithm/string/join.hpp>
+#include <lader/discontinuous-hyper-edge.h>
 
 using namespace boost;
 using namespace lader;
@@ -97,6 +98,7 @@ string FeatureSequence::GetSpanFeatureString(const FeatureDataSequence & sent,
                                              const string & str) {
     ostringstream oss;
     char type = str[1];
+    if ( l > r ) THROW_ERROR("Invalid span ["<<l<<", "<<r<<"]")
     switch (type) {
         case 'L':
             return sent.GetElement(l);
@@ -125,6 +127,7 @@ double FeatureSequence::GetSpanFeatureValue(const FeatureDataSequence & sent,
                                              int l, int r,
                                              const std::string & str) {
     char type = str[1];
+    if ( l > r ) THROW_ERROR("Invalid span ["<<l<<", "<<r<<"]")
     switch (type) {
         case 'N':
             return r - l + 1;
@@ -195,27 +198,40 @@ void FeatureSequence::GenerateEdgeFeatures(
                             SymbolSet<int> & feature_ids,
                             bool add,
                             FeatureVectorInt & feat) {
+	cerr << "FeatureSequence::GenerateEdgeFeatures" << endl;
     const FeatureDataSequence & sent_seq = (const FeatureDataSequence &)sent;
     bool is_nonterm = (edge.GetType() == HyperEdge::EDGE_INV || 
                        edge.GetType() == HyperEdge::EDGE_STR);
     // Iterate over each feature
     BOOST_FOREACH(FeatureTemplate templ, feature_templates_) {
         // Make sure that this feature is compatible with the edge
+    	// templ.first is the type
         if (templ.first == ALL_FACTORED || is_nonterm) {
             ostringstream values; values << templ.second[0];
             double feat_val = 1;
+            // templ.second is the vector of the feature templates
             for(int i = 1; i < (int)templ.second.size(); i++) {
                 // Choose which span to use
                 pair<int,int> span(-1, -1);
                 switch (templ.second[i][0]) {
                     case 'S':
-                        span = pair<int,int>(edge.GetLeft(), edge.GetRight());
+                    		span = pair<int,int>(edge.GetLeft(), edge.GetRight());
                         break;
                     case 'L':
-                        span = pair<int,int>(edge.GetLeft(),edge.GetCenter()-1);
+                    	if (edge.GetCenter() < 0){
+                    		DiscontinuousHyperEdge * e = (DiscontinuousHyperEdge *)&edge;
+                    		span = pair<int,int>(e->GetLeft(),e->GetM());
+                    	}
+                    	else
+                    		span = pair<int,int>(edge.GetLeft(),edge.GetCenter()-1);
                         break;
                     case 'R':
-                        span = pair<int,int>(edge.GetCenter(), edge.GetRight());
+                    	if (edge.GetCenter() < 0){
+                    		DiscontinuousHyperEdge * e = (DiscontinuousHyperEdge *)&edge;
+                    		span = pair<int,int>(e->GetN(), e->GetRight());
+                    	}
+                    	else
+                    		span = pair<int,int>(edge.GetCenter(), edge.GetRight());
                         break;
                 }
                 if(templ.second[i].length() >= 3 && templ.second[i][2] == '#') {

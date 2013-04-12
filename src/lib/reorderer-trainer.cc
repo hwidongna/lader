@@ -20,6 +20,8 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
     vector<int> sent_order(data_.size());
     for(int i = 0 ; i < (int)sent_order.size(); i++)
         sent_order[i] = i;
+    if (config.GetInt("gap-size") > 0)
+    	cerr << "use discontinuous hyper-graph: D=" << config.GetInt("gap-size") << endl;
     // Perform an iteration
     cerr << "(\".\" == 100 sentences)" << endl;
     for(int iter = 0; iter < config.GetInt("iterations"); iter++) {
@@ -31,13 +33,19 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
         int done = 0;
         BOOST_FOREACH(int sent, sent_order) {
             if(++done % 100 == 0) { cout << "."; cout.flush(); }
-            HyperGraph hyper_graph;
+            HyperGraph * hyper_graph;
+            if (config.GetInt("gap-size") > 0){
+            	hyper_graph = new DiscontinuousHyperGraph(config.GetInt("gap-size"));
+            }
+            else{
+            	hyper_graph = new HyperGraph;
+            }
             // If we are saving features for efficiency, recover the saved
             // features and replace them in the hypergraph
             if(config.GetBool("save_features") && iter != 0)
-                hyper_graph.SetFeatures(SafeAccess(saved_feats_, sent));
+                hyper_graph->SetFeatures(SafeAccess(saved_feats_, sent));
             // Make the hypergraph using cube pruning
-            hyper_graph.BuildHyperGraph(model_,
+            hyper_graph->BuildHyperGraph(model_,
                                         features_,
                                         data_[sent],
                                         config.GetInt("beam"),
@@ -47,26 +55,26 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
                 loss->AddLossToHyperGraph(
                     sent < (int)ranks_.size() ? &ranks_[sent] : NULL,
                     sent < (int)parses_.size() ? &parses_[sent] : NULL,
-                    hyper_graph);
+                    *hyper_graph);
             // Parse the hypergraph, penalizing loss heavily (oracle)
-            oracle_score = hyper_graph.Rescore(model_, -1e6);
-            oracle_features = hyper_graph.AccumulateFeatures(
-                                                    hyper_graph.GetRoot());
-            oracle_loss     = hyper_graph.AccumulateLoss(
-                                                    hyper_graph.GetRoot());
+            oracle_score = hyper_graph->Rescore(model_, -1e6);
+            oracle_features = hyper_graph->AccumulateFeatures(
+                                                    hyper_graph->GetRoot());
+            oracle_loss     = hyper_graph->AccumulateLoss(
+                                                    hyper_graph->GetRoot());
             oracle_score   -= oracle_loss * -1e6;
             // Parse the hypergraph, slightly boosting loss by 1.0 if we are
             // using loss-augmented inference
-            model_score = hyper_graph.Rescore(model_, (loss_aug ? 1.0 : 0.0));
-            model_loss  = hyper_graph.AccumulateLoss(
-                                                hyper_graph.GetRoot());
+            model_score = hyper_graph->Rescore(model_, (loss_aug ? 1.0 : 0.0));
+            model_loss  = hyper_graph->AccumulateLoss(
+                                                hyper_graph->GetRoot());
             model_score -= model_loss * 1;
             // Add the statistics for this iteration
             iter_model_loss += model_loss;
             iter_oracle_loss += oracle_loss;
             // // --- DEBUG: Get the reordering ---
             // vector<int> order;
-            // hyper_graph.GetRoot()->GetReordering(order);
+            // hyper_graph->GetRoot()->GetReordering(order);
             // for(int i = 0; i < (int)order.size(); i++) {
             //     if(i != 0) cout << " "; cout << order[i];
             // }
@@ -85,8 +93,8 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
                         " oracle_loss=" << oracle_loss <<
                         " model_loss=" << model_loss << endl;
             }
-            model_features = hyper_graph.AccumulateFeatures(
-                                                hyper_graph.GetRoot());
+            model_features = hyper_graph->AccumulateFeatures(
+                                                hyper_graph->GetRoot());
             // Add the difference between the vectors if there is at least
             //  some loss
             model_.AdjustWeights(
@@ -97,9 +105,10 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
             if(config.GetBool("save_features")) {
                 if((int)saved_feats_.size() <= sent)
                     saved_feats_.resize(sent+1);
-                saved_feats_[sent] = hyper_graph.GetFeatures();
-                hyper_graph.ClearFeatures();
+                saved_feats_[sent] = hyper_graph->GetFeatures();
+                hyper_graph->ClearFeatures();
             }
+            delete hyper_graph;
         }
         cout << "Finished iteration " << iter << " with loss " << iter_model_loss << " (oracle: " << iter_oracle_loss << ")" << endl;
         bool last_iter = (iter_model_loss == iter_oracle_loss ||

@@ -146,6 +146,7 @@ void FeatureParse::GenerateEdgeFeatures(
                             SymbolSet<int> & feature_ids,
                             bool add,
                             FeatureVectorInt & feat) {
+	cerr << "FeatureParse::GenerateEdgeFeatures" << endl;
     const FeatureDataParse & sent_seq = (const FeatureDataParse &)sent;
     bool is_nonterm = (edge.GetType() == HyperEdge::EDGE_INV || 
                        edge.GetType() == HyperEdge::EDGE_STR);

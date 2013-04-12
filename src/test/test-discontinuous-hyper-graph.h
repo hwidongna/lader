@@ -190,96 +190,11 @@ public:
         set.SetMaxTerm(0);
         DiscontinuousHyperEdge edge(0, 0, 2, 2, HyperEdge::EDGE_STR);
         cerr << "DiscontinuousHyperEdge dedge(0, 0, 2, 2, HyperEdge::EDGE_STR);" << endl;
-//        cerr << "size of datas: " << datas.size() << endl;
-//        std::vector<FeatureSequence::FeatureTemplate> feature_templates_ = featw->feature_templates_;
-//        SymbolSet<int> & feature_ids = model.GetFeatureIds();
-//        bool add = model.GetAdd();
-//        FeatureVectorInt feat;
-////        const FeatureDataSequence & sent = (const FeatureDataSequence &)sent;
-//        bool is_nonterm = (edge.GetType() == HyperEdge::EDGE_INV ||
-//                           edge.GetType() == HyperEdge::EDGE_STR);
-//        BOOST_FOREACH(FeatureSequence::FeatureTemplate templ, feature_templates_) {
-//        	// Make sure that this feature is compatible with the edge
-//        	// templ.first is the type
-//        	if (templ.first == FeatureSequence::ALL_FACTORED || is_nonterm) {
-//        		ostringstream values; values << templ.second[0];
-//        		double feat_val = 1;
-//        		// templ.second is the vector of the feature templates
-//        		for(int i = 1; i < (int)templ.second.size(); i++) {
-//        			cerr << "for the feature " << templ.second[i] << endl;
-//        			// Choose which span to use
-//        			pair<int,int> span(-1, -1);
-//        			switch (templ.second[i][0]) {
-//        			case 'S':
-//        				span = pair<int,int>(edge.GetLeft(), edge.GetRight());
-//        				break;
-//        			case 'L':
-////        				span = pair<int,int>(edge.GetLeft(),edge.GetCenter()-1);
-//        				span = pair<int,int>(edge.GetLeft(),edge.GetM());
-//        				break;
-//        			case 'R':
-////        				span = pair<int,int>(edge.GetCenter(), edge.GetRight());
-//        				span = pair<int,int>(edge.GetN(), edge.GetRight());
-//        				break;
-//        			}
-//        			if(templ.second[i].length() >= 3 && templ.second[i][2] == '#') {
-//        				feat_val = (span.first == -1 ?
-//        						featw->GetEdgeFeatureValue(sent, edge,templ.second[i]) :
-//        						featw->GetSpanFeatureValue(sent, span.first, span.second,
-//        								templ.second[i]));
-//        			} else {
-//        				values << "||" <<
-//        						(span.first == -1 ?
-//        								featw->GetEdgeFeatureString(sent, edge,templ.second[i]):
-//        								featw->GetSpanFeatureString(sent, span.first,
-//        										span.second, templ.second[i]));
-//        			}
-//        		}
-//        		if(feat_val) {
-//        			int id = feature_ids.GetId(values.str(), add);
-//        			if(id >= 0)
-//        				feat.push_back(MakePair(id,feat_val));
-//        		}
-//        	}
-//        }
-//        pair<int,int> span(-1, -1);
-//        featw->GetSpanFeatureValue(sent_seq, span.first, span.second, "LS");
-//        cerr << "featw->GetSpanFeatureValue(sent_seq, span.first, span.second, \"LS\");" << endl;
-//        featw->GetSpanFeatureValue(sent_seq, span.first, span.second, "RS");
-//        cerr << "featw->GetSpanFeatureValue(sent_seq, span.first, span.second, \"RS\");" << endl;
-//        FeatureVectorInt * feats = new FeatureVectorInt;
-//        featw->GenerateEdgeFeatures(*datas[0], edge, model.GetFeatureIds(), model.GetAdd(), *feats);
-//        cerr << "featw->GenerateEdgeFeatures(*datas[0], ..." << endl;
-//        featp->GenerateEdgeFeatures(*datas[1], edge, model.GetFeatureIds(), model.GetAdd(), *feats);
-//        cerr << "featp->GenerateEdgeFeatures(*datas[1], ..." << endl;
-        // Generates the features that can be factored over a node
-        // Otherwise generate the features
-//        std::vector<FeatureBase*> feature_gens_ = set.feature_gens_;
-//        for(int i = 0; i < (int)datas.size(); i++)
-//        	feature_gens_[i]->GenerateEdgeFeatures(*datas[i], edge, model.GetFeatureIds(), model.GetAdd(), *feats);
-
-//        EdgeFeatureMap * features_ = graph.features_;
-//        {
-//        FeatureVectorInt * ret;
-//        if (features_ == NULL) features_ = new EdgeFeatureMap;
-//        EdgeFeatureMap::const_iterator it = features_->find(edge);
-//        cerr << "features_->find(edge)" << endl;
-//        if(it == features_->end()) {
-//        	ret = set.MakeEdgeFeatures(datas, edge, model.GetFeatureIds(), model.GetAdd());
-//        	features_->insert(MakePair(edge, ret));
-//        } else {
-//            ret = it->second;
-//        }
-//        }
-//        const FeatureVectorInt * vec =
-//                        graph.GetEdgeFeatures(model, set, datas, edge);
-//        double score = graph.GetEdgeScore(model, set, datas, edge);
+        double score = graph.GetEdgeScore(model, set, datas, edge);
         cerr << "graph.GetEdgeScore(model, set, datas, dedge)" << endl;
         SpanStack *stack01 = graph.ProcessOneSpan(model, set, datas, 0, 1);
         cerr << "graph.ProcessOneSpan(model, set, datas, 0, 1)" << endl;
         SpanStack *stack02 = graph.GetStack(0,0, 2,2);
-//        if (stack02 == NULL)
-//        	cerr << "Empty stack for graph.GetStack(0,0, 2,2)" << endl;
         // The stack should contain two target spans (2,0) and (0,2),
         // each with two hypotheses
         int ret = 1;

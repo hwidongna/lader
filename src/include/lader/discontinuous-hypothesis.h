@@ -9,6 +9,10 @@
 #define DISCONTINUOUS_HYPOTHESIS_H_
 
 #include <lader/hypothesis.h>
+#include <lader/hyper-edge.h>
+#include <lader/target-span.h>
+
+namespace lader {
 
 class DiscontinuousHypothesis : public Hypothesis{
 public:
@@ -31,7 +35,19 @@ public:
 	}
 	int GetM() { return m_; }
 	int GetN() { return n_; }
+
+
+    // Comparators
+    bool operator< (const DiscontinuousHypothesis & rhs) const {
+        return Hypothesis::operator< (rhs) ||
+            m_ < rhs.m_ || (m_ < rhs.m_ && n_ < rhs.n_);
+    }
+    bool operator== (const DiscontinuousHypothesis & rhs) const {
+        return Hypothesis::operator== (rhs) && m_ == rhs.m_ && n_ == rhs.n_;
+    }
 private:
 	int m_, n_;
 };
+
+}
 #endif /* DISCONTINUOUS_HYPOTHESIS_H_ */

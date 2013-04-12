@@ -1,4 +1,5 @@
 #include <lader/feature-parse.h>
+#include <lader/discontinuous-hyper-edge.h>
 
 #include <sstream>
 #include <cfloat>
@@ -146,7 +147,6 @@ void FeatureParse::GenerateEdgeFeatures(
                             SymbolSet<int> & feature_ids,
                             bool add,
                             FeatureVectorInt & feat) {
-	cerr << "FeatureParse::GenerateEdgeFeatures" << endl;
     const FeatureDataParse & sent_seq = (const FeatureDataParse &)sent;
     bool is_nonterm = (edge.GetType() == HyperEdge::EDGE_INV || 
                        edge.GetType() == HyperEdge::EDGE_STR);
@@ -164,10 +164,20 @@ void FeatureParse::GenerateEdgeFeatures(
                         span = pair<int,int>(edge.GetLeft(), edge.GetRight());
                         break;
                     case 'L':
-                        span = pair<int,int>(edge.GetLeft(),edge.GetCenter()-1);
+                    	if (edge.GetCenter() < 0){
+                    		DiscontinuousHyperEdge * e = (DiscontinuousHyperEdge *)&edge;
+                    		span = pair<int,int>(e->GetLeft(),e->GetM());
+                    	}
+                    	else
+                    		span = pair<int,int>(edge.GetLeft(),edge.GetCenter()-1);
                         break;
                     case 'R':
-                        span = pair<int,int>(edge.GetCenter(), edge.GetRight());
+                    	if (edge.GetCenter() < 0){
+                    		DiscontinuousHyperEdge * e = (DiscontinuousHyperEdge *)&edge;
+                    		span = pair<int,int>(e->GetN(), e->GetRight());
+                    	}
+                    	else
+                    		span = pair<int,int>(edge.GetCenter(), edge.GetRight());
                         break;
                 }
                 if(templ.second[i].length() >= 3 && templ.second[i][2] == '#') {

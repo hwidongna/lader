@@ -17,7 +17,7 @@ public:
                     : left_(left), right_(right), 
                       trg_left_(trg_left), trg_right_(trg_right),
                       id_(-1) { }
-    ~TargetSpan() {
+    virtual ~TargetSpan() {
         BOOST_FOREACH(Hypothesis * hyp, hyps_)
             delete hyp;
     }

@@ -198,7 +198,6 @@ void FeatureSequence::GenerateEdgeFeatures(
                             SymbolSet<int> & feature_ids,
                             bool add,
                             FeatureVectorInt & feat) {
-	cerr << "FeatureSequence::GenerateEdgeFeatures" << endl;
     const FeatureDataSequence & sent_seq = (const FeatureDataSequence &)sent;
     bool is_nonterm = (edge.GetType() == HyperEdge::EDGE_INV || 
                        edge.GetType() == HyperEdge::EDGE_STR);

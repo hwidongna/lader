@@ -73,7 +73,7 @@ void DiscontinuousHyperGraph::AddHyperEdges(
 
 void DiscontinuousHyperGraph::AddDiscontinuousHyperEdges(
 		ReordererModel & model, const FeatureSet & features,
-		const Sentence & sent,	HypothesisQueue & q,
+		const Sentence & sent,	DiscontinuousHypothesisQueue & q,
 		int left_l, int left_m, int left_n, int left_r,
 		int right_l, int right_m, int right_n, int right_r) {
 	TargetSpan *left_trg, *right_trg;
@@ -91,17 +91,13 @@ void DiscontinuousHyperGraph::AddDiscontinuousHyperEdges(
 		THROW_ERROR("Invalid Target Span "
 				"["<<l<<", "<<m<<", "<<n<<", "<<r<<"]");
 	// Add the straight terminal
-	cerr << "Add the straight terminal" << endl;
 	score = GetEdgeScore(model, features, sent,
 			DiscontinuousHyperEdge(l, m, n, r, HyperEdge::EDGE_STR));
-	cerr << "GetEdgeScore" << endl;
 	viterbi_score = score + left_trg->GetScore() + right_trg->GetScore();
-	cerr << "Comput viterbi score" << endl;
 	q.push(DiscontinuousHypothesis(viterbi_score, score, l, m, n, r,
 			left_trg->GetTrgLeft(), right_trg->GetTrgRight(),
 			HyperEdge::EDGE_STR, -1, 0, 0, left_trg, right_trg));
 	// Add the inverted terminal
-	cerr << "Add the inverted terminal" << endl;
 	score = GetEdgeScore(model, features, sent,
 			DiscontinuousHyperEdge(l, m, n, r, HyperEdge::EDGE_INV));
 	viterbi_score = score + left_trg->GetScore() + right_trg->GetScore();
@@ -109,6 +105,7 @@ void DiscontinuousHyperGraph::AddDiscontinuousHyperEdges(
 			right_trg->GetTrgLeft(), left_trg->GetTrgRight(),
 			HyperEdge::EDGE_INV, -1, 0, 0, left_trg, right_trg));
 }
+
 // Build a hypergraph using beam search and cube pruning
 SpanStack *DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
 		ReordererModel & model,
@@ -116,7 +113,7 @@ SpanStack *DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
 		const Sentence & sent,
 		int l, int m, int n, int r,
 		int beam_size, bool save_trg){
-	HypothesisQueue q;
+	DiscontinuousHypothesisQueue q;
 	double score, viterbi_score;
 	int d = n - m;
 	cerr << "AddDiscontinuousHyperEdges ["<<l<<", "<<m<<", "<<n<<", "<<r<<"]" << endl;
@@ -125,42 +122,34 @@ SpanStack *DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
 	AddDiscontinuousHyperEdges(model, features, sent, q,
 			l, -1, -1, m,
 			n, -1, -1, r);
-//	//    			GetStack(l, c, c + 1 + d, r + d).addIncoming(
-//	//    					GetStack(l, c), GetStack(c + 1 + d, r + d));
-//	//				addHyperEdges(model, features, sent, q, l, i-1, -1, -1, i+d, r+d, -1, -1);
-//	SetStack(l, i-1, i+d, r+d, ProcessOneSpan(model, features, sent,
-//			l, i-1, -1, -1,
-//			i+d, r+d, -1, -1,
-//			beam_size, save_trg));
 	// continuous + discontinuous = discontinuous
 	cerr << "continuous + discontinuous = discontinuous" << endl;
-//	for (int j = i + 1 ; j < r ; j++){
-//		//    				GetStack(l, j, j + 1 + d, r + d).addIncoming(
-//		//    						GetStack(l, c), GetStack(c + 1, j, j + 1 + d, r + d));
-//		//					addHyperEdges(model, features, sent, q, l, i-1, -1, -1, i+1, j-1, j+d, r+d);
-//		SetStack(l, j-1, j+d, r+d, ProcessOneSpan(model, features, sent,
-//				l, i-1, -1, -1,
-//				i, j-1, j+d, r+d,
-//				beam_size, save_trg));
-//	}
-//	// discontinuous + continuous = discontinuous
-//	for (int j = i + 1 + d ; j < r + d ; j++){
-//		//    				GetStack(l, i, i + 1 + d, r + d).addIncoming(
-//		//    						GetStack(l, i, i + 1 + d, j), GetStack(j + 1, r + d));
-//		addHyperEdges(model, features, sent, q, l, i-1, i+d, j, j+1, r+d, -1, -1);
-//	}
-//	// discontinuous + continuous = discontinuous
-//	for (int j = l + 1 ; j < i ; j++){
-//		//    				GetStack(l, i, i + 1 + d, r + d).addIncoming(
-//		//    						GetStack(l, i, i + 1 + d, r + d), GetStack(j + 1, i));
-//		addHyperEdges(model, features, sent, q, l, i-1, i+d, r+d, j+1, i, -1, -1);
-//	}
-//	// discontinuous + continuous = discontinuous
-//	for (int j = i + 1 + d ; j < r + d ; j++){
-//		//    				GetStack(l, i, i + 1 + d, r + d).addIncoming(
-//		//    						GetStack(l, i, j + 1, r + d), GetStack(i + 1 + d, j));
-//		addHyperEdges(model, features, sent, q, l, i-1, j+1, r+d, i+d, j, -1, -1);
-//	}
+	for (int i = l+1 ; i <= m ; i++){
+		AddDiscontinuousHyperEdges(model, features, sent, q,
+				l, -1, -1, i-1,
+				i, m, n, r);
+	}
+	// discontinuous + continuous = discontinuous
+	cerr << "discontinuous + continuous = discontinuous" << endl;
+	for (int i = n+1 ; i <= r ; i++){
+		AddDiscontinuousHyperEdges(model, features, sent, q,
+				l, m, n, i-1,
+				i, -1, -1, r);
+	}
+	// discontinuous + continuous = discontinuous
+	cerr << "discontinuous + left continuous = discontinuous" << endl;
+	for (int i = l+1 ; i <= m ; i++){
+		AddDiscontinuousHyperEdges(model, features, sent, q,
+				l, i-1, n, r,
+				i, -1, -1, m);
+	}
+	// discontinuous + continuous = discontinuous
+	cerr << "discontinuous + right continuous = discontinuous" << endl;
+	for (int i = n+1 ; i <= r ; i++){
+		AddDiscontinuousHyperEdges(model, features, sent, q,
+				l, m, i, r,
+				i-1, -1, -1, n);
+	}
 
 	TargetSpan
 		*new_left_trg, *old_left_trg,
@@ -170,24 +159,26 @@ SpanStack *DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
 	int r_max = r+1;
 	TargetSpan * trg_span = NULL;
 	// Start beam search
+	cerr << "Start beam search among " << q.size() << " hypotheses" << endl;
 	int num_processed = 0;
 	while((!beam_size || num_processed < beam_size) && q.size()) {
+		Hypothesis top = q.top();
 		// Pop a hypothesis from the stack and get its target span
 		DiscontinuousHypothesis hyp = q.top(); q.pop();
 		int trg_idx = hyp.GetTrgLeft()*r_max+hyp.GetTrgRight();
 		tr1::unordered_map<int, TargetSpan*>::iterator it = spans.find(trg_idx);
 		if(it != spans.end()) {
 			trg_span = it->second;
-		} else if (typeid(hyp) == typeid(DiscontinuousHypothesis)){
+		} else{
 			trg_span = new DiscontinuousTargetSpan(
 					hyp.GetLeft(), hyp.GetM(), hyp.GetN(), hyp.GetRight(),
-					hyp.GetTrgLeft(), hyp.GetTrgRight());
-		} else {
-			trg_span = new TargetSpan(hyp.GetLeft(), hyp.GetRight(),
 					hyp.GetTrgLeft(), hyp.GetTrgRight());
 			spans.insert(MakePair(trg_idx, trg_span));
 		}
 		// Insert the hypothesis
+//		cerr << "Insert the hypothesis "
+//				"[" << hyp.GetLeft() << ", " << hyp.GetM() << ", " <<
+//				hyp.GetN() << ", " << hyp.GetRight() << "]" << endl;
 		trg_span->AddHypothesis(hyp);
 		num_processed++;
 		// If the next hypothesis on the stack is equal to the current
@@ -198,8 +189,8 @@ SpanStack *DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
 //		if(hyp.GetCenter() == -1) continue;
 		// Increment the left side if there is still a hypothesis left
 		DiscontinuousTargetSpan * child;
-		if (typeid(*hyp.GetLeftChild()) == typeid(DiscontinuousTargetSpan)){
-			child = (DiscontinuousTargetSpan*) hyp.GetLeftChild();
+		child = dynamic_cast<DiscontinuousTargetSpan*>(hyp.GetLeftChild());
+		if (child != NULL){
 			new_left_trg = GetTrgSpan(
 					child->GetLeft(), child->GetM(),
 					child->GetN(), child->GetRight(), hyp.GetLeftRank()+1);
@@ -220,7 +211,7 @@ SpanStack *DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
 				q.push(new_hyp);
 			}
 		}
-		else{
+		else if (hyp.GetCenter() != -1){
 			new_left_trg = HyperGraph::GetTrgSpan(l, hyp.GetCenter()-1, hyp.GetLeftRank()+1);
 			if(new_left_trg) {
 				old_left_trg = HyperGraph::GetTrgSpan(l,hyp.GetCenter()-1,hyp.GetLeftRank());
@@ -237,8 +228,8 @@ SpanStack *DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
 				q.push(new_hyp);
 			}
 		}
-		if (typeid(*hyp.GetRightChild()) == typeid(DiscontinuousTargetSpan)){
-			child = (DiscontinuousTargetSpan*) hyp.GetRightChild();
+		child = dynamic_cast<DiscontinuousTargetSpan*>(hyp.GetRightChild());
+		if (child != NULL){
 			new_right_trg = GetTrgSpan(
 					child->GetLeft(), child->GetM(),
 					child->GetN(), child->GetRight(), hyp.GetRightRank()+1);
@@ -259,7 +250,7 @@ SpanStack *DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
 				q.push(new_hyp);
 			}
 		}
-		else{
+		else if (hyp.GetCenter() != -1){
 			// Increment the right side if there is still a hypothesis right
 			new_right_trg = HyperGraph::GetTrgSpan(hyp.GetCenter(), r, hyp.GetRightRank()+1);
 			if(new_right_trg) {
@@ -278,11 +269,13 @@ SpanStack *DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
 			}
 		}
 	}
+    cerr << "sort discontinuous spans obtained by cube pruning: size " << spans.size() << endl;
 	SpanStack * ret = new SpanStack;
 	typedef pair<int, TargetSpan*> MapPair;
 	BOOST_FOREACH(const MapPair & map_pair, spans)
 		ret->AddSpan(map_pair.second);
 	sort(ret->GetSpans().begin(), ret->GetSpans().end(), DescendingScore<TargetSpan>());
+    cerr << "return sorted spans: size " << ret->size() << endl;
 	return ret;
 }
 
@@ -360,11 +353,6 @@ SpanStack * DiscontinuousHyperGraph::ProcessOneSpan(
 		tr1::unordered_map<int, TargetSpan*>::iterator it = spans.find(trg_idx);
 		if(it != spans.end()) {
 			trg_span = it->second;
-//		} else if (typeid(hyp) == typeid(DiscontinuousHypothesis)){
-//			DiscontinuousHypothesis * dhyp = (DiscontinuousHypothesis*)&hyp;
-//			trg_span = new DiscontinuousTargetSpan(
-//					dhyp->GetLeft(), dhyp->GetM(), dhyp->GetN(), dhyp->GetRight(),
-//					hyp.GetTrgLeft(), hyp.GetTrgRight());
 		} else {
 			trg_span = new TargetSpan(hyp.GetLeft(), hyp.GetRight(),
 					hyp.GetTrgLeft(), hyp.GetTrgRight());
@@ -381,8 +369,8 @@ SpanStack * DiscontinuousHyperGraph::ProcessOneSpan(
 		if(hyp.GetCenter() == -1) continue;
 		// Increment the left side if there is still a hypothesis left
 		DiscontinuousTargetSpan * child;
-		if (typeid(*hyp.GetLeftChild()) == typeid(DiscontinuousTargetSpan)){
-			child = (DiscontinuousTargetSpan*) hyp.GetLeftChild();
+		child = dynamic_cast<DiscontinuousTargetSpan*>(hyp.GetLeftChild());
+		if (child != NULL){
 			new_left_trg = GetTrgSpan(
 					child->GetLeft(), child->GetM(),
 					child->GetN(), child->GetRight(), hyp.GetLeftRank()+1);
@@ -420,8 +408,8 @@ SpanStack * DiscontinuousHyperGraph::ProcessOneSpan(
 				q.push(new_hyp);
 			}
 		}
-		if (typeid(*hyp.GetRightChild()) == typeid(DiscontinuousTargetSpan)){
-			child = (DiscontinuousTargetSpan*) hyp.GetRightChild();
+		child = dynamic_cast<DiscontinuousTargetSpan*>(hyp.GetRightChild());
+		if (child != NULL){
 			new_right_trg = GetTrgSpan(
 					child->GetLeft(), child->GetM(),
 					child->GetN(), child->GetRight(), hyp.GetRightRank()+1);
@@ -461,10 +449,12 @@ SpanStack * DiscontinuousHyperGraph::ProcessOneSpan(
 			}
 		}
 	}
+    cerr << "sort continuous spans obtained by cube pruning: size " << spans.size() << endl;
 	SpanStack * ret = new SpanStack;
 	typedef pair<int, TargetSpan*> MapPair;
 	BOOST_FOREACH(const MapPair & map_pair, spans)
 		ret->AddSpan(map_pair.second);
 	sort(ret->GetSpans().begin(), ret->GetSpans().end(), DescendingScore<TargetSpan>());
+    cerr << "return sorted spans: size " << ret->size() << endl;
 	return ret;
 }

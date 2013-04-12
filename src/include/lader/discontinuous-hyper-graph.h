@@ -19,6 +19,11 @@ class DiscontinuousHyperGraph : public HyperGraph{
 public:
 	DiscontinuousHyperGraph(int gapSize = 1)
 	: gap_(gapSize) { }
+    virtual ~DiscontinuousHyperGraph(){
+        BOOST_FOREACH(HyperGraph* graph, next_)
+            if (graph != NULL)
+                delete graph;
+    }
 
 	void BuildHyperGraph(ReordererModel & model, const FeatureSet & features, const Sentence & sent, int beam_size = 0, bool save_trg = true);
 	SpanStack *GetStack(int l, int m, int n, int r)
@@ -58,8 +63,13 @@ public:
 	            THROW_ERROR("Bad SetStack "
 	            		"[l="<<l<<", m="<<m<<", n="<<n<<", r="<<r<<"]"<<std::endl)
 	#endif
-			HyperGraph *hyper_graph = SafeAccess(next_, GetTrgSpanID(l, m));
-	        int idx = GetTrgSpanID(n - m - 2, r - m - 2);
+            int idx = GetTrgSpanID(l, m);
+            if((int)next_.size() <= idx)
+                next_.resize(idx+1, NULL);
+            if(next_[idx] == NULL)
+                next_[idx] = new HyperGraph;
+			HyperGraph *hyper_graph = SafeAccess(next_, idx);
+	        idx = GetTrgSpanID(n - m - 2, r - m - 2);
 	        std::vector<SpanStack*> & stacks = hyper_graph->GetStacks();
 	        if((int)stacks.size() <= idx)
 	            stacks.resize(idx+1, NULL);
@@ -86,7 +96,7 @@ protected:
 			int left_l, int left_m, int left_n, int left_r,
 			int right_l, int right_m, int right_n, int right_r);
     void AddDiscontinuousHyperEdges(ReordererModel & model, const FeatureSet & features,
-    			const Sentence & sent,	HypothesisQueue & q,
+    			const Sentence & sent, DiscontinuousHypothesisQueue & q,
     			int left_l, int left_m, int left_n, int left_r,
     			int right_l, int right_m, int right_n, int right_r);
 private:

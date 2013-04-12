@@ -226,9 +226,12 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
                                  int beam_size, bool save_trg) {
     n_ = sent[0]->GetNumWords();
     // Iterate through the right side of the span
-    for(int r = 0; r < n_; r++) {
+    for(int L = 1; L <= n_; L++) {
+//   for(int r = 0; r < n_; r++) {
         // Move the span from l to r, building hypotheses from small to large
-        for(int l = r; l >= 0; l--) {
+        for(int l = 0; l <= n_-L; l++){
+            int r = l+L-1;
+//        for(int l = r; l >= 0; l--) {
             SetStack(l, r, ProcessOneSpan(model, features, sent, 
                                           l, r, beam_size, save_trg));
         }

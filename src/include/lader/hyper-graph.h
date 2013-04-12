@@ -108,7 +108,7 @@ public:
     int GetSrcLen() const { return n_; }
 
 protected:
-    SpanStack * ProcessOneSpan(ReordererModel & model,
+    virtual SpanStack * ProcessOneSpan(ReordererModel & model,
                                const FeatureSet & features,
                                const Sentence & sent,
                                int l, int r,

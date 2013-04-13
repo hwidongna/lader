@@ -58,47 +58,50 @@ public:
 			HyperGraph::SetStack(l, r , stack);
 			return;
 		}
-	#ifdef LADER_SAFE
-			if(l < 0 || r < 0 || (n > 0 && m >= n-1) )
+        if(l < 0 || r < 0 || (n > 0 && m >= n-1) )
 	            THROW_ERROR("Bad SetStack "
 	            		"[l="<<l<<", m="<<m<<", n="<<n<<", r="<<r<<"]"<<std::endl)
-	#endif
-            int idx = GetTrgSpanID(l, m);
-            if((int)next_.size() <= idx)
+        int idx = GetTrgSpanID(l, m);
+        if((int)next_.size() <= idx)
                 next_.resize(idx+1, NULL);
-            if(next_[idx] == NULL)
+        if(next_[idx] == NULL)
                 next_[idx] = new HyperGraph;
-			HyperGraph *hyper_graph = SafeAccess(next_, idx);
-	        idx = GetTrgSpanID(n - m - 2, r - m - 2);
-	        std::vector<SpanStack*> & stacks = hyper_graph->GetStacks();
-	        if((int)stacks.size() <= idx)
+        HyperGraph *hyper_graph = SafeAccess(next_, idx);
+        idx = GetTrgSpanID(n - m - 2, r - m - 2);
+        std::vector<SpanStack*> & stacks = hyper_graph->GetStacks();
+        if((int)stacks.size() <= idx)
 	            stacks.resize(idx+1, NULL);
-	        if(stacks[idx]) delete stacks[idx];
-	        stacks[idx] = stack;
-	    }
+        if(stacks[idx])
+            delete stacks[idx];
+
+        stacks[idx] = stack;
+    }
 protected:
-	SpanStack *ProcessOneSpan(
-			ReordererModel & model,
-			const FeatureSet & features,
-			const Sentence & sent,
-			int l, int r,
-			int beam_size = 0,
-			bool save_trg = true);
-	SpanStack *ProcessOneDiscontinuousSpan(
-				ReordererModel & model,
-				const FeatureSet & features,
-				const Sentence & sent,
-				int l, int m, int n, int r,
-				int beam_size = 0,
-				bool save_trg = true);
-    void AddHyperEdges(ReordererModel & model, const FeatureSet & features,
-			const Sentence & sent,	HypothesisQueue & q,
-			int left_l, int left_m, int left_n, int left_r,
-			int right_l, int right_m, int right_n, int right_r);
-    void AddDiscontinuousHyperEdges(ReordererModel & model, const FeatureSet & features,
-    			const Sentence & sent, DiscontinuousHypothesisQueue & q,
-    			int left_l, int left_m, int left_n, int left_r,
-    			int right_l, int right_m, int right_n, int right_r);
+    SpanStack *ProcessOneSpan(
+    		ReordererModel & model,
+    		const FeatureSet & features,
+    		const Sentence & sent,
+    		int l, int r,
+    		int beam_size = 0, bool save_trg = true);
+    SpanStack *ProcessOneDiscontinuousSpan(
+    		ReordererModel & model,
+    		const FeatureSet & features,
+    		const Sentence & sent,
+    		int l, int m, int n, int r,
+    		int beam_size = 0, bool save_trg = true);
+    void AddHyperEdges(
+    		ReordererModel & model,	const FeatureSet & features,
+    		const Sentence & sent, HypothesisQueue & q,
+    		int left_l, int left_m, int left_n, int left_r,
+    		int right_l, int right_m, int right_n, int right_r);
+    void AddDiscontinuousHyperEdges(
+    		ReordererModel & model, const FeatureSet & features,
+    		const Sentence & sent, DiscontinuousHypothesisQueue & q,
+    		int left_l, int left_m, int left_n, int left_r,
+    		int right_l, int right_m, int right_n, int right_r);
+    template < class T >
+    void nextCubeItems(Hypothesis & hyp,
+    		std::priority_queue<T> & q, int l, int r, bool gap=true);
 private:
 	int gap_;
 	std::vector<HyperGraph*> next_;

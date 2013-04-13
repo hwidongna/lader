@@ -176,70 +176,63 @@ public:
         SpanStack *stack2 = new SpanStack, *stack3 = new SpanStack;
         stack0->push_back(new TargetSpan(0,0,0,0));
         (*stack0)[0]->AddHypothesis(Hypothesis(1,1,0,0,0,0,HyperEdge::EDGE_FOR));
-        graph.SetStack(0, -1, -1, 0, stack0);
+        graph.HyperGraph::SetStack(0, 0, stack0);
         stack1->push_back(new TargetSpan(1, 1, 1, 1));
         (*stack1)[0]->AddHypothesis(Hypothesis(2, 2, 1, 1, 1, 1, HyperEdge::EDGE_FOR));
-        graph.SetStack(1, -1, -1, 1, stack1);
+        graph.HyperGraph::SetStack(1, 1, stack1);
         stack2->push_back(new TargetSpan(2, 2, 2, 2));
         (*stack2)[0]->AddHypothesis(Hypothesis(4, 4, 2, 2, 2, 2, HyperEdge::EDGE_FOR));
-        graph.SetStack(2, -1, -1, 2, stack2);
+        graph.HyperGraph::SetStack(2, 2, stack2);
         stack3->push_back(new TargetSpan(3, 3, 3, 3));
         (*stack3)[0]->AddHypothesis(Hypothesis(8, 8, 3, 3, 3, 3, HyperEdge::EDGE_FOR));
-        graph.SetStack(3, -1, -1, 3, stack3);
+        graph.HyperGraph::SetStack(3, 3, stack3);
         // Try processing 01
         set.SetMaxTerm(0);
-        DiscontinuousHyperEdge edge(0, 0, 2, 2, HyperEdge::EDGE_STR);
-        cerr << "DiscontinuousHyperEdge dedge(0, 0, 2, 2, HyperEdge::EDGE_STR);" << endl;
-        double score = graph.GetEdgeScore(model, set, datas, edge);
-        cerr << "graph.GetEdgeScore(model, set, datas, dedge)" << endl;
+//        DiscontinuousHyperEdge edge(0, 0, 2, 2, HyperEdge::EDGE_STR);
+//        cerr << "DiscontinuousHyperEdge dedge(0, 0, 2, 2, HyperEdge::EDGE_STR);" << endl;
+//        double score = graph.GetEdgeScore(model, set, datas, edge);
+//        cerr << "graph.GetEdgeScore(model, set, datas, dedge)" << endl;
         SpanStack *stack01 = graph.ProcessOneSpan(model, set, datas, 0, 1);
-        cerr << "graph.ProcessOneSpan(model, set, datas, 0, 1)" << endl;
-        SpanStack *stack02 = graph.GetStack(0,0, 2,2);
+//        cerr << "graph.ProcessOneSpan(model, set, datas, 0, 1)" << endl;
+        SpanStack *stack0_2 = graph.GetStack(0,0, 2,2);
         // The stack should contain two target spans (2,0) and (0,2),
-        // each with two hypotheses
+        // each with one hypothesis
         int ret = 1;
-        if(stack02->size() != 2) {
-            cerr << "stack02->size() != 2: " << stack02->size() << endl; ret = 0;
-        } else if((*stack02)[0]->GetHypotheses().size() != 2) {
-            cerr << "(*stack02)[0].size() != 2: " << (*stack02)[0]->GetHypotheses().size() << endl; ret = 0;
-        } else if((*stack02)[1]->GetHypotheses().size() != 2) {
-            cerr << "(*stack02)[1].size() != 2: " << (*stack02)[1]->GetHypotheses().size() << endl; ret = 0;
+        if(stack0_2->size() != 2) {
+            cerr << "stack0_2->size() != 2: " << stack0_2->size() << endl; ret = 0;
+        } else if((*stack0_2)[0]->GetHypotheses().size() != 1) {
+            cerr << "(*stack0_2)[0].size() != 1: " << (*stack0_2)[0]->GetHypotheses().size() << endl; ret = 0;
+        } else if((*stack0_2)[1]->GetHypotheses().size() != 1) {
+            cerr << "(*stack0_2)[1].size() != 1: " << (*stack0_2)[1]->GetHypotheses().size() << endl; ret = 0;
         }
         if(!ret) return 0;
-//        // Check to make sure that the scores are in order
-//        vector<double> score_exp(4,0), score_act(4);
-//        score_exp[0] = 3; score_exp[2] = 3;
-//        score_act[0] = (*stack01)[0]->GetHypothesis(0)->GetScore();
-//        score_act[1] = (*stack01)[0]->GetHypothesis(1)->GetScore();
-//        score_act[2] = (*stack01)[1]->GetHypothesis(0)->GetScore();
-//        score_act[3] = (*stack01)[1]->GetHypothesis(1)->GetScore();
-//        ret = CheckVector(score_exp, score_act);
-//        // Check to make sure that pruning works
-//        set.SetMaxTerm(0);
-//        SpanStack *stack01pruned = graph.ProcessOneSpan(model, set, datas, 0, 1, 3);
-//        if(stack01pruned->size() != 2) {
-//            cerr << "stack01pruned->size() != 2: " << stack01pruned->size() << endl; ret = 0;
-//        } else if((*stack01pruned)[0]->GetHypotheses().size() != 1) {
-//            cerr << "(*stack01pruned)[0].size() != 1: " << (*stack01pruned)[0]->GetHypotheses().size() << endl; ret = 0;
-//        } else if((*stack01pruned)[1]->GetHypotheses().size() != 2) {
-//            cerr << "(*stack01pruned)[1].size() != 2: " << (*stack01pruned)[1]->GetHypotheses().size() << endl; ret = 0;
-//        }
-//        // delete stack00; delete stack01;
-//        // delete stack11; delete stack01pruned;
+        // Check to make sure that the scores are in order
+        vector<double> score_exp(2,1+4), score_act(2);
+        score_act[0] = (*stack0_2)[0]->GetHypothesis(0)->GetScore();
+        score_act[1] = (*stack0_2)[1]->GetHypothesis(0)->GetScore();
+        ret = CheckVector(score_exp, score_act);
+
         return ret;
     }
 
     // Test the processing of a single span
     int TestProcessOneSpanNoSave() {
-        HyperGraph graph;
-        // Create two spans for 00 and 11, so we can process 01
-        SpanStack *stack00 = new SpanStack, *stack11 = new SpanStack;
-        stack00->push_back(new TargetSpan(0,0,-1,-1));
-        (*stack00)[0]->AddHypothesis(Hypothesis(1,1.0,0,0,-1,-1,HyperEdge::EDGE_FOR));
-        graph.SetStack(0, 0, stack00);
-        stack11->push_back(new TargetSpan(1,1,-1,-1));
-        (*stack11)[0]->AddHypothesis(Hypothesis(2,2.0,1,1,-1,-1,HyperEdge::EDGE_FOR));
-        graph.SetStack(1, 1, stack11);
+        DiscontinuousHyperGraph graph;
+        // Create two spans for 00, 11, 22, and 33
+        SpanStack *stack0 = new SpanStack, *stack1 = new SpanStack;
+        SpanStack *stack2 = new SpanStack, *stack3 = new SpanStack;
+        stack0->push_back(new TargetSpan(0,0,0,0));
+        (*stack0)[0]->AddHypothesis(Hypothesis(1,1,0,0,0,0,HyperEdge::EDGE_FOR));
+        graph.HyperGraph::SetStack(0, 0, stack0);
+        stack1->push_back(new TargetSpan(1, 1, 1, 1));
+        (*stack1)[0]->AddHypothesis(Hypothesis(2, 2, 1, 1, 1, 1, HyperEdge::EDGE_FOR));
+        graph.HyperGraph::SetStack(1, 1, stack1);
+        stack2->push_back(new TargetSpan(2, 2, 2, 2));
+        (*stack2)[0]->AddHypothesis(Hypothesis(4, 4, 2, 2, 2, 2, HyperEdge::EDGE_FOR));
+        graph.HyperGraph::SetStack(2, 2, stack2);
+        stack3->push_back(new TargetSpan(3, 3, 3, 3));
+        (*stack3)[0]->AddHypothesis(Hypothesis(8, 8, 3, 3, 3, 3, HyperEdge::EDGE_FOR));
+        graph.HyperGraph::SetStack(3, 3, stack3);
         // Try processing 01
         set.SetMaxTerm(0);
         SpanStack *stack01 = graph.ProcessOneSpan(model, set, datas, 0, 1, 0, false);
@@ -254,24 +247,6 @@ public:
             cerr << "(*stack01)[0].size() != 4: " << (*stack01)[0]->GetHypotheses().size() << endl; ret = 0;
         }
         if(!ret) return 0;
-        // Check to make sure that the scores are in order
-        vector<double> score_exp(4,0), score_act(4);
-        score_exp[0] = 3; score_exp[1] = 3;
-        score_act[0] = (*stack01)[0]->GetHypothesis(0)->GetScore();
-        score_act[1] = (*stack01)[0]->GetHypothesis(1)->GetScore();
-        score_act[2] = (*stack01)[0]->GetHypothesis(2)->GetScore();
-        score_act[3] = (*stack01)[0]->GetHypothesis(3)->GetScore();
-        ret = CheckVector(score_exp, score_act);
-        // Check to make sure that pruning works
-        set.SetMaxTerm(0);
-        SpanStack *stack01pruned = graph.ProcessOneSpan(model, set, datas, 0, 1, 3, false);
-        if(stack01pruned->size() != 1) {
-            cerr << "stack01pruned->size() != 1: " << stack01pruned->size() << endl; ret = 0;
-        } else if((*stack01pruned)[0]->GetHypotheses().size() != 3) {
-            cerr << "(*stack01pruned)[0].size() != 3: " << (*stack01pruned)[0]->GetHypotheses().size() << endl; ret = 0;
-        }
-        // delete stack00; delete stack01;
-        // delete stack11; delete stack01pruned;
         return ret;
     }
 
@@ -281,9 +256,9 @@ public:
         graph.BuildHyperGraph(model, set, datas);
         const std::vector<SpanStack*> & stacks = graph.GetStacks();
         int ret = 1;
-        // The total number of stacks should be 7: 0-0 0-1 1-1 0-2 1-2 2-2 root
-        if(stacks.size() != 7) {
-            cerr << "stacks.size() != 7: " << stacks.size() << endl; ret = 0;
+        // The total number of stacks should be 11: 0-0 0-1 1-1 0-2 1-2 2-2 3-3 2-3 1-3 0-3 root
+        if(stacks.size() != 11) {
+            cerr << "stacks.size() != 11: " << stacks.size() << endl; ret = 0;
         // The number of target spans should be 6: 0-1 1-0 0-2 2-0 1-2 2-1
         } else if (stacks[3]->size() != 6) {
             cerr << "Root node stacks[3]->size() != 6: " <<stacks[3]->size()<< endl;
@@ -304,9 +279,9 @@ public:
         graph.BuildHyperGraph(model, set, datas, INT_MAX, false);
         const std::vector<SpanStack*> & stacks = graph.GetStacks();
         int ret = 1;
-        // The total number of stacks should be 7: 0-0 0-1 1-1 0-2 1-2 2-2 root
-        if(stacks.size() != 7) {
-            cerr << "stacks.size() != 7: " << stacks.size() << endl; ret = 0;
+        // The total number of stacks should be 11: 0-0 0-1 1-1 0-2 1-2 2-2 3-3 2-3 1-3 0-3 root
+        if(stacks.size() != 11) {
+        	cerr << "stacks.size() != 11: " << stacks.size() << endl; ret = 0;
         // The number of target spans should be 1: -1--1
         } else if (stacks[3]->size() != 1) {
             cerr << "Root node stacks[3]->size() != 1: " <<stacks[3]->size()<< endl;

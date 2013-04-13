@@ -28,6 +28,12 @@ public:
                left_rank_(left_rank), right_rank_(right_rank)
                { }
 
+    virtual ~Hypothesis() {
+//    	if (left_child_ != NULL)
+//    		delete left_child_;
+//    	if (right_child_ != NULL)
+//    		delete right_child_;
+    }
     // Get a string representing the rule of this hypothesis
     std::string GetRuleString(const std::vector<std::string> & sent,
                               char left_val = 0, char right_val = 0) const {
@@ -49,7 +55,7 @@ public:
     }
 
     // Comparators
-    bool operator< (const Hypothesis & rhs) const {
+    virtual bool operator< (const Hypothesis & rhs) const {
         return 
             viterbi_score_ < rhs.viterbi_score_ || 
             (viterbi_score_ == rhs.viterbi_score_ && (
@@ -60,7 +66,7 @@ public:
             left_child_ < rhs.left_child_ || (left_child_ == rhs.left_child_ && (
             right_child_ < rhs.right_child_))))))))))));
     }
-    bool operator== (const Hypothesis & rhs) const {
+    virtual bool operator== (const Hypothesis & rhs) const {
         return
             viterbi_score_ == rhs.viterbi_score_ &&
             trg_left_ == rhs.trg_left_ &&

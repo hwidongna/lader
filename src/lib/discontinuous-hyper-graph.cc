@@ -47,7 +47,7 @@ void DiscontinuousHyperGraph::AddHyperEdges(
 		c = right_l;
 		r = left_r;
 	}
-		// discontinuous + discontinuous = continuous
+	// discontinuous + discontinuous = continuous
 	else if (left_m+1 == right_l && right_m+1 == left_n && left_r+1 == right_n){
 		l = left_l;
 		c = left_n;
@@ -70,6 +70,7 @@ void DiscontinuousHyperGraph::AddHyperEdges(
 			right_trg->GetTrgLeft(), left_trg->GetTrgRight(),
 			HyperEdge::EDGE_INV, c, 0, 0, left_trg, right_trg));
 }
+
 
 void DiscontinuousHyperGraph::AddDiscontinuousHyperEdges(
 		ReordererModel & model, const FeatureSet & features,
@@ -122,6 +123,104 @@ void DiscontinuousHyperGraph::AddDiscontinuousHyperEdges(
 			HyperEdge::EDGE_INV, -1, 0, 0, left_trg, right_trg));
 }
 
+template <class T>
+void DiscontinuousHyperGraph::nextCubeItems(Hypothesis & hyp,
+		std::priority_queue<T> & q, int l, int r, bool gap)
+{
+	TargetSpan
+	*new_left_trg = NULL, *old_left_trg = NULL,
+	*new_right_trg = NULL, *old_right_trg = NULL;
+	DiscontinuousTargetSpan *child;
+	// Increment the left side if there is still a hypothesis left
+	child = dynamic_cast<DiscontinuousTargetSpan*>(hyp.GetLeftChild());
+	if (child != NULL){
+		new_left_trg = GetTrgSpan(
+				child->GetLeft(), child->GetM(),
+				child->GetN(), child->GetRight(), hyp.GetLeftRank()+1);
+		if (new_left_trg)
+			old_left_trg = GetTrgSpan(
+					child->GetLeft(), child->GetM(),
+					child->GetN(), child->GetRight(), hyp.GetLeftRank());
+	}
+	else if (hyp.GetCenter() != -1){
+		new_left_trg = HyperGraph::GetTrgSpan(l, hyp.GetCenter()-1, hyp.GetLeftRank()+1);
+		if(new_left_trg)
+			old_left_trg = HyperGraph::GetTrgSpan(l,hyp.GetCenter()-1,hyp.GetLeftRank());
+	}
+
+	if (new_left_trg != NULL && old_left_trg != NULL){
+		if (gap){
+			DiscontinuousHypothesis new_hyp(hyp);
+			new_hyp.SetScore(hyp.GetScore() - old_left_trg->GetScore() + new_left_trg->GetScore());
+			new_hyp.SetLeftRank(hyp.GetLeftRank() + 1);
+			new_hyp.SetLeftChild(new_left_trg);
+			if(new_hyp.GetType() == HyperEdge::EDGE_STR){
+				new_hyp.SetTrgLeft(new_left_trg->GetTrgLeft());
+			}else{
+				new_hyp.SetTrgRight(new_left_trg->GetTrgRight());
+			}
+			q.push(new_hyp);
+		}
+		else{
+			Hypothesis new_hyp(hyp);
+			new_hyp.SetScore(hyp.GetScore() - old_left_trg->GetScore() + new_left_trg->GetScore());
+			new_hyp.SetLeftRank(hyp.GetLeftRank() + 1);
+			new_hyp.SetLeftChild(new_left_trg);
+			if(new_hyp.GetType() == HyperEdge::EDGE_STR){
+				new_hyp.SetTrgLeft(new_left_trg->GetTrgLeft());
+			}else{
+				new_hyp.SetTrgRight(new_left_trg->GetTrgRight());
+			}
+			q.push(new_hyp);
+		}
+	}
+	// Increment the right side if there is still a hypothesis right
+	child = dynamic_cast<DiscontinuousTargetSpan*>(hyp.GetRightChild());
+	if (child != NULL){
+		new_right_trg = GetTrgSpan(
+				child->GetLeft(), child->GetM(),
+				child->GetN(), child->GetRight(), hyp.GetRightRank()+1);
+		if(new_right_trg)
+			old_right_trg = GetTrgSpan(
+					child->GetLeft(), child->GetM(),
+					child->GetN(), child->GetRight(), hyp.GetRightRank());
+	}
+	else if (hyp.GetCenter() != -1){
+		new_right_trg = HyperGraph::GetTrgSpan(hyp.GetCenter(), r, hyp.GetRightRank()+1);
+		if(new_right_trg)
+			old_right_trg = HyperGraph::GetTrgSpan(hyp.GetCenter(), r, hyp.GetRightRank());
+	}
+
+	if (new_right_trg != NULL && old_right_trg != NULL){
+		if (gap){
+			DiscontinuousHypothesis new_hyp(hyp);
+			new_hyp.SetScore(hyp.GetScore()
+					- old_right_trg->GetScore() + new_right_trg->GetScore());
+			new_hyp.SetRightRank(hyp.GetRightRank()+1);
+			new_hyp.SetRightChild(new_right_trg);
+			if(new_hyp.GetType() == HyperEdge::EDGE_STR) {
+				new_hyp.SetTrgRight(new_right_trg->GetTrgRight());
+			} else {
+				new_hyp.SetTrgLeft(new_right_trg->GetTrgLeft());
+			}
+			q.push(new_hyp);
+		}
+		else{
+			Hypothesis new_hyp(hyp);
+			new_hyp.SetScore(hyp.GetScore()
+					- old_right_trg->GetScore() + new_right_trg->GetScore());
+			new_hyp.SetRightRank(hyp.GetRightRank()+1);
+			new_hyp.SetRightChild(new_right_trg);
+			if(new_hyp.GetType() == HyperEdge::EDGE_STR) {
+				new_hyp.SetTrgRight(new_right_trg->GetTrgRight());
+			} else {
+				new_hyp.SetTrgLeft(new_right_trg->GetTrgLeft());
+			}
+			q.push(new_hyp);
+		}
+	}
+}
+
 // Build a hypergraph using beam search and cube pruning
 SpanStack *DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
 		ReordererModel & model,
@@ -131,8 +230,7 @@ SpanStack *DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
 		int beam_size, bool save_trg){
 	DiscontinuousHypothesisQueue q;
 	double score, viterbi_score;
-	int d = n - m;
-	//cerr << "AddDiscontinuousHyperEdges ["<<l<<", "<<m<<", "<<n<<", "<<r<<"]" << endl;
+//	cerr << "AddDiscontinuousHyperEdges ["<<l<<", "<<m<<", "<<n<<", "<<r<<"]" << endl;
 	// continuous + continuous = discontinuous
 	//cerr << "continuous + continuous = discontinuous" << endl;
 	AddDiscontinuousHyperEdges(model, features, sent, q,
@@ -174,7 +272,6 @@ SpanStack *DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
 	//cerr << "Start beam search among " << q.size() << " hypotheses" << endl;
 	int num_processed = 0;
 	while((!beam_size || num_processed < beam_size) && q.size()) {
-		Hypothesis top = q.top();
 		// Pop a hypothesis from the stack and get its target span
 		DiscontinuousHypothesis hyp = q.top(); q.pop();
 		int trg_idx = hyp.GetTrgLeft()*r_max+hyp.GetTrgRight();
@@ -188,7 +285,7 @@ SpanStack *DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
 			spans.insert(MakePair(trg_idx, trg_span));
 		}
 		// Insert the hypothesis
-//		//cerr << "Insert the hypothesis "
+//		cerr << "Insert the hypothesis "
 //				"[" << hyp.GetLeft() << ", " << hyp.GetM() << ", " <<
 //				hyp.GetN() << ", " << hyp.GetRight() << "]" << endl;
 		trg_span->AddHypothesis(hyp);
@@ -200,86 +297,7 @@ SpanStack *DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
 		// Skip terminals
 //		if(hyp.GetCenter() == -1) continue;
 		// Increment the left side if there is still a hypothesis left
-		DiscontinuousTargetSpan * child;
-		child = dynamic_cast<DiscontinuousTargetSpan*>(hyp.GetLeftChild());
-		if (child != NULL){
-			new_left_trg = GetTrgSpan(
-					child->GetLeft(), child->GetM(),
-					child->GetN(), child->GetRight(), hyp.GetLeftRank()+1);
-			if (new_left_trg){
-				old_left_trg = GetTrgSpan(
-						child->GetLeft(), child->GetM(),
-						child->GetN(), child->GetRight(), hyp.GetLeftRank());
-				DiscontinuousHypothesis new_hyp(hyp);
-				new_hyp.SetScore(hyp.GetScore()
-						- old_left_trg->GetScore() + new_left_trg->GetScore());
-				new_hyp.SetLeftRank(hyp.GetLeftRank()+1);
-				new_hyp.SetLeftChild(new_left_trg);
-				if(new_hyp.GetType() == HyperEdge::EDGE_STR) {
-					new_hyp.SetTrgLeft(new_left_trg->GetTrgLeft());
-				} else {
-					new_hyp.SetTrgRight(new_left_trg->GetTrgRight());
-				}
-				q.push(new_hyp);
-			}
-		}
-		else if (hyp.GetCenter() != -1){
-			new_left_trg = HyperGraph::GetTrgSpan(l, hyp.GetCenter()-1, hyp.GetLeftRank()+1);
-			if(new_left_trg) {
-				old_left_trg = HyperGraph::GetTrgSpan(l,hyp.GetCenter()-1,hyp.GetLeftRank());
-				DiscontinuousHypothesis new_hyp(hyp);
-				new_hyp.SetScore(hyp.GetScore()
-						- old_left_trg->GetScore() + new_left_trg->GetScore());
-				new_hyp.SetLeftRank(hyp.GetLeftRank()+1);
-				new_hyp.SetLeftChild(new_left_trg);
-				if(new_hyp.GetType() == HyperEdge::EDGE_STR) {
-					new_hyp.SetTrgLeft(new_left_trg->GetTrgLeft());
-				} else {
-					new_hyp.SetTrgRight(new_left_trg->GetTrgRight());
-				}
-				q.push(new_hyp);
-			}
-		}
-		child = dynamic_cast<DiscontinuousTargetSpan*>(hyp.GetRightChild());
-		if (child != NULL){
-			new_right_trg = GetTrgSpan(
-					child->GetLeft(), child->GetM(),
-					child->GetN(), child->GetRight(), hyp.GetRightRank()+1);
-			if(new_right_trg) {
-				old_right_trg = GetTrgSpan(
-						child->GetLeft(), child->GetM(),
-						child->GetN(), child->GetRight(), hyp.GetRightRank());
-				DiscontinuousHypothesis new_hyp(hyp);
-				new_hyp.SetScore(hyp.GetScore()
-						- old_right_trg->GetScore() + new_right_trg->GetScore());
-				new_hyp.SetRightRank(hyp.GetRightRank()+1);
-				new_hyp.SetRightChild(new_right_trg);
-				if(new_hyp.GetType() == HyperEdge::EDGE_STR) {
-					new_hyp.SetTrgRight(new_right_trg->GetTrgRight());
-				} else {
-					new_hyp.SetTrgLeft(new_right_trg->GetTrgLeft());
-				}
-				q.push(new_hyp);
-			}
-		}
-		else if (hyp.GetCenter() != -1){
-			// Increment the right side if there is still a hypothesis right
-			new_right_trg = HyperGraph::GetTrgSpan(hyp.GetCenter(), r, hyp.GetRightRank()+1);
-			if(new_right_trg) {
-				old_right_trg = HyperGraph::GetTrgSpan(hyp.GetCenter(), r, hyp.GetRightRank());
-				DiscontinuousHypothesis new_hyp(hyp);
-				new_hyp.SetScore(hyp.GetScore()
-						- old_right_trg->GetScore() + new_right_trg->GetScore());
-				new_hyp.SetRightRank(hyp.GetRightRank()+1);
-				new_hyp.SetRightChild(new_right_trg);
-				if(new_hyp.GetType() == HyperEdge::EDGE_STR) {
-					new_hyp.SetTrgRight(new_right_trg->GetTrgRight());
-				} else {
-					new_hyp.SetTrgLeft(new_right_trg->GetTrgLeft());
-				}
-				q.push(new_hyp);
-			}
-		}
+		nextCubeItems(hyp, q, l, r, true);
 	}
     //cerr << "sort discontinuous spans obtained by cube pruning: size " << spans.size() << endl;
 	SpanStack * ret = new SpanStack;
@@ -321,7 +339,7 @@ SpanStack * DiscontinuousHyperGraph::ProcessOneSpan(
 	*new_right_trg, *old_right_trg;
 	int N = n_ = sent[0]->GetNumWords();;
 	int D = gap_;
-	//cerr << "AddHyperEdges ["<<l<<", "<<r<<"]" << endl;
+//	cerr << "AddHyperEdges ["<<l<<", "<<r<<"]" << endl;
 	for (int i = l+1 ; i <= r ; i++){
 		// continuous + continuous = continuous
 		//cerr << "continuous + continuous = continuous" << endl;
@@ -371,6 +389,8 @@ SpanStack * DiscontinuousHyperGraph::ProcessOneSpan(
 			spans.insert(MakePair(trg_idx, trg_span));
 		}
 		// Insert the hypothesis
+//		cerr << "Insert the hypothesis "
+//				"[" << hyp.GetLeft() << ", " << hyp.GetRight() << "]" << endl;
 		trg_span->AddHypothesis(hyp);
 		num_processed++;
 		// If the next hypothesis on the stack is equal to the current
@@ -378,88 +398,8 @@ SpanStack * DiscontinuousHyperGraph::ProcessOneSpan(
 		// hypothesis
 		while(q.size() && q.top() == hyp) q.pop();
 		// Skip terminals
-		if(hyp.GetCenter() == -1) continue;
-		// Increment the left side if there is still a hypothesis left
-		DiscontinuousTargetSpan * child;
-		child = dynamic_cast<DiscontinuousTargetSpan*>(hyp.GetLeftChild());
-		if (child != NULL){
-			new_left_trg = GetTrgSpan(
-					child->GetLeft(), child->GetM(),
-					child->GetN(), child->GetRight(), hyp.GetLeftRank()+1);
-			if (new_left_trg){
-				old_left_trg = GetTrgSpan(
-						child->GetLeft(), child->GetM(),
-						child->GetN(), child->GetRight(), hyp.GetLeftRank());
-				Hypothesis new_hyp(hyp);
-				new_hyp.SetScore(hyp.GetScore()
-						- old_left_trg->GetScore() + new_left_trg->GetScore());
-				new_hyp.SetLeftRank(hyp.GetLeftRank()+1);
-				new_hyp.SetLeftChild(new_left_trg);
-				if(new_hyp.GetType() == HyperEdge::EDGE_STR) {
-					new_hyp.SetTrgLeft(new_left_trg->GetTrgLeft());
-				} else {
-					new_hyp.SetTrgRight(new_left_trg->GetTrgRight());
-				}
-				q.push(new_hyp);
-			}
-		}
-		else{
-			new_left_trg = HyperGraph::GetTrgSpan(l, hyp.GetCenter()-1, hyp.GetLeftRank()+1);
-			if(new_left_trg) {
-				old_left_trg = HyperGraph::GetTrgSpan(l,hyp.GetCenter()-1,hyp.GetLeftRank());
-				Hypothesis new_hyp(hyp);
-				new_hyp.SetScore(hyp.GetScore()
-						- old_left_trg->GetScore() + new_left_trg->GetScore());
-				new_hyp.SetLeftRank(hyp.GetLeftRank()+1);
-				new_hyp.SetLeftChild(new_left_trg);
-				if(new_hyp.GetType() == HyperEdge::EDGE_STR) {
-					new_hyp.SetTrgLeft(new_left_trg->GetTrgLeft());
-				} else {
-					new_hyp.SetTrgRight(new_left_trg->GetTrgRight());
-				}
-				q.push(new_hyp);
-			}
-		}
-		child = dynamic_cast<DiscontinuousTargetSpan*>(hyp.GetRightChild());
-		if (child != NULL){
-			new_right_trg = GetTrgSpan(
-					child->GetLeft(), child->GetM(),
-					child->GetN(), child->GetRight(), hyp.GetRightRank()+1);
-			if(new_right_trg) {
-				old_right_trg = GetTrgSpan(
-						child->GetLeft(), child->GetM(),
-						child->GetN(), child->GetRight(), hyp.GetRightRank());
-				Hypothesis new_hyp(hyp);
-				new_hyp.SetScore(hyp.GetScore()
-						- old_right_trg->GetScore() + new_right_trg->GetScore());
-				new_hyp.SetRightRank(hyp.GetRightRank()+1);
-				new_hyp.SetRightChild(new_right_trg);
-				if(new_hyp.GetType() == HyperEdge::EDGE_STR) {
-					new_hyp.SetTrgRight(new_right_trg->GetTrgRight());
-				} else {
-					new_hyp.SetTrgLeft(new_right_trg->GetTrgLeft());
-				}
-				q.push(new_hyp);
-			}
-		}
-		else{
-			// Increment the right side if there is still a hypothesis right
-	        new_right_trg = HyperGraph::GetTrgSpan(hyp.GetCenter(), r, hyp.GetRightRank()+1);
-	        if(new_right_trg) {
-	            old_right_trg = HyperGraph::GetTrgSpan(hyp.GetCenter(), r, hyp.GetRightRank());
-				Hypothesis new_hyp(hyp);
-				new_hyp.SetScore(hyp.GetScore()
-						- old_right_trg->GetScore() + new_right_trg->GetScore());
-				new_hyp.SetRightRank(hyp.GetRightRank()+1);
-				new_hyp.SetRightChild(new_right_trg);
-				if(new_hyp.GetType() == HyperEdge::EDGE_STR) {
-					new_hyp.SetTrgRight(new_right_trg->GetTrgRight());
-				} else {
-					new_hyp.SetTrgLeft(new_right_trg->GetTrgLeft());
-				}
-				q.push(new_hyp);
-			}
-		}
+//		if(hyp.GetCenter() == -1) continue;
+		nextCubeItems(hyp, q, l, r, false);
 	}
     //cerr << "sort continuous spans obtained by cube pruning: size " << spans.size() << endl;
 	SpanStack * ret = new SpanStack;

@@ -309,7 +309,8 @@ SpanStack *DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
 	return ret;
 }
 
-// Build a hypergraph using beam search and cube pruning
+// Build a discontinuous hypergraph using beam search and cube pruning
+// Override HyperGraph::ProcessOneSpan
 SpanStack * DiscontinuousHyperGraph::ProcessOneSpan(
 		ReordererModel & model,
 		const FeatureSet & features,
@@ -325,19 +326,16 @@ SpanStack * DiscontinuousHyperGraph::ProcessOneSpan(
 		int tr = (save_trg ? r : -1);
 		// Create a hypothesis with the forward terminal
 		score = GetEdgeScore(model, features, sent,
-				HyperEdge(l, -1, r, HyperEdge::EDGE_FOR));
+								HyperEdge(l, -1, r, HyperEdge::EDGE_FOR));
 		q.push(Hypothesis(score, score, l, r, tl, tr, HyperEdge::EDGE_FOR));
 		if(features.GetUseReverse()) {
 			// Create a hypothesis with the backward terminal
 			score = GetEdgeScore(model, features, sent,
-					HyperEdge(l, -1, r, HyperEdge::EDGE_BAC));
+									HyperEdge(l, -1, r, HyperEdge::EDGE_BAC));
 			q.push(Hypothesis(score, score, l, r, tr, tl, HyperEdge::EDGE_BAC));
 		}
 	}
-	TargetSpan
-	*new_left_trg, *old_left_trg,
-	*new_right_trg, *old_right_trg;
-	int N = n_ = sent[0]->GetNumWords();;
+	int N = n_ = sent[0]->GetNumWords();
 	int D = gap_;
 //	cerr << "AddHyperEdges ["<<l<<", "<<r<<"]" << endl;
 	for (int i = l+1 ; i <= r ; i++){

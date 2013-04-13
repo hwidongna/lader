@@ -217,21 +217,21 @@ public:
 
     // Test the processing of a single span
     int TestProcessOneSpanNoSave() {
-        DiscontinuousHyperGraph graph;
+    	DiscontinuousHyperGraph graph(1);
         // Create two spans for 00, 11, 22, and 33
         SpanStack *stack0 = new SpanStack, *stack1 = new SpanStack;
         SpanStack *stack2 = new SpanStack, *stack3 = new SpanStack;
         stack0->push_back(new TargetSpan(0,0,0,0));
-        (*stack0)[0]->AddHypothesis(Hypothesis(1,1,0,0,0,0,HyperEdge::EDGE_FOR));
+        (*stack0)[0]->AddHypothesis(Hypothesis(1,1,0,0,-1,-1,HyperEdge::EDGE_FOR));
         graph.HyperGraph::SetStack(0, 0, stack0);
         stack1->push_back(new TargetSpan(1, 1, 1, 1));
-        (*stack1)[0]->AddHypothesis(Hypothesis(2, 2, 1, 1, 1, 1, HyperEdge::EDGE_FOR));
+        (*stack1)[0]->AddHypothesis(Hypothesis(2, 2, 1, 1, -1, -1, HyperEdge::EDGE_FOR));
         graph.HyperGraph::SetStack(1, 1, stack1);
         stack2->push_back(new TargetSpan(2, 2, 2, 2));
-        (*stack2)[0]->AddHypothesis(Hypothesis(4, 4, 2, 2, 2, 2, HyperEdge::EDGE_FOR));
+        (*stack2)[0]->AddHypothesis(Hypothesis(4, 4, 2, 2, -1, -1, HyperEdge::EDGE_FOR));
         graph.HyperGraph::SetStack(2, 2, stack2);
         stack3->push_back(new TargetSpan(3, 3, 3, 3));
-        (*stack3)[0]->AddHypothesis(Hypothesis(8, 8, 3, 3, 3, 3, HyperEdge::EDGE_FOR));
+        (*stack3)[0]->AddHypothesis(Hypothesis(8, 8, 3, 3, -1, -1, HyperEdge::EDGE_FOR));
         graph.HyperGraph::SetStack(3, 3, stack3);
         // Try processing 01
         set.SetMaxTerm(0);
@@ -247,51 +247,69 @@ public:
             cerr << "(*stack01)[0].size() != 4: " << (*stack01)[0]->GetHypotheses().size() << endl; ret = 0;
         }
         if(!ret) return 0;
+        // Check to make sure that the scores are in order
+        vector<double> score_exp(4,0), score_act(4);
+        score_exp[0] = 3; score_exp[1] = 3;
+        score_act[0] = (*stack01)[0]->GetHypothesis(0)->GetScore();
+        score_act[1] = (*stack01)[0]->GetHypothesis(1)->GetScore();
+        score_act[2] = (*stack01)[0]->GetHypothesis(2)->GetScore();
+        score_act[3] = (*stack01)[0]->GetHypothesis(3)->GetScore();
+        ret = CheckVector(score_exp, score_act);
+        // Check to make sure that pruning works
+        set.SetMaxTerm(0);
+        SpanStack *stack01pruned = graph.ProcessOneSpan(model, set, datas, 0, 1, 3, false);
+        if(stack01pruned->size() != 1) {
+            cerr << "stack01pruned->size() != 1: " << stack01pruned->size() << endl; ret = 0;
+        } else if((*stack01pruned)[0]->GetHypotheses().size() != 3) {
+            cerr << "(*stack01pruned)[0].size() != 3: " << (*stack01pruned)[0]->GetHypotheses().size() << endl; ret = 0;
+        }
         return ret;
     }
 
     int TestBuildHyperGraph() {
-        HyperGraph graph;
+        HyperGraph graph = DiscontinuousHyperGraph(1);
         set.SetMaxTerm(0);
         graph.BuildHyperGraph(model, set, datas);
         const std::vector<SpanStack*> & stacks = graph.GetStacks();
         int ret = 1;
-        // The total number of stacks should be 11: 0-0 0-1 1-1 0-2 1-2 2-2 3-3 2-3 1-3 0-3 root
+        SpanStack * stack03 = graph.HyperGraph::GetStack(0, 3);
+        SpanStack * stackRoot = graph.HyperGraph::GetStack(-1, 3);
+        // The total number of stacks should be 11: 0-0 0-1 1-1 0-2 1-2 2-2 0-3 1-3 2-3 3-3 root
         if(stacks.size() != 11) {
             cerr << "stacks.size() != 11: " << stacks.size() << endl; ret = 0;
-        // The number of target spans should be 6: 0-1 1-0 0-2 2-0 1-2 2-1
-        } else if (stacks[3]->size() != 6) {
-            cerr << "Root node stacks[3]->size() != 6: " <<stacks[3]->size()<< endl;
-            BOOST_FOREACH(const TargetSpan *span, stacks[3]->GetSpans())
+        // The number of target spans should be 12: 0-1 0-2 0-3 1-0 1-2 1-3 2-0 2-1 2-3 3-0 3-1 3-2
+        } else if (stack03->size() != 12) {
+            cerr << "Root node stack03->size() != 12: " << stack03->size()<< endl;
+            BOOST_FOREACH(const TargetSpan *span, stack03->GetSpans())
                 cerr << " " << span->GetTrgLeft() << "-" <<span->GetTrgRight() << endl;
             ret = 0;
-        } else if (stacks[6]->GetSpans().size() != stacks[3]->size()) {
-            cerr << "Root hypotheses " << stacks[6]->GetSpans().size()
-                 << " and root spans " << stacks[3]->size() << " don't match." <<
-                 endl; ret = 0;
+        } else if (stackRoot->GetSpans().size() != stack03->size()) {
+            cerr << "Root hypotheses " << stackRoot->GetSpans().size()
+                 << " and root spans " << stack03->size() << " don't match." << endl; ret = 0;
         }
         return ret;
     }
 
     int TestBuildHyperGraphNoSave() {
-        HyperGraph graph;
+    	HyperGraph graph = DiscontinuousHyperGraph(1);
         set.SetMaxTerm(0);
-        graph.BuildHyperGraph(model, set, datas, INT_MAX, false);
+        graph.BuildHyperGraph(model, set, datas, 0, false);
         const std::vector<SpanStack*> & stacks = graph.GetStacks();
         int ret = 1;
-        // The total number of stacks should be 11: 0-0 0-1 1-1 0-2 1-2 2-2 3-3 2-3 1-3 0-3 root
+        SpanStack * stack03 = graph.HyperGraph::GetStack(0, 3);
+        SpanStack * stackRoot = graph.HyperGraph::GetStack(-1, 3);
+        // The total number of stacks should be 11: 0-0 0-1 1-1 0-2 1-2 2-2 0-3 1-3 2-3 3-3 root
         if(stacks.size() != 11) {
-        	cerr << "stacks.size() != 11: " << stacks.size() << endl; ret = 0;
-        // The number of target spans should be 1: -1--1
-        } else if (stacks[3]->size() != 1) {
-            cerr << "Root node stacks[3]->size() != 1: " <<stacks[3]->size()<< endl;
-            BOOST_FOREACH(const TargetSpan *span, stacks[3]->GetSpans())
+            cerr << "stacks.size() != 11: " << stacks.size() << endl; ret = 0;
+        // The number of target spans should be 1: -1-1
+        } else if (stack03->size() != 1) {
+            cerr << "Root node stack03->size() != 1: " << stack03->size()<< endl;
+            BOOST_FOREACH(const TargetSpan *span, stack03->GetSpans())
                 cerr << " " << span->GetTrgLeft() << "-" <<span->GetTrgRight() << endl;
             ret = 0;
-        } else if (stacks[6]->GetSpans().size() != stacks[3]->size()) {
-            cerr << "Root hypotheses " << stacks[6]->GetSpans().size()
-                 << " and root spans " << stacks[3]->size() << " don't match." <<
-                 endl; ret = 0;
+        } else if (stackRoot->GetSpans().size() != stack03->size()) {
+            cerr << "Root hypotheses " << stackRoot->GetSpans().size()
+                 << " and root spans " << stack03->size() << " don't match." << endl; ret = 0;
         }
         return ret;
     }

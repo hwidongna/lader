@@ -259,7 +259,7 @@ SpanStack *DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
 	for (int i = r ; i > n && i-m-1 <= gap_ ; i--)
 		AddDiscontinuousHyperEdges(model, features, sent, q,
 				l, m, i, r,
-				i-1, -1, -1, n);
+				n, -1, -1, i-1);
 
 	TargetSpan
 		*new_left_trg, *old_left_trg,

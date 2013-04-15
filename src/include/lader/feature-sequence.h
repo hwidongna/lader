@@ -17,7 +17,11 @@ public:
     typedef std::pair<FeatureType, std::vector<std::string> > FeatureTemplate;
 
     FeatureSequence() { }
-    virtual ~FeatureSequence() { }
+    virtual ~FeatureSequence() {
+    	BOOST_FOREACH(Dictionary* dict, dicts_){
+    		delete dict;
+    	}
+    }
  
     // Parse the configuration
     // The configuration takes the following format:

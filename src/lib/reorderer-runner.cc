@@ -45,6 +45,7 @@ void ReordererTask::Run() {
             THROW_ERROR("Unimplemented output format");
         }
     }
+    delete hyper_graph;
     oss << endl;
     collector_->Write(id_, oss.str(), "");
     // Clean up the data

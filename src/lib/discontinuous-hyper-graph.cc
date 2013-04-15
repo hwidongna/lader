@@ -100,7 +100,7 @@ void DiscontinuousHyperGraph::AddDiscontinuousHyperEdges(
         l = left_l; m = right_r; n = left_n; r = left_r;
     }
     else if (right_m < 0 && right_n < 0 && right_r+1 == left_n){
-        l = left_l; m = left_n; n = right_l; r = left_r;
+        l = left_l; m = left_m; n = right_l; r = left_r;
     }
 	if (l > m || m+1 > n-1 || n > r)
 		THROW_ERROR("Invalid Target Span "

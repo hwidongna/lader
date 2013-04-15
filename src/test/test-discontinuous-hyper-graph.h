@@ -290,6 +290,32 @@ public:
         return ret;
     }
 
+    int TestBuildHyperGraphGap2() {
+        HyperGraph graph = DiscontinuousHyperGraph(2);
+        set.SetMaxTerm(0);
+        sent.FromString("this sentence has five words");
+		sent_pos.FromString("PRP NNS VB ADJ NNP");
+        graph.BuildHyperGraph(model, set, datas);
+        const std::vector<SpanStack*> & stacks = graph.GetStacks();
+        int ret = 1;
+        SpanStack * stack04 = graph.HyperGraph::GetStack(0, 4);
+        SpanStack * stackRoot = graph.HyperGraph::GetStack(-1, 4);
+        // The total number of stacks should be 6*5/2 + 1: 0-0 0-1 1-1 0-2 1-2 2-2 0-3 1-3 2-3 3-3 0-4 1-4 2-4 3-4 4-4 root
+        if(stacks.size() != 16) {
+            cerr << "stacks.size() != 16: " << stacks.size() << endl; ret = 0;
+        // The number of target spans should be 5*4:
+        } else if (stack04->size() != 20) {
+            cerr << "Root node stack03->size() != 20: " << stack04->size()<< endl;
+            BOOST_FOREACH(const TargetSpan *span, stack04->GetSpans())
+                cerr << " " << span->GetTrgLeft() << "-" <<span->GetTrgRight() << endl;
+            ret = 0;
+        } else if (stackRoot->GetSpans().size() != stack04->size()) {
+            cerr << "Root hypotheses " << stackRoot->GetSpans().size()
+                 << " and root spans " << stack04->size() << " don't match." << endl; ret = 0;
+        }
+        return ret;
+    }
+
     int TestBuildHyperGraphNoSave() {
     	HyperGraph graph = DiscontinuousHyperGraph(1);
         set.SetMaxTerm(0);
@@ -490,6 +516,7 @@ public:
         done++; cout << "TestRescore()" << endl; if(TestRescore()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestReorderingAndPrint()" << endl; if(TestReorderingAndPrint()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestPrintHyperGraph()" << endl; if(TestPrintHyperGraph()) succeeded++; else cout << "FAILED!!!" << endl;
+        done++; cout << "TestBuildHyperGraphGap2()" << endl; if(TestBuildHyperGraphGap2()) succeeded++; else cout << "FAILED!!!" << endl;
         cout << "#### TestDiscontinuousHyperGraph Finished with "<<succeeded<<"/"<<done<<" tests succeeding ####"<<endl;
         return done == succeeded;
     }

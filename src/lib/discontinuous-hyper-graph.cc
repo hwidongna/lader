@@ -124,7 +124,7 @@ void DiscontinuousHyperGraph::AddDiscontinuousHyperEdges(
 }
 
 template <class T>
-void DiscontinuousHyperGraph::nextCubeItems(Hypothesis & hyp,
+void DiscontinuousHyperGraph::nextCubeItems(const Hypothesis & hyp,
 		std::priority_queue<T> & q, int l, int r, bool gap)
 {
 	TargetSpan

@@ -100,7 +100,7 @@ protected:
     		int left_l, int left_m, int left_n, int left_r,
     		int right_l, int right_m, int right_n, int right_r);
     template < class T >
-    void nextCubeItems(Hypothesis & hyp,
+    void nextCubeItems(const Hypothesis & hyp,
     		std::priority_queue<T> & q, int l, int r, bool gap=true);
 private:
 	int gap_;

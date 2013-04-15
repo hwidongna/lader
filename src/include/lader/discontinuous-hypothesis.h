@@ -31,8 +31,10 @@ public:
 	            			   left_rank, right_rank,
 	            			   left_child, right_child), m_(m), n_(n) {}
 	DiscontinuousHypothesis(const Hypothesis & hyp) : Hypothesis(hyp) {
-		m_ = ((DiscontinuousHypothesis)hyp).m_;
-		n_ = ((DiscontinuousHypothesis)hyp).n_;
+		const DiscontinuousHypothesis& dhyp =
+				dynamic_cast<const DiscontinuousHypothesis&>(hyp);
+		m_ = dhyp.m_;
+		n_ = dhyp.n_;
 	}
 	int GetM() { return m_; }
 	int GetN() { return n_; }

@@ -21,7 +21,9 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
     for(int i = 0 ; i < (int)sent_order.size(); i++)
         sent_order[i] = i;
     if (config.GetInt("gap-size") > 0)
-    	cerr << "use discontinuous hyper-graph: D=" << config.GetInt("gap-size") << endl;
+    	cerr << "use a discontinuous hyper-graph: D=" << config.GetInt("gap-size") << endl;
+    if (config.GetBool("mp"))
+        cerr << "enable monotone at punctuation to prevent excessive reordering" << endl;
     // Perform an iteration
     cerr << "(\".\" == 100 sentences)" << endl;
     for(int iter = 0; iter < config.GetInt("iterations"); iter++) {
@@ -33,13 +35,7 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
         int done = 0;
         BOOST_FOREACH(int sent, sent_order) {
             if(++done % 100 == 0) { cout << "."; cout.flush(); }
-            HyperGraph * hyper_graph;
-            if (config.GetInt("gap-size") > 0){
-            	hyper_graph = new DiscontinuousHyperGraph(config.GetInt("gap-size"));
-            }
-            else{
-            	hyper_graph = new HyperGraph;
-            }
+            HyperGraph * hyper_graph = new DiscontinuousHyperGraph(config.GetInt("gap-size"), config.GetBool("mp"));
             // If we are saving features for efficiency, recover the saved
             // features and replace them in the hypergraph
             if(config.GetBool("save_features") && iter != 0)

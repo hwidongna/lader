@@ -14,13 +14,7 @@ void ReordererTask::Run() {
     // Save the original string
     vector<string> words = ((FeatureDataSequence*)datas[0])->GetSequence();
     // Build the hypergraph
-    HyperGraph * hyper_graph;
-    if (gap_ > 0){
-    	hyper_graph = new DiscontinuousHyperGraph(gap_);
-    }
-    else{
-    	hyper_graph = new HyperGraph;
-    }
+    HyperGraph * hyper_graph = new DiscontinuousHyperGraph(gap_, mp_);
     hyper_graph->BuildHyperGraph(*model_, *features_, datas, beam_, false);
     // Reorder
     std::vector<int> reordering;
@@ -63,10 +57,13 @@ void ReordererRunner::Run(const ConfigRunner & config) {
     std::string line;
     int id = 0, beam = config.GetInt("beam");
     int gapSize = config.GetInt("gap-size");
-    if (config.GetInt("gap-size") > 0)
-    	cerr << "use discontinuous hyper-graph: D=" << config.GetInt("gap-size") << endl;
+    bool mp = config.GetBool("mp");
+    if (gapSize > 0)
+    	cerr << "use discontinuous hyper-graph: D=" << gapSize << endl;
+    if (mp)
+        cerr << "enable monotone at punctuation to prevent excessive reordering" << endl;
     while(std::getline(std::cin, line)) {
-        ReordererTask *task = new ReordererTask(id++, line, model_, features_, &outputs_, beam, &collector, gapSize);
+    	ReordererTask *task = new ReordererTask(id++, line, model_, features_, &outputs_, beam, &collector, gapSize, mp);
         pool.Submit(task);
     }
     pool.Stop(true); 

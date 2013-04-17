@@ -59,9 +59,9 @@ public:
     ReordererTask(int id, const std::string & line,
                   ReordererModel * model, FeatureSet * features,
                   std::vector<ReordererRunner::OutputType> * outputs,
-                  int beam, OutputCollector * collector, int gapSize) :
+                  int beam, OutputCollector * collector, int gapSize, bool mp) :
         id_(id), line_(line), model_(model), features_(features), 
-        outputs_(outputs), beam_(beam), collector_(collector), gap_(gapSize) { }
+        outputs_(outputs), beam_(beam), collector_(collector), gap_(gapSize), mp_(mp) { }
     void Run();
 protected:
     int id_;
@@ -72,9 +72,9 @@ protected:
     int beam_;
     OutputCollector * collector_;
     int gap_;
+    bool mp_;
 };
 
 }
-
 #endif
 

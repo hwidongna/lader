@@ -17,15 +17,15 @@ namespace lader{
 class DiscontinuousHyperGraph : public HyperGraph{
 	friend class TestDiscontinuousHyperGraph;
 public:
-	DiscontinuousHyperGraph(int gapSize = 1)
-	: gap_(gapSize) { }
+	DiscontinuousHyperGraph(int gapSize = 1, bool mp = true)
+	: gap_(gapSize), mp_(mp){ }
     virtual ~DiscontinuousHyperGraph(){
         BOOST_FOREACH(HyperGraph* graph, next_)
             if (graph != NULL)
                 delete graph;
     }
 
-	void BuildHyperGraph(ReordererModel & model, const FeatureSet & features, const Sentence & sent, int beam_size = 0, bool save_trg = true);
+	void BuildHyperGraphMP(ReordererModel & model, const FeatureSet & features, const Sentence & sent, int beam_size = 0, bool save_trg = true);
 	SpanStack *GetStack(int l, int m, int n, int r)
 	{
 		if(m < 0 && n < 0)
@@ -65,7 +65,7 @@ public:
         if((int)next_.size() <= idx)
                 next_.resize(idx+1, NULL);
         if(next_[idx] == NULL)
-                next_[idx] = new HyperGraph;
+        	next_[idx] = new HyperGraph;
         HyperGraph *hyper_graph = SafeAccess(next_, idx);
         idx = GetTrgSpanID(n - m - 2, r - m - 2);
         std::vector<SpanStack*> & stacks = hyper_graph->GetStacks();
@@ -104,6 +104,7 @@ protected:
     		std::priority_queue<T> & q, int l, int r, bool gap=true);
 private:
 	int gap_;
+	bool mp_;
 	std::vector<HyperGraph*> next_;
 };
 

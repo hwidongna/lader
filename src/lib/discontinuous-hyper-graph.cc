@@ -335,10 +335,32 @@ SpanStack * DiscontinuousHyperGraph::ProcessOneSpan(
 			q.push(Hypothesis(score, score, l, r, tr, tl, HyperEdge::EDGE_BAC));
 		}
 	}
+
+
+
+    bool hasPunct = false;
+    for (int i = l; i <= r; i++ )
+    	hasPunct |= sent[0]->isPunct(i);
+
 	int N = n_ = sent[0]->GetNumWords();
 	int D = gap_;
 //	cerr << "AddHyperEdges ["<<l<<", "<<r<<"]" << endl;
 	for (int i = l+1 ; i <= r ; i++){
+		if (hasPunct && mp_){ // monotone at punctuation
+			TargetSpan *left_trg, *right_trg;
+			left_trg = HyperGraph::GetTrgSpan(l, i-1, 0);
+			right_trg = HyperGraph::GetTrgSpan(i, r, 0);
+			if(left_trg == NULL) THROW_ERROR("Target l="<<l<<", c-1="<<i-1);
+			if(right_trg == NULL) THROW_ERROR("Target c="<<i<<", r="<<r);
+			// Add the straight terminal
+			score = GetEdgeScore(model, features, sent,
+					HyperEdge(l, i, r, HyperEdge::EDGE_STR));
+			double viterbi_score = score + left_trg->GetScore() + right_trg->GetScore();
+			q.push(Hypothesis(viterbi_score, score, l, r,
+					left_trg->GetTrgLeft(), right_trg->GetTrgRight(),
+					HyperEdge::EDGE_STR, i, 0, 0, left_trg, right_trg));
+			continue;
+		}
 		// continuous + continuous = continuous
 		//cerr << "continuous + continuous = continuous" << endl;
 		AddHyperEdges(model, features, sent, q,

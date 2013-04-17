@@ -2,7 +2,7 @@
 set -e
 GAP=$1
 
-if [ $# < 2 ]
+if [ $# -lt 1 ]
 then
 GAP=1
 fi

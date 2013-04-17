@@ -230,7 +230,7 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
         // Move the span from l to r, building hypotheses from small to large
         for(int l = 0; l <= n_-L; l++){
             int r = l+L-1;
-            SetStack(l, r, ProcessOneSpan(model, features, sent, 
+            SetStack(l, r, ProcessOneSpan(model, features, sent,
                                           l, r, beam_size, save_trg));
         }
     }

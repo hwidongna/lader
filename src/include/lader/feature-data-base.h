@@ -3,7 +3,9 @@
 
 #include <vector>
 #include <string>
+#include <ctype.h>
 #include <lader/util.h>
+#include <boost/foreach.hpp>
 
 namespace lader {
 
@@ -30,6 +32,12 @@ public:
         return SafeAccess(sequence_, i); 
     }
 
+    const bool isPunct(int i) {
+    	BOOST_FOREACH(char c, SafeAccess(sequence_, i).c_str())
+    		if (ispunct(c))
+    			return true;
+    	return false;
+    }
 protected:
     // The words in the sentence
     std::vector<std::string> sequence_;

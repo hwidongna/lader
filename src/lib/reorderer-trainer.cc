@@ -48,10 +48,13 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
                                         true);
             // Add losses to the hypotheses in thehypergraph
             BOOST_FOREACH(LossBase * loss, losses_)
-                loss->AddLossToHyperGraph(
-                    sent < (int)ranks_.size() ? &ranks_[sent] : NULL,
-                    sent < (int)parses_.size() ? &parses_[sent] : NULL,
-                    *hyper_graph);
+            	hyper_graph->AddLoss(loss,
+					sent < (int)ranks_.size() ? &ranks_[sent] : NULL,
+					sent < (int)parses_.size() ? &parses_[sent] : NULL);
+//                loss->AddLossToHyperGraph(
+//                    sent < (int)ranks_.size() ? &ranks_[sent] : NULL,
+//                    sent < (int)parses_.size() ? &parses_[sent] : NULL,
+//                    *hyper_graph);
             // Parse the hypergraph, penalizing loss heavily (oracle)
             oracle_score = hyper_graph->Rescore(model_, -1e6);
             oracle_features = hyper_graph->AccumulateFeatures(

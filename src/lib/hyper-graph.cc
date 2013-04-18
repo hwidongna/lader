@@ -55,7 +55,7 @@ double HyperGraph::Score(const ReordererModel & model,
     if(score == -DBL_MAX) { 
         score = hyp->GetLoss()*loss_multiplier;
         int l = hyp->GetLeft(), c = hyp->GetCenter(), r = hyp->GetRight();
-        HyperEdge::Type t = hyp->GetType();
+        HyperEdge::Type t = hyp->GetEdgeType();
         if(t != HyperEdge::EDGE_ROOT) {
             EdgeFeatureMap::const_iterator fit = 
                                         features_->find(HyperEdge(l,c,r,t));
@@ -187,7 +187,7 @@ SpanStack * HyperGraph::ProcessOneSpan(ReordererModel & model,
                         - old_left_trg->GetScore() + new_left_trg->GetScore());
             new_hyp.SetLeftRank(hyp.GetLeftRank()+1);
             new_hyp.SetLeftChild(new_left_trg);
-            if(new_hyp.GetType() == HyperEdge::EDGE_STR) {
+            if(new_hyp.GetEdgeType() == HyperEdge::EDGE_STR) {
                 new_hyp.SetTrgLeft(new_left_trg->GetTrgLeft());
             } else {
                 new_hyp.SetTrgRight(new_left_trg->GetTrgRight());
@@ -203,7 +203,7 @@ SpanStack * HyperGraph::ProcessOneSpan(ReordererModel & model,
                     - old_right_trg->GetScore() + new_right_trg->GetScore());
             new_hyp.SetRightRank(hyp.GetRightRank()+1);
             new_hyp.SetRightChild(new_right_trg);
-            if(new_hyp.GetType() == HyperEdge::EDGE_STR) {
+            if(new_hyp.GetEdgeType() == HyperEdge::EDGE_STR) {
                 new_hyp.SetTrgRight(new_right_trg->GetTrgRight());
             } else {
                 new_hyp.SetTrgLeft(new_right_trg->GetTrgLeft());
@@ -268,9 +268,9 @@ void HyperGraph::AccumulateFeatures(const TargetSpan* span,
                         std::tr1::unordered_map<int,double> & feat_map) {
     const Hypothesis * hyp = span->GetHypothesis(0);
     int l = hyp->GetLeft(), c = hyp->GetCenter(), r = hyp->GetRight();
-    HyperEdge::Type t = hyp->GetType();
+    HyperEdge::Type t = hyp->GetEdgeType();
     // Find the features
-    if(hyp->GetType() != HyperEdge::EDGE_ROOT) {
+    if(hyp->GetEdgeType() != HyperEdge::EDGE_ROOT) {
         EdgeFeatureMap::const_iterator fit = 
                                     features_->find(HyperEdge(l,c,r,t));
         if(fit == features_->end())
@@ -282,6 +282,28 @@ void HyperGraph::AccumulateFeatures(const TargetSpan* span,
     if(hyp->GetLeftChild()) AccumulateFeatures(hyp->GetLeftChild(), feat_map);
     if(hyp->GetRightChild())AccumulateFeatures(hyp->GetRightChild(),feat_map);
 }
+
+void HyperGraph::AddLoss(LossBase* loss,
+		const Ranks * ranks, const FeatureDataParse * parse) const{
+    // Initialize the loss
+    loss->Initialize(ranks, parse);
+    // For each span in the hypergraph
+    int n = n_;
+    for(int r = 0; r <= n; r++) {
+        // When r == n, we want the root, so only do -1
+        for(int l = (r == n ? -1 : 0); l <= (r == n ? -1 : r); l++) {
+            // DEBUG cerr << "l=" << l << ", r=" << r << ", n=" << n << endl;
+            BOOST_FOREACH(TargetSpan* span, GetStack(l,r)->GetSpans()) {
+                BOOST_FOREACH(Hypothesis* hyp, span->GetHypotheses()) {
+                    // DEBUG cerr << "GetLoss = " <<hyp->GetLoss()<<endl;
+                    hyp->SetLoss(hyp->GetLoss() +
+                    			loss->AddLossToProduction(hyp, ranks, parse));
+                }
+            }
+        }
+    }
+}
+
 
 template <class T>
 inline string GetNodeString(char type, const T * hyp) {
@@ -316,8 +338,8 @@ void HyperGraph::PrintHyperGraph(const std::vector<std::string> & strs,
                     continue;
                 // For each hypothesis
                 BOOST_FOREACH(const Hypothesis * hyp, span->GetHypotheses()) {
-                    span->SetHasType(hyp->GetType());
-                    int top_id = nodes.GetId(GetNodeString(hyp->GetType(), hyp),true);
+                    span->SetHasType(hyp->GetEdgeType());
+                    int top_id = nodes.GetId(GetNodeString(hyp->GetEdgeType(), hyp),true);
                     if((int)node_strings.size() <= top_id)
                         node_strings.resize(top_id+1);
                     TargetSpan *left_child = hyp->GetLeftChild();

@@ -27,7 +27,7 @@ public:
                     std::ostream & out) const;
 
     void GetReordering(std::vector<int> & reord) const {
-        HyperEdge::Type type = hyps_[0]->GetType();
+        HyperEdge::Type type = hyps_[0]->GetEdgeType();
         if(type == HyperEdge::EDGE_FOR) {
             for(int i = left_; i <= right_; i++)
                 reord.push_back(i);

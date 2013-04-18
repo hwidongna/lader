@@ -1,8 +1,24 @@
 #include <lader/loss-chunk.h>
+#include <lader/target-span.h>
 
 using namespace lader;
 using namespace std;
 
+double LossChunk::AddLossToProduction(Hypothesis * hyp,
+        const Ranks * ranks, const FeatureDataParse * parse) {
+        int trg_left = hyp->GetTrgLeft(),
+		trg_right = hyp->GetTrgRight();
+    int trg_midleft, trg_midright;
+    if(hyp->GetEdgeType() == HyperEdge::EDGE_STR) {
+    	trg_midleft = hyp->GetLeftChild()->GetTrgRight();
+    	trg_midright = hyp->GetRightChild()->GetTrgLeft();
+    } else if(hyp->GetEdgeType() == HyperEdge::EDGE_INV) {
+    	trg_midleft = hyp->GetRightChild()->GetTrgRight();
+    	trg_midright = hyp->GetLeftChild()->GetTrgLeft();
+    }
+	return AddLossToProduction(hyp->GetLeft(), hyp->GetCenter(), hyp->GetRight(),
+			trg_left, trg_midleft, trg_midright, trg_right, hyp->GetEdgeType(), ranks, parse);
+}
 double LossChunk::AddLossToProduction(
         int src_left, int src_mid, int src_right,
         int trg_left, int trg_midleft, int trg_midright, int trg_right,

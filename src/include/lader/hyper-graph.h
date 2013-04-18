@@ -8,6 +8,7 @@
 #include <lader/feature-data-base.h>
 #include <lader/hyper-edge.h>
 #include <lader/util.h>
+#include <lader/loss-base.h>
 #include <tr1/unordered_map>
 
 namespace lader {
@@ -92,6 +93,11 @@ public:
         return SafeAccess(stacks_, stacks_.size()-1)->GetSpanOfRank(0);
     }
 
+    // Add up the loss over an entire sentence
+    virtual void AddLoss(
+    		LossBase* loss,
+    		const Ranks * ranks,
+            const FeatureDataParse * parse) const;
     // Add up the loss over an entire subtree defined by span
     double AccumulateLoss(const TargetSpan* span);
 

@@ -86,7 +86,7 @@ public:
     int GetTrgLeft() const { return trg_left_; }
     int GetTrgRight() const { return trg_right_; }
     int GetCenter() const { return center_; }
-    HyperEdge::Type GetType() const { return type_; }
+    HyperEdge::Type GetEdgeType() const { return type_; }
     TargetSpan* GetLeftChild() const { return left_child_; }
     TargetSpan* GetRightChild() const { return right_child_; }
     int GetLeftRank() const { return left_rank_; }
@@ -126,7 +126,7 @@ namespace std {
 inline std::ostream& operator << ( std::ostream& out, 
                                    const lader::Hypothesis & rhs )
 {
-    out << "<" << rhs.GetLeft() << ", " << rhs.GetRight() << ", " << rhs.GetTrgLeft() << ", " << rhs.GetTrgRight() << ", " << (char)rhs.GetType() << ", " << rhs.GetCenter() << ">";
+    out << "<" << rhs.GetLeft() << ", " << rhs.GetRight() << ", " << rhs.GetTrgLeft() << ", " << rhs.GetTrgRight() << ", " << (char)rhs.GetEdgeType() << ", " << rhs.GetCenter() << ">";
     return out;
 }
 }

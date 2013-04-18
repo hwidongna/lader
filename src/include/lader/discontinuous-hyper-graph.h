@@ -25,7 +25,12 @@ public:
                 delete graph;
     }
 
-	void BuildHyperGraphMP(ReordererModel & model, const FeatureSet & features, const Sentence & sent, int beam_size = 0, bool save_trg = true);
+	// Add up the loss over an entire sentence
+	void AddLoss(
+			LossBase* loss,
+			const Ranks * ranks,
+			const FeatureDataParse * parse) const;
+
 	SpanStack *GetStack(int l, int m, int n, int r)
 	{
 		if(m < 0 && n < 0)

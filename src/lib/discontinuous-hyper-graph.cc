@@ -154,7 +154,7 @@ void DiscontinuousHyperGraph::nextCubeItems(const Hypothesis & hyp,
 			new_hyp.SetScore(hyp.GetScore() - old_left_trg->GetScore() + new_left_trg->GetScore());
 			new_hyp.SetLeftRank(hyp.GetLeftRank() + 1);
 			new_hyp.SetLeftChild(new_left_trg);
-			if(new_hyp.GetType() == HyperEdge::EDGE_STR){
+			if(new_hyp.GetEdgeType() == HyperEdge::EDGE_STR){
 				new_hyp.SetTrgLeft(new_left_trg->GetTrgLeft());
 			}else{
 				new_hyp.SetTrgRight(new_left_trg->GetTrgRight());
@@ -166,7 +166,7 @@ void DiscontinuousHyperGraph::nextCubeItems(const Hypothesis & hyp,
 			new_hyp.SetScore(hyp.GetScore() - old_left_trg->GetScore() + new_left_trg->GetScore());
 			new_hyp.SetLeftRank(hyp.GetLeftRank() + 1);
 			new_hyp.SetLeftChild(new_left_trg);
-			if(new_hyp.GetType() == HyperEdge::EDGE_STR){
+			if(new_hyp.GetEdgeType() == HyperEdge::EDGE_STR){
 				new_hyp.SetTrgLeft(new_left_trg->GetTrgLeft());
 			}else{
 				new_hyp.SetTrgRight(new_left_trg->GetTrgRight());
@@ -198,7 +198,7 @@ void DiscontinuousHyperGraph::nextCubeItems(const Hypothesis & hyp,
 					- old_right_trg->GetScore() + new_right_trg->GetScore());
 			new_hyp.SetRightRank(hyp.GetRightRank()+1);
 			new_hyp.SetRightChild(new_right_trg);
-			if(new_hyp.GetType() == HyperEdge::EDGE_STR) {
+			if(new_hyp.GetEdgeType() == HyperEdge::EDGE_STR) {
 				new_hyp.SetTrgRight(new_right_trg->GetTrgRight());
 			} else {
 				new_hyp.SetTrgLeft(new_right_trg->GetTrgLeft());
@@ -211,7 +211,7 @@ void DiscontinuousHyperGraph::nextCubeItems(const Hypothesis & hyp,
 					- old_right_trg->GetScore() + new_right_trg->GetScore());
 			new_hyp.SetRightRank(hyp.GetRightRank()+1);
 			new_hyp.SetRightChild(new_right_trg);
-			if(new_hyp.GetType() == HyperEdge::EDGE_STR) {
+			if(new_hyp.GetEdgeType() == HyperEdge::EDGE_STR) {
 				new_hyp.SetTrgRight(new_right_trg->GetTrgRight());
 			} else {
 				new_hyp.SetTrgLeft(new_right_trg->GetTrgLeft());
@@ -429,4 +429,45 @@ SpanStack * DiscontinuousHyperGraph::ProcessOneSpan(
 	sort(ret->GetSpans().begin(), ret->GetSpans().end(), DescendingScore<TargetSpan>());
     //cerr << "return sorted spans: size " << ret->size() << endl;
 	return ret;
+}
+
+void DiscontinuousHyperGraph::AddLoss(LossBase* loss,
+		const Ranks * ranks, const FeatureDataParse * parse) const{
+    // Initialize the loss
+    loss->Initialize(ranks, parse);
+    // For each span in the hypergraph
+    int N = n_;
+    int D = gap_;
+    for(int r = 0; r <= N; r++) {
+        // When r == n, we want the root, so only do -1
+        for(int l = (r == N ? -1 : 0); l <= (r == N ? -1 : r); l++) {
+            // DEBUG cerr << "l=" << l << ", r=" << r << ", n=" << n << endl;
+            BOOST_FOREACH(TargetSpan* span, HyperGraph::GetStack(l,r)->GetSpans()) {
+                BOOST_FOREACH(Hypothesis* hyp, span->GetHypotheses()) {
+                    int trg_left = span->GetTrgLeft(),
+                        trg_right = span->GetTrgRight(),
+                        trg_midleft = -1, trg_midright = -1,
+                        src_mid = -1;
+                    if(hyp->GetEdgeType() == HyperEdge::EDGE_STR) {
+                        trg_midleft = hyp->GetLeftChild()->GetTrgRight();
+                        trg_midright = hyp->GetRightChild()->GetTrgLeft();
+                        src_mid = hyp->GetCenter();
+                    } else if(hyp->GetEdgeType() == HyperEdge::EDGE_INV) {
+                        trg_midleft = hyp->GetRightChild()->GetTrgRight();
+                        trg_midright = hyp->GetLeftChild()->GetTrgLeft();
+                        src_mid = hyp->GetCenter();
+                    }
+                    // DEBUG cerr << "GetLoss = " <<hyp->GetLoss()<<endl;
+                    hyp->SetLoss(hyp->GetLoss() +
+                    			loss->AddLossToProduction(hyp, ranks, parse));
+                }
+            }
+//            for (int d = 1 ; d <= D ; d++){
+//            	int m =
+//            	if ( r+d < N ){
+//            		cerr << "AddLosss ["<<l<<", "<<m<<", "<<n<<", "<<r<<"]" << endl;
+//            	}
+//            }
+        }
+    }
 }

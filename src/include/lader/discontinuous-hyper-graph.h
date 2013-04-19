@@ -35,8 +35,10 @@ public:
 	{
 		if(m < 0 && n < 0)
 			return HyperGraph::GetStack(l, r);
-
-		HyperGraph *hyper_graph = SafeAccess(next_, GetTrgSpanID(l, m));
+		int idx = GetTrgSpanID(l, m);
+		if (mp_ && next_.size() <= idx)
+			return NULL;
+		HyperGraph *hyper_graph = SafeAccess(next_, idx);
 		if (hyper_graph == NULL)
 			return NULL;
 		if (mp_ && hyper_graph->GetStacks().size() <= GetTrgSpanID(n - m - 2, r - m - 2))

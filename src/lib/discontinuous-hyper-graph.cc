@@ -444,30 +444,27 @@ void DiscontinuousHyperGraph::AddLoss(LossBase* loss,
             // DEBUG cerr << "l=" << l << ", r=" << r << ", n=" << n << endl;
             BOOST_FOREACH(TargetSpan* span, HyperGraph::GetStack(l,r)->GetSpans()) {
                 BOOST_FOREACH(Hypothesis* hyp, span->GetHypotheses()) {
-                    int trg_left = span->GetTrgLeft(),
-                        trg_right = span->GetTrgRight(),
-                        trg_midleft = -1, trg_midright = -1,
-                        src_mid = -1;
-                    if(hyp->GetEdgeType() == HyperEdge::EDGE_STR) {
-                        trg_midleft = hyp->GetLeftChild()->GetTrgRight();
-                        trg_midright = hyp->GetRightChild()->GetTrgLeft();
-                        src_mid = hyp->GetCenter();
-                    } else if(hyp->GetEdgeType() == HyperEdge::EDGE_INV) {
-                        trg_midleft = hyp->GetRightChild()->GetTrgRight();
-                        trg_midright = hyp->GetLeftChild()->GetTrgLeft();
-                        src_mid = hyp->GetCenter();
-                    }
                     // DEBUG cerr << "GetLoss = " <<hyp->GetLoss()<<endl;
                     hyp->SetLoss(hyp->GetLoss() +
                     			loss->AddLossToProduction(hyp, ranks, parse));
                 }
             }
-//            for (int d = 1 ; d <= D ; d++){
-//            	int m =
-//            	if ( r+d < N ){
-//            		cerr << "AddLosss ["<<l<<", "<<m<<", "<<n<<", "<<r<<"]" << endl;
-//            	}
-//            }
+            if (l < 0)
+            	continue;
+            for (int i = l+1 ; i <= r ; i++){
+            	for (int d = 1 ; d <= D ; d++){
+					if ( i+d <= r && r+d < N && GetStack(l,i-1,i+d,r) != NULL){
+						// cerr << "AddLoss ["<<l<<", "<<i-1<<", "<<i+d<<", "<<r<<"]" << endl;
+						BOOST_FOREACH(TargetSpan* span, GetStack(l,i-1,i+d,r)->GetSpans()) {
+							BOOST_FOREACH(Hypothesis* hyp, span->GetHypotheses()) {
+								// DEBUG cerr << "GetLoss = " <<hyp->GetLoss()<<endl;
+								hyp->SetLoss(hyp->GetLoss() +
+										loss->AddLossToProduction(hyp, ranks, parse));
+							}
+						}
+					}
+            	}
+        	}
         }
     }
 }

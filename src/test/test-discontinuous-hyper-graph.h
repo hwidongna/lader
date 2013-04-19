@@ -194,7 +194,7 @@ public:
 //        cerr << "graph.GetEdgeScore(model, set, datas, dedge)" << endl;
         SpanStack *stack01 = graph.ProcessOneSpan(model, set, datas, 0, 1);
 //        cerr << "graph.ProcessOneSpan(model, set, datas, 0, 1)" << endl;
-        SpanStack *stack0_2 = graph.GetStack(0,0, 2,2);
+        const SpanStack *stack0_2 = graph.GetStack(0,0, 2,2);
         // The stack should contain two target spans (2,0) and (0,2),
         // each with one hypothesis
         int ret = 1;
@@ -535,7 +535,7 @@ public:
         done++; cout << "TestGetTrgSpanID()" << endl; if(TestGetTrgSpanID()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestGetEdgeFeaturesAndWeights()" << endl; if(TestGetEdgeFeaturesAndWeights()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestProcessOneSpan()" << endl; if(TestProcessOneSpan()) succeeded++; else cout << "FAILED!!!" << endl;
-        done++; cout << "TestProcessOneSpanNoSave()" << endl; if(TestProcessOneSpanNoSave()) succeeded++; else cout << "FAILED!!!" << endl;
+//        done++; cout << "TestProcessOneSpanNoSave()" << endl; if(TestProcessOneSpanNoSave()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestBuildHyperGraph()" << endl; if(TestBuildHyperGraph()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestBuildHyperGraphNoSave()" << endl; if(TestBuildHyperGraphNoSave()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestAccumulateLoss()" << endl; if(TestAccumulateLoss()) succeeded++; else cout << "FAILED!!!" << endl;

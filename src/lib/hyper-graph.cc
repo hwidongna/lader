@@ -225,6 +225,7 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
                                  const Sentence & sent,
                                  int beam_size, bool save_trg) {
     n_ = sent[0]->GetNumWords();
+    stacks_.resize(n_+1, NULL);
     // Iterate through the right side of the span
     for(int L = 1; L <= n_; L++) {
         // Move the span from l to r, building hypotheses from small to large

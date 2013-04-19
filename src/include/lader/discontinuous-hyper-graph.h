@@ -17,7 +17,7 @@ namespace lader{
 class DiscontinuousHyperGraph : public HyperGraph{
 	friend class TestDiscontinuousHyperGraph;
 public:
-	DiscontinuousHyperGraph(int gapSize = 1, bool mp = true)
+	DiscontinuousHyperGraph(int gapSize = 1, bool mp = false)
 	: gap_(gapSize), mp_(mp){ }
     virtual ~DiscontinuousHyperGraph(){
         BOOST_FOREACH(HyperGraph* graph, next_)
@@ -31,15 +31,16 @@ public:
 			const Ranks * ranks,
 			const FeatureDataParse * parse) const;
 
-	SpanStack *GetStack(int l, int m, int n, int r)
+	const SpanStack *GetStack(int l, int m, int n, int r) const
 	{
 		if(m < 0 && n < 0)
 			return HyperGraph::GetStack(l, r);
 
 		HyperGraph *hyper_graph = SafeAccess(next_, GetTrgSpanID(l, m));
-		if (hyper_graph == NULL){
+		if (hyper_graph == NULL)
 			return NULL;
-		}
+		if (mp_ && hyper_graph->GetStacks().size() <= GetTrgSpanID(n - m - 2, r - m - 2))
+			return NULL;
 		return SafeAccess(hyper_graph->GetStacks(), GetTrgSpanID(n - m - 2, r - m - 2));
 	}
 

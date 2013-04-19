@@ -6,7 +6,7 @@ using namespace std;
 
 double LossChunk::AddLossToProduction(Hypothesis * hyp,
         const Ranks * ranks, const FeatureDataParse * parse) {
-        int trg_left = hyp->GetTrgLeft(),
+	int trg_left = hyp->GetTrgLeft(),
 		trg_right = hyp->GetTrgRight();
     int trg_midleft, trg_midright;
     if(hyp->GetEdgeType() == HyperEdge::EDGE_STR) {

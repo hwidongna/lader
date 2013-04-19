@@ -30,7 +30,7 @@ public:
         AddConfigEntry("model", "", "A model to be used in reordering");
         AddConfigEntry("beam", "1", "The maximum beam size");
         AddConfigEntry("gap-size", "1", "The gap size for discontinuous hyper graph");
-        AddConfigEntry("mp", "true", "Monotone at punctuation");
+        AddConfigEntry("mp", "false", "Monotone at punctuation");
         AddConfigEntry("threads", "1", "The number of threads to use");
 
     }

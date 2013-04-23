@@ -221,16 +221,16 @@ public:
         // Create two spans for 00, 11, 22, and 33
         SpanStack *stack0 = new SpanStack, *stack1 = new SpanStack;
         SpanStack *stack2 = new SpanStack, *stack3 = new SpanStack;
-        stack0->push_back(new TargetSpan(0,0,0,0));
+        stack0->push_back(new TargetSpan(0,0, -1,-1));
         (*stack0)[0]->AddHypothesis(Hypothesis(1,1,0,0,-1,-1,HyperEdge::EDGE_FOR));
         graph.HyperGraph::SetStack(0, 0, stack0);
-        stack1->push_back(new TargetSpan(1, 1, 1, 1));
+        stack1->push_back(new TargetSpan(1,1, -1,-1));
         (*stack1)[0]->AddHypothesis(Hypothesis(2, 2, 1, 1, -1, -1, HyperEdge::EDGE_FOR));
         graph.HyperGraph::SetStack(1, 1, stack1);
-        stack2->push_back(new TargetSpan(2, 2, 2, 2));
+        stack2->push_back(new TargetSpan(2,2, -1,-1));
         (*stack2)[0]->AddHypothesis(Hypothesis(4, 4, 2, 2, -1, -1, HyperEdge::EDGE_FOR));
         graph.HyperGraph::SetStack(2, 2, stack2);
-        stack3->push_back(new TargetSpan(3, 3, 3, 3));
+        stack3->push_back(new TargetSpan(3, 3, -1,-1));
         (*stack3)[0]->AddHypothesis(Hypothesis(8, 8, 3, 3, -1, -1, HyperEdge::EDGE_FOR));
         graph.HyperGraph::SetStack(3, 3, stack3);
         // Try processing 01
@@ -316,32 +316,6 @@ public:
         return ret;
     }
 
-//    int TestBuildHyperGraphGap2MP() {
-//            HyperGraph graph = DiscontinuousHyperGraph(2);
-//            set.SetMaxTerm(0);
-//            sent.FromString("for example , monotone at punctunation");
-//    		sent_pos.FromString("PP NNS , NNS PP NNP");
-//            graph.BuildHyperGraph(model, set, datas);
-//            const std::vector<SpanStack*> & stacks = graph.GetStacks();
-//            int ret = 1;
-//            SpanStack * stack04 = graph.HyperGraph::GetStack(0, 4);
-//            SpanStack * stackRoot = graph.HyperGraph::GetStack(-1, 4);
-//            // The total number of stacks should be 6*5/2 + 1: 0-0 0-1 1-1 0-2 1-2 2-2 0-3 1-3 2-3 3-3 0-4 1-4 2-4 3-4 4-4 root
-//            if(stacks.size() != 16) {
-//                cerr << "stacks.size() != 16: " << stacks.size() << endl; ret = 0;
-//            // The number of target spans should be : 0-1 0-2 0-3
-////            } else if (stack04->size() != 20) {
-////                cerr << "Root node stack04->size() != 20: " << stack04->size()<< endl;
-//                BOOST_FOREACH(const TargetSpan *span, stack04->GetSpans())
-//                    cerr << span->GetHypotheses().size() <<
-//                    " " << span->GetTrgLeft() << "-" <<span->GetTrgRight() << endl;
-////                ret = 0;
-//            } else if (stackRoot->GetSpans().size() != stack04->size()) {
-//                cerr << "Root hypotheses " << stackRoot->GetSpans().size()
-//                     << " and root spans " << stack04->size() << " don't match." << endl; ret = 0;
-//            }
-//            return ret;
-//        }
 
     int TestBuildHyperGraphNoSave() {
     	HyperGraph graph = DiscontinuousHyperGraph(1);
@@ -535,7 +509,7 @@ public:
         done++; cout << "TestGetTrgSpanID()" << endl; if(TestGetTrgSpanID()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestGetEdgeFeaturesAndWeights()" << endl; if(TestGetEdgeFeaturesAndWeights()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestProcessOneSpan()" << endl; if(TestProcessOneSpan()) succeeded++; else cout << "FAILED!!!" << endl;
-//        done++; cout << "TestProcessOneSpanNoSave()" << endl; if(TestProcessOneSpanNoSave()) succeeded++; else cout << "FAILED!!!" << endl;
+        done++; cout << "TestProcessOneSpanNoSave()" << endl; if(TestProcessOneSpanNoSave()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestBuildHyperGraph()" << endl; if(TestBuildHyperGraph()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestBuildHyperGraphNoSave()" << endl; if(TestBuildHyperGraphNoSave()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestAccumulateLoss()" << endl; if(TestAccumulateLoss()) succeeded++; else cout << "FAILED!!!" << endl;
@@ -544,7 +518,6 @@ public:
         done++; cout << "TestReorderingAndPrint()" << endl; if(TestReorderingAndPrint()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestPrintHyperGraph()" << endl; if(TestPrintHyperGraph()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestBuildHyperGraphGap2()" << endl; if(TestBuildHyperGraphGap2()) succeeded++; else cout << "FAILED!!!" << endl;
-//        done++; cout << "TestBuildHyperGraphGap2MP()" << endl; if(TestBuildHyperGraphGap2MP()) succeeded++; else cout << "FAILED!!!" << endl;
         cout << "#### TestDiscontinuousHyperGraph Finished with "<<succeeded<<"/"<<done<<" tests succeeding ####"<<endl;
         return done == succeeded;
     }

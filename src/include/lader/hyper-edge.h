@@ -25,15 +25,18 @@ public:
     // Constructor
     HyperEdge(int l, int c, int r, Type t) : l_(l), c_(c), r_(r), t_(t) { }
 
+    // virtual desctuctor
+    virtual ~HyperEdge(){}
+
     // Comparators
-    bool operator< (const HyperEdge & rhs) const {
+    virtual bool operator< (const HyperEdge & rhs) const {
         return 
             l_ < rhs.l_ || (l_ == rhs.l_ && (
             c_ < rhs.c_ || (c_ == rhs.c_ && (
             r_ < rhs.r_ || (r_ == rhs.r_ && (
             t_ < rhs.t_))))));
     }
-    bool operator== (const HyperEdge & rhs) const {
+    virtual bool operator== (const HyperEdge & rhs) const {
         return l_ == rhs.l_ && c_ == rhs.c_ && r_ == rhs.r_ && t_ == rhs.t_;
     }
     size_t hash() const {
@@ -45,6 +48,8 @@ public:
     int GetRight() const { return r_; }
     int GetCenter() const { return c_; }
     Type GetType() const { return t_; }
+
+    void SetType(Type t) { t_ = t; } // only for testing
 
 private:
     // The left, center, and right words of the span

@@ -10,6 +10,9 @@ public:
     DiscontinuousTargetSpan(int left, int m, int n, int right, int trg_left, int trg_right)
                     : TargetSpan(left, right, trg_left, trg_right), m_(m), n_(n) { }
 
+    void AddHypothesis(const Hypothesis & hyp) {
+    	hyps_.push_back(new DiscontinuousHypothesis(hyp));
+    }
 //    void GetReordering(std::vector<int> & reord) const { // TODO: override
 //    	TargetSpan::GetReordering(reord);
 //        HyperEdge::Type type = hyps_[0]->GetType();

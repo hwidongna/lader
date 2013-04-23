@@ -56,19 +56,19 @@ void DiscontinuousHyperGraph::AddHyperEdges(
 	if (l >= c || c > r)
 		THROW_ERROR("Invalid Target Span ["<<l<<", "<<c<<", "<<r<<"]");
 	// Add the straight terminal
-	score = GetEdgeScore(model, features, sent,
-			HyperEdge(l, c, r, HyperEdge::EDGE_STR));
+	HyperEdge * edge = new HyperEdge(l, c, r, HyperEdge::EDGE_STR);
+	score = GetEdgeScore(model, features, sent, *edge);
 	viterbi_score = score + left_trg->GetScore() + right_trg->GetScore();
-	q.push(Hypothesis(viterbi_score, score, l, r,
+	q.push(Hypothesis(viterbi_score, score, edge,
 			left_trg->GetTrgLeft(), right_trg->GetTrgRight(),
-			HyperEdge::EDGE_STR, c, 0, 0, left_trg, right_trg));
+			0, 0, left_trg, right_trg));
 	// Add the inverted terminal
-	score = GetEdgeScore(model, features, sent,
-			HyperEdge(l, c, r, HyperEdge::EDGE_INV));
+	edge = new HyperEdge(l, c, r, HyperEdge::EDGE_INV);
+	score = GetEdgeScore(model, features, sent, *edge);
 	viterbi_score = score + left_trg->GetScore() + right_trg->GetScore();
-	q.push(Hypothesis(viterbi_score, score, l, r,
+	q.push(Hypothesis(viterbi_score, score, edge,
 			right_trg->GetTrgLeft(), left_trg->GetTrgRight(),
-			HyperEdge::EDGE_INV, c, 0, 0, left_trg, right_trg));
+			0, 0, left_trg, right_trg));
 }
 
 
@@ -108,19 +108,19 @@ void DiscontinuousHyperGraph::AddDiscontinuousHyperEdges(
 //    //cerr << "Add discontinous str & inv "<<
 //				"["<<l<<", "<<m<<", "<<n<<", "<<r<<"]";
 	// Add the straight terminal
-	score = GetEdgeScore(model, features, sent,
-			DiscontinuousHyperEdge(l, m, n, r, HyperEdge::EDGE_STR));
+	HyperEdge * edge = new DiscontinuousHyperEdge(l, m, n, r, HyperEdge::EDGE_STR);
+	score = GetEdgeScore(model, features, sent, *edge);
 	viterbi_score = score + left_trg->GetScore() + right_trg->GetScore();
-	q.push(DiscontinuousHypothesis(viterbi_score, score, l, m, n, r,
+	q.push(DiscontinuousHypothesis::Hypothesis(viterbi_score, score, edge,
 			left_trg->GetTrgLeft(), right_trg->GetTrgRight(),
-			HyperEdge::EDGE_STR, -1, 0, 0, left_trg, right_trg));
+			0, 0, left_trg, right_trg));
 	// Add the inverted terminal
-	score = GetEdgeScore(model, features, sent,
-			DiscontinuousHyperEdge(l, m, n, r, HyperEdge::EDGE_INV));
+	edge = new DiscontinuousHyperEdge(l, m, n, r, HyperEdge::EDGE_INV);
+	score = GetEdgeScore(model, features, sent, *edge);
 	viterbi_score = score + left_trg->GetScore() + right_trg->GetScore();
-	q.push(DiscontinuousHypothesis(viterbi_score, score, l, m, n, r,
+	q.push(DiscontinuousHypothesis::Hypothesis(viterbi_score, score, edge,
 			right_trg->GetTrgLeft(), left_trg->GetTrgRight(),
-			HyperEdge::EDGE_INV, -1, 0, 0, left_trg, right_trg));
+			0, 0, left_trg, right_trg));
 }
 
 template <class T>
@@ -325,14 +325,14 @@ SpanStack * DiscontinuousHyperGraph::ProcessOneSpan(
 		int tl = (save_trg ? l : -1);
 		int tr = (save_trg ? r : -1);
 		// Create a hypothesis with the forward terminal
-		score = GetEdgeScore(model, features, sent,
-								HyperEdge(l, -1, r, HyperEdge::EDGE_FOR));
-		q.push(Hypothesis(score, score, l, r, tl, tr, HyperEdge::EDGE_FOR));
+		HyperEdge * edge = new HyperEdge(l, -1, r, HyperEdge::EDGE_FOR);
+		score = GetEdgeScore(model, features, sent, *edge);
+		q.push(Hypothesis(score, score, edge, tl, tr));
 		if(features.GetUseReverse()) {
 			// Create a hypothesis with the backward terminal
-			score = GetEdgeScore(model, features, sent,
-									HyperEdge(l, -1, r, HyperEdge::EDGE_BAC));
-			q.push(Hypothesis(score, score, l, r, tr, tl, HyperEdge::EDGE_BAC));
+			edge = new HyperEdge(l, -1, r, HyperEdge::EDGE_BAC);
+			score = GetEdgeScore(model, features, sent, *edge);
+			q.push(Hypothesis(score, score, edge, tr, tl));
 		}
 	}
 
@@ -352,13 +352,13 @@ SpanStack * DiscontinuousHyperGraph::ProcessOneSpan(
 			right_trg = HyperGraph::GetTrgSpan(i, r, 0);
 			if(left_trg == NULL) THROW_ERROR("Target l="<<l<<", c-1="<<i-1);
 			if(right_trg == NULL) THROW_ERROR("Target c="<<i<<", r="<<r);
-			// Add the straight terminal
-			score = GetEdgeScore(model, features, sent,
-					HyperEdge(l, i, r, HyperEdge::EDGE_STR));
+			// Add the straight non-terminal
+			HyperEdge * edge = new HyperEdge(l, i, r, HyperEdge::EDGE_STR);
+			score = GetEdgeScore(model, features, sent, *edge);
 			double viterbi_score = score + left_trg->GetScore() + right_trg->GetScore();
-			q.push(Hypothesis(viterbi_score, score, l, r,
+			q.push(Hypothesis(viterbi_score, score, edge,
 					left_trg->GetTrgLeft(), right_trg->GetTrgRight(),
-					HyperEdge::EDGE_STR, i, 0, 0, left_trg, right_trg));
+					0, 0, left_trg, right_trg));
 			continue;
 		}
 		// continuous + continuous = continuous
@@ -467,4 +467,16 @@ void DiscontinuousHyperGraph::AddLoss(LossBase* loss,
         	}
         }
     }
+}
+
+double DiscontinuousHyperGraph::Rescore(const ReordererModel & model, double loss_multiplier) {
+	BOOST_FOREACH(HyperGraph * graph, next_)
+		if (graph != NULL)
+			// Reset everything to -DBL_MAX to indicate it needs to be recalculated
+			BOOST_FOREACH(SpanStack * stack, graph->GetStacks())
+				if (stack != NULL) // discontinuous span stack could be NULL
+					BOOST_FOREACH(TargetSpan * trg, stack->GetSpans())
+						BOOST_FOREACH(Hypothesis * hyp, trg->GetHypotheses())
+			        		hyp->SetScore(-DBL_MAX);
+	return HyperGraph::Rescore(model, loss_multiplier);
 }

@@ -9,6 +9,7 @@
 #define DISCONTINUOUS_HYPER_EDGE_H_
 
 #include <lader/hyper-edge.h>
+#include <typeinfo> // For std::bad_cast
 
 using namespace lader;
 
@@ -19,17 +20,29 @@ public:
 		m_(m), n_(n) { }
 
 	// Comparators
-	bool operator< (const DiscontinuousHyperEdge & rhs) const {
-		return HyperEdge::operator< (rhs) ||
-				(HyperEdge::operator ==(rhs) && (
-						m_ < rhs.m_ || (m_ == rhs.m_ && n_ < rhs.n_)));
+	bool operator< (const HyperEdge & rhs) const {
+		try{
+			const DiscontinuousHyperEdge & drhs =
+					dynamic_cast<const DiscontinuousHyperEdge&>(rhs);
+			return HyperEdge::operator< (rhs) ||
+					(HyperEdge::operator ==(rhs) && (m_ < drhs.m_ || (
+					m_ == drhs.m_ && n_ < drhs.n_)));
+		}catch (const std::bad_cast& e) {
+			return HyperEdge::operator< (rhs);
+		}
 	}
-	bool operator== (const DiscontinuousHyperEdge & rhs) const {
-		return HyperEdge::operator ==(rhs) && m_ == rhs.m_ && n_ == rhs.n_;
+	bool operator== (const HyperEdge & rhs) const {
+		try{
+			const DiscontinuousHyperEdge & drhs =
+					dynamic_cast<const DiscontinuousHyperEdge&>(rhs);
+			return HyperEdge::operator ==(rhs) && m_ == drhs.m_ && n_ == drhs.n_;
+		}catch (const std::bad_cast& e){
+			return HyperEdge::operator ==(rhs);
+		}
 	}
 
-	int GetM() { return m_; }
-	int GetN() { return n_; }
+	int GetM() const { return m_; }
+	int GetN() const { return n_; }
 private:
 	int m_;
 	int n_;

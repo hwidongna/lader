@@ -58,7 +58,7 @@ double HyperGraph::Score(const ReordererModel & model,
         HyperEdge::Type t = hyp->GetEdgeType();
         if(t != HyperEdge::EDGE_ROOT) {
             EdgeFeatureMap::const_iterator fit = 
-                                        features_->find(HyperEdge(l,c,r,t));
+                                        features_->find(*hyp->GetEdge());
             if(fit == features_->end())
                 THROW_ERROR("No features found in Score for l="
                                         <<l<<", c="<<c<<", r="<<r<<", t="<<(char)t);
@@ -81,13 +81,14 @@ double HyperGraph::Rescore(const ReordererModel & model, double loss_multiplier)
             BOOST_FOREACH(Hypothesis * hyp, trg->GetHypotheses())
                 hyp->SetScore(-DBL_MAX);
     // Recursively score all edges from the root
-    BOOST_FOREACH(TargetSpan * trg, (*stacks_.rbegin())->GetSpans())
+    SpanStack * root = *stacks_.rbegin();
+    BOOST_FOREACH(TargetSpan * trg, root->GetSpans())
         Score(model, loss_multiplier, trg);
     // Sort to make sure that the spans are all in the right order 
     BOOST_FOREACH(SpanStack * stack, stacks_)
         sort(stack->GetSpans().begin(), stack->GetSpans().end(), 
                                         DescendingScore<TargetSpan>()); 
-    TargetSpan* best = (*stacks_.rbegin())->GetSpanOfRank(0);
+    TargetSpan* best = root->GetSpanOfRank(0);
     return best->GetScore();
 }
 
@@ -115,14 +116,14 @@ SpanStack * HyperGraph::ProcessOneSpan(ReordererModel & model,
         int tl = (save_trg ? l : -1);
         int tr = (save_trg ? r : -1);
         // Create a hypothesis with the forward terminal
-        score = GetEdgeScore(model, features, sent,
-                                HyperEdge(l, -1, r, HyperEdge::EDGE_FOR));
-        q.push(Hypothesis(score, score, l, r, tl, tr, HyperEdge::EDGE_FOR));
+        HyperEdge * edge = new HyperEdge(l, -1, r, HyperEdge::EDGE_FOR);
+        score = GetEdgeScore(model, features, sent, *edge);
+        q.push(Hypothesis(score, score, edge, tl, tr));
         if(features.GetUseReverse()) {
-            // Create a hypothesis with the backward terminal
-            score = GetEdgeScore(model, features, sent, 
-                                    HyperEdge(l, -1, r, HyperEdge::EDGE_BAC));
-            q.push(Hypothesis(score, score, l, r, tr, tl, HyperEdge::EDGE_BAC));
+        	// Create a hypothesis with the backward terminal
+        	edge = new HyperEdge(l, -1, r, HyperEdge::EDGE_BAC);
+        	score = GetEdgeScore(model, features, sent, *edge);
+        	q.push(Hypothesis(score, score, edge, tr, tl));
         }
     }
     TargetSpan *left_trg, *right_trg, 
@@ -136,19 +137,19 @@ SpanStack * HyperGraph::ProcessOneSpan(ReordererModel & model,
         if(left_trg == NULL) THROW_ERROR("Target l="<<l<<", c-1="<<c-1);
         if(right_trg == NULL) THROW_ERROR("Target c="<<c<<", r="<<r);
         // Add the straight terminal
-        score = GetEdgeScore(model, features, sent, 
-                                HyperEdge(l, c, r, HyperEdge::EDGE_STR));
+        HyperEdge * edge = new HyperEdge(l, c, r, HyperEdge::EDGE_STR);
+        score = GetEdgeScore(model, features, sent, *edge);
         viterbi_score = score + left_trg->GetScore() + right_trg->GetScore();
-        q.push(Hypothesis(viterbi_score, score, l, r,
+        q.push(Hypothesis(viterbi_score, score, edge,
                          left_trg->GetTrgLeft(), right_trg->GetTrgRight(),
-                         HyperEdge::EDGE_STR, c, 0, 0, left_trg, right_trg));
+                         0, 0, left_trg, right_trg));
         // Add the inverted terminal
-        score = GetEdgeScore(model, features, sent, 
-                                HyperEdge(l, c, r, HyperEdge::EDGE_INV));
+        edge = new HyperEdge(l, c, r, HyperEdge::EDGE_INV);
+        score = GetEdgeScore(model, features, sent, *edge);
         viterbi_score = score + left_trg->GetScore() + right_trg->GetScore();
-        q.push(Hypothesis(viterbi_score, score, l, r,
+        q.push(Hypothesis(viterbi_score, score, edge,
                          right_trg->GetTrgLeft(), left_trg->GetTrgRight(),
-                         HyperEdge::EDGE_INV, c, 0, 0, left_trg, right_trg));
+                         0, 0, left_trg, right_trg));
 
     }
     // Get a map to store identical target spans

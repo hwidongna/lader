@@ -84,7 +84,7 @@ public:
                          std::ostream & out);
 
     // Rescore the hypergraph using the given model and a loss multiplier
-    double Rescore(const ReordererModel & model, double loss_multiplier);
+    virtual double Rescore(const ReordererModel & model, double loss_multiplier);
 
     const TargetSpan * GetRoot() const {
         return SafeAccess(stacks_, stacks_.size()-1)->GetSpanOfRank(0);

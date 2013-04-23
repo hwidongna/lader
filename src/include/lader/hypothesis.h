@@ -14,21 +14,46 @@ class TargetSpan;
 class Hypothesis {
 public:
     Hypothesis(double viterbi_score, double single_score,
-               int left, int right,
+               HyperEdge * edge,
                int trg_left, int trg_right,
-               HyperEdge::Type type, int center = -1,
                int left_rank = -1, int right_rank = -1,
                TargetSpan* left_child = NULL, TargetSpan* right_child = NULL) :
                viterbi_score_(viterbi_score),
                single_score_(single_score), loss_(0),
-               left_(left), right_(right),
+               edge_(edge),
                trg_left_(trg_left), trg_right_(trg_right),
-               type_(type), center_(center), 
                left_child_(left_child), right_child_(right_child),
                left_rank_(left_rank), right_rank_(right_rank)
                { }
 
+    Hypothesis(double viterbi_score, double single_score,
+				int left, int right,
+				int trg_left, int trg_right,
+				HyperEdge::Type type, int center = -1,
+				int left_rank = -1, int right_rank = -1,
+				TargetSpan* left_child = NULL, TargetSpan* right_child = NULL) :
+				viterbi_score_(viterbi_score),
+				single_score_(single_score), loss_(0),
+				trg_left_(trg_left), trg_right_(trg_right),
+				left_child_(left_child), right_child_(right_child),
+				left_rank_(left_rank), right_rank_(right_rank)
+				{ edge_ = new HyperEdge(left, center, right, type); }
+
+//    Hypothesis(const Hypothesis & hyp) :
+//				viterbi_score_(hyp.viterbi_score_),
+//				single_score_(hyp.single_score_), loss_(hyp.loss_),
+//			   trg_left_(hyp.trg_left_), trg_right_(hyp.trg_right_),
+//			   left_child_(hyp.left_child_), right_child_(hyp.right_child_),
+//			   left_rank_(hyp.left_rank_), right_rank_(hyp.right_rank_)
+//    {
+//    	edge_ = new HyperEdge(*hyp.edge_);
+//    }
+
     virtual ~Hypothesis() {
+//    	if (edge_ != NULL){ // TODO: delete edge_
+//    		delete edge_;
+//    		edge_ = NULL;
+//    	}
 //    	if (left_child_ != NULL)
 //    		delete left_child_;
 //    	if (right_child_ != NULL)
@@ -38,12 +63,12 @@ public:
     std::string GetRuleString(const std::vector<std::string> & sent,
                               char left_val = 0, char right_val = 0) const {
         std::ostringstream ret;
-        ret << "[" << (char)type_ << "] |||";
+        ret << "[" << (char)GetEdgeType() << "] |||";
         if(left_val) {
             ret << " ["<<left_val<<"]";
             if(right_val) ret << " ["<<right_val<<"]";
         } else {
-            for(int i = left_; i <= right_; i++) {
+            for(int i = GetLeft(); i <= GetRight(); i++) {
                 ret << " ";
                 for(int j = 0; j < (int)sent[i].length(); j++) {
                     if(sent[i][j] == '\\' || sent[i][j] == '\"') ret << "\\";
@@ -61,8 +86,9 @@ public:
             (viterbi_score_ == rhs.viterbi_score_ && (
             trg_left_ < rhs.trg_left_ || (trg_left_ == rhs.trg_left_ && (
             trg_right_ < rhs.trg_right_ || (trg_right_ == rhs.trg_right_ && (
-            type_ < rhs.type_ || (type_ == rhs.type_ && (
-            center_ < rhs.center_ || (center_ == rhs.center_ && (
+//            edge_ < rhs.edge_ || (edge_ == rhs.edge_ && ( // TODO: do not consider left_ and right_ ?
+            GetEdgeType() < rhs.GetEdgeType() || (GetEdgeType() == rhs.GetEdgeType() && (
+            GetCenter() < rhs.GetCenter() || (GetCenter() == rhs.GetCenter() && (
             left_child_ < rhs.left_child_ || (left_child_ == rhs.left_child_ && (
             right_child_ < rhs.right_child_))))))))))));
     }
@@ -71,8 +97,9 @@ public:
             viterbi_score_ == rhs.viterbi_score_ &&
             trg_left_ == rhs.trg_left_ &&
             trg_right_ == rhs.trg_right_ &&
-            type_ == rhs.type_ &&
-            center_ == rhs.center_ &&
+//          edge_ == rhs.edge_ && // TODO: do not consider left_ and right_ ?
+            GetEdgeType() == rhs.GetEdgeType() &&
+            GetCenter() == rhs.GetCenter() &&
             left_child_ == rhs.left_child_ &&
             right_child_ == rhs.right_child_;
     }
@@ -81,12 +108,13 @@ public:
     double GetScore() const { return viterbi_score_; }
     double GetSingleScore() const { return single_score_; }
     double GetLoss() const { return loss_; }
-    int GetLeft() const { return left_; }
-    int GetRight() const { return right_; }
+    HyperEdge * GetEdge() const { return edge_; }
+    int GetLeft() const { return edge_->GetLeft(); }
+    int GetRight() const { return edge_->GetRight(); }
     int GetTrgLeft() const { return trg_left_; }
     int GetTrgRight() const { return trg_right_; }
-    int GetCenter() const { return center_; }
-    HyperEdge::Type GetEdgeType() const { return type_; }
+    int GetCenter() const { return edge_->GetCenter(); }
+    HyperEdge::Type GetEdgeType() const { return edge_->GetType(); }
     TargetSpan* GetLeftChild() const { return left_child_; }
     TargetSpan* GetRightChild() const { return right_child_; }
     int GetLeftRank() const { return left_rank_; }
@@ -95,14 +123,14 @@ public:
     void SetScore(double dub) { viterbi_score_ = dub; }
     void SetSingleScore(double dub) { single_score_ = dub; }
     void SetLoss(double dub) { loss_ = dub; }
+    void SetEdge(HyperEdge * edge) { edge_ = edge; }
     void SetLeftChild (TargetSpan* dub)  { left_child_ = dub; }
     void SetRightChild(TargetSpan* dub) { right_child_ = dub; }
     void SetLeftRank (int dub)  { left_rank_ = dub; }
     void SetRightRank(int dub) { right_rank_ = dub; }
     void SetTrgLeft(int dub) { trg_left_ = dub; }
     void SetTrgRight(int dub) { trg_right_ = dub; }
-    void SetType(HyperEdge::Type type) { type_ = type; }
-
+    void SetType(HyperEdge::Type type) { edge_->SetType(type); } // only for testing
 
 private:
     double viterbi_score_; // The Viterbi score for the entire subtree that
@@ -110,11 +138,9 @@ private:
     double single_score_;  // The score for only this edge
     double loss_;          // The loss for the single action represented
                            // by this hypothesis
-    int left_, right_; // The source words on the left and right of the span
+    HyperEdge * edge_ ;	// The corresponding hyper-edge of the production
     int trg_left_, trg_right_; // The target words that fall on the far left
                                // and far right of this span
-    HyperEdge::Type type_; // The edge type of the production
-    int center_;          // The source center word of the hypothesis
     TargetSpan *left_child_, *right_child_; // The child hypothese for nonterm
     int left_rank_, right_rank_; // The ranks of the left and right hypotheses
 };

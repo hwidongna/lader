@@ -65,7 +65,7 @@ public:
     int GetRight() const { return right_; }
     int GetTrgLeft() const { return trg_left_; }
     int GetTrgRight() const { return trg_right_; }
-    void AddHypothesis(const Hypothesis & hyp) {
+    virtual void AddHypothesis(const Hypothesis & hyp) {
         hyps_.push_back(new Hypothesis(hyp));
     }
     const std::set<char> & GetHasTypes() { return has_types_; }
@@ -77,11 +77,12 @@ public:
     void SetId(int id) { id_ = id; }
     void SetHasType(char c) { has_types_.insert(c); }
     
+protected:
+    std::vector<Hypothesis*> hyps_;
 
 private:
 
     int left_, right_, trg_left_, trg_right_;
-    std::vector<Hypothesis*> hyps_;
     int id_;
     std::set<char> has_types_;
 };

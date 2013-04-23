@@ -31,6 +31,9 @@ public:
 			const Ranks * ranks,
 			const FeatureDataParse * parse) const;
 
+	// Rescore the hypergraph using the given model and a loss multiplier
+	double Rescore(const ReordererModel & model, double loss_multiplier);
+
 	const SpanStack *GetStack(int l, int m, int n, int r) const
 	{
 		if(m < 0 && n < 0)

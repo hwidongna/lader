@@ -5,7 +5,7 @@ using namespace std;
 
 double LossTau::AddLossToProduction(Hypothesis * hyp,
 		const Ranks * ranks, const FeatureDataParse * parse) {
-	return AddLossToProduction(hyp->GetLeft(), hyp->GetLeft(), hyp->GetLeft(),
+	return AddLossToProduction(hyp->GetLeft(), hyp->GetCenter(), hyp->GetRight(),
 			-1, -1, -1, -1, hyp->GetEdgeType(), ranks, parse);
 }
 double LossTau::AddLossToProduction(

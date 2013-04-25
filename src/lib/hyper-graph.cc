@@ -187,8 +187,7 @@ SpanStack * HyperGraph::ProcessOneSpan(ReordererModel & model,
         if(new_left_trg) {
             old_left_trg = GetTrgSpan(l,hyp.GetCenter()-1,hyp.GetLeftRank());
             Hypothesis new_hyp(hyp);
-            new_hyp.SetEdge(new HyperEdge(
-            		hyp.GetLeft(), hyp.GetCenter(), hyp.GetRight(), hyp.GetEdgeType()));
+            new_hyp.SetEdge(new HyperEdge(*hyp.GetEdge()));
             new_hyp.SetScore(hyp.GetScore() 
                         - old_left_trg->GetScore() + new_left_trg->GetScore());
             new_hyp.SetLeftRank(hyp.GetLeftRank()+1);
@@ -205,8 +204,7 @@ SpanStack * HyperGraph::ProcessOneSpan(ReordererModel & model,
         if(new_right_trg) {
             old_right_trg = GetTrgSpan(hyp.GetCenter(),r,hyp.GetRightRank());
             Hypothesis new_hyp(hyp);
-            new_hyp.SetEdge(new HyperEdge(
-            		hyp.GetLeft(), hyp.GetCenter(), hyp.GetRight(), hyp.GetEdgeType()));
+            new_hyp.SetEdge(new HyperEdge(*hyp.GetEdge()));
             new_hyp.SetScore(hyp.GetScore() 
                     - old_right_trg->GetScore() + new_right_trg->GetScore());
             new_hyp.SetRightRank(hyp.GetRightRank()+1);

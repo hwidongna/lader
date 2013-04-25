@@ -152,11 +152,10 @@ void DiscontinuousHyperGraph::nextCubeItems(const Hypothesis & hyp,
 
 	if (new_left_trg != NULL && old_left_trg != NULL){
 		if (gap){
+			DiscontinuousHyperEdge * edge =
+					dynamic_cast<DiscontinuousHyperEdge*>(hyp.GetEdge());
 			DiscontinuousHypothesis new_hyp(hyp);
-			new_hyp.SetEdge(new DiscontinuousHyperEdge(
-			    			new_hyp.GetLeft(), new_hyp.GetM(),
-			    			new_hyp.GetN(), new_hyp.GetRight(),
-			    			new_hyp.GetEdgeType()));
+			new_hyp.SetEdge(new DiscontinuousHyperEdge(*edge));
 			new_hyp.SetScore(hyp.GetScore() - old_left_trg->GetScore() + new_left_trg->GetScore());
 			new_hyp.SetLeftRank(hyp.GetLeftRank() + 1);
 			new_hyp.SetLeftChild(new_left_trg);
@@ -169,8 +168,7 @@ void DiscontinuousHyperGraph::nextCubeItems(const Hypothesis & hyp,
 		}
 		else{
 			Hypothesis new_hyp(hyp);
-			new_hyp.SetEdge(new HyperEdge(
-					hyp.GetLeft(), hyp.GetCenter(), hyp.GetRight(), hyp.GetEdgeType()));
+			new_hyp.SetEdge(new HyperEdge(*hyp.GetEdge()));
 			new_hyp.SetScore(hyp.GetScore() - old_left_trg->GetScore() + new_left_trg->GetScore());
 			new_hyp.SetLeftRank(hyp.GetLeftRank() + 1);
 			new_hyp.SetLeftChild(new_left_trg);
@@ -201,11 +199,10 @@ void DiscontinuousHyperGraph::nextCubeItems(const Hypothesis & hyp,
 
 	if (new_right_trg != NULL && old_right_trg != NULL){
 		if (gap){
+			DiscontinuousHyperEdge * edge =
+					dynamic_cast<DiscontinuousHyperEdge*>(hyp.GetEdge());
 			DiscontinuousHypothesis new_hyp(hyp);
-			new_hyp.SetEdge(new DiscontinuousHyperEdge(
-					new_hyp.GetLeft(), new_hyp.GetM(),
-					new_hyp.GetN(), new_hyp.GetRight(),
-					new_hyp.GetEdgeType()));
+			new_hyp.SetEdge(new DiscontinuousHyperEdge(*edge));
 			new_hyp.SetScore(hyp.GetScore()
 					- old_right_trg->GetScore() + new_right_trg->GetScore());
 			new_hyp.SetRightRank(hyp.GetRightRank()+1);
@@ -219,8 +216,7 @@ void DiscontinuousHyperGraph::nextCubeItems(const Hypothesis & hyp,
 		}
 		else{
 			Hypothesis new_hyp(hyp);
-			new_hyp.SetEdge(new HyperEdge(
-					hyp.GetLeft(), hyp.GetCenter(), hyp.GetRight(), hyp.GetEdgeType()));
+			new_hyp.SetEdge(new HyperEdge(*hyp.GetEdge()));
 			new_hyp.SetScore(hyp.GetScore()
 					- old_right_trg->GetScore() + new_right_trg->GetScore());
 			new_hyp.SetRightRank(hyp.GetRightRank()+1);

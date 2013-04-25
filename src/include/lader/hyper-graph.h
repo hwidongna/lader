@@ -21,6 +21,7 @@ template <class T>
 struct DescendingScore {
   bool operator ()(T *lhs, T *rhs) { return rhs->GetScore() < lhs->GetScore(); }
 };
+// TODO: prevent to truncate discontinuous hyper-edge
 typedef std::tr1::unordered_map<HyperEdge, FeatureVectorInt*, HyperEdgeHash> EdgeFeatureMap;
 typedef std::pair<HyperEdge, FeatureVectorInt*> EdgeFeaturePair;
 

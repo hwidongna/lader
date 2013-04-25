@@ -24,7 +24,7 @@ public:
                trg_left_(trg_left), trg_right_(trg_right),
                left_child_(left_child), right_child_(right_child),
                left_rank_(left_rank), right_rank_(right_rank)
-               { }
+               { } //std::cerr << "Hypothesis " << GetEdge() << std::endl; }
 
     Hypothesis(double viterbi_score, double single_score,
 				int left, int right,
@@ -32,27 +32,31 @@ public:
 				HyperEdge::Type type, int center = -1,
 				int left_rank = -1, int right_rank = -1,
 				TargetSpan* left_child = NULL, TargetSpan* right_child = NULL) :
+//				Hypothesis(viterbi_score, single_score,
+//						new HyperEdge(left, center, right, type),
+//						trg_left, trg_right,
+//						left_rank, right_rank,
+//						left_child, right_child)
 				viterbi_score_(viterbi_score),
 				single_score_(single_score), loss_(0),
+				edge_(new HyperEdge(left, center, right, type)),
 				trg_left_(trg_left), trg_right_(trg_right),
 				left_child_(left_child), right_child_(right_child),
 				left_rank_(left_rank), right_rank_(right_rank)
-				{ edge_ = new HyperEdge(left, center, right, type); }
+				{ }
 
-//    Hypothesis(const Hypothesis & hyp) :
+//    Hypothesis(const Hypothesis & hyp) : // called when inserting std containers
 //				viterbi_score_(hyp.viterbi_score_),
 //				single_score_(hyp.single_score_), loss_(hyp.loss_),
-//			   trg_left_(hyp.trg_left_), trg_right_(hyp.trg_right_),
-//			   left_child_(hyp.left_child_), right_child_(hyp.right_child_),
-//			   left_rank_(hyp.left_rank_), right_rank_(hyp.right_rank_)
-//    {
-//    	edge_ = new HyperEdge(*hyp.edge_);
-//    }
+//				edge_(new HyperEdge(*hyp.edge_)), // cause dangling poninter of hyp.edge_
+//				trg_left_(hyp.trg_left_), trg_right_(hyp.trg_right_),
+//				left_child_(hyp.left_child_), right_child_(hyp.right_child_),
+//				left_rank_(hyp.left_rank_), right_rank_(hyp.right_rank_)
+//    			{ } //std::cerr << "Hypothesis(const Hypothesis & hyp) " << GetEdge() << std::endl; }
 
     virtual ~Hypothesis() {
 //    	if (edge_ != NULL){ // TODO: delete edge_
 //    		delete edge_;
-//    		edge_ = NULL;
 //    	}
 //    	if (left_child_ != NULL)
 //    		delete left_child_;

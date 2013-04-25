@@ -10,25 +10,34 @@
 
 #include <lader/hypothesis.h>
 #include <lader/discontinuous-hyper-edge.h>
-#include <lader/target-span.h>
+//#include <lader/target-span.h>
+#include <lader/util.h>
+#include <sstream>
+#include <iostream>
 using namespace std;
 
 namespace lader {
 
 class DiscontinuousHypothesis : public Hypothesis{
 public:
-//	DiscontinuousHypothesis(double viterbi_score, double single_score,
-//	               int left, int m,
-//	               int n, int right,
-//	               int trg_left, int trg_right,
-//	               HyperEdge::Type type, int center = -1,
-//	               int left_rank = -1, int right_rank = -1,
-//	               TargetSpan* left_child = NULL, TargetSpan* right_child = NULL) :
-//	            	   Hypothesis(viterbi_score, single_score,
-//	            			   new DiscontinuousHyperEdge(left, m, n, right, type),
-//	            			   trg_left, trg_right,
-//	            			   left_rank, right_rank,
-//	            			   left_child, right_child) {}
+	DiscontinuousHypothesis(double viterbi_score, double single_score,
+	               HyperEdge * edge,
+	               int trg_left, int trg_right,
+	               int left_rank = -1, int right_rank = -1,
+	               TargetSpan* left_child = NULL, TargetSpan* right_child = NULL) :
+	            	   Hypothesis(viterbi_score, single_score,
+	            			   edge,
+	            			   trg_left, trg_right,
+	            			   left_rank, right_rank,
+	            			   left_child, right_child) {
+//		cerr << "DiscontinuousHypothesis " << Hypothesis::GetEdge() << endl;
+//		const DiscontinuousHyperEdge * dedge = // this doesn't cause NULL
+//				dynamic_cast<const DiscontinuousHyperEdge*>(Hypothesis::GetEdge());
+//		if (dedge == NULL)
+//			THROW_ERROR("Invalide hyper-edge")
+//		else
+//			cerr << *this << endl;
+	}
 
 	DiscontinuousHypothesis(const Hypothesis & hyp) : Hypothesis(hyp) {
 //		Hypothesis(hyp.GetScore(), hyp.GetSingleScore(),
@@ -36,7 +45,7 @@ public:
 //		hyp.GetTrgLeft(), hyp.GetTrgRight(),
 //		hyp.GetLeftRank(), hyp.GetRightRank(),
 //		hyp.GetLeftChild(), hyp.GetRightChild()) {
-////				Hypothesis(hyp) {
+//		cerr << "DiscontinuousHypothesis(const Hypothesis & hyp) " << Hypothesis::GetEdge() << endl;
 //		const DiscontinuousHyperEdge * dedge =
 //				dynamic_cast<const DiscontinuousHyperEdge*>(Hypothesis::GetEdge());
 //		if (dedge == NULL)
@@ -44,6 +53,7 @@ public:
 ////		this->SetScore(hyp.GetScore());
 ////		this->SetSingleScore(hyp.GetSingleScore());
 ////		this->SetLoss(hyp.GetLoss());
+//		cerr << "copy a new edge" << dedge << endl;
 //		this->SetEdge(new DiscontinuousHyperEdge(*dedge));
 ////		this->SetTrgLeft(hyp.GetTrgLeft());
 ////		this->SetTrgRight(hyp.GetTrgRight());
@@ -52,14 +62,14 @@ public:
 ////		this->SetLeftChild(hyp.GetLeftChild());
 ////		this->SetRightChild(hyp.GetRightChild());
 	}
-	int GetM() {
+	int GetM() const{
 		const DiscontinuousHyperEdge * dedge =
 				dynamic_cast<const DiscontinuousHyperEdge*>(Hypothesis::GetEdge());
 		if (dedge == NULL)
 			THROW_ERROR("Invalide hyper-edge")
 		return dedge->GetM();
 	}
-	int GetN() {
+	int GetN() const{
 		const DiscontinuousHyperEdge * dedge =
 				dynamic_cast<const DiscontinuousHyperEdge*>(Hypothesis::GetEdge());
 		if (dedge == NULL)
@@ -70,10 +80,11 @@ public:
 
     // Comparators
     bool operator< (const Hypothesis & rhs) const {
-    	const DiscontinuousHyperEdge * dedge =
+//    	cerr << "operator<" << Hypothesis::GetEdge() << endl;
+    	const DiscontinuousHyperEdge * dedge = // why does this cause NULL?
     			dynamic_cast<const DiscontinuousHyperEdge*>(Hypothesis::GetEdge());
     	const DiscontinuousHyperEdge * rhsdedge =
-    			dynamic_cast<const DiscontinuousHyperEdge*>(rhs.Hypothesis::GetEdge());
+    			dynamic_cast<const DiscontinuousHyperEdge*>(rhs.GetEdge());
     	if (dedge == NULL || rhsdedge == NULL)
     		THROW_ERROR("Invalide hyper-edge")
         return Hypothesis::operator< (rhs) || (
@@ -84,7 +95,7 @@ public:
     	const DiscontinuousHyperEdge * dedge =
     			dynamic_cast<const DiscontinuousHyperEdge*>(Hypothesis::GetEdge());
     	const DiscontinuousHyperEdge * rhsdedge =
-    			dynamic_cast<const DiscontinuousHyperEdge*>(rhs.Hypothesis::GetEdge());
+    			dynamic_cast<const DiscontinuousHyperEdge*>(rhs.GetEdge());
     	if (dedge == NULL || rhsdedge == NULL)
     		THROW_ERROR("Invalide hyper-edge")
         return Hypothesis::operator== (rhs) &&
@@ -93,4 +104,16 @@ public:
 };
 
 }
+
+namespace std {
+// Output function for pairs
+inline std::ostream& operator << ( std::ostream& out,
+                                   const lader::DiscontinuousHypothesis & rhs )
+{
+    out << "<" << rhs.GetLeft() << ", " << rhs.GetM() << ", "  << rhs.GetN() << ", " << rhs.GetRight()
+    	<< ", " << rhs.GetTrgLeft() << ", " << rhs.GetTrgRight() << ", " << (char)rhs.GetEdgeType() << ", " << rhs.GetCenter() << ">";
+    return out;
+}
+}
+
 #endif /* DISCONTINUOUS_HYPOTHESIS_H_ */

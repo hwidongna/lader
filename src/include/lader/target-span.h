@@ -18,8 +18,10 @@ public:
                       trg_left_(trg_left), trg_right_(trg_right),
                       id_(-1) { }
     virtual ~TargetSpan() {
-        BOOST_FOREACH(Hypothesis * hyp, hyps_)
+        BOOST_FOREACH(Hypothesis * hyp, hyps_){
+        	delete hyp->GetEdge();
             delete hyp;
+        }
     }
 
     // Print a parse tree in Penn Treebank format
@@ -66,7 +68,10 @@ public:
     int GetTrgLeft() const { return trg_left_; }
     int GetTrgRight() const { return trg_right_; }
     virtual void AddHypothesis(const Hypothesis & hyp) {
-        hyps_.push_back(new Hypothesis(hyp));
+    	Hypothesis * new_hyp = new Hypothesis(hyp);
+    	new_hyp->SetEdge(new HyperEdge(
+    			hyp.GetLeft(), hyp.GetCenter(), hyp.GetRight(), hyp.GetEdgeType()));
+        hyps_.push_back(new_hyp);
     }
     const std::set<char> & GetHasTypes() { return has_types_; }
     const std::vector<Hypothesis*> & GetHypotheses() const { return hyps_; }

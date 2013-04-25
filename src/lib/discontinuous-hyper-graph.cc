@@ -105,22 +105,24 @@ void DiscontinuousHyperGraph::AddDiscontinuousHyperEdges(
 	if (l > m || m+1 > n-1 || n > r)
 		THROW_ERROR("Invalid Target Span "
 				"["<<l<<", "<<m<<", "<<n<<", "<<r<<"]");
-//    //cerr << "Add discontinous str & inv "<<
-//				"["<<l<<", "<<m<<", "<<n<<", "<<r<<"]";
+//    cerr << "Add discontinous str & inv "<<
+//				"["<<l<<", "<<m<<", "<<n<<", "<<r<<"]" << endl;
 	// Add the straight terminal
 	HyperEdge * edge = new DiscontinuousHyperEdge(l, m, n, r, HyperEdge::EDGE_STR);
 	score = GetEdgeScore(model, features, sent, *edge);
 	viterbi_score = score + left_trg->GetScore() + right_trg->GetScore();
-	q.push(DiscontinuousHypothesis::Hypothesis(viterbi_score, score, edge,
-			left_trg->GetTrgLeft(), right_trg->GetTrgRight(),
-			0, 0, left_trg, right_trg));
+	DiscontinuousHypothesis str(viterbi_score, score, edge,
+				left_trg->GetTrgLeft(), right_trg->GetTrgRight(),
+				0, 0, left_trg, right_trg);
+	q.push(str);
 	// Add the inverted terminal
 	edge = new DiscontinuousHyperEdge(l, m, n, r, HyperEdge::EDGE_INV);
 	score = GetEdgeScore(model, features, sent, *edge);
 	viterbi_score = score + left_trg->GetScore() + right_trg->GetScore();
-	q.push(DiscontinuousHypothesis::Hypothesis(viterbi_score, score, edge,
-			right_trg->GetTrgLeft(), left_trg->GetTrgRight(),
-			0, 0, left_trg, right_trg));
+	DiscontinuousHypothesis inv(viterbi_score, score, edge,
+				right_trg->GetTrgLeft(), left_trg->GetTrgRight(),
+				0, 0, left_trg, right_trg);
+	q.push(inv);
 }
 
 template <class T>
@@ -151,6 +153,10 @@ void DiscontinuousHyperGraph::nextCubeItems(const Hypothesis & hyp,
 	if (new_left_trg != NULL && old_left_trg != NULL){
 		if (gap){
 			DiscontinuousHypothesis new_hyp(hyp);
+			new_hyp.SetEdge(new DiscontinuousHyperEdge(
+			    			new_hyp.GetLeft(), new_hyp.GetM(),
+			    			new_hyp.GetN(), new_hyp.GetRight(),
+			    			new_hyp.GetEdgeType()));
 			new_hyp.SetScore(hyp.GetScore() - old_left_trg->GetScore() + new_left_trg->GetScore());
 			new_hyp.SetLeftRank(hyp.GetLeftRank() + 1);
 			new_hyp.SetLeftChild(new_left_trg);
@@ -163,6 +169,8 @@ void DiscontinuousHyperGraph::nextCubeItems(const Hypothesis & hyp,
 		}
 		else{
 			Hypothesis new_hyp(hyp);
+			new_hyp.SetEdge(new HyperEdge(
+					hyp.GetLeft(), hyp.GetCenter(), hyp.GetRight(), hyp.GetEdgeType()));
 			new_hyp.SetScore(hyp.GetScore() - old_left_trg->GetScore() + new_left_trg->GetScore());
 			new_hyp.SetLeftRank(hyp.GetLeftRank() + 1);
 			new_hyp.SetLeftChild(new_left_trg);
@@ -194,6 +202,10 @@ void DiscontinuousHyperGraph::nextCubeItems(const Hypothesis & hyp,
 	if (new_right_trg != NULL && old_right_trg != NULL){
 		if (gap){
 			DiscontinuousHypothesis new_hyp(hyp);
+			new_hyp.SetEdge(new DiscontinuousHyperEdge(
+					new_hyp.GetLeft(), new_hyp.GetM(),
+					new_hyp.GetN(), new_hyp.GetRight(),
+					new_hyp.GetEdgeType()));
 			new_hyp.SetScore(hyp.GetScore()
 					- old_right_trg->GetScore() + new_right_trg->GetScore());
 			new_hyp.SetRightRank(hyp.GetRightRank()+1);
@@ -207,6 +219,8 @@ void DiscontinuousHyperGraph::nextCubeItems(const Hypothesis & hyp,
 		}
 		else{
 			Hypothesis new_hyp(hyp);
+			new_hyp.SetEdge(new HyperEdge(
+					hyp.GetLeft(), hyp.GetCenter(), hyp.GetRight(), hyp.GetEdgeType()));
 			new_hyp.SetScore(hyp.GetScore()
 					- old_right_trg->GetScore() + new_right_trg->GetScore());
 			new_hyp.SetRightRank(hyp.GetRightRank()+1);
@@ -293,11 +307,19 @@ SpanStack *DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
 		// If the next hypothesis on the stack is equal to the current
 		// hypothesis, remove it, as this just means that we added the same
 		// hypothesis
-		while(q.size() && q.top() == hyp) q.pop();
+		while(q.size() && q.top() == hyp) {
+			delete q.top().GetEdge();
+			q.pop();
+		}
 		// Skip terminals
 //		if(hyp.GetCenter() == -1) continue;
 		// Increment the left side if there is still a hypothesis left
 		nextCubeItems(hyp, q, l, r, true);
+		delete hyp.GetEdge();
+	}
+	while(q.size()) {
+		delete q.top().GetEdge();
+		q.pop();
 	}
     //cerr << "sort discontinuous spans obtained by cube pruning: size " << spans.size() << endl;
 	SpanStack * ret = new SpanStack;
@@ -416,10 +438,18 @@ SpanStack * DiscontinuousHyperGraph::ProcessOneSpan(
 		// If the next hypothesis on the stack is equal to the current
 		// hypothesis, remove it, as this just means that we added the same
 		// hypothesis
-		while(q.size() && q.top() == hyp) q.pop();
+		while(q.size() && q.top() == hyp) {
+			delete q.top().GetEdge();
+			q.pop();
+		}
 		// Skip terminals
 //		if(hyp.GetCenter() == -1) continue;
 		nextCubeItems(hyp, q, l, r, false);
+		delete hyp.GetEdge();
+	}
+	while(q.size()) {
+		delete q.top().GetEdge();
+		q.pop();
 	}
     //cerr << "sort continuous spans obtained by cube pruning: size " << spans.size() << endl;
 	SpanStack * ret = new SpanStack;

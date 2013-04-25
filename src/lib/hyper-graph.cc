@@ -25,7 +25,7 @@ const FeatureVectorInt * HyperGraph::GetEdgeFeatures(
     EdgeFeatureMap::const_iterator it = features_->find(edge);
     if(it == features_->end()) {
         ret = feature_gen.MakeEdgeFeatures(sent, edge, model.GetFeatureIds(), model.GetAdd());
-        features_->insert(MakePair(edge, ret));
+        features_->insert(MakePair(edge, ret)); // TODO: prevent to truncate discontinuous hyper edge
     } else {
         ret = it->second;
     }
@@ -176,7 +176,10 @@ SpanStack * HyperGraph::ProcessOneSpan(ReordererModel & model,
         // If the next hypothesis on the stack is equal to the current
         // hypothesis, remove it, as this just means that we added the same
         // hypothesis
-        while(q.size() && q.top() == hyp) q.pop();
+        while(q.size() && q.top() == hyp) {
+        	delete q.top().GetEdge();
+        	q.pop();
+        }
         // Skip terminals
         if(hyp.GetCenter() == -1) continue;
         // Increment the left side if there is still a hypothesis left
@@ -184,6 +187,8 @@ SpanStack * HyperGraph::ProcessOneSpan(ReordererModel & model,
         if(new_left_trg) {
             old_left_trg = GetTrgSpan(l,hyp.GetCenter()-1,hyp.GetLeftRank());
             Hypothesis new_hyp(hyp);
+            new_hyp.SetEdge(new HyperEdge(
+            		hyp.GetLeft(), hyp.GetCenter(), hyp.GetRight(), hyp.GetEdgeType()));
             new_hyp.SetScore(hyp.GetScore() 
                         - old_left_trg->GetScore() + new_left_trg->GetScore());
             new_hyp.SetLeftRank(hyp.GetLeftRank()+1);
@@ -200,6 +205,8 @@ SpanStack * HyperGraph::ProcessOneSpan(ReordererModel & model,
         if(new_right_trg) {
             old_right_trg = GetTrgSpan(hyp.GetCenter(),r,hyp.GetRightRank());
             Hypothesis new_hyp(hyp);
+            new_hyp.SetEdge(new HyperEdge(
+            		hyp.GetLeft(), hyp.GetCenter(), hyp.GetRight(), hyp.GetEdgeType()));
             new_hyp.SetScore(hyp.GetScore() 
                     - old_right_trg->GetScore() + new_right_trg->GetScore());
             new_hyp.SetRightRank(hyp.GetRightRank()+1);
@@ -211,6 +218,11 @@ SpanStack * HyperGraph::ProcessOneSpan(ReordererModel & model,
             }
             q.push(new_hyp);
         }
+        delete hyp.GetEdge();
+    }
+    while(q.size()) {
+    	delete q.top().GetEdge();
+    	q.pop();
     }
     SpanStack * ret = new SpanStack;
     typedef pair<int, TargetSpan*> MapPair;
@@ -241,8 +253,10 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
     SpanStack * root_stack = new SpanStack;
     for(int i = 0; i < (int)top->size(); i++) {
         TargetSpan * root = new TargetSpan(0, n_-1, (*top)[i]->GetTrgLeft(), (*top)[i]->GetTrgRight());
-        root->AddHypothesis(Hypothesis((*top)[i]->GetScore(), 0, 0, n_-1, 0, n_-1,
-                                    HyperEdge::EDGE_ROOT, -1, i, -1, (*top)[i]));
+        Hypothesis hyp((*top)[i]->GetScore(), 0, 0, n_-1, 0, n_-1,
+                HyperEdge::EDGE_ROOT, -1, i, -1, (*top)[i]);
+        root->AddHypothesis(hyp);
+        delete hyp.GetEdge();
         root_stack->AddSpan(root);
     }
     stacks_.push_back(root_stack);
@@ -274,7 +288,7 @@ void HyperGraph::AccumulateFeatures(const TargetSpan* span,
     // Find the features
     if(hyp->GetEdgeType() != HyperEdge::EDGE_ROOT) {
         EdgeFeatureMap::const_iterator fit = 
-                                    features_->find(HyperEdge(l,c,r,t));
+                                    features_->find(*hyp->GetEdge());
         if(fit == features_->end())
             THROW_ERROR("No features found in Accumulate for l="
                                     <<l<<", c="<<c<<", r="<<r<<", t="<<t);

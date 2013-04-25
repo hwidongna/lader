@@ -107,12 +107,11 @@ protected:
     		int right_l, int right_m, int right_n, int right_r);
     void AddDiscontinuousHyperEdges(
     		ReordererModel & model, const FeatureSet & features,
-    		const Sentence & sent, DiscontinuousHypothesisQueue & q,
+    		const Sentence & sent, HypothesisQueue & q,
     		int left_l, int left_m, int left_n, int left_r,
     		int right_l, int right_m, int right_n, int right_r);
-    template < class T >
-    void nextCubeItems(const Hypothesis & hyp,
-    		std::priority_queue<T> & q, int l, int r, bool gap=true);
+    void nextCubeItems(const Hypothesis * hyp,
+    		HypothesisQueue & q, int l, int r, bool gap=true);
 private:
 	int gap_;
 	bool mp_;

@@ -118,12 +118,12 @@ SpanStack * HyperGraph::ProcessOneSpan(ReordererModel & model,
         // Create a hypothesis with the forward terminal
         HyperEdge * edge = new HyperEdge(l, -1, r, HyperEdge::EDGE_FOR);
         score = GetEdgeScore(model, features, sent, *edge);
-        q.push(Hypothesis(score, score, edge, tl, tr));
+        q.push(new Hypothesis(score, score, edge, tl, tr));
         if(features.GetUseReverse()) {
         	// Create a hypothesis with the backward terminal
         	edge = new HyperEdge(l, -1, r, HyperEdge::EDGE_BAC);
         	score = GetEdgeScore(model, features, sent, *edge);
-        	q.push(Hypothesis(score, score, edge, tr, tl));
+        	q.push(new Hypothesis(score, score, edge, tr, tl));
         }
     }
     TargetSpan *left_trg, *right_trg, 
@@ -140,14 +140,14 @@ SpanStack * HyperGraph::ProcessOneSpan(ReordererModel & model,
         HyperEdge * edge = new HyperEdge(l, c, r, HyperEdge::EDGE_STR);
         score = GetEdgeScore(model, features, sent, *edge);
         viterbi_score = score + left_trg->GetScore() + right_trg->GetScore();
-        q.push(Hypothesis(viterbi_score, score, edge,
+        q.push(new Hypothesis(viterbi_score, score, edge,
                          left_trg->GetTrgLeft(), right_trg->GetTrgRight(),
                          0, 0, left_trg, right_trg));
         // Add the inverted terminal
         edge = new HyperEdge(l, c, r, HyperEdge::EDGE_INV);
         score = GetEdgeScore(model, features, sent, *edge);
         viterbi_score = score + left_trg->GetScore() + right_trg->GetScore();
-        q.push(Hypothesis(viterbi_score, score, edge,
+        q.push(new Hypothesis(viterbi_score, score, edge,
                          right_trg->GetTrgLeft(), left_trg->GetTrgRight(),
                          0, 0, left_trg, right_trg));
 
@@ -160,66 +160,69 @@ SpanStack * HyperGraph::ProcessOneSpan(ReordererModel & model,
     int num_processed = 0;
     while((!beam_size || num_processed < beam_size) && q.size()) {
         // Pop a hypothesis from the stack and get its target span
-        Hypothesis hyp = q.top(); q.pop();
-        int trg_idx = hyp.GetTrgLeft()*r_max+hyp.GetTrgRight();
+        Hypothesis * hyp = q.top(); q.pop();
+        int trg_idx = hyp->GetTrgLeft()*r_max+hyp->GetTrgRight();
         tr1::unordered_map<int, TargetSpan*>::iterator it = spans.find(trg_idx);
         if(it != spans.end()) {
             trg_span = it->second;
         } else {
-            trg_span = new TargetSpan(hyp.GetLeft(), hyp.GetRight(), 
-                                      hyp.GetTrgLeft(), hyp.GetTrgRight());
+            trg_span = new TargetSpan(hyp->GetLeft(), hyp->GetRight(),
+                                      hyp->GetTrgLeft(), hyp->GetTrgRight());
             spans.insert(MakePair(trg_idx, trg_span));
         }
         // Insert the hypothesis
-        trg_span->AddHypothesis(hyp);
+        trg_span->AddHypothesis(*hyp);
         num_processed++;
         // If the next hypothesis on the stack is equal to the current
         // hypothesis, remove it, as this just means that we added the same
         // hypothesis
         while(q.size() && q.top() == hyp) {
-        	delete q.top().GetEdge();
+//        	delete q.top()->GetEdge();
+        	delete q.top();
         	q.pop();
         }
         // Skip terminals
-        if(hyp.GetCenter() == -1) continue;
+        if(hyp->GetCenter() == -1) continue;
         // Increment the left side if there is still a hypothesis left
-        new_left_trg = GetTrgSpan(l, hyp.GetCenter()-1, hyp.GetLeftRank()+1);
+        new_left_trg = GetTrgSpan(l, hyp->GetCenter()-1, hyp->GetLeftRank()+1);
         if(new_left_trg) {
-            old_left_trg = GetTrgSpan(l,hyp.GetCenter()-1,hyp.GetLeftRank());
-            Hypothesis new_hyp(hyp);
-            new_hyp.SetEdge(new HyperEdge(*hyp.GetEdge()));
-            new_hyp.SetScore(hyp.GetScore() 
+            old_left_trg = GetTrgSpan(l,hyp->GetCenter()-1,hyp->GetLeftRank());
+            Hypothesis *  new_hyp = new Hypothesis(*hyp);
+            new_hyp->SetEdge(new HyperEdge(*hyp->GetEdge()));
+            new_hyp->SetScore(hyp->GetScore()
                         - old_left_trg->GetScore() + new_left_trg->GetScore());
-            new_hyp.SetLeftRank(hyp.GetLeftRank()+1);
-            new_hyp.SetLeftChild(new_left_trg);
-            if(new_hyp.GetEdgeType() == HyperEdge::EDGE_STR) {
-                new_hyp.SetTrgLeft(new_left_trg->GetTrgLeft());
+            new_hyp->SetLeftRank(hyp->GetLeftRank()+1);
+            new_hyp->SetLeftChild(new_left_trg);
+            if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR) {
+                new_hyp->SetTrgLeft(new_left_trg->GetTrgLeft());
             } else {
-                new_hyp.SetTrgRight(new_left_trg->GetTrgRight());
+                new_hyp->SetTrgRight(new_left_trg->GetTrgRight());
             }
             q.push(new_hyp);
         }
         // Increment the right side if there is still a hypothesis right
-        new_right_trg = GetTrgSpan(hyp.GetCenter(),r,hyp.GetRightRank()+1);
+        new_right_trg = GetTrgSpan(hyp->GetCenter(),r,hyp->GetRightRank()+1);
         if(new_right_trg) {
-            old_right_trg = GetTrgSpan(hyp.GetCenter(),r,hyp.GetRightRank());
-            Hypothesis new_hyp(hyp);
-            new_hyp.SetEdge(new HyperEdge(*hyp.GetEdge()));
-            new_hyp.SetScore(hyp.GetScore() 
+            old_right_trg = GetTrgSpan(hyp->GetCenter(),r,hyp->GetRightRank());
+            Hypothesis *  new_hyp = new Hypothesis(*hyp);
+            new_hyp->SetEdge(new HyperEdge(*hyp->GetEdge()));
+            new_hyp->SetScore(hyp->GetScore()
                     - old_right_trg->GetScore() + new_right_trg->GetScore());
-            new_hyp.SetRightRank(hyp.GetRightRank()+1);
-            new_hyp.SetRightChild(new_right_trg);
-            if(new_hyp.GetEdgeType() == HyperEdge::EDGE_STR) {
-                new_hyp.SetTrgRight(new_right_trg->GetTrgRight());
+            new_hyp->SetRightRank(hyp->GetRightRank()+1);
+            new_hyp->SetRightChild(new_right_trg);
+            if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR) {
+                new_hyp->SetTrgRight(new_right_trg->GetTrgRight());
             } else {
-                new_hyp.SetTrgLeft(new_right_trg->GetTrgLeft());
+                new_hyp->SetTrgLeft(new_right_trg->GetTrgLeft());
             }
             q.push(new_hyp);
         }
-        delete hyp.GetEdge();
+//        delete hyp->GetEdge();
+        delete hyp;
     }
     while(q.size()) {
-    	delete q.top().GetEdge();
+//    	delete q.top()->GetEdge();
+    	delete q.top();
     	q.pop();
     }
     SpanStack * ret = new SpanStack;
@@ -251,10 +254,8 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
     SpanStack * root_stack = new SpanStack;
     for(int i = 0; i < (int)top->size(); i++) {
         TargetSpan * root = new TargetSpan(0, n_-1, (*top)[i]->GetTrgLeft(), (*top)[i]->GetTrgRight());
-        Hypothesis hyp((*top)[i]->GetScore(), 0, 0, n_-1, 0, n_-1,
-                HyperEdge::EDGE_ROOT, -1, i, -1, (*top)[i]);
-        root->AddHypothesis(hyp);
-        delete hyp.GetEdge();
+        root->AddHypothesis(Hypothesis((*top)[i]->GetScore(), 0, 0, n_-1, 0, n_-1,
+                HyperEdge::EDGE_ROOT, -1, i, -1, (*top)[i]));
         root_stack->AddSpan(root);
     }
     stacks_.push_back(root_stack);

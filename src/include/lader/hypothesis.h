@@ -32,17 +32,17 @@ public:
 				HyperEdge::Type type, int center = -1,
 				int left_rank = -1, int right_rank = -1,
 				TargetSpan* left_child = NULL, TargetSpan* right_child = NULL) :
-//				Hypothesis(viterbi_score, single_score,
-//						new HyperEdge(left, center, right, type),
-//						trg_left, trg_right,
-//						left_rank, right_rank,
-//						left_child, right_child)
-				viterbi_score_(viterbi_score),
-				single_score_(single_score), loss_(0),
-				edge_(new HyperEdge(left, center, right, type)),
-				trg_left_(trg_left), trg_right_(trg_right),
-				left_child_(left_child), right_child_(right_child),
-				left_rank_(left_rank), right_rank_(right_rank)
+				Hypothesis(viterbi_score, single_score,
+						new HyperEdge(left, center, right, type),
+						trg_left, trg_right,
+						left_rank, right_rank,
+						left_child, right_child)
+//				viterbi_score_(viterbi_score),
+//				single_score_(single_score), loss_(0),
+//				edge_(new HyperEdge(left, center, right, type)),
+//				trg_left_(trg_left), trg_right_(trg_right),
+//				left_child_(left_child), right_child_(right_child),
+//				left_rank_(left_rank), right_rank_(right_rank)
 				{ }
 
 //    Hypothesis(const Hypothesis & hyp) : // called when inserting std containers
@@ -55,9 +55,9 @@ public:
 //    			{ } //std::cerr << "Hypothesis(const Hypothesis & hyp) " << GetEdge() << std::endl; }
 
     virtual ~Hypothesis() {
-//    	if (edge_ != NULL){ // TODO: delete edge_
-//    		delete edge_;
-//    	}
+    	if (edge_ != NULL){ // TODO: delete edge_
+    		delete edge_;
+    	}
 //    	if (left_child_ != NULL)
 //    		delete left_child_;
 //    	if (right_child_ != NULL)

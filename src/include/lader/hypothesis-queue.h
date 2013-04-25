@@ -7,8 +7,14 @@
 
 namespace lader {
 
-typedef std::priority_queue<Hypothesis> HypothesisQueue;
-typedef std::priority_queue<DiscontinuousHypothesis> DiscontinuousHypothesisQueue;
+template< typename T >
+class pointer_comparator : public std::binary_function< T, T, bool >{
+public :
+bool operator()( T x, T y ) const { return *x < *y; }
+};
+
+typedef std::priority_queue<Hypothesis*,
+		std::vector<Hypothesis*>, pointer_comparator<Hypothesis*> > HypothesisQueue;
 
 }
 

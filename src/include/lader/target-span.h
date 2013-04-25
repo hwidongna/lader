@@ -18,10 +18,8 @@ public:
                       trg_left_(trg_left), trg_right_(trg_right),
                       id_(-1) { }
     virtual ~TargetSpan() {
-        BOOST_FOREACH(Hypothesis * hyp, hyps_){
-        	delete hyp->GetEdge();
+        BOOST_FOREACH(Hypothesis * hyp, hyps_)
             delete hyp;
-        }
     }
 
     // Print a parse tree in Penn Treebank format

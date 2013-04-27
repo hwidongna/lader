@@ -94,7 +94,7 @@ public:
         edge02r.push_back(MakePair(syms.GetId("R||rice"    , true), 1));
         edge02r.push_back(MakePair(syms.GetId("S||ate rice", true), 1));
         edge02r.push_back(MakePair(syms.GetId("B||he"      , true), 1));
-        edge02r.push_back(MakePair(syms.GetId("A||<s>"     , true), 1));
+        edge02r.push_back(MakePair(syms.GetId("A||</s>"     , true), 1));
         edge02r.push_back(MakePair(syms.GetId("N||2"       , true), 1));
         FeatureVectorInt edge00a, edge02a;
         edge00a.push_back(MakePair(syms.GetId("S||he"      , true), 1));
@@ -157,17 +157,17 @@ public:
         // These features apply to non-terminals
         SymbolSet<int> syms;
         FeatureVectorInt edge00exp, edge12exp, edge02exp;
-        edge00exp.push_back(MakePair(syms.GetId("T||F", true), 1));
+        edge00exp.push_back(MakePair(syms.GetId("T||FC", true), 1));
         edge12exp.push_back(MakePair(syms.GetId("D||0", true), 1));
         edge12exp.push_back(MakePair(syms.GetId("B||0", true), 1));
         edge12exp.push_back(MakePair(syms.GetId("L||E", true), 1));
-        edge12exp.push_back(MakePair(syms.GetId("T||I", true), 1));
+        edge12exp.push_back(MakePair(syms.GetId("T||IC", true), 1));
         edge02exp.push_back(MakePair(syms.GetId("D||1", true), 1));
         edge02exp.push_back(MakePair(syms.GetId("B||1", true), 1));
         edge02exp.push_back(MakePair(syms.GetId("L||R", true), 1));
         edge02exp.push_back(MakePair(syms.GetId("D#"  , true), 1));
         edge02exp.push_back(MakePair(syms.GetId("B#"  , true), 1));
-        edge02exp.push_back(MakePair(syms.GetId("T||S", true), 1));
+        edge02exp.push_back(MakePair(syms.GetId("T||SC", true), 1));
         // Create the actual features
         FeatureVectorInt edge00act, edge12ntact, edge02act;
         feat.GenerateEdgeFeatures(sent, edge00,   syms, true, edge00act);

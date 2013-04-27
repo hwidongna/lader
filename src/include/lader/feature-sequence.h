@@ -18,9 +18,8 @@ public:
 
     FeatureSequence() { }
     virtual ~FeatureSequence() {
-    	BOOST_FOREACH(Dictionary* dict, dicts_){
+    	BOOST_FOREACH(Dictionary* dict, dicts_)
     		delete dict;
-    	}
     }
  
     // Parse the configuration
@@ -41,7 +40,7 @@ public:
     //               specified with dict=XX
     //  %[SLR]Q#[0-9][0-9]: The value of the [0-9]th feature in the [0-9]th
     //               dictionary (dictionary number is first, feature second)
-    //  %CD :        Difference (absolute value) in words in two spans
+    //  %C[DBL] :        Difference (absolute value or indicator -1/0/+1) in words in two spans
     //  %ET :        The type of the edge
     // 
     // In addition N and D can be used with at the beginning (eg %SN#) to

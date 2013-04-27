@@ -54,6 +54,7 @@ public:
     int GetRight() const { return r_; }
     int GetCenter() const { return c_; }
     Type GetType() const { return t_; }
+    virtual char GetClass() const { return 'C'; }
 
     void SetType(Type t) { t_ = t; } // only for testing
 

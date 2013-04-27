@@ -107,7 +107,7 @@ string FeatureSequence::GetSpanFeatureString(const FeatureDataSequence & sent,
         case 'B':
             return l == 0 ? "<s>" : sent.GetElement(l-1);
         case 'A':
-            return r == sent.GetNumWords() - 1 ? "<s>" : sent.GetElement(r+1);
+            return r == sent.GetNumWords() - 1 ? "</s>" : sent.GetElement(r+1);
         case 'S':
             return sent.GetRangeString(l, r, (str.length() == 3 ? str[2]-'0' : INT_MAX));
         case 'N':
@@ -165,7 +165,7 @@ string FeatureSequence::GetEdgeFeatureString(const FeatureDataSequence & sent,
             else if(bal > 0) { return "R"; }
             else { return "E"; }
         case 'T':
-            oss << (char)edge.GetType();
+            oss << (char)edge.GetType() << edge.GetClass();
             return oss.str();
         default:
             THROW_ERROR("Bad edge feature type " << type);

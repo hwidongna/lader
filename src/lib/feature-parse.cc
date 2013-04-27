@@ -114,7 +114,7 @@ string FeatureParse::GetEdgeFeatureString(const FeatureDataParse & sent,
                 edge.GetRight()-2*edge.GetCenter()+edge.GetLeft()+1;
             return oss.str();
         case 'T':
-            oss << (char)edge.GetType();
+        	oss << (char)edge.GetType() << edge.GetClass();
             return oss.str();
         default:
             THROW_ERROR("Bad edge feature type " << type);

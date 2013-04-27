@@ -30,13 +30,7 @@ public:
     //  E: For features defined over an edge (edge type)
     //
     // The templates that can be used and combined for binary features are:
-    //  %[SLR]S :    entire String of a span
-    //  %[SLR][LR] : Left or Right-most word of a span
-    //  %[SLR]N :    Number of words in a span
-    //  %[SLR]QE[0-9]: Whether a span exists in dictionary numbered 0-9,
-    //               specified with dict=XX
-    //  %[SLR]Q#[0-9][0-9]: The value of the [0-9]th feature in the [0-9]th
-    //               dictionary (dictionary number is first, feature second)
+    //  %[SLR]P :    Span label if exists, X otherwise
     //  %CD :        Difference (absolute value) in words in two spans
     //  %ET :        The type of the edge
     // 

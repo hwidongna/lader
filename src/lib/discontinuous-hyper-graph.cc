@@ -44,13 +44,13 @@ void DiscontinuousHyperGraph::AddHyperEdges(
 	// discontinuous + continuous = continuous
 	else if (right_m < 0 && right_n < 0 && left_m+1 == right_l && right_r+1 == left_n){
 		l = left_l;
-		c = right_l;
+		c = right_l; // TODO: distinguish this case
 		r = left_r;
 	}
 	// discontinuous + discontinuous = continuous
 	else if (left_m+1 == right_l && right_m+1 == left_n && left_r+1 == right_n){
 		l = left_l;
-		c = left_n;
+		c = left_n; // TODO: distinguish this case
 		r = right_r;
 	}
 	if (l >= c || c > r)

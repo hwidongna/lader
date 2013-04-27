@@ -51,6 +51,7 @@ public:
 
 	int GetM() const { return m_; }
 	int GetN() const { return n_; }
+	char GetClass() const { return 'D'; }
 private:
 	int m_;
 	int n_;

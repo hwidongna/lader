@@ -22,10 +22,10 @@ const FeatureVectorInt * HyperGraph::GetEdgeFeatures(
                                 const HyperEdge & edge) {
     FeatureVectorInt * ret;
     if(features_ == NULL) features_ = new EdgeFeatureMap;
-    EdgeFeatureMap::const_iterator it = features_->find(edge);
+    EdgeFeatureMap::const_iterator it = features_->find(&edge);
     if(it == features_->end()) {
         ret = feature_gen.MakeEdgeFeatures(sent, edge, model.GetFeatureIds(), model.GetAdd());
-        features_->insert(MakePair(edge, ret)); // TODO: prevent to truncate discontinuous hyper edge
+        features_->insert(MakePair(edge.Clone(), ret));
     } else {
         ret = it->second;
     }
@@ -57,11 +57,10 @@ double HyperGraph::Score(const ReordererModel & model,
         int l = hyp->GetLeft(), c = hyp->GetCenter(), r = hyp->GetRight();
         HyperEdge::Type t = hyp->GetEdgeType();
         if(t != HyperEdge::EDGE_ROOT) {
-            EdgeFeatureMap::const_iterator fit = 
-                                        features_->find(*hyp->GetEdge());
+            EdgeFeatureMap::const_iterator fit =
+                                        features_->find(hyp->GetEdge());
             if(fit == features_->end())
-                THROW_ERROR("No features found in Score for l="
-                                        <<l<<", c="<<c<<", r="<<r<<", t="<<(char)t);
+            	THROW_ERROR("No features found in Score for " << *hyp->GetEdge());
             score += model.ScoreFeatureVector(*fit->second);
         }
         hyp->SetSingleScore(score);
@@ -177,7 +176,6 @@ SpanStack * HyperGraph::ProcessOneSpan(ReordererModel & model,
         // hypothesis, remove it, as this just means that we added the same
         // hypothesis
         while(q.size() && q.top() == hyp) {
-//        	delete q.top()->GetEdge();
         	delete q.top();
         	q.pop();
         }
@@ -217,11 +215,9 @@ SpanStack * HyperGraph::ProcessOneSpan(ReordererModel & model,
             }
             q.push(new_hyp);
         }
-//        delete hyp->GetEdge();
         delete hyp;
     }
     while(q.size()) {
-//    	delete q.top()->GetEdge();
     	delete q.top();
     	q.pop();
     }
@@ -286,8 +282,8 @@ void HyperGraph::AccumulateFeatures(const TargetSpan* span,
     HyperEdge::Type t = hyp->GetEdgeType();
     // Find the features
     if(hyp->GetEdgeType() != HyperEdge::EDGE_ROOT) {
-        EdgeFeatureMap::const_iterator fit = 
-                                    features_->find(*hyp->GetEdge());
+        EdgeFeatureMap::const_iterator fit =
+                                    features_->find(hyp->GetEdge());
         if(fit == features_->end())
             THROW_ERROR("No features found in Accumulate for l="
                                     <<l<<", c="<<c<<", r="<<r<<", t="<<t);

@@ -95,6 +95,10 @@ public:
         my_hg.SetStack(0,1,stack01);
         my_hg.SetStack(1,1,stack11);
         my_hg.SetStack(0,2,stackr); // Abusing SetStack to set the root
+//        BOOST_FOREACH(SpanStack * stack, my_hg.GetStacks())
+//			BOOST_FOREACH(TargetSpan * trg, stack->GetSpans())
+//				BOOST_FOREACH(Hypothesis * hyp, trg->GetHypotheses())
+//					cerr << "Hypothesis " << *hyp << endl;
         // Add the loss
         ts00->GetHypothesis(0)->SetLoss(1);
         ts11->GetHypothesis(0)->SetLoss(2);

@@ -2,6 +2,8 @@
 #define HYPER_EDGE_H__
 
 #include <string>
+#include <sstream>
+#include <iostream>
 
 namespace lader {
 
@@ -28,6 +30,10 @@ public:
     // virtual desctuctor
     virtual ~HyperEdge(){}
 
+    // Clone this object
+    virtual HyperEdge * Clone() const{
+    	return new HyperEdge(l_, c_, r_, t_);
+    }
     // Comparators
     virtual bool operator< (const HyperEdge & rhs) const {
         return 
@@ -67,6 +73,28 @@ typedef struct {
     }
 } HyperEdgeHash;
 
+template< typename T >
+class PointerHash{
+public :
+bool operator()( T x ) const { return x->hash(); }
+};
+
+template< typename T >
+class PointerEqual : public std::binary_function< T, T, bool >{
+public :
+bool operator()( T x, T y ) const { return *x == *y; }
+};
+
+}
+
+namespace std {
+// Output function
+inline std::ostream& operator << ( std::ostream& out,
+                                   const lader::HyperEdge & rhs )
+{
+    out << "l=" << rhs.GetLeft() << ", c=" << rhs.GetCenter() << ", r=" << rhs.GetRight();
+    return out;
+}
 }
 
 #endif

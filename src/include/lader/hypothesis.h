@@ -32,30 +32,34 @@ public:
 				HyperEdge::Type type, int center = -1,
 				int left_rank = -1, int right_rank = -1,
 				TargetSpan* left_child = NULL, TargetSpan* right_child = NULL) :
-				Hypothesis(viterbi_score, single_score,
-						new HyperEdge(left, center, right, type),
-						trg_left, trg_right,
-						left_rank, right_rank,
-						left_child, right_child)
-//				viterbi_score_(viterbi_score),
-//				single_score_(single_score), loss_(0),
-//				edge_(new HyperEdge(left, center, right, type)),
-//				trg_left_(trg_left), trg_right_(trg_right),
-//				left_child_(left_child), right_child_(right_child),
-//				left_rank_(left_rank), right_rank_(right_rank)
+//				Hypothesis(viterbi_score, single_score,
+//						new HyperEdge(left, center, right, type),
+//						trg_left, trg_right,
+//						left_rank, right_rank,
+//						left_child, right_child)
+				viterbi_score_(viterbi_score),
+				single_score_(single_score), loss_(0),
+				edge_(new HyperEdge(left, center, right, type)),
+				trg_left_(trg_left), trg_right_(trg_right),
+				left_child_(left_child), right_child_(right_child),
+				left_rank_(left_rank), right_rank_(right_rank)
 				{ }
 
-//    Hypothesis(const Hypothesis & hyp) : // called when inserting std containers
-//				viterbi_score_(hyp.viterbi_score_),
-//				single_score_(hyp.single_score_), loss_(hyp.loss_),
-//				edge_(new HyperEdge(*hyp.edge_)), // cause dangling poninter of hyp.edge_
-//				trg_left_(hyp.trg_left_), trg_right_(hyp.trg_right_),
-//				left_child_(hyp.left_child_), right_child_(hyp.right_child_),
-//				left_rank_(hyp.left_rank_), right_rank_(hyp.right_rank_)
-//    			{ } //std::cerr << "Hypothesis(const Hypothesis & hyp) " << GetEdge() << std::endl; }
+    // be aware of the pointer member edge_
+    // After calling this method, you need to allocate a dynamic memory for edge_
+    // It is implicitly called (may be several times) when inserting an instance into std::containers
+    // For that case, we do not allocate a dynamic memory in this method, which lead a dangling pointer
+    Hypothesis(const Hypothesis & hyp) :
+				viterbi_score_(hyp.viterbi_score_),
+				single_score_(hyp.single_score_), loss_(hyp.loss_),
+				edge_(hyp.edge_),
+				trg_left_(hyp.trg_left_), trg_right_(hyp.trg_right_),
+				left_child_(hyp.left_child_), right_child_(hyp.right_child_),
+				left_rank_(hyp.left_rank_), right_rank_(hyp.right_rank_)
+    			{ }
 
     virtual ~Hypothesis() {
-    	if (edge_ != NULL){ // TODO: delete edge_
+    	if (edge_ != NULL){
     		delete edge_;
     	}
 //    	if (left_child_ != NULL)

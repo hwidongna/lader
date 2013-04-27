@@ -8,6 +8,8 @@
 #include <vector>
 #include <cfloat>
 #include <set>
+#include <sstream>
+#include <iostream>
 
 namespace lader {
 
@@ -92,5 +94,14 @@ private:
 
 }
 
+namespace std {
+// Output function for pairs
+inline std::ostream& operator << ( std::ostream& out,
+                                   const lader::TargetSpan & rhs )
+{
+    out << "<" << rhs.GetLeft() << ", " << rhs.GetRight() << ", " << rhs.GetTrgLeft() << ", " << rhs.GetTrgRight() << ">";
+    return out;
+}
+}
 #endif
 

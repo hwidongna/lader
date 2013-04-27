@@ -10,8 +10,12 @@
 
 #include <lader/hyper-edge.h>
 #include <typeinfo> // For std::bad_cast
+#include <sstream>
+#include <iostream>
 
 using namespace lader;
+
+namespace lader {
 
 class DiscontinuousHyperEdge : public HyperEdge{
 public:
@@ -19,6 +23,9 @@ public:
 		HyperEdge(l, -1, r, t),
 		m_(m), n_(n) { }
 
+	HyperEdge * Clone() const{
+		return new DiscontinuousHyperEdge(GetLeft(), m_, n_, GetRight(), GetType());
+	}
 	// Comparators
 	bool operator< (const HyperEdge & rhs) const {
 		std::cerr << "bool operator< (const HyperEdge & rhs)" << std::endl;
@@ -32,10 +39,10 @@ public:
 		}
 		return HyperEdge::operator< (rhs);
 	}
-	bool operator== (const HyperEdge & rhs) const {
+	bool operator== (HyperEdge & rhs) const {
 		try{
-			const DiscontinuousHyperEdge & drhs =
-					dynamic_cast<const DiscontinuousHyperEdge&>(rhs);
+			DiscontinuousHyperEdge & drhs =
+					dynamic_cast<DiscontinuousHyperEdge&>(rhs);
 			return HyperEdge::operator ==(rhs) && m_ == drhs.m_ && n_ == drhs.n_;
 		}catch (const std::bad_cast& e){ // if rhs is base class instance
 		}
@@ -49,5 +56,15 @@ private:
 	int n_;
 };
 
+}
+namespace std {
+// Output function
+inline std::ostream& operator << ( std::ostream& out,
+                                   const lader::DiscontinuousHyperEdge & rhs )
+{
+    out << "l=" << rhs.GetLeft() << ", m=" << rhs.GetM() << ", n=" << rhs.GetN() << ", r=" << rhs.GetRight();
+    return out;
+}
+}
 
 #endif /* DISCONTINUOUS_HYPER_EDGE_H_ */

@@ -21,9 +21,10 @@ template <class T>
 struct DescendingScore {
   bool operator ()(T *lhs, T *rhs) { return rhs->GetScore() < lhs->GetScore(); }
 };
-// TODO: prevent to truncate discontinuous hyper-edge
-typedef std::tr1::unordered_map<HyperEdge, FeatureVectorInt*, HyperEdgeHash> EdgeFeatureMap;
-typedef std::pair<HyperEdge, FeatureVectorInt*> EdgeFeaturePair;
+
+typedef std::tr1::unordered_map<const HyperEdge*, FeatureVectorInt*,
+		PointerHash<const HyperEdge*>, PointerEqual<const HyperEdge*> > EdgeFeatureMap;
+typedef std::pair<const HyperEdge*, FeatureVectorInt*> EdgeFeaturePair;
 
 class HyperGraph {
 public:
@@ -35,8 +36,10 @@ public:
 
     virtual ~HyperGraph() {
         if(features_) {
-            BOOST_FOREACH(EdgeFeaturePair efp, *features_)
+            BOOST_FOREACH(EdgeFeaturePair efp, *features_){
+            	delete efp.first;
                 delete efp.second;
+            }
             delete features_;
         }
         BOOST_FOREACH(SpanStack * stack, stacks_)
@@ -129,9 +132,10 @@ protected:
                                 const Sentence & sent,
                                 const HyperEdge & edge);
 
+    // only for test
     void SetEdgeFeatures(const HyperEdge & edge, FeatureVectorInt * feat) {
         if(!features_) features_ = new EdgeFeatureMap;
-        features_->insert(MakePair(edge, feat));
+        features_->insert(MakePair(edge.Clone(), feat));
     }
 
     double GetEdgeScore(ReordererModel & model,

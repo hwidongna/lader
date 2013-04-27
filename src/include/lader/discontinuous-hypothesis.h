@@ -10,7 +10,6 @@
 
 #include <lader/hypothesis.h>
 #include <lader/discontinuous-hyper-edge.h>
-//#include <lader/target-span.h>
 #include <lader/util.h>
 #include <sstream>
 #include <iostream>

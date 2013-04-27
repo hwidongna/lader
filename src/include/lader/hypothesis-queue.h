@@ -8,13 +8,13 @@
 namespace lader {
 
 template< typename T >
-class pointer_comparator : public std::binary_function< T, T, bool >{
+class PointerLess : public std::binary_function< T, T, bool >{
 public :
-bool operator()( T x, T y ) const { return *x < *y; }
+	bool operator()( T x, T y ) const { return *x < *y; }
 };
 
 typedef std::priority_queue<Hypothesis*,
-		std::vector<Hypothesis*>, pointer_comparator<Hypothesis*> > HypothesisQueue;
+		std::vector<Hypothesis*>, PointerLess<Hypothesis*> > HypothesisQueue;
 
 }
 

@@ -1,10 +1,16 @@
 #!/bin/bash
 set -e
 GAP=$1
+BEAM=$2
 
 if [ $# -lt 1 ]
 then
 GAP=1
+fi
+
+if [ $# -lt 2 ]
+then
+BEAM=1
 fi
 # This bash file provides an example of how to run lader and evaluate its
 # accuracy. Before using this file, you must run train-model.sh to create
@@ -32,8 +38,8 @@ paste data/test.en output/test.en.class data/test.en.pos data/test.en.parse > ou
 # of the reordered words in the original sentence. Let's output all of them
 # for now.
 
-echo "../src/bin/lader -gap-size $GAP -model output/train-g$GAP.mod -out_format order,string,parse < output/test.en.annot > output/test.en.reordered"
-../src/bin/lader -gap-size $GAP -model output/train-g$GAP.mod -out_format order,string,parse < output/test.en.annot > output/test.en.reordered
+echo "../src/bin/lader -gap-size $GAP -model output/train-g$GAP.mod -out_format order,string,parse -beam $BEAM < output/test.en.annot > output/test.en.reordered"
+../src/bin/lader -gap-size $GAP -model output/train-g$GAP.mod -out_format order,string,parse -beam $BEAM < output/test.en.annot > output/test.en.reordered
 
 #############################################################################
 # 4. Evaluating the reordered output

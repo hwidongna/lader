@@ -28,39 +28,9 @@ public:
 	            			   edge,
 	            			   trg_left, trg_right,
 	            			   left_rank, right_rank,
-	            			   left_child, right_child) {
-//		cerr << "DiscontinuousHypothesis " << Hypothesis::GetEdge() << endl;
-//		const DiscontinuousHyperEdge * dedge = // this doesn't cause NULL
-//				dynamic_cast<const DiscontinuousHyperEdge*>(Hypothesis::GetEdge());
-//		if (dedge == NULL)
-//			THROW_ERROR("Invalide hyper-edge")
-//		else
-//			cerr << *this << endl;
-	}
+	            			   left_child, right_child) { }
 
-	DiscontinuousHypothesis(const Hypothesis & hyp) : Hypothesis(hyp) {
-//		Hypothesis(hyp.GetScore(), hyp.GetSingleScore(),
-//		NULL, // initialized below
-//		hyp.GetTrgLeft(), hyp.GetTrgRight(),
-//		hyp.GetLeftRank(), hyp.GetRightRank(),
-//		hyp.GetLeftChild(), hyp.GetRightChild()) {
-//		cerr << "DiscontinuousHypothesis(const Hypothesis & hyp) " << Hypothesis::GetEdge() << endl;
-//		const DiscontinuousHyperEdge * dedge =
-//				dynamic_cast<const DiscontinuousHyperEdge*>(Hypothesis::GetEdge());
-//		if (dedge == NULL)
-//			THROW_ERROR("Invalide hyper-edge")
-////		this->SetScore(hyp.GetScore());
-////		this->SetSingleScore(hyp.GetSingleScore());
-////		this->SetLoss(hyp.GetLoss());
-//		cerr << "copy a new edge" << dedge << endl;
-//		this->SetEdge(new DiscontinuousHyperEdge(*dedge));
-////		this->SetTrgLeft(hyp.GetTrgLeft());
-////		this->SetTrgRight(hyp.GetTrgRight());
-////		this->SetLeftRank(hyp.GetLeftRank());
-////		this->SetRightRank(hyp.GetRightRank());
-////		this->SetLeftChild(hyp.GetLeftChild());
-////		this->SetRightChild(hyp.GetRightChild());
-	}
+	DiscontinuousHypothesis(const Hypothesis & hyp) : Hypothesis(hyp) {	}
 	int GetM() const{
 		const DiscontinuousHyperEdge * dedge =
 				dynamic_cast<const DiscontinuousHyperEdge*>(Hypothesis::GetEdge());
@@ -109,8 +79,12 @@ namespace std {
 inline std::ostream& operator << ( std::ostream& out,
                                    const lader::DiscontinuousHypothesis & rhs )
 {
-    out << "<" << rhs.GetLeft() << ", " << rhs.GetM() << ", "  << rhs.GetN() << ", " << rhs.GetRight()
-    	<< ", " << rhs.GetTrgLeft() << ", " << rhs.GetTrgRight() << ", " << (char)rhs.GetEdgeType() << ", " << rhs.GetCenter() << ">";
+    out << "<" << rhs.GetLeft() << ", " << rhs.GetM() << ", "
+		<< rhs.GetN() << ", " << rhs.GetRight() << ", "
+		<< rhs.GetTrgLeft() << ", " << rhs.GetTrgRight() << ", "
+		<< (char)rhs.GetEdgeType() << ", " << rhs.GetCenter() << " :: "
+		<< rhs.GetLeftRank() << ", " << rhs.GetRightRank() << " :: "
+    	<< rhs.GetScore() << ", " << rhs.GetSingleScore() << ">";
     return out;
 }
 }

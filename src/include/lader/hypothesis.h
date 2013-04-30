@@ -160,7 +160,11 @@ namespace std {
 inline std::ostream& operator << ( std::ostream& out, 
                                    const lader::Hypothesis & rhs )
 {
-    out << "<" << rhs.GetLeft() << ", " << rhs.GetRight() << ", " << rhs.GetTrgLeft() << ", " << rhs.GetTrgRight() << ", " << (char)rhs.GetEdgeType() << ", " << rhs.GetCenter() << ">";
+    out << "<" << rhs.GetLeft() << ", " << rhs.GetRight() << ", "
+    	<< rhs.GetTrgLeft() << ", " << rhs.GetTrgRight() << ", "
+    	<< (char)rhs.GetEdgeType() << ", " << rhs.GetCenter() << " :: "
+    	<< rhs.GetLeftRank() << ", " << rhs.GetRightRank() << " :: "
+    	<< rhs.GetScore() << ", " << rhs.GetSingleScore() << ">";
     return out;
 }
 }

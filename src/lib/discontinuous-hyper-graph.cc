@@ -41,12 +41,12 @@ void DiscontinuousHyperGraph::AddHyperEdges(
 		c = right_l;
 		r = right_r;
 	}
-	// discontinuous + continuous = continuous
-	else if (right_m < 0 && right_n < 0 && left_m+1 == right_l && right_r+1 == left_n){
-		l = left_l;
-		c = right_l; // TODO: distinguish this case
-		r = left_r;
-	}
+//	// discontinuous + continuous = continuous
+//	else if (right_m < 0 && right_n < 0 && left_m+1 == right_l && right_r+1 == left_n){
+//		l = left_l;
+//		c = right_l; // TODO: distinguish this case
+//		r = left_r;
+//	}
 	// discontinuous + discontinuous = continuous
 	else if (left_m+1 == right_l && right_m+1 == left_n && left_r+1 == right_n){
 		l = left_l;
@@ -90,12 +90,12 @@ void DiscontinuousHyperGraph::AddDiscontinuousHyperEdges(
     if (left_m < 0 && left_m < 0 && right_m < 0 && right_n < 0){
         l = left_l; m = left_r; n = right_l; r = right_r;
     }
-    else if (left_m < 0 && left_n < 0 && left_r+1 == right_l){
-        l = left_l; m = right_m; n = right_n; r = right_r;
-    }
-    else if (right_m < 0 && right_n < 0 && left_r+1 == right_l){
-        l = left_l; m = left_m; n = left_n; r = right_r;
-    }
+//    else if (left_m < 0 && left_n < 0 && left_r+1 == right_l){
+//        l = left_l; m = right_m; n = right_n; r = right_r;
+//    }
+//    else if (right_m < 0 && right_n < 0 && left_r+1 == right_l){
+//        l = left_l; m = left_m; n = left_n; r = right_r;
+//    }
     else if (right_m < 0 && right_n < 0 && left_m+1 == right_l){
         l = left_l; m = right_r; n = left_n; r = left_r;
     }
@@ -224,18 +224,18 @@ SpanStack *DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
 	AddDiscontinuousHyperEdges(model, features, sent, q,
 			l, -1, -1, m,
 			n, -1, -1, r);
-	// continuous + discontinuous = discontinuous
-	//cerr << "continuous + discontinuous = discontinuous" << endl;
-	for (int i = l+1 ; i <= m ; i++)
-		AddDiscontinuousHyperEdges(model, features, sent, q,
-				l, -1, -1, i-1,
-				i, m, n, r);
-	// discontinuous + continuous = discontinuous
-	//cerr << "discontinuous + continuous = discontinuous" << endl;
-	for (int i = n+1 ; i <= r ; i++)
-		AddDiscontinuousHyperEdges(model, features, sent, q,
-				l, m, n, i-1,
-				i, -1, -1, r);
+//	// continuous + discontinuous = discontinuous
+//	//cerr << "continuous + discontinuous = discontinuous" << endl;
+//	for (int i = l+1 ; i <= m ; i++)
+//		AddDiscontinuousHyperEdges(model, features, sent, q,
+//				l, -1, -1, i-1,
+//				i, m, n, r);
+//	// discontinuous + continuous = discontinuous
+//	//cerr << "discontinuous + continuous = discontinuous" << endl;
+//	for (int i = n+1 ; i <= r ; i++)
+//		AddDiscontinuousHyperEdges(model, features, sent, q,
+//				l, m, n, i-1,
+//				i, -1, -1, r);
 	// discontinuous + continuous = discontinuous
 	//cerr << "discontinuous + left continuous = discontinuous" << endl;
 	for (int i = m ; i > l && n-i <= gap_; i--)
@@ -274,9 +274,7 @@ SpanStack *DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
 			spans.insert(MakePair(trg_idx, trg_span));
 		}
 		// Insert the hypothesis
-//		cerr << "Insert the hypothesis "
-//				"[" << hyp->GetLeft() << ", " << hyp->GetM() << ", " <<
-//				hyp->GetN() << ", " << hyp->GetRight() << "]" << endl;
+//		cerr << "Insert the discontinuous hypothesis " << *hyp << endl;
 		trg_span->AddHypothesis(*hyp);
 		num_processed++;
 		// If the next hypothesis on the stack is equal to the current
@@ -315,7 +313,6 @@ SpanStack * DiscontinuousHyperGraph::ProcessOneSpan(
 		int l, int r,
 		int beam_size, bool save_trg) {
 	// Create the temporary data members for this span
-//	HypothesisQueue q;
 	HypothesisQueue q;
 	double score;
 	// If the length is OK, add a terminal
@@ -365,13 +362,13 @@ SpanStack * DiscontinuousHyperGraph::ProcessOneSpan(
 				l, -1, -1, i-1,
 				i, -1, -1, r);
 		for (int d = 1 ; d <= D ; d++){
-			// discontinuous + continuous = continuous
-			//cerr << "discontinuous + continuous = continuous" << endl;
-			if ( i+d <= r ){
-				AddHyperEdges(model, features, sent, q,
-						l, i-1, i+d, r,
-						i, -1, -1, i-1+d);
-			}
+//			// discontinuous + continuous = continuous
+//			//cerr << "discontinuous + continuous = continuous" << endl;
+//			if ( i+d <= r ){
+//				AddHyperEdges(model, features, sent, q,
+//						l, i-1, i+d, r,
+//						i, -1, -1, i-1+d);
+//			}
 			// discontinuous + discontinuous = continuous
 			//cerr << "discontinuous + discontinuous = continuous" << endl;
 			for (int j = i+d+1 ; j <= r && j - (i + d) <= D ; j++){
@@ -407,8 +404,7 @@ SpanStack * DiscontinuousHyperGraph::ProcessOneSpan(
 			spans.insert(MakePair(trg_idx, trg_span));
 		}
 		// Insert the hypothesis
-//		cerr << "Insert the hypothesis "
-//				"[" << hyp->GetLeft() << ", " << hyp->GetRight() << "]" << endl;
+//		cerr << "Insert the hypothesis " << *hyp << endl;
 		trg_span->AddHypothesis(*hyp);
 		num_processed++;
 		// If the next hypothesis on the stack is equal to the current

@@ -34,6 +34,7 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
         // Over all values in the corpus
         int done = 0;
         BOOST_FOREACH(int sent, sent_order) {
+//        	cerr << "Sentence " << sent << endl;
             if(++done % 100 == 0) { cout << "."; cout.flush(); }
             HyperGraph * hyper_graph = new DiscontinuousHyperGraph(config.GetInt("gap-size"), config.GetBool("mp"));
             // If we are saving features for efficiency, recover the saved

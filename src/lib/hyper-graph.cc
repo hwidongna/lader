@@ -235,7 +235,7 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
                                  const Sentence & sent,
                                  int beam_size, bool save_trg) {
     n_ = sent[0]->GetNumWords();
-    stacks_.resize(n_+1, NULL);
+    stacks_.resize(n_ * (n_+1) / 2 + 1, NULL); // resize stacks in advance
     // Iterate through the right side of the span
     for(int L = 1; L <= n_; L++) {
         // Move the span from l to r, building hypotheses from small to large
@@ -254,7 +254,7 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
                 HyperEdge::EDGE_ROOT, -1, i, -1, (*top)[i]));
         root_stack->AddSpan(root);
     }
-    stacks_.push_back(root_stack);
+    stacks_[n_ * (n_+1) / 2] = root_stack;
 }
 
 // Add up the loss over an entire subtree defined by span

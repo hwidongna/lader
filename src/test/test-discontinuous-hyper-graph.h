@@ -371,6 +371,31 @@ public:
         return ret;
     }
 
+    int TestBuildHyperGraphSize1() {
+            HyperGraph graph = DiscontinuousHyperGraph(0);
+            set.SetMaxTerm(0);
+            sent.FromString("one");
+    		sent_pos.FromString("NNS");
+            graph.BuildHyperGraph(model, set, datas);
+            const std::vector<SpanStack*> & stacks = graph.GetStacks();
+            int ret = 1;
+            SpanStack * stack00 = graph.HyperGraph::GetStack(0, 0);
+            SpanStack * stackRoot = graph.HyperGraph::GetStack(-1, 0);
+            // The total number of stacks should be 1 + 1: 0-0 root
+            if(stacks.size() != 2) {
+                cerr << "stacks.size() != 2: " << stacks.size() << endl; ret = 0;
+            // The number of target spans should be 1:
+            } else if (stack00->size() != 1) {
+                cerr << "Root node stack00->size() != 1: " << stack00->size()<< endl;
+                BOOST_FOREACH(const TargetSpan *span, stack00->GetSpans())
+                    cerr << " " << span->GetTrgLeft() << "-" <<span->GetTrgRight() << endl;
+                ret = 0;
+            } else if (stackRoot->GetSpans().size() != stack00->size()) {
+                cerr << "Root hypotheses " << stackRoot->GetSpans().size()
+                     << " and root spans " << stack00->size() << " don't match." << endl; ret = 0;
+            }
+            return ret;
+        }
 
     int TestBuildHyperGraphNoSave() {
     	HyperGraph graph = DiscontinuousHyperGraph(1);
@@ -576,6 +601,7 @@ public:
         done++; cout << "TestReorderingAndPrint()" << endl; if(TestReorderingAndPrint()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestPrintHyperGraph()" << endl; if(TestPrintHyperGraph()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestBuildHyperGraphGap2()" << endl; if(TestBuildHyperGraphGap2()) succeeded++; else cout << "FAILED!!!" << endl;
+        done++; cout << "TestBuildHyperGraphSize1()" << endl; if(TestBuildHyperGraphSize1()) succeeded++; else cout << "FAILED!!!" << endl;
         cout << "#### TestDiscontinuousHyperGraph Finished with "<<succeeded<<"/"<<done<<" tests succeeding ####"<<endl;
         return done == succeeded;
     }

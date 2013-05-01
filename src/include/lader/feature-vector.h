@@ -5,6 +5,9 @@
 #include <string>
 #include <climits>
 #include <lader/util.h>
+#include <boost/foreach.hpp>
+#include <sstream>
+#include <iostream>
 
 namespace lader {
 
@@ -20,5 +23,15 @@ FeatureVectorInt VectorSubtract(const FeatureVectorInt & a,
 
 }
 
+namespace std {
+// Output function for pairs
+inline std::ostream& operator << ( std::ostream& out,
+                                   const lader::FeatureVectorString & rhs )
+{
+	BOOST_FOREACH(lader::FeaturePairString pair, rhs)
+		out << pair.first << ":" << pair.second << ", ";
+    return out;
+}
+}
 #endif
 

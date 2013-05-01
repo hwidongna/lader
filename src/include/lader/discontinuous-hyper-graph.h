@@ -17,8 +17,8 @@ namespace lader{
 class DiscontinuousHyperGraph : public HyperGraph{
 	friend class TestDiscontinuousHyperGraph;
 public:
-	DiscontinuousHyperGraph(int gapSize = 1, bool mp = false)
-	: gap_(gapSize), mp_(mp){ }
+	DiscontinuousHyperGraph(int gapSize = 1, bool mp = false, int verbose = 0)
+	: gap_(gapSize), mp_(mp), verbose_(verbose){ }
     virtual ~DiscontinuousHyperGraph(){
         BOOST_FOREACH(HyperGraph* graph, next_)
             if (graph != NULL)
@@ -113,8 +113,9 @@ protected:
     void nextCubeItems(const Hypothesis * hyp,
     		HypothesisQueue & q, int l, int r, bool gap=true);
 private:
-	int gap_;
-	bool mp_;
+	int gap_; // maximum gap size
+	bool mp_; // monotone at punctuation
+	int verbose_; // verbosity during process
 	std::vector<HyperGraph*> next_;
 };
 

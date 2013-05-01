@@ -3,6 +3,7 @@
 #include <lader/thread-pool.h>
 #include <lader/output-collector.h>
 #include <boost/tokenizer.hpp>
+#include <lader/discontinuous-hyper-graph.h>
 
 using namespace lader;
 using namespace std;
@@ -10,12 +11,13 @@ using namespace boost;
 
 void ReordererTask::Run() {
     // Load the data
-//	cerr << "Sentence " << id_ << endl;
+	if (verbose_)
+		cerr << "Sentence " << id_ << endl;
     std::vector<FeatureDataBase*> datas = features_->ParseInput(line_);
     // Save the original string
     vector<string> words = ((FeatureDataSequence*)datas[0])->GetSequence();
     // Build the hypergraph
-    HyperGraph * hyper_graph = new DiscontinuousHyperGraph(gap_, mp_);
+    HyperGraph * hyper_graph = new DiscontinuousHyperGraph(gap_, mp_, verbose_);
     hyper_graph->BuildHyperGraph(*model_, *features_, datas, beam_, false);
     // Reorder
     std::vector<int> reordering;
@@ -59,14 +61,19 @@ void ReordererRunner::Run(const ConfigRunner & config) {
     int id = 0, beam = config.GetInt("beam");
     int gapSize = config.GetInt("gap-size");
     bool mp = config.GetBool("mp");
+    int verbose = config.GetInt("verbose");
+    std::string source_in = config.GetString("source_in");
+    std::ifstream in(source_in.c_str());
     if (gapSize > 0)
     	cerr << "use discontinuous hyper-graph: D=" << gapSize << endl;
     if (mp)
         cerr << "enable monotone at punctuation to prevent excessive reordering" << endl;
-    while(std::getline(std::cin, line)) {
-    	ReordererTask *task = new ReordererTask(id++, line, model_, features_, &outputs_, beam, &collector, gapSize, mp);
+    while(std::getline(in != NULL? in : std::cin, line)) {
+    	ReordererTask *task = new ReordererTask(id++, line, model_, features_, &outputs_,
+    			beam, &collector, gapSize, mp, verbose);
         pool.Submit(task);
     }
+    if (in) in.close();
     pool.Stop(true); 
 }
 

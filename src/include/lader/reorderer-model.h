@@ -4,13 +4,12 @@
 #include <vector>
 #include <lader/feature-set.h>
 #include <lader/feature-vector.h>
-#include <lader/hyper-graph.h>
-#include <lader/discontinuous-hyper-graph.h>
 
 namespace lader {
 
 // A reorderer model that contains the weights and the feature set
 class ReordererModel {
+	class HyperGraph;
 public:
     
     // Initialize the pegasos model

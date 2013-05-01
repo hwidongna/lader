@@ -10,6 +10,7 @@
 #include <lader/feature-sequence.h>
 #include <lader/feature-set.h>
 #include <lader/ranks.h>
+#include <lader/hyper-graph.h>
 
 namespace lader {
 

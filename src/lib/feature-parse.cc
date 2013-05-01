@@ -192,11 +192,11 @@ void FeatureParse::GenerateEdgeFeatures(
                                                         templ.second[i]));
                 }
             }
-            if(feat_val)
-                feat.push_back(
-                    MakePair(
-                        feature_ids.GetId(algorithm::join(values,"||"), add),
-                                          feat_val));
+            if(feat_val){
+                int id = feature_ids.GetId(algorithm::join(values,"||"), add);
+                if (id >= 0)
+                	feat.push_back(MakePair(id, feat_val));
+            }
         }
     }
 }

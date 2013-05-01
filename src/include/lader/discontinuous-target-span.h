@@ -2,6 +2,7 @@
 #define DISCONTINUOUS_TARGET_SPAN_H__
 
 #include <lader/target-span.h>
+#include <lader/discontinuous-hypothesis.h>
 
 namespace lader {
 

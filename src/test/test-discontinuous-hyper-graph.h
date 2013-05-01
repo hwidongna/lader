@@ -13,6 +13,7 @@
 #include <lader/feature-set.h>
 #include <lader/ranks.h>
 #include <lader/feature-base.h>
+#include <lader/discontinuous-hyper-graph.h>
 using namespace std;
 
 namespace lader {

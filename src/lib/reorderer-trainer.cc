@@ -1,5 +1,6 @@
 #include <lader/reorderer-trainer.h>
 #include <boost/algorithm/string.hpp>
+#include <lader/discontinuous-hyper-graph.h>
 
 using namespace lader;
 using namespace boost;
@@ -13,16 +14,20 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
     if(config.GetString("parse_in").length())
         ReadParses(config.GetString("parse_in"));
     int verbose = config.GetInt("verbose");
+    int gapSize = config.GetInt("gap-size");
+    bool mp = config.GetBool("mp");
     // Temporary values
     bool loss_aug = config.GetBool("loss_augmented_inference");
     double model_score = 0, model_loss = 0, oracle_score = 0, oracle_loss = 0;
     FeatureVectorInt model_features, oracle_features;
     vector<int> sent_order(data_.size());
-    for(int i = 0 ; i < (int)sent_order.size(); i++)
+    for(int i = 0 ; i < (int)(sent_order.size());i++)
         sent_order[i] = i;
-    if (config.GetInt("gap-size") > 0)
-    	cerr << "use a discontinuous hyper-graph: D=" << config.GetInt("gap-size") << endl;
-    if (config.GetBool("mp"))
+
+    if(gapSize > 0)
+        cerr << "use a discontinuous hyper-graph: D=" << gapSize << endl;
+
+    if(mp)
         cerr << "enable monotone at punctuation to prevent excessive reordering" << endl;
     // Perform an iteration
     cerr << "(\".\" == 100 sentences)" << endl;
@@ -34,9 +39,10 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
         // Over all values in the corpus
         int done = 0;
         BOOST_FOREACH(int sent, sent_order) {
-//        	cerr << "Sentence " << sent << endl;
+        	if (verbose)
+        		cerr << "Sentence " << sent << endl;
             if(++done % 100 == 0) { cout << "."; cout.flush(); }
-            HyperGraph * hyper_graph = new DiscontinuousHyperGraph(config.GetInt("gap-size"), config.GetBool("mp"));
+            HyperGraph * hyper_graph = new DiscontinuousHyperGraph(gapSize, mp, verbose);
             // If we are saving features for efficiency, recover the saved
             // features and replace them in the hypergraph
             if(config.GetBool("save_features") && iter != 0)

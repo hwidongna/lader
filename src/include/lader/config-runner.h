@@ -32,6 +32,8 @@ public:
         AddConfigEntry("gap-size", "1", "The gap size for discontinuous hyper graph");
         AddConfigEntry("mp", "false", "Monotone at punctuation");
         AddConfigEntry("threads", "1", "The number of threads to use");
+        AddConfigEntry("verbose", "0", "The level of debugging output to print");
+        AddConfigEntry("source_in", "", "The input file for the source sentences");
 
     }
 	

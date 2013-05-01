@@ -10,6 +10,8 @@
 #include <lader/discontinuous-hyper-edge.h>
 #include <lader/discontinuous-target-span.h>
 #include <lader/hypothesis-queue.h>
+#include <lader/reorderer-model.h>
+#include <lader/feature-vector.h>
 #include <tr1/unordered_map>
 #include <boost/algorithm/string.hpp>
 #include <lader/util.h>
@@ -218,7 +220,8 @@ SpanStack *DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
 		int beam_size, bool save_trg){
 	HypothesisQueue q;
 	double score, viterbi_score;
-//	cerr << "AddDiscontinuousHyperEdges ["<<l<<", "<<m<<", "<<n<<", "<<r<<"]" << endl;
+	if (verbose_)
+		cerr << "AddDiscontinuousHyperEdges ["<<l<<", "<<m<<", "<<n<<", "<<r<<"]" << endl;
 	// continuous + continuous = discontinuous
 	//cerr << "continuous + continuous = discontinuous" << endl;
 	AddDiscontinuousHyperEdges(model, features, sent, q,
@@ -274,7 +277,13 @@ SpanStack *DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
 			spans.insert(MakePair(trg_idx, trg_span));
 		}
 		// Insert the hypothesis
-//		cerr << "Insert the discontinuous hypothesis " << *hyp << endl;
+		if (verbose_){
+			cerr << "Insert the discontinuous hypothesis " << *hyp << endl;
+			const FeatureVectorInt * fvi = HyperGraph::GetEdgeFeatures(model, features, sent, *hyp->GetEdge());
+			FeatureVectorString * fvs = model.StringifyFeatureVector(*fvi);
+			cerr << *fvs << endl;
+			delete fvs;
+		}
 		trg_span->AddHypothesis(*hyp);
 		num_processed++;
 		// If the next hypothesis on the stack is equal to the current
@@ -339,7 +348,8 @@ SpanStack * DiscontinuousHyperGraph::ProcessOneSpan(
 
 	int N = n_ = sent[0]->GetNumWords();
 	int D = gap_;
-//	cerr << "AddHyperEdges ["<<l<<", "<<r<<"]" << endl;
+	if (verbose_)
+		cerr << "AddHyperEdges ["<<l<<", "<<r<<"]" << endl;
 	for (int i = l+1 ; i <= r ; i++){
 		if (hasPunct && mp_){ // monotone at punctuation
 			TargetSpan *left_trg, *right_trg;
@@ -404,7 +414,13 @@ SpanStack * DiscontinuousHyperGraph::ProcessOneSpan(
 			spans.insert(MakePair(trg_idx, trg_span));
 		}
 		// Insert the hypothesis
-//		cerr << "Insert the hypothesis " << *hyp << endl;
+		if (verbose_){
+			cerr << "Insert the hypothesis " << *hyp << endl;
+			const FeatureVectorInt * fvi = HyperGraph::GetEdgeFeatures(model, features, sent, *hyp->GetEdge());
+			FeatureVectorString * fvs = model.StringifyFeatureVector(*fvi);
+			cerr << *fvs << endl;
+			delete fvs;
+		}
 		trg_span->AddHypothesis(*hyp);
 		num_processed++;
 		// If the next hypothesis on the stack is equal to the current

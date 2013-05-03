@@ -10,8 +10,8 @@ namespace lader {
 
 class DiscontinuousTargetSpan : public TargetSpan{
 public:
-    DiscontinuousTargetSpan(int left, int m, int n, int right, int trg_left, int trg_right)
-                    : TargetSpan(left, right, trg_left, trg_right), m_(m), n_(n) { }
+    DiscontinuousTargetSpan(int left, int m, int n, int right)
+                    : TargetSpan(left, right), m_(m), n_(n) { }
 
     void AddHypothesis(const Hypothesis & hyp) {
     	DiscontinuousHypothesis * new_hyp = new DiscontinuousHypothesis(hyp);
@@ -37,8 +37,7 @@ inline std::ostream& operator << ( std::ostream& out,
                                    const lader::DiscontinuousTargetSpan & rhs )
 {
     out << "<" << rhs.GetLeft() << ", " << rhs.GetM() << ", "
-		<< rhs.GetN() << ", " << rhs.GetRight() << ", "
-    	<< rhs.GetTrgLeft() << ", " << rhs.GetTrgRight() << ">";
+		<< rhs.GetN() << ", " << rhs.GetRight() << ">";
     return out;
 }
 }

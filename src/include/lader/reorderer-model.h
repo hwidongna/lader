@@ -57,6 +57,14 @@ public:
         return ret;
     }
 
+    // Get the strings for a feature vector index
+    FeatureVectorString *StringifyWeightVector(const FeatureVectorInt & str){
+    	FeatureVectorString * ret = new FeatureVectorString(str.size());
+    	for(int i = 0; i < (int)str.size(); i++)
+    		(*ret)[i] = MakePair(feature_ids_.GetSymbol(str[i].first),
+    				GetWeight(str[i].first));
+    	return ret;
+    }
     // IO Functions
     void ToStream(std::ostream & out);
     static ReordererModel * FromStream(std::istream & in);

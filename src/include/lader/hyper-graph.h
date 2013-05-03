@@ -3,7 +3,6 @@
 
 #include <iostream>
 #include <lader/target-span.h>
-#include <lader/span-stack.h>
 #include <lader/feature-vector.h>
 #include <lader/feature-data-base.h>
 #include <lader/hyper-edge.h>
@@ -22,10 +21,6 @@ struct DescendingScore {
   bool operator ()(T *lhs, T *rhs) { return rhs->GetScore() < lhs->GetScore(); }
 };
 
-typedef std::tr1::unordered_map<const HyperEdge*, FeatureVectorInt*,
-		PointerHash<const HyperEdge*>, PointerEqual<const HyperEdge*> > EdgeFeatureMap;
-typedef std::pair<const HyperEdge*, FeatureVectorInt*> EdgeFeaturePair;
-
 class HyperGraph {
 public:
     
@@ -42,7 +37,7 @@ public:
             }
             delete features_;
         }
-        BOOST_FOREACH(SpanStack * stack, stacks_)
+        BOOST_FOREACH(TargetSpan * stack, stacks_)
             delete stack;
     }
     
@@ -55,70 +50,51 @@ public:
                          int beam_size = 0,
                          bool save_trg = true);
 
-    const SpanStack * GetStack(int l, int r) const {
+    const TargetSpan * GetStack(int l, int r) const {
         return SafeAccess(stacks_, GetTrgSpanID(l,r));
     }
-    SpanStack * GetStack(int l, int r) {
+    TargetSpan * GetStack(int l, int r) {
         return SafeAccess(stacks_, GetTrgSpanID(l,r));
     }
-    const std::vector<SpanStack*> & GetStacks() const { return stacks_; }
-    std::vector<SpanStack*> & GetStacks() { return stacks_; }
+    const std::vector<TargetSpan*> & GetStacks() const { return stacks_; }
+    std::vector<TargetSpan*> & GetStacks() { return stacks_; }
 
 
     // Scoring functions
     double Score(const ReordererModel & model, double loss_multiplier,
-                 TargetSpan* span);
-    double Score(const ReordererModel & model, double loss_multiplier,
                  Hypothesis* hyp);
-
-    virtual TargetSpan * GetTrgSpan(int l, int r, int rank) {
-#ifdef LADER_SAFE
-        if(l < 0 || r < 0 || rank < 0)
-            THROW_ERROR("Bad GetTrgSpan (l="<<l<<", r="<<r<<")"<<std::endl);
-#endif
-        int idx = GetTrgSpanID(l,r);
-        if((int)stacks_.size() <= idx)
-            return NULL;
-        else
-            return SafeAccess(stacks_, idx)->GetSpanOfRank(rank);
-    }
 
     // Print the whole hypergraph in JSON format
     void PrintHyperGraph(const std::vector<std::string> & sent,
                          std::ostream & out);
 
     // Rescore the hypergraph using the given model and a loss multiplier
+    // Keep the hypergraph structure defined in the hypotheses except the root stack
     virtual double Rescore(const ReordererModel & model, double loss_multiplier);
 
     const TargetSpan * GetRoot() const {
-        return SafeAccess(stacks_, stacks_.size()-1)->GetSpanOfRank(0);
+        return SafeAccess(stacks_, stacks_.size()-1);
     }
     TargetSpan * GetRoot() {
-        return SafeAccess(stacks_, stacks_.size()-1)->GetSpanOfRank(0);
+        return SafeAccess(stacks_, stacks_.size()-1);
     }
-
+    Hypothesis * GetBest() {
+    	return SafeAccess(stacks_, stacks_.size()-1)->GetHypothesis(0);
+    }
     // Add up the loss over an entire sentence
     virtual void AddLoss(
     		LossBase* loss,
     		const Ranks * ranks,
             const FeatureDataParse * parse) const;
-    // Add up the loss over an entire subtree defined by span
-    double AccumulateLoss(const TargetSpan* span);
-
-    FeatureVectorInt AccumulateFeatures(const TargetSpan* span);
-
-    void AccumulateFeatures(const TargetSpan* span, 
-                            std::tr1::unordered_map<int,double> & feat_map);
 
     void SetFeatures(EdgeFeatureMap * features) { features_ = features;}
     EdgeFeatureMap * GetFeatures() { return features_; }
     // Clear the feature array without deleting the features themselves
     // This is useful if you want to save the features for later use
     void ClearFeatures() { features_ = NULL; }
-    int GetSrcLen() const { return n_; }
 
 protected:
-    virtual SpanStack * ProcessOneSpan(ReordererModel & model,
+    virtual TargetSpan * ProcessOneSpan(ReordererModel & model,
                                const FeatureSet & features,
                                const Sentence & sent,
                                int l, int r,
@@ -149,7 +125,7 @@ protected:
         return r*(r+1)/2 + l;
     }
 
-    virtual void SetStack(int l, int r, SpanStack * stack) {
+    virtual void SetStack(int l, int r, TargetSpan * stack) {
 #ifdef LADER_SAFE
         if(l < 0 || r < 0)
             THROW_ERROR("Bad SetStack (l="<<l<<", r="<<r<<")"<<std::endl);
@@ -170,7 +146,7 @@ private:
     //  0-0 -> 0, 0-1 -> 1, 1-1 -> 2, 0-2 -> 3 ...
     // And can be recovered by GetHypothesis.
     // The inner vector contains target spans in descending rank of score
-    std::vector<SpanStack*> stacks_;
+    std::vector<TargetSpan*> stacks_;
 
 protected:
     // The length of the sentence

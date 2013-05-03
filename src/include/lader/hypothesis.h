@@ -2,11 +2,16 @@
 #define HYPOTHESIS_H__
 
 #include <lader/hyper-edge.h>
+#include <lader/feature-vector.h>
 #include <lader/util.h>
 #include <sstream>
 #include <iostream>
 
 namespace lader {
+
+typedef std::tr1::unordered_map<const HyperEdge*, FeatureVectorInt*,
+		PointerHash<const HyperEdge*>, PointerEqual<const HyperEdge*> > EdgeFeatureMap;
+typedef std::pair<const HyperEdge*, FeatureVectorInt*> EdgeFeaturePair;
 
 class TargetSpan;
 
@@ -32,11 +37,6 @@ public:
 				HyperEdge::Type type, int center = -1,
 				int left_rank = -1, int right_rank = -1,
 				TargetSpan* left_child = NULL, TargetSpan* right_child = NULL) :
-//				Hypothesis(viterbi_score, single_score,
-//						new HyperEdge(left, center, right, type),
-//						trg_left, trg_right,
-//						left_rank, right_rank,
-//						left_child, right_child)
 				viterbi_score_(viterbi_score),
 				single_score_(single_score), loss_(0),
 				edge_(new HyperEdge(left, center, right, type)),
@@ -142,6 +142,12 @@ public:
     void SetTrgRight(int dub) { trg_right_ = dub; }
     void SetType(HyperEdge::Type type) { edge_->SetType(type); } // only for testing
     virtual void PrintChildren( std::ostream& out ) const;
+
+    // Add up the loss over an entire subtree defined by this hyp
+    double AccumulateLoss();
+    FeatureVectorInt AccumulateFeatures(const EdgeFeatureMap * features);
+    void AccumulateFeatures(const EdgeFeatureMap * features,
+                            std::tr1::unordered_map<int,double> & feat_map);
 
 private:
     double viterbi_score_; // The Viterbi score for the entire subtree that

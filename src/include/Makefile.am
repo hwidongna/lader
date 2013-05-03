@@ -7,7 +7,7 @@ lader/feature-sequence.h lader/feature-set.h lader/feature-vector.h \
 lader/hyper-edge.h lader/hyper-graph.h lader/hypothesis.h lader/hypothesis-queue.h \
 lader/loss-base.h lader/loss-bracket.h lader/loss-chunk.h lader/loss-tau.h lader/ranks.h \
 lader/reorderer-evaluator.h lader/reorderer-model.h lader/reorderer-runner.h \
-lader/reorderer-trainer.h lader/span-stack.h lader/symbol-set.h lader/target-span.h \
+lader/reorderer-trainer.h lader/symbol-set.h lader/target-span.h \
 lader/util.h lader/config.h lader/thread-pool.h lader/output-collector.h \
 lader/discontinuous-hyper-edge.h lader/discontinuous-hyper-graph.h \
 lader/discontinuous-hypothesis.h lader/discontinuous-target-span.h

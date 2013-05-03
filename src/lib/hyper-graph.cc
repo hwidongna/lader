@@ -32,21 +32,6 @@ const FeatureVectorInt * HyperGraph::GetEdgeFeatures(
     return ret;
 }
 
-// Score a span
-double HyperGraph::Score(const ReordererModel & model,
-                       double loss_multiplier,
-                       TargetSpan* span) {
-    if(span->GetScore() == -DBL_MAX) {
-        std::vector<Hypothesis*> & hyps = span->GetHypotheses();
-        for(int i = 0; i < (int)hyps.size(); i++) {
-            Score(model, loss_multiplier, hyps[i]);
-            if(hyps[i]->GetScore() > hyps[0]->GetScore())
-                swap(hyps[i], hyps[0]);
-        }
-    }
-    return span->GetScore();
-}
-
 // Score a hypothesis
 double HyperGraph::Score(const ReordererModel & model,
                          double loss_multiplier,
@@ -54,9 +39,7 @@ double HyperGraph::Score(const ReordererModel & model,
     double score = hyp->GetScore();
     if(score == -DBL_MAX) { 
         score = hyp->GetLoss()*loss_multiplier;
-        int l = hyp->GetLeft(), c = hyp->GetCenter(), r = hyp->GetRight();
-        HyperEdge::Type t = hyp->GetEdgeType();
-        if(t != HyperEdge::EDGE_ROOT) {
+        if(hyp->GetEdgeType() != HyperEdge::EDGE_ROOT) {
             EdgeFeatureMap::const_iterator fit =
                                         features_->find(hyp->GetEdge());
             if(fit == features_->end())
@@ -65,30 +48,30 @@ double HyperGraph::Score(const ReordererModel & model,
         }
         hyp->SetSingleScore(score);
         if(hyp->GetLeftChild()) 
-            score += Score(model, loss_multiplier, hyp->GetLeftChild());
+            score += Score(model, loss_multiplier, hyp->GetLeftHyp());
         if(hyp->GetRightChild()) 
-            score += Score(model, loss_multiplier, hyp->GetRightChild());
+            score += Score(model, loss_multiplier, hyp->GetRightHyp());
         hyp->SetScore(score);
     }
     return score;
 }
 
+// Rescore the hypergraph using the given model and a loss multiplier
+// Keep the hypergraph structure defined in the hypotheses except the root stack
 double HyperGraph::Rescore(const ReordererModel & model, double loss_multiplier) {
     // Reset everything to -DBL_MAX to indicate it needs to be recalculated
-    BOOST_FOREACH(SpanStack * stack, stacks_)
-        BOOST_FOREACH(TargetSpan * trg, stack->GetSpans())
-            BOOST_FOREACH(Hypothesis * hyp, trg->GetHypotheses())
-                hyp->SetScore(-DBL_MAX);
-    // Recursively score all edges from the root
-    SpanStack * root = *stacks_.rbegin();
-    BOOST_FOREACH(TargetSpan * trg, root->GetSpans())
-        Score(model, loss_multiplier, trg);
-    // Sort to make sure that the spans are all in the right order 
-    BOOST_FOREACH(SpanStack * stack, stacks_)
-        sort(stack->GetSpans().begin(), stack->GetSpans().end(), 
-                                        DescendingScore<TargetSpan>()); 
-    TargetSpan* best = root->GetSpanOfRank(0);
-    return best->GetScore();
+    BOOST_FOREACH(TargetSpan * stack, stacks_)
+		BOOST_FOREACH(Hypothesis * hyp, stack->GetHypotheses())
+			hyp->SetScore(-DBL_MAX);
+    // Score from root for all hypotheses, while keeping the best hyp at hyps[0]
+    // Therefore, this keep the forest structure by BuildHyperGraph
+    std::vector<Hypothesis*> & hyps = GetRoot()->GetHypotheses();
+    for(int i = 0; i < (int)hyps.size(); i++) {
+        Score(model, loss_multiplier, hyps[i]);
+        if(hyps[i]->GetScore() > hyps[0]->GetScore())
+            swap(hyps[i], hyps[0]);
+    }
+    return hyps[0]->GetScore();
 }
 
 // Get the score for a single edge
@@ -102,7 +85,7 @@ double HyperGraph::GetEdgeScore(ReordererModel & model,
 }
 
 // Build a hypergraph using beam search and cube pruning
-SpanStack * HyperGraph::ProcessOneSpan(ReordererModel & model,
+TargetSpan * HyperGraph::ProcessOneSpan(ReordererModel & model,
                                        const FeatureSet & features,
                                        const Sentence & sent,
                                        int l, int r,
@@ -125,52 +108,44 @@ SpanStack * HyperGraph::ProcessOneSpan(ReordererModel & model,
         	q.push(new Hypothesis(score, score, edge, tr, tl));
         }
     }
-    TargetSpan *left_trg, *right_trg, 
-               *new_left_trg, *old_left_trg,
-               *new_right_trg, *old_right_trg;
+    TargetSpan *left_stack, *right_stack;
+    Hypothesis *new_left_hyp, *old_left_hyp,
+               *new_right_hyp, *old_right_hyp;
     // Add the best hypotheses for each non-terminal to the queue
     for(int c = l+1; c <= r; c++) {
         // Find the best hypotheses on the left and right side
-        left_trg = GetTrgSpan(l, c-1, 0);
-        right_trg = GetTrgSpan(c, r, 0);
-        if(left_trg == NULL) THROW_ERROR("Target l="<<l<<", c-1="<<c-1);
-        if(right_trg == NULL) THROW_ERROR("Target c="<<c<<", r="<<r);
+        left_stack = GetStack(l, c-1);
+        right_stack = GetStack(c, r);
+        if(left_stack == NULL) THROW_ERROR("Target l="<<l<<", c-1="<<c-1);
+        if(right_stack == NULL) THROW_ERROR("Target c="<<c<<", r="<<r);
         // Add the straight terminal
         HyperEdge * edge = new HyperEdge(l, c, r, HyperEdge::EDGE_STR);
         score = GetEdgeScore(model, features, sent, *edge);
-        viterbi_score = score + left_trg->GetScore() + right_trg->GetScore();
+        viterbi_score = score + left_stack->GetScore() + right_stack->GetScore();
         q.push(new Hypothesis(viterbi_score, score, edge,
-                         left_trg->GetTrgLeft(), right_trg->GetTrgRight(),
-                         0, 0, left_trg, right_trg));
+                         left_stack->GetHypothesis(0)->GetTrgLeft(),
+                         right_stack->GetHypothesis(0)->GetTrgRight(),
+                         0, 0, left_stack, right_stack));
         // Add the inverted terminal
         edge = new HyperEdge(l, c, r, HyperEdge::EDGE_INV);
         score = GetEdgeScore(model, features, sent, *edge);
-        viterbi_score = score + left_trg->GetScore() + right_trg->GetScore();
+        viterbi_score = score + left_stack->GetScore() + right_stack->GetScore();
         q.push(new Hypothesis(viterbi_score, score, edge,
-                         right_trg->GetTrgLeft(), left_trg->GetTrgRight(),
-                         0, 0, left_trg, right_trg));
+						 right_stack->GetHypothesis(0)->GetTrgLeft(),
+						 left_stack->GetHypothesis(0)->GetTrgRight(),
+                         0, 0, left_stack, right_stack));
 
     }
     // Get a map to store identical target spans
-    tr1::unordered_map<int, TargetSpan*> spans;
     int r_max = r+1;
-    TargetSpan * trg_span = NULL;
+    TargetSpan * ret = new TargetSpan(l, r);
     // Start beam search
     int num_processed = 0;
     while((!beam_size || num_processed < beam_size) && q.size()) {
         // Pop a hypothesis from the stack and get its target span
         Hypothesis * hyp = q.top(); q.pop();
-        int trg_idx = hyp->GetTrgLeft()*r_max+hyp->GetTrgRight();
-        tr1::unordered_map<int, TargetSpan*>::iterator it = spans.find(trg_idx);
-        if(it != spans.end()) {
-            trg_span = it->second;
-        } else {
-            trg_span = new TargetSpan(hyp->GetLeft(), hyp->GetRight(),
-                                      hyp->GetTrgLeft(), hyp->GetTrgRight());
-            spans.insert(MakePair(trg_idx, trg_span));
-        }
         // Insert the hypothesis
-        trg_span->AddHypothesis(*hyp);
+        ret->AddHypothesis(*hyp);
         num_processed++;
         // If the next hypothesis on the stack is equal to the current
         // hypothesis, remove it, as this just means that we added the same
@@ -182,36 +157,38 @@ SpanStack * HyperGraph::ProcessOneSpan(ReordererModel & model,
         // Skip terminals
         if(hyp->GetCenter() == -1) continue;
         // Increment the left side if there is still a hypothesis left
-        new_left_trg = GetTrgSpan(l, hyp->GetCenter()-1, hyp->GetLeftRank()+1);
-        if(new_left_trg) {
-            old_left_trg = GetTrgSpan(l,hyp->GetCenter()-1,hyp->GetLeftRank());
+        left_stack = GetStack(l, hyp->GetCenter()-1);
+        new_left_hyp = left_stack->GetHypothesis(hyp->GetLeftRank()+1);
+        if(new_left_hyp) {
+            old_left_hyp = left_stack->GetHypothesis(hyp->GetLeftRank());
             Hypothesis *  new_hyp = new Hypothesis(*hyp);
             new_hyp->SetEdge(new HyperEdge(*hyp->GetEdge()));
             new_hyp->SetScore(hyp->GetScore()
-                        - old_left_trg->GetScore() + new_left_trg->GetScore());
+                        - old_left_hyp->GetScore() + new_left_hyp->GetScore());
             new_hyp->SetLeftRank(hyp->GetLeftRank()+1);
-            new_hyp->SetLeftChild(new_left_trg);
+            new_hyp->SetLeftChild(left_stack);
             if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR) {
-                new_hyp->SetTrgLeft(new_left_trg->GetTrgLeft());
+                new_hyp->SetTrgLeft(new_left_hyp->GetTrgLeft());
             } else {
-                new_hyp->SetTrgRight(new_left_trg->GetTrgRight());
+                new_hyp->SetTrgRight(new_left_hyp->GetTrgRight());
             }
             q.push(new_hyp);
         }
         // Increment the right side if there is still a hypothesis right
-        new_right_trg = GetTrgSpan(hyp->GetCenter(),r,hyp->GetRightRank()+1);
-        if(new_right_trg) {
-            old_right_trg = GetTrgSpan(hyp->GetCenter(),r,hyp->GetRightRank());
+        right_stack = GetStack(hyp->GetCenter(),r);
+        new_right_hyp = right_stack->GetHypothesis(hyp->GetRightRank()+1);
+        if(new_right_hyp) {
+            old_right_hyp = right_stack->GetHypothesis(hyp->GetRightRank());
             Hypothesis *  new_hyp = new Hypothesis(*hyp);
             new_hyp->SetEdge(new HyperEdge(*hyp->GetEdge()));
             new_hyp->SetScore(hyp->GetScore()
-                    - old_right_trg->GetScore() + new_right_trg->GetScore());
+                    - old_right_hyp->GetScore() + new_right_hyp->GetScore());
             new_hyp->SetRightRank(hyp->GetRightRank()+1);
-            new_hyp->SetRightChild(new_right_trg);
+            new_hyp->SetRightChild(right_stack);
             if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR) {
-                new_hyp->SetTrgRight(new_right_trg->GetTrgRight());
+                new_hyp->SetTrgRight(new_right_hyp->GetTrgRight());
             } else {
-                new_hyp->SetTrgLeft(new_right_trg->GetTrgLeft());
+                new_hyp->SetTrgLeft(new_right_hyp->GetTrgLeft());
             }
             q.push(new_hyp);
         }
@@ -221,11 +198,7 @@ SpanStack * HyperGraph::ProcessOneSpan(ReordererModel & model,
     	delete q.top();
     	q.pop();
     }
-    SpanStack * ret = new SpanStack;
-    typedef pair<int, TargetSpan*> MapPair;
-    BOOST_FOREACH(const MapPair & map_pair, spans)
-        ret->AddSpan(map_pair.second);
-    sort(ret->GetSpans().begin(), ret->GetSpans().end(), DescendingScore<TargetSpan>());
+    sort(ret->GetHypotheses().begin(), ret->GetHypotheses().end(), DescendingScore<Hypothesis>());
     return ret;
 }
 
@@ -236,7 +209,7 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
                                  int beam_size, bool save_trg) {
     n_ = sent[0]->GetNumWords();
     stacks_.resize(n_ * (n_+1) / 2 + 1, NULL); // resize stacks in advance
-    // Iterate through the right side of the span
+    // Iterate through the left side of the span
     for(int L = 1; L <= n_; L++) {
         // Move the span from l to r, building hypotheses from small to large
         for(int l = 0; l <= n_-L; l++){
@@ -246,53 +219,14 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
         }
     }
     // Build the root node
-    SpanStack * top = GetStack(0,n_-1);
-    SpanStack * root_stack = new SpanStack;
-    for(int i = 0; i < (int)top->size(); i++) {
-        TargetSpan * root = new TargetSpan(0, n_-1, (*top)[i]->GetTrgLeft(), (*top)[i]->GetTrgRight());
-        root->AddHypothesis(Hypothesis((*top)[i]->GetScore(), 0, 0, n_-1, 0, n_-1,
-                HyperEdge::EDGE_ROOT, -1, i, -1, (*top)[i]));
-        root_stack->AddSpan(root);
-    }
+    TargetSpan * top = GetStack(0,n_-1);
+    TargetSpan * root_stack = new TargetSpan(0,n_);
+    for(int i = 0; i < (int)top->size(); i++)
+        root_stack->AddHypothesis(Hypothesis((*top)[i]->GetScore(), 0, 0, n_-1, 0, n_-1,
+                HyperEdge::EDGE_ROOT, -1, i, -1, top));
     stacks_[n_ * (n_+1) / 2] = root_stack;
 }
 
-// Add up the loss over an entire subtree defined by span
-double HyperGraph::AccumulateLoss(const TargetSpan* span) {
-    const Hypothesis * hyp = span->GetHypothesis(0);
-    double score = hyp->GetLoss();
-    if(hyp->GetLeftChild())  score += AccumulateLoss(hyp->GetLeftChild());
-    if(hyp->GetRightChild())  score += AccumulateLoss(hyp->GetRightChild());
-    return score;
-}
-
-FeatureVectorInt HyperGraph::AccumulateFeatures(const TargetSpan* span) {
-    std::tr1::unordered_map<int,double> feat_map;
-    AccumulateFeatures(span, feat_map);
-    FeatureVectorInt ret;
-    BOOST_FOREACH(FeaturePairInt feat_pair, feat_map)
-        ret.push_back(feat_pair);
-    return ret;
-}
-
-void HyperGraph::AccumulateFeatures(const TargetSpan* span, 
-                        std::tr1::unordered_map<int,double> & feat_map) {
-    const Hypothesis * hyp = span->GetHypothesis(0);
-    int l = hyp->GetLeft(), c = hyp->GetCenter(), r = hyp->GetRight();
-    HyperEdge::Type t = hyp->GetEdgeType();
-    // Find the features
-    if(hyp->GetEdgeType() != HyperEdge::EDGE_ROOT) {
-        EdgeFeatureMap::const_iterator fit =
-                                    features_->find(hyp->GetEdge());
-        if(fit == features_->end())
-            THROW_ERROR("No features found in Accumulate for l="
-                                    <<l<<", c="<<c<<", r="<<r<<", t="<<t);
-        BOOST_FOREACH(FeaturePairInt feat_pair, *(fit->second))
-            feat_map[feat_pair.first] += feat_pair.second;
-    }
-    if(hyp->GetLeftChild()) AccumulateFeatures(hyp->GetLeftChild(), feat_map);
-    if(hyp->GetRightChild())AccumulateFeatures(hyp->GetRightChild(),feat_map);
-}
 
 void HyperGraph::AddLoss(LossBase* loss,
 		const Ranks * ranks, const FeatureDataParse * parse) const{
@@ -304,13 +238,11 @@ void HyperGraph::AddLoss(LossBase* loss,
         // When r == n, we want the root, so only do -1
         for(int l = (r == n ? -1 : 0); l <= (r == n ? -1 : r); l++) {
             // DEBUG cerr << "l=" << l << ", r=" << r << ", n=" << n << endl;
-            BOOST_FOREACH(TargetSpan* span, GetStack(l,r)->GetSpans()) {
-                BOOST_FOREACH(Hypothesis* hyp, span->GetHypotheses()) {
-                    // DEBUG cerr << "GetLoss = " <<hyp->GetLoss()<<endl;
-                    hyp->SetLoss(hyp->GetLoss() +
-                    			loss->AddLossToProduction(hyp, ranks, parse));
-                }
-            }
+			BOOST_FOREACH(Hypothesis* hyp, GetStack(l,r)->GetHypotheses()) {
+				// DEBUG cerr << "GetLoss = " <<hyp->GetLoss()<<endl;
+				hyp->SetLoss(hyp->GetLoss() +
+							loss->AddLossToProduction(hyp, ranks, parse));
+			}
         }
     }
 }
@@ -330,55 +262,51 @@ void HyperGraph::PrintHyperGraph(const std::vector<std::string> & strs,
     SymbolSet<int> nodes, rules;
     vector<vector<string> > node_strings;
     // Reset the node IDs
-    BOOST_FOREACH(SpanStack * stack, stacks_)
-        BOOST_FOREACH(TargetSpan * span, stack->GetSpans())
-            span->ResetId();
+    BOOST_FOREACH(TargetSpan * stack, stacks_)
+		stack->ResetId();
     // Add the node IDs
     int last_id = 0;
-    GetRoot()->LabelWithIds(last_id); 
+    GetRoot()->LabelWithIds(last_id);
     // For each ending point of a span
     set<char> null_set; null_set.insert(0);
     for(int j = 0; j <= (int)strs.size(); j++) {
         // For each starting point of a span
         bool root = j==(int)strs.size();
         for(int i = (root?-1:j); i >= (root?-1:0); i--) {
-            SpanStack * stack = GetStack(i, j);
-            // For each target span
-            BOOST_FOREACH(TargetSpan * span, stack->GetSpans()) {
-                if(span->GetId() == -1)
-                    continue;
-                // For each hypothesis
-                BOOST_FOREACH(const Hypothesis * hyp, span->GetHypotheses()) {
-                    span->SetHasType(hyp->GetEdgeType());
-                    int top_id = nodes.GetId(GetNodeString(hyp->GetEdgeType(), hyp),true);
-                    if((int)node_strings.size() <= top_id)
-                        node_strings.resize(top_id+1);
-                    TargetSpan *left_child = hyp->GetLeftChild();
-                    TargetSpan *right_child = hyp->GetRightChild();
-                    // For each type in the left
-                    BOOST_FOREACH(char left_type, 
-                                  left_child ? left_child->GetHasTypes() : null_set) {
-                        int left_id = nodes.GetId(GetNodeString(left_type, left_child));
-                        // For each type in the right
-                        BOOST_FOREACH(char right_type, 
-                                      right_child ? right_child->GetHasTypes() : null_set) {
-                            int right_id = nodes.GetId(GetNodeString(right_type, right_child));
-                            int rule_id = 1 + rules.GetId(hyp->GetRuleString(strs, left_type, right_type), true);
-                            ostringstream rule_oss;
-                            rule_oss << "{";
-                            if(left_id != -1) {
-                                rule_oss << "\"tail\":[" << left_id;
-                                if(right_id != -1)
-                                    rule_oss << "," << right_id;
-                                rule_oss<<"],";
-                            }
-                            rule_oss << "\"feature\":{\"parser\":" << hyp->GetSingleScore()<<"},"
-                                    << "\"rule\":" << rule_id << "}";
-                            node_strings[top_id].push_back(rule_oss.str());
-                        }
-                    }
-                }
-            }
+            TargetSpan * stack = GetStack(i, j);
+            if(stack->GetId() == -1)
+            	continue;
+            // For each hypothesis
+			BOOST_FOREACH(const Hypothesis * hyp, stack->GetHypotheses()) {
+				stack->SetHasType(hyp->GetEdgeType());
+				int top_id = nodes.GetId(GetNodeString(hyp->GetEdgeType(), hyp),true);
+				if((int)node_strings.size() <= top_id)
+					node_strings.resize(top_id+1);
+				TargetSpan *left_child = hyp->GetLeftChild();
+				TargetSpan *right_child = hyp->GetRightChild();
+				// For each type in the left
+				BOOST_FOREACH(char left_type,
+							  left_child ? left_child->GetHasTypes() : null_set) {
+					int left_id = nodes.GetId(GetNodeString(left_type, left_child));
+					// For each type in the right
+					BOOST_FOREACH(char right_type,
+								  right_child ? right_child->GetHasTypes() : null_set) {
+						int right_id = nodes.GetId(GetNodeString(right_type, right_child));
+						int rule_id = 1 + rules.GetId(hyp->GetRuleString(strs, left_type, right_type), true);
+						ostringstream rule_oss;
+						rule_oss << "{";
+						if(left_id != -1) {
+							rule_oss << "\"tail\":[" << left_id;
+							if(right_id != -1)
+								rule_oss << "," << right_id;
+							rule_oss<<"],";
+						}
+						rule_oss << "\"feature\":{\"parser\":" << hyp->GetSingleScore()<<"},"
+								<< "\"rule\":" << rule_id << "}";
+						node_strings[top_id].push_back(rule_oss.str());
+					}
+				}
+			}
             // We only need one time for the root
             if(i == -1) break;
         }
@@ -395,5 +323,5 @@ void HyperGraph::PrintHyperGraph(const std::vector<std::string> & strs,
         out << "[" << algorithm::join(node_strings[i], ", ") << "]";
     }
     out << "], \"goal\": " << node_strings.size()-1 << "}";
-    
+
 }

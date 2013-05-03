@@ -47,6 +47,7 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
             // features and replace them in the hypergraph
             if(config.GetBool("save_features") && iter != 0)
                 hyper_graph->SetFeatures(SafeAccess(saved_feats_, sent));
+            // TODO: a loss-augmented parsing would result a different forest
             // Make the hypergraph using cube pruning
             hyper_graph->BuildHyperGraph(model_,
                                         features_,
@@ -60,16 +61,14 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 					sent < (int)parses_.size() ? &parses_[sent] : NULL);
             // Parse the hypergraph, penalizing loss heavily (oracle)
             oracle_score = hyper_graph->Rescore(model_, -1e6);
-            oracle_features = hyper_graph->AccumulateFeatures(
-                                                    hyper_graph->GetRoot());
-            oracle_loss     = hyper_graph->AccumulateLoss(
-                                                    hyper_graph->GetRoot());
+            oracle_features = hyper_graph->GetBest()->AccumulateFeatures(
+            						hyper_graph->GetFeatures());
+            oracle_loss     = hyper_graph->GetBest()->AccumulateLoss();
             oracle_score   -= oracle_loss * -1e6;
             // Parse the hypergraph, slightly boosting loss by 1.0 if we are
             // using loss-augmented inference
             model_score = hyper_graph->Rescore(model_, (loss_aug ? 1.0 : 0.0));
-            model_loss  = hyper_graph->AccumulateLoss(
-                                                hyper_graph->GetRoot());
+            model_loss  = hyper_graph->GetBest()->AccumulateLoss();
             model_score -= model_loss * 1;
             // Add the statistics for this iteration
             iter_model_loss += model_loss;
@@ -95,8 +94,8 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
                         " oracle_loss=" << oracle_loss <<
                         " model_loss=" << model_loss << endl;
             }
-            model_features = hyper_graph->AccumulateFeatures(
-                                                hyper_graph->GetRoot());
+            model_features = hyper_graph->GetBest()->AccumulateFeatures(
+            					hyper_graph->GetFeatures());
             // Add the difference between the vectors if there is at least
             //  some loss
             model_.AdjustWeights(

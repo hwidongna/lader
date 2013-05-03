@@ -10,11 +10,11 @@ double LossChunk::AddLossToProduction(Hypothesis * hyp,
 		trg_right = hyp->GetTrgRight();
     int trg_midleft, trg_midright;
     if(hyp->GetEdgeType() == HyperEdge::EDGE_STR) {
-    	trg_midleft = hyp->GetLeftChild()->GetTrgRight();
-    	trg_midright = hyp->GetRightChild()->GetTrgLeft();
+    	trg_midleft = hyp->GetLeftHyp()->GetTrgRight();
+    	trg_midright = hyp->GetRightHyp()->GetTrgLeft();
     } else if(hyp->GetEdgeType() == HyperEdge::EDGE_INV) {
-    	trg_midleft = hyp->GetRightChild()->GetTrgRight();
-    	trg_midright = hyp->GetLeftChild()->GetTrgLeft();
+    	trg_midleft = hyp->GetRightHyp()->GetTrgRight();
+    	trg_midright = hyp->GetLeftHyp()->GetTrgLeft();
     }
 	return AddLossToProduction(hyp->GetLeft(), hyp->GetCenter(), hyp->GetRight(),
 			trg_left, trg_midleft, trg_midright, trg_right, hyp->GetEdgeType(), ranks, parse);

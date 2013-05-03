@@ -20,6 +20,7 @@ inline string GetTokenWord(const string & str) {
     return oss.str();
 }
 
+
 void TargetSpan::PrintParse(const vector<string> & strs, ostream & out) const {
     HyperEdge::Type type = hyps_[0]->GetEdgeType();
     if(type == HyperEdge::EDGE_FOR || type == HyperEdge::EDGE_BAC) {
@@ -36,4 +37,41 @@ void TargetSpan::PrintParse(const vector<string> & strs, ostream & out) const {
         hyps_[0]->GetRightChild()->PrintParse(strs, out);
         out << ")";
     }
+}
+
+void TargetSpan::GetReordering(std::vector<int> & reord) const{
+    HyperEdge::Type type = hyps_[0]->GetEdgeType();
+    if(type == HyperEdge::EDGE_FOR) {
+        for(int i = left_; i <= right_; i++)
+            reord.push_back(i);
+    } else if(type == HyperEdge::EDGE_BAC) {
+        for(int i = right_; i >= left_; i--)
+            reord.push_back(i);
+    } else if(type == HyperEdge::EDGE_ROOT) {
+        hyps_[0]->GetLeftChild()->GetReordering(reord);
+    } else if(type == HyperEdge::EDGE_STR) {
+        hyps_[0]->GetLeftChild()->GetReordering(reord);
+        hyps_[0]->GetRightChild()->GetReordering(reord);
+    } else if(type == HyperEdge::EDGE_INV) {
+        hyps_[0]->GetRightChild()->GetReordering(reord);
+        hyps_[0]->GetLeftChild()->GetReordering(reord);
+    }
+}
+
+void TargetSpan::AddHypothesis(const Hypothesis & hyp){
+	Hypothesis * new_hyp = new Hypothesis(hyp);
+	new_hyp->SetEdge(new HyperEdge(
+			hyp.GetLeft(), hyp.GetCenter(), hyp.GetRight(), hyp.GetEdgeType()));
+	hyps_.push_back(new_hyp);
+}
+
+void TargetSpan::LabelWithIds(int & curr_id){
+	if(id_ != -1) return;
+	BOOST_FOREACH(Hypothesis * hyp, hyps_) {
+		if(hyp->GetLeftChild())
+			hyp->GetLeftChild()->LabelWithIds(curr_id);
+		if(hyp->GetRightChild())
+			hyp->GetRightChild()->LabelWithIds(curr_id);
+	}
+	id_ = curr_id++;
 }

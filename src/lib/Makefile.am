@@ -5,7 +5,7 @@ LADERCPP = lader.cc hyper-graph.cc combined-alignment.cc alignment.cc \
            ranks.cc reorderer-evaluator.cc loss-tau.cc dictionary.cc \
            feature-data-parse.cc target-span.cc feature-parse.cc \
            loss-bracket.cc feature-align.cc thread-pool.cc \
-           discontinuous-hyper-graph.cc
+           discontinuous-hyper-graph.cc hypothesis.cc
 
 
 AM_CPPFLAGS = -I$(srcdir)/../include

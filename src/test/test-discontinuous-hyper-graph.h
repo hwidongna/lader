@@ -50,14 +50,24 @@ public:
         sent.FromString(str);
         string str_pos = "PRP VBD NN P";
         sent_pos.FromString(str_pos);
-        // Create a reorderer model with two weights
-        model.SetWeight("W1", 1);
-        model.SetWeight("W2", 2);
+        // Create a reorderer model with weights
+        model.SetWeight("SW||ate||rice||IC", -1);
+        model.SetWeight("SP||VBD||NN||IC", -1);
+        // prefer non-BTG more than BTG
+        model.SetWeight("SW||he||rice||ID", 1);
+        model.SetWeight("SP||PRP||NN||ID", 1);
+        model.SetWeight("SW||he||rice||SD", 2);
+        model.SetWeight("SP||PRP||NN||SD", 2);
+        model.SetWeight("SW||ate||.||SD", 3);
+        model.SetWeight("SP||VBD||P||SD", 3);
+        // prefer the last straight
+        model.SetWeight("SW||he||.||SC", 3);
+        model.SetWeight("SP||he||.||IC", -3);
         // Set up the feature generators
         featw = new FeatureSequence;
         featp = new FeatureSequence;
-        featw->ParseConfiguration("SW%LS%RS");
-        featp->ParseConfiguration("SP%LS%RS");
+        featw->ParseConfiguration("SW%LL%RR%ET");
+        featp->ParseConfiguration("SP%LL%RR%ET");
         // Set up the feature set
         set.AddFeatureGenerator(featw);
         set.AddFeatureGenerator(featp);
@@ -194,8 +204,8 @@ public:
         ReordererModel mod;
         // Test that these features are made properly
         FeatureVectorString edge02exp;
-        edge02exp.push_back(MakePair(string("SW||he||rice"), 1));
-        edge02exp.push_back(MakePair(string("SP||PRP||NN"), 1));
+        edge02exp.push_back(MakePair(string("SW||he||rice||ID"), 1));
+        edge02exp.push_back(MakePair(string("SP||PRP||NN||ID"), 1));
         FeatureVectorInt edge02intexp;
         edge02intexp.push_back(MakePair(0, 1));
         edge02intexp.push_back(MakePair(1, 1));
@@ -221,8 +231,9 @@ public:
         // Check to make sure that the weights are Ok
         double weight_act = hyper_graph.GetEdgeScore(model, set,
                                                      datas, edge0_2b);
-        if(weight_act != 3) {
-            cerr << "Weight is not the expected 3: "<<weight_act<<endl;
+        // for SW||he||rice||ID and SP||PRP||NN||ID
+        if(weight_act != 1+1) {
+            cerr << "Weight is not the expected 2: "<<weight_act<<endl;
             ret = 0;
         }
         return ret;
@@ -247,9 +258,9 @@ public:
         stack3->push_back(new TargetSpan(3, 3, 3, 3));
         (*stack3)[0]->AddHypothesis(Hypothesis(8, 8, 3, 3, 3, 3, HyperEdge::EDGE_FOR));
         graph.HyperGraph::SetStack(3, 3, stack3);
-        // Try processing 02
+        // Try processing stack01, which lead to set stack0_2
         set.SetMaxTerm(0);
-        SpanStack *stack01 = graph.ProcessOneSpan(model, set, datas, 0, 1);
+        graph.HyperGraph::SetStack(0, 1, graph.ProcessOneSpan(model, set, datas, 0, 1));
         const SpanStack *stack0_2 = graph.GetStack(0,0, 2,2);
         // The stack should contain two target spans (2,0) and (0,2),
         // each with one hypothesis
@@ -263,7 +274,9 @@ public:
         }
         if(!ret) return 0;
         // Check to make sure that the scores are in order
-        vector<double> score_exp(2,1+4), score_act(2);
+        vector<double> score_exp(2), score_act(2);
+        // (0,2) has EdgeFeatureScore 4, but (2,0) not
+        score_exp[0] = 1+4+4; score_exp[1] = 1+4;
         score_act[0] = (*stack0_2)[0]->GetHypothesis(0)->GetScore();
         score_act[1] = (*stack0_2)[1]->GetHypothesis(0)->GetScore();
         ret = CheckVector(score_exp, score_act);
@@ -323,9 +336,9 @@ public:
     }
 
     int TestBuildHyperGraph() {
-        HyperGraph graph = DiscontinuousHyperGraph(1);
-        set.SetMaxTerm(0);
-        graph.BuildHyperGraph(model, set, datas);
+        DiscontinuousHyperGraph graph(1, false, 1);
+        set.SetMaxTerm(1);
+        graph.BuildHyperGraph(model, set, datas, 4*3*2);
         const std::vector<SpanStack*> & stacks = graph.GetStacks();
         int ret = 1;
         SpanStack * stack03 = graph.HyperGraph::GetStack(0, 3);
@@ -343,11 +356,26 @@ public:
             cerr << "Root hypotheses " << stackRoot->GetSpans().size()
                  << " and root spans " << stack03->size() << " don't match." << endl; ret = 0;
         }
+
+        BOOST_FOREACH(SpanStack * stack, stacks)
+        	BOOST_FOREACH(TargetSpan * trg, stack->GetSpans())
+        		BOOST_FOREACH(Hypothesis * hyp, trg->GetHypotheses()){
+        			Hypothesis * lhyp = hyp->GetLeftHyp();
+        			Hypothesis * rhyp = hyp->GetRightHyp();
+        			if (hyp->GetScore() !=
+        					hyp->GetSingleScore()
+        					+ (lhyp ? lhyp->GetScore() : 0)
+							+ (rhyp ? rhyp->GetScore() : 0) ){
+        				cerr << "Incorrect viterbi score " << *hyp << endl;
+        				hyp->PrintChildren(cerr);
+        				ret = 0;
+        			}
+        		}
         return ret;
     }
 
     int TestBuildHyperGraphGap2() {
-        HyperGraph graph = DiscontinuousHyperGraph(2);
+        DiscontinuousHyperGraph graph(2);
         set.SetMaxTerm(0);
         sent.FromString("this sentence has five words");
 		sent_pos.FromString("PRP NNS VB ADJ NNP");
@@ -373,7 +401,7 @@ public:
     }
 
     int TestBuildHyperGraphSize1() {
-            HyperGraph graph = DiscontinuousHyperGraph(0);
+            DiscontinuousHyperGraph graph(0);
             set.SetMaxTerm(0);
             sent.FromString("one");
     		sent_pos.FromString("NNS");

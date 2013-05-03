@@ -83,7 +83,6 @@ inline std::ostream& operator << ( std::ostream& out,
 		<< rhs.GetN() << ", " << rhs.GetRight() << ", "
 		<< rhs.GetTrgLeft() << ", " << rhs.GetTrgRight() << ", "
 		<< (char)rhs.GetEdgeType() << ", " << rhs.GetCenter() << " :: "
-		<< rhs.GetLeftRank() << ", " << rhs.GetRightRank() << " :: "
     	<< rhs.GetScore() << ", " << rhs.GetSingleScore() << ">";
     return out;
 }

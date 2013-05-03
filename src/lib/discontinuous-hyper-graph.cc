@@ -252,9 +252,6 @@ SpanStack *DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
 				l, m, i, r,
 				n, -1, -1, i-1);
 
-	TargetSpan
-		*new_left_trg, *old_left_trg,
-		*new_right_trg, *old_right_trg;
 	// Get a map to store identical target spans
 	tr1::unordered_map<int, TargetSpan*> spans;
 	int r_max = r+1;
@@ -282,6 +279,7 @@ SpanStack *DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
 			const FeatureVectorInt * fvi = HyperGraph::GetEdgeFeatures(model, features, sent, *hyp->GetEdge());
 			FeatureVectorString * fvs = model.StringifyFeatureVector(*fvi);
 			cerr << *fvs << endl;
+			hyp->PrintChildren(cerr);
 			delete fvs;
 		}
 		trg_span->AddHypothesis(*hyp);
@@ -419,6 +417,7 @@ SpanStack * DiscontinuousHyperGraph::ProcessOneSpan(
 			const FeatureVectorInt * fvi = HyperGraph::GetEdgeFeatures(model, features, sent, *hyp->GetEdge());
 			FeatureVectorString * fvs = model.StringifyFeatureVector(*fvi);
 			cerr << *fvs << endl;
+			hyp->PrintChildren(cerr);
 			delete fvs;
 		}
 		trg_span->AddHypothesis(*hyp);
@@ -456,15 +455,27 @@ void DiscontinuousHyperGraph::AddLoss(LossBase* loss,
     // For each span in the hypergraph
     int N = n_;
     int D = gap_;
+    if (verbose_){
+    	cerr << "Rank:";
+    	BOOST_FOREACH(int rank, ranks->GetRanks())
+    		cerr << " " << rank;
+    	cerr << endl;
+    }
     for(int r = 0; r <= N; r++) {
         // When r == n, we want the root, so only do -1
         for(int l = (r == N ? -1 : 0); l <= (r == N ? -1 : r); l++) {
-            // DEBUG cerr << "l=" << l << ", r=" << r << ", n=" << n << endl;
+            // DEBUG
+        	if (verbose_)
+        		cerr << "AddLoss ["<<l<<", "<<r<<"]" << endl;
             BOOST_FOREACH(TargetSpan* span, HyperGraph::GetStack(l,r)->GetSpans()) {
                 BOOST_FOREACH(Hypothesis* hyp, span->GetHypotheses()) {
-                    // DEBUG cerr << "GetLoss = " <<hyp->GetLoss()<<endl;
+                    // DEBUG
                     hyp->SetLoss(hyp->GetLoss() +
                     			loss->AddLossToProduction(hyp, ranks, parse));
+                    if (verbose_){
+                    	cerr << "Loss=" << hyp->GetLoss() << ":" << *hyp <<endl;
+                    	hyp->PrintChildren(cerr);
+                    }
                 }
             }
             if (l < 0)
@@ -472,12 +483,17 @@ void DiscontinuousHyperGraph::AddLoss(LossBase* loss,
             for (int i = l+1 ; i <= r ; i++){
             	for (int d = 1 ; d <= D ; d++){
 					if ( i+d <= r && r+d < N && GetStack(l,i-1,i+d,r) != NULL){
-						// cerr << "AddLoss ["<<l<<", "<<i-1<<", "<<i+d<<", "<<r<<"]" << endl;
+						if (verbose_)
+							cerr << "AddLoss ["<<l<<", "<<i-1<<", "<<i+d<<", "<<r<<"]" << endl;
 						BOOST_FOREACH(TargetSpan* span, GetStack(l,i-1,i+d,r)->GetSpans()) {
 							BOOST_FOREACH(Hypothesis* hyp, span->GetHypotheses()) {
-								// DEBUG cerr << "GetLoss = " <<hyp->GetLoss()<<endl;
+								// DEBUG
 								hyp->SetLoss(hyp->GetLoss() +
 										loss->AddLossToProduction(hyp, ranks, parse));
+								if (verbose_){
+									cerr << "Loss=" << hyp->GetLoss() << ":" << *hyp <<endl;
+									hyp->PrintChildren(cerr);
+								}
 							}
 						}
 					}

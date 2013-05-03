@@ -127,6 +127,8 @@ public:
     TargetSpan* GetRightChild() const { return right_child_; }
     int GetLeftRank() const { return left_rank_; }
     int GetRightRank() const { return right_rank_; }
+    Hypothesis * GetLeftHyp() const;
+    Hypothesis * GetRightHyp() const;
 
     void SetScore(double dub) { viterbi_score_ = dub; }
     void SetSingleScore(double dub) { single_score_ = dub; }
@@ -139,6 +141,7 @@ public:
     void SetTrgLeft(int dub) { trg_left_ = dub; }
     void SetTrgRight(int dub) { trg_right_ = dub; }
     void SetType(HyperEdge::Type type) { edge_->SetType(type); } // only for testing
+    virtual void PrintChildren( std::ostream& out ) const;
 
 private:
     double viterbi_score_; // The Viterbi score for the entire subtree that
@@ -163,7 +166,6 @@ inline std::ostream& operator << ( std::ostream& out,
     out << "<" << rhs.GetLeft() << ", " << rhs.GetRight() << ", "
     	<< rhs.GetTrgLeft() << ", " << rhs.GetTrgRight() << ", "
     	<< (char)rhs.GetEdgeType() << ", " << rhs.GetCenter() << " :: "
-    	<< rhs.GetLeftRank() << ", " << rhs.GetRightRank() << " :: "
     	<< rhs.GetScore() << ", " << rhs.GetSingleScore() << ">";
     return out;
 }

@@ -3,6 +3,8 @@
 
 #include <lader/target-span.h>
 #include <lader/discontinuous-hypothesis.h>
+#include <sstream>
+#include <iostream>
 
 namespace lader {
 
@@ -20,8 +22,8 @@ public:
     	hyps_.push_back(new_hyp);
     }
     
-    int GetM() { return m_; }
-    int GetN() { return n_; }
+    int GetM() const { return m_; }
+    int GetN() const { return n_; }
 private:
 
     int m_, n_;
@@ -29,5 +31,16 @@ private:
 
 }
 
+namespace std {
+// Output function for pairs
+inline std::ostream& operator << ( std::ostream& out,
+                                   const lader::DiscontinuousTargetSpan & rhs )
+{
+    out << "<" << rhs.GetLeft() << ", " << rhs.GetM() << ", "
+		<< rhs.GetN() << ", " << rhs.GetRight() << ", "
+    	<< rhs.GetTrgLeft() << ", " << rhs.GetTrgRight() << ">";
+    return out;
+}
+}
 #endif
 

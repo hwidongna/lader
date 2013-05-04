@@ -39,7 +39,7 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
         // Over all values in the corpus
         int done = 0;
         BOOST_FOREACH(int sent, sent_order) {
-        	if (verbose)
+        	if (verbose > 1)
         		cerr << "Sentence " << sent << endl;
             if(++done % 100 == 0) { cout << "."; cout.flush(); }
             HyperGraph * hyper_graph = new DiscontinuousHyperGraph(gapSize, mp, verbose);

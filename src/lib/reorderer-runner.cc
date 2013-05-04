@@ -11,7 +11,7 @@ using namespace boost;
 
 void ReordererTask::Run() {
     // Load the data
-	if (verbose_)
+	if (verbose_ > 1)
 		cerr << "Sentence " << id_ << endl;
     std::vector<FeatureDataBase*> datas = features_->ParseInput(line_);
     // Save the original string

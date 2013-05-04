@@ -204,7 +204,7 @@ TargetSpan *DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
 		int beam_size, bool save_trg){
 	HypothesisQueue q;
 	double score, viterbi_score;
-	if (verbose_)
+	if (verbose_ > 1)
 		cerr << "AddDiscontinuousHyperEdges ["<<l<<", "<<m<<", "<<n<<", "<<r<<"]" << endl;
 	// continuous + continuous = discontinuous
 	//cerr << "continuous + continuous = discontinuous" << endl;
@@ -255,7 +255,7 @@ TargetSpan *DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
 //			spans.insert(MakePair(trg_idx, trg_span));
 //		}
 		// Insert the hypothesis
-		if (verbose_){
+		if (verbose_ > 1){
 			cerr << "Insert the discontinuous hypothesis " << *hyp << endl;
 			const FeatureVectorInt * fvi = HyperGraph::GetEdgeFeatures(model, features, sent, *hyp->GetEdge());
 			FeatureVectorString * fvs = model.StringifyFeatureVector(*fvi);
@@ -329,7 +329,7 @@ TargetSpan * DiscontinuousHyperGraph::ProcessOneSpan(
 
 	int N = n_ = sent[0]->GetNumWords();
 	int D = gap_;
-	if (verbose_)
+	if (verbose_ > 1)
 		cerr << "AddHyperEdges ["<<l<<", "<<r<<"]" << endl;
 	for (int i = l+1 ; i <= r ; i++){
 		if (hasPunct && mp_){ // monotone at punctuation
@@ -385,7 +385,7 @@ TargetSpan * DiscontinuousHyperGraph::ProcessOneSpan(
 		// Pop a hypothesis from the stack and get its target span
 		Hypothesis * hyp = q.top(); q.pop();
 		// Insert the hypothesis
-		if (verbose_){
+		if (verbose_ > 1){
 			cerr << "Insert the hypothesis " << *hyp << endl;
 			const FeatureVectorInt * fvi = HyperGraph::GetEdgeFeatures(model, features, sent, *hyp->GetEdge());
 			FeatureVectorString * fvs = model.StringifyFeatureVector(*fvi);
@@ -426,7 +426,7 @@ void DiscontinuousHyperGraph::AddLoss(LossBase* loss,
     // For each span in the hypergraph
     int N = n_;
     int D = gap_;
-    if (verbose_){
+    if (verbose_ > 1){
     	cerr << "Rank:";
     	BOOST_FOREACH(int rank, ranks->GetRanks())
     		cerr << " " << rank;
@@ -436,13 +436,13 @@ void DiscontinuousHyperGraph::AddLoss(LossBase* loss,
         // When r == n, we want the root, so only do -1
         for(int l = (r == N ? -1 : 0); l <= (r == N ? -1 : r); l++) {
             // DEBUG
-        	if (verbose_)
+        	if (verbose_ > 1)
         		cerr << "AddLoss ["<<l<<", "<<r<<"]" << endl;
         	BOOST_FOREACH(Hypothesis* hyp, HyperGraph::GetStack(l,r)->GetHypotheses()) {
         		// DEBUG
 				hyp->SetLoss(hyp->GetLoss() +
 							loss->AddLossToProduction(hyp, ranks, parse));
-				if (verbose_){
+				if (verbose_ > 1){
 					cerr << "Loss=" << hyp->GetLoss() << ":" << *hyp;
 					if (hyp->GetCenter() == -1)
 						cerr << endl;
@@ -455,13 +455,13 @@ void DiscontinuousHyperGraph::AddLoss(LossBase* loss,
             for (int i = l+1 ; i <= r ; i++){
             	for (int d = 1 ; d <= D ; d++){
 					if ( i+d <= r && r+d < N && GetStack(l,i-1,i+d,r) != NULL){
-						if (verbose_)
+						if (verbose_ > 1)
 							cerr << "AddLoss ["<<l<<", "<<i-1<<", "<<i+d<<", "<<r<<"]" << endl;
 						BOOST_FOREACH(Hypothesis* hyp, GetStack(l,i-1,i+d,r)->GetHypotheses()) {
 							// DEBUG
 							hyp->SetLoss(hyp->GetLoss() +
 									loss->AddLossToProduction(hyp, ranks, parse));
-							if (verbose_){
+							if (verbose_ > 1){
 								cerr << "Loss=" << hyp->GetLoss() << ":" << *hyp;
 								hyp->PrintChildren(cerr);
 							}

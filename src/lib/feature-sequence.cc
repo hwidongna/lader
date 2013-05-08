@@ -217,7 +217,7 @@ void FeatureSequence::GenerateEdgeFeatures(
                     		span = pair<int,int>(edge.GetLeft(), edge.GetRight());
                         break;
                     case 'L':
-                    	if (edge.GetCenter() < 0){
+                    	if (edge.GetClass() == 'D' && edge.GetCenter() < 0){
                     		DiscontinuousHyperEdge * e = (DiscontinuousHyperEdge *)&edge;
                     		span = pair<int,int>(e->GetLeft(),e->GetM());
                     	}
@@ -225,7 +225,7 @@ void FeatureSequence::GenerateEdgeFeatures(
                     		span = pair<int,int>(edge.GetLeft(),edge.GetCenter()-1);
                         break;
                     case 'R':
-                    	if (edge.GetCenter() < 0){
+                    	if (edge.GetClass() == 'D' && edge.GetCenter() < 0){
                     		DiscontinuousHyperEdge * e = (DiscontinuousHyperEdge *)&edge;
                     		span = pair<int,int>(e->GetN(), e->GetRight());
                     	}

@@ -16,9 +16,8 @@ public:
     void AddHypothesis(const Hypothesis & hyp) {
     	DiscontinuousHypothesis * new_hyp = new DiscontinuousHypothesis(hyp);
     	new_hyp->SetEdge(new DiscontinuousHyperEdge(
-    			new_hyp->GetLeft(), new_hyp->GetM(),
-    			new_hyp->GetN(), new_hyp->GetRight(),
-    			new_hyp->GetEdgeType()));
+    			new_hyp->GetLeft(), new_hyp->GetM(), new_hyp->GetCenter(),
+    			new_hyp->GetN(), new_hyp->GetRight(), new_hyp->GetEdgeType()));
     	hyps_.push_back(new_hyp);
     }
     

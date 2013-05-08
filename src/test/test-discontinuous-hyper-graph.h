@@ -27,8 +27,8 @@ public:
             edge11(1, -1, 1, HyperEdge::EDGE_FOR), 
             edge22(2, -1, 2, HyperEdge::EDGE_FOR),
             edge33(3, -1, 3, HyperEdge::EDGE_FOR),
-            edge0_2b(0,0, 2,2, HyperEdge::EDGE_INV),
-            edge1_3b(1,1, 3,3, HyperEdge::EDGE_INV),
+            edge0_2b(0,0, -1, 2,2, HyperEdge::EDGE_INV),
+            edge1_3b(1,1, -1, 3,3, HyperEdge::EDGE_INV),
             edge01(0, -1, 1, HyperEdge::EDGE_FOR),
             edge23(2, -1, 3, HyperEdge::EDGE_FOR),
             edge03f(0, 2, 3, HyperEdge::EDGE_STR)

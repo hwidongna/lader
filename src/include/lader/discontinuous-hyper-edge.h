@@ -19,12 +19,12 @@ namespace lader {
 
 class DiscontinuousHyperEdge : public HyperEdge{
 public:
-	DiscontinuousHyperEdge(int l, int m, int n, int r, Type t):
-		HyperEdge(l, -1, r, t),
+	DiscontinuousHyperEdge(int l, int m, int c, int n, int r, Type t):
+		HyperEdge(l, c, r, t),
 		m_(m), n_(n) { }
 
 	HyperEdge * Clone() const{
-		return new DiscontinuousHyperEdge(GetLeft(), m_, n_, GetRight(), GetType());
+		return new DiscontinuousHyperEdge(GetLeft(), m_, GetCenter(), n_, GetRight(), GetType());
 	}
 	// Comparators
 	bool operator< (const HyperEdge & rhs) const {

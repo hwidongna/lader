@@ -1,3 +1,4 @@
 (ROOT (S (NP (PRP she)) (VP (VBD ate) (NP (NN rice))) (. .)))
 (ROOT (S (NP (DT the) (NN rice)) (VP (VBD was) (VP (VBN thrown) (PP (IN at) (NP (PRP her))))) (. .)))
 (ROOT (S (NP (DT the) (NN ball)) (VP (VBZ is) (ADJP (JJ large))) (. .)))
+(ROOT (SBARQ (WHNP (WP who)) (SQ (VBP do) (NP (PRP you)) (VP (VB think) (SBAR (S (NP (DT the) (NN man)) (VP (VBZ is)))))) (. ?)))

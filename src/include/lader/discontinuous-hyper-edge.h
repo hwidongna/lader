@@ -46,7 +46,7 @@ public:
 			return HyperEdge::operator ==(rhs) && m_ == drhs.m_ && n_ == drhs.n_;
 		}catch (const std::bad_cast& e){ // if rhs is base class instance
 		}
-		return HyperEdge::operator ==(rhs);
+		return false;
 	}
 
 	int GetM() const { return m_; }

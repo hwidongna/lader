@@ -94,7 +94,6 @@ public:
             (viterbi_score_ == rhs.viterbi_score_ && (
             trg_left_ < rhs.trg_left_ || (trg_left_ == rhs.trg_left_ && (
             trg_right_ < rhs.trg_right_ || (trg_right_ == rhs.trg_right_ && (
-//            edge_ < rhs.edge_ || (edge_ == rhs.edge_ && ( // TODO: do not consider left_ and right_ ?
             GetEdgeType() < rhs.GetEdgeType() || (GetEdgeType() == rhs.GetEdgeType() && (
             GetCenter() < rhs.GetCenter() || (GetCenter() == rhs.GetCenter() && (
             left_child_ < rhs.left_child_ || (left_child_ == rhs.left_child_ && (
@@ -105,7 +104,6 @@ public:
             viterbi_score_ == rhs.viterbi_score_ &&
             trg_left_ == rhs.trg_left_ &&
             trg_right_ == rhs.trg_right_ &&
-//          edge_ == rhs.edge_ && // TODO: do not consider left_ and right_ ?
             GetEdgeType() == rhs.GetEdgeType() &&
             GetCenter() == rhs.GetCenter() &&
             left_child_ == rhs.left_child_ &&

@@ -150,7 +150,7 @@ TargetSpan * HyperGraph::ProcessOneSpan(ReordererModel & model,
         // If the next hypothesis on the stack is equal to the current
         // hypothesis, remove it, as this just means that we added the same
         // hypothesis
-        while(q.size() && q.top() == hyp) {
+        while(q.size() && *q.top() == *hyp) {
         	delete q.top();
         	q.pop();
         }

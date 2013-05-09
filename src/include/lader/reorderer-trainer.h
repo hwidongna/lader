@@ -24,8 +24,10 @@ public:
         BOOST_FOREACH(LossBase * loss, losses_)
             delete loss;
         BOOST_FOREACH(EdgeFeatureMap * feat, saved_feats_) {
-            BOOST_FOREACH(EdgeFeaturePair feat_pair, *feat)
+            BOOST_FOREACH(EdgeFeaturePair feat_pair, *feat){
+            	delete feat_pair.first;
                 delete feat_pair.second;
+            }
             delete feat;
         }
     }

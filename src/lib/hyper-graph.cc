@@ -145,7 +145,7 @@ TargetSpan * HyperGraph::ProcessOneSpan(ReordererModel & model,
         // Pop a hypothesis from the stack and get its target span
         Hypothesis * hyp = q.top(); q.pop();
         // Insert the hypothesis
-        ret->AddHypothesis(*hyp);
+        ret->AddHypothesis(hyp);
         num_processed++;
         // If the next hypothesis on the stack is equal to the current
         // hypothesis, remove it, as this just means that we added the same
@@ -192,7 +192,6 @@ TargetSpan * HyperGraph::ProcessOneSpan(ReordererModel & model,
             }
             q.push(new_hyp);
         }
-        delete hyp;
     }
     while(q.size()) {
     	delete q.top();
@@ -222,7 +221,7 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
     TargetSpan * top = GetStack(0,n_-1);
     TargetSpan * root_stack = new TargetSpan(0,n_);
     for(int i = 0; i < (int)top->size(); i++)
-        root_stack->AddHypothesis(Hypothesis((*top)[i]->GetScore(), 0, 0, n_-1, 0, n_-1,
+        root_stack->AddHypothesis(new Hypothesis((*top)[i]->GetScore(), 0, 0, n_-1, 0, n_-1,
                 HyperEdge::EDGE_ROOT, -1, i, -1, top));
     stacks_[n_ * (n_+1) / 2] = root_stack;
 }

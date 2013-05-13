@@ -254,7 +254,7 @@ TargetSpan *DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
 			hyp->PrintChildren(cerr);
 			delete fvs, fws;
 		}
-		ret->AddHypothesis(*hyp);
+		ret->AddHypothesis(hyp);
 		num_processed++;
 		// If the next hypothesis on the stack is equal to the current
 		// hypothesis, remove it, as this just means that we added the same
@@ -267,7 +267,6 @@ TargetSpan *DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
 //		if(hyp->GetCenter() == -1) continue;
 		// Increment the left side if there is still a hypothesis left
 		nextCubeItems(hyp, q, l, r, true);
-		delete hyp;
 	}
 	while(q.size()) {
 		delete q.top();
@@ -380,7 +379,7 @@ TargetSpan * DiscontinuousHyperGraph::ProcessOneSpan(
 				hyp->PrintChildren(cerr);
 			delete fvs, fws;
 		}
-		ret->AddHypothesis(*hyp);
+		ret->AddHypothesis(hyp);
 		num_processed++;
 		// If the next hypothesis on the stack is equal to the current
 		// hypothesis, remove it, as this just means that we added the same
@@ -392,7 +391,6 @@ TargetSpan * DiscontinuousHyperGraph::ProcessOneSpan(
 		// Skip terminals
 //		if(hyp->GetCenter() == -1) continue;
 		nextCubeItems(hyp, q, l, r, false);
-		delete hyp;
 	}
 	while(q.size()) {
 		delete q.top();

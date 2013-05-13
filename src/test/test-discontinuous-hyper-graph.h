@@ -89,19 +89,19 @@ public:
         ts03 = new TargetSpan(0,3);
         tsRoot = new TargetSpan(0,3);
         // Add the hypotheses
-        ts00->AddHypothesis(Hypothesis(1,1, edge00.Clone(), 0,0));
-        ts11->AddHypothesis(Hypothesis(2,2, edge11.Clone(), 1,1));
-        ts22->AddHypothesis(Hypothesis(3,3, edge22.Clone(), 2,2));
-        ts33->AddHypothesis(Hypothesis(4,4, edge33.Clone(), 3,3));
-        ts0_2->AddHypothesis(DiscontinuousHypothesis(1+3+5,5, edge0_2b.Clone(), 2,0, 0,0, ts00,ts22));
-        ts1_3->AddHypothesis(DiscontinuousHypothesis(2+4+6,6, edge1_3b.Clone(), 3,1, 0,0, ts11,ts33));
-        ts01->AddHypothesis(DiscontinuousHypothesis(1,1, edge01.Clone(), 0,1));
-        ts23->AddHypothesis(DiscontinuousHypothesis(2,2, edge23.Clone(), 2,3));
+        ts00->AddHypothesis(new Hypothesis(1,1, edge00.Clone(), 0,0));
+        ts11->AddHypothesis(new Hypothesis(2,2, edge11.Clone(), 1,1));
+        ts22->AddHypothesis(new Hypothesis(3,3, edge22.Clone(), 2,2));
+        ts33->AddHypothesis(new Hypothesis(4,4, edge33.Clone(), 3,3));
+        ts0_2->AddHypothesis(new DiscontinuousHypothesis(1+3+5,5, edge0_2b.Clone(), 2,0, 0,0, ts00,ts22));
+        ts1_3->AddHypothesis(new DiscontinuousHypothesis(2+4+6,6, edge1_3b.Clone(), 3,1, 0,0, ts11,ts33));
+        ts01->AddHypothesis(new DiscontinuousHypothesis(1,1, edge01.Clone(), 0,1));
+        ts23->AddHypothesis(new DiscontinuousHypothesis(2,2, edge23.Clone(), 2,3));
         // the viterbi score of combining ts0_2b and ts1_3b is greater than that of ts01 and ts23
-        ts03->AddHypothesis(Hypothesis(1+3+5+2+4+6+7,7, edge03f.Clone(), 0,3, 0,0, ts0_2, ts1_3));
-        ts03->AddHypothesis(Hypothesis(1+2+7,7, edge03f.Clone(), 0,3, 0,0, ts01, ts23));
-        tsRoot->AddHypothesis(Hypothesis(1+3+5+2+4+6+7, 0, 0,3, 0,3, HyperEdge::EDGE_ROOT,-1, 0,-1,ts03));
-        tsRoot->AddHypothesis(Hypothesis(1+2+7, 0, 0,3, 0,3, HyperEdge::EDGE_ROOT,-1, 1,-1,ts03));
+        ts03->AddHypothesis(new Hypothesis(1+3+5+2+4+6+7,7, edge03f.Clone(), 0,3, 0,0, ts0_2, ts1_3));
+        ts03->AddHypothesis(new Hypothesis(1+2+7,7, edge03f.Clone(), 0,3, 0,0, ts01, ts23));
+        tsRoot->AddHypothesis(new Hypothesis(1+3+5+2+4+6+7, 0, 0,3, 0,3, HyperEdge::EDGE_ROOT,-1, 0,-1,ts03));
+        tsRoot->AddHypothesis(new Hypothesis(1+2+7, 0, 0,3, 0,3, HyperEdge::EDGE_ROOT,-1, 1,-1,ts03));
         // Add the features
         FeatureVectorInt 
             *fv00 = new FeatureVectorInt(1, MakePair(1,1)),
@@ -239,13 +239,13 @@ public:
         TargetSpan *stack1 = new TargetSpan(1,1);
         TargetSpan *stack2 = new TargetSpan(2,2);
 		TargetSpan *stack3 = new TargetSpan(3,3);
-        stack0->AddHypothesis(Hypothesis(1,1, 0,0, 0,0,HyperEdge::EDGE_FOR));
+        stack0->AddHypothesis(new Hypothesis(1,1, 0,0, 0,0,HyperEdge::EDGE_FOR));
         graph.HyperGraph::SetStack(0, 0, stack0);
-        stack1->AddHypothesis(Hypothesis(2,2, 1,1, 1,1, HyperEdge::EDGE_FOR));
+        stack1->AddHypothesis(new Hypothesis(2,2, 1,1, 1,1, HyperEdge::EDGE_FOR));
         graph.HyperGraph::SetStack(1, 1, stack1);
-        stack2->AddHypothesis(Hypothesis(4,4, 2,2, 2,2, HyperEdge::EDGE_FOR));
+        stack2->AddHypothesis(new Hypothesis(4,4, 2,2, 2,2, HyperEdge::EDGE_FOR));
         graph.HyperGraph::SetStack(2, 2, stack2);
-        stack3->AddHypothesis(Hypothesis(8,8, 3,3, 3,3, HyperEdge::EDGE_FOR));
+        stack3->AddHypothesis(new Hypothesis(8,8, 3,3, 3,3, HyperEdge::EDGE_FOR));
         graph.HyperGraph::SetStack(3, 3, stack3);
         // Try processing stack01, which lead to set stack0_2
         set.SetMaxTerm(0);
@@ -418,10 +418,10 @@ public:
                    *span01 = new TargetSpan(0,1),
                    *span11 = new TargetSpan(1,1),
                    *spanr = new TargetSpan(0,1);
-        span00->AddHypothesis(Hypothesis(1,1,0,0,-1,-1,HyperEdge::EDGE_FOR));
-        span11->AddHypothesis(Hypothesis(1,1,1,1,-1,-1,HyperEdge::EDGE_FOR));
-        span01->AddHypothesis(Hypothesis(1,1,0,1,-1,-1,HyperEdge::EDGE_FOR));
-        spanr->AddHypothesis(Hypothesis(1,1,0,1,-1,-1,HyperEdge::EDGE_ROOT,-1,0,-1,span01));
+        span00->AddHypothesis(new Hypothesis(1,1,0,0,-1,-1,HyperEdge::EDGE_FOR));
+        span11->AddHypothesis(new Hypothesis(1,1,1,1,-1,-1,HyperEdge::EDGE_FOR));
+        span01->AddHypothesis(new Hypothesis(1,1,0,1,-1,-1,HyperEdge::EDGE_FOR));
+        spanr->AddHypothesis(new Hypothesis(1,1,0,1,-1,-1,HyperEdge::EDGE_ROOT,-1,0,-1,span01));
         // Get the reordering for forward
         int ret = 1;
         vector<int> for_reorder; spanr->GetReordering(for_reorder);
@@ -460,10 +460,10 @@ public:
                    *span01 = new TargetSpan(0,1),
                    *span11 = new TargetSpan(1,1),
                    *spanr = new TargetSpan(0,1);
-        span00->AddHypothesis(Hypothesis(1,1,0,0,-1,-1,HyperEdge::EDGE_FOR));
-        span11->AddHypothesis(Hypothesis(1,1,1,1,-1,-1,HyperEdge::EDGE_BAC));
-        span01->AddHypothesis(Hypothesis(1,1,0,1,-1,-1,HyperEdge::EDGE_INV,-1,1,-1,span00,span11));
-        spanr->AddHypothesis(Hypothesis(1,1,0,1,-1,-1,HyperEdge::EDGE_ROOT,-1,0,-1,span01));
+        span00->AddHypothesis(new Hypothesis(1,1,0,0,-1,-1,HyperEdge::EDGE_FOR));
+        span11->AddHypothesis(new Hypothesis(1,1,1,1,-1,-1,HyperEdge::EDGE_BAC));
+        span01->AddHypothesis(new Hypothesis(1,1,0,1,-1,-1,HyperEdge::EDGE_INV,-1,1,-1,span00,span11));
+        spanr->AddHypothesis(new Hypothesis(1,1,0,1,-1,-1,HyperEdge::EDGE_ROOT,-1,0,-1,span01));
         // Get the reordering for forward
         int ret = 1;
         span01->GetHypothesis(0)->SetType(HyperEdge::EDGE_FOR);
@@ -512,7 +512,7 @@ public:
         span01->GetHypothesis(0)->SetType(HyperEdge::EDGE_INV);
         span01->GetHypothesis(0)->SetLeftChild(span00);
         span01->GetHypothesis(0)->SetRightChild(span11);
-        span01->AddHypothesis(Hypothesis(1,1,0,1,-1,-1,HyperEdge::EDGE_STR,-1,1,-1,span00,span11));
+        span01->AddHypothesis(new Hypothesis(1,1,0,1,-1,-1,HyperEdge::EDGE_STR,-1,1,-1,span00,span11));
         // Print again
         ostringstream graph_stream;
         hg.PrintHyperGraph(str01, graph_stream);

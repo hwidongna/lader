@@ -58,13 +58,6 @@ void TargetSpan::GetReordering(std::vector<int> & reord) const{
     }
 }
 
-void TargetSpan::AddHypothesis(const Hypothesis & hyp){
-	Hypothesis * new_hyp = new Hypothesis(hyp);
-	new_hyp->SetEdge(new HyperEdge(
-			hyp.GetLeft(), hyp.GetCenter(), hyp.GetRight(), hyp.GetEdgeType()));
-	hyps_.push_back(new_hyp);
-}
-
 void TargetSpan::LabelWithIds(int & curr_id){
 	if(id_ != -1) return;
 	BOOST_FOREACH(Hypothesis * hyp, hyps_) {

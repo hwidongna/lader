@@ -62,14 +62,14 @@ public:
         ts11 = new TargetSpan(1,1);
         tsr = new TargetSpan(0,1);
         // Add the hypotheses
-        ts00->AddHypothesis(Hypothesis(1,1,0,0,0,0,HyperEdge::EDGE_FOR));
-        ts11->AddHypothesis(Hypothesis(2,2,1,1,1,1,HyperEdge::EDGE_FOR));
-        ts01->AddHypothesis(Hypothesis(5,5,0,1,1,0,HyperEdge::EDGE_INV,1,0,0,ts00,ts11));
-        ts01->AddHypothesis(Hypothesis(4,4,0,1,0,1,HyperEdge::EDGE_FOR));
-        ts01->AddHypothesis(Hypothesis(3,3,0,1,0,1,HyperEdge::EDGE_STR,1,0,0,ts00,ts11));
-        tsr->AddHypothesis(Hypothesis(6,6,1,0,-1,2,HyperEdge::EDGE_ROOT,-1,0,-1,ts01));
-        tsr->AddHypothesis(Hypothesis(6,6,0,1,-1,2,HyperEdge::EDGE_ROOT,-1,1,-1,ts01));
-        tsr->AddHypothesis(Hypothesis(6,6,0,1,-1,2,HyperEdge::EDGE_ROOT,-1,2,-1,ts01));
+        ts00->AddHypothesis(new Hypothesis(1,1,0,0,0,0,HyperEdge::EDGE_FOR));
+        ts11->AddHypothesis(new Hypothesis(2,2,1,1,1,1,HyperEdge::EDGE_FOR));
+        ts01->AddHypothesis(new Hypothesis(5,5,0,1,1,0,HyperEdge::EDGE_INV,1,0,0,ts00,ts11));
+        ts01->AddHypothesis(new Hypothesis(4,4,0,1,0,1,HyperEdge::EDGE_FOR));
+        ts01->AddHypothesis(new Hypothesis(3,3,0,1,0,1,HyperEdge::EDGE_STR,1,0,0,ts00,ts11));
+        tsr->AddHypothesis(new Hypothesis(6,6,1,0,-1,2,HyperEdge::EDGE_ROOT,-1,0,-1,ts01));
+        tsr->AddHypothesis(new Hypothesis(6,6,0,1,-1,2,HyperEdge::EDGE_ROOT,-1,1,-1,ts01));
+        tsr->AddHypothesis(new Hypothesis(6,6,0,1,-1,2,HyperEdge::EDGE_ROOT,-1,2,-1,ts01));
         // Add the features
         FeatureVectorInt 
             *fv00 = new FeatureVectorInt(1, MakePair(1,1)),
@@ -173,9 +173,9 @@ public:
         // Create two spans for 00 and 11, so we can process 01
         TargetSpan *stack00 = new TargetSpan(0,0)
         		, *stack11 = new TargetSpan(1,1);
-        stack00->AddHypothesis(Hypothesis(1,1.0,0,0,0,0,HyperEdge::EDGE_FOR));
+        stack00->AddHypothesis(new Hypothesis(1,1.0,0,0,0,0,HyperEdge::EDGE_FOR));
         graph.SetStack(0, 0, stack00);
-        stack11->AddHypothesis(Hypothesis(2,2.0,1,1,1,1,HyperEdge::EDGE_FOR));
+        stack11->AddHypothesis(new Hypothesis(2,2.0,1,1,1,1,HyperEdge::EDGE_FOR));
         graph.SetStack(1, 1, stack11);
         // Try processing 01
         set.SetMaxTerm(0);
@@ -202,11 +202,11 @@ public:
         }
 
         TargetSpan *stack22 = new TargetSpan(2,2);
-		stack22->AddHypothesis(Hypothesis(3,3.0,2,2,2,2,HyperEdge::EDGE_FOR));
+		stack22->AddHypothesis(new Hypothesis(3,3.0,2,2,2,2,HyperEdge::EDGE_FOR));
 		graph.SetStack(2, 2, stack22);
 		graph.SetStack(0, 1, stack01);
 		TargetSpan *stack12 = new TargetSpan(1,2);
-		stack12->AddHypothesis(Hypothesis(4,4.0,1,2,2,1,HyperEdge::EDGE_INV));
+		stack12->AddHypothesis(new Hypothesis(4,4.0,1,2,2,1,HyperEdge::EDGE_INV));
 		graph.SetStack(1, 2, stack12); // just for testing
 		TargetSpan *stack02 = graph.ProcessOneSpan(model, set, datas, 0, 2);
 		if(stack02->size() != (4+1)*2 + 2) {
@@ -307,10 +307,10 @@ public:
                    *span01 = new TargetSpan(0,1),
                    *span11 = new TargetSpan(1,1),
                    *spanr = new TargetSpan(0,1);
-        span00->AddHypothesis(Hypothesis(1,1,0,0,-1,-1,HyperEdge::EDGE_FOR));
-        span11->AddHypothesis(Hypothesis(1,1,1,1,-1,-1,HyperEdge::EDGE_FOR));
-        span01->AddHypothesis(Hypothesis(1,1,0,1,-1,-1,HyperEdge::EDGE_FOR));
-        spanr->AddHypothesis(Hypothesis(1,1,0,1,-1,-1,HyperEdge::EDGE_ROOT,-1,0,-1,span01));
+        span00->AddHypothesis(new Hypothesis(1,1,0,0,-1,-1,HyperEdge::EDGE_FOR));
+        span11->AddHypothesis(new Hypothesis(1,1,1,1,-1,-1,HyperEdge::EDGE_FOR));
+        span01->AddHypothesis(new Hypothesis(1,1,0,1,-1,-1,HyperEdge::EDGE_FOR));
+        spanr->AddHypothesis(new Hypothesis(1,1,0,1,-1,-1,HyperEdge::EDGE_ROOT,-1,0,-1,span01));
         // Get the reordering for forward
         int ret = 1;
         vector<int> for_reorder; spanr->GetReordering(for_reorder);
@@ -351,10 +351,10 @@ public:
                    *span01 = new TargetSpan(0,1),
                    *span11 = new TargetSpan(1,1),
                    *spanr = new TargetSpan(0,1);
-        span00->AddHypothesis(Hypothesis(1,1,0,0,-1,-1,HyperEdge::EDGE_FOR));
-        span11->AddHypothesis(Hypothesis(1,1,1,1,-1,-1,HyperEdge::EDGE_BAC));
-        span01->AddHypothesis(Hypothesis(1,1,0,1,-1,-1,HyperEdge::EDGE_INV,-1,1,-1,span00,span11));
-        spanr->AddHypothesis(Hypothesis(1,1,0,1,-1,-1,HyperEdge::EDGE_ROOT,-1,0,-1,span01));
+        span00->AddHypothesis(new Hypothesis(1,1,0,0,-1,-1,HyperEdge::EDGE_FOR));
+        span11->AddHypothesis(new Hypothesis(1,1,1,1,-1,-1,HyperEdge::EDGE_BAC));
+        span01->AddHypothesis(new Hypothesis(1,1,0,1,-1,-1,HyperEdge::EDGE_INV,-1,1,-1,span00,span11));
+        spanr->AddHypothesis(new Hypothesis(1,1,0,1,-1,-1,HyperEdge::EDGE_ROOT,-1,0,-1,span01));
         // Get the reordering for forward
         int ret = 1;
         span01->GetHypothesis(0)->SetType(HyperEdge::EDGE_FOR);
@@ -403,7 +403,7 @@ public:
         span01->GetHypothesis(0)->SetType(HyperEdge::EDGE_INV);
         span01->GetHypothesis(0)->SetLeftChild(span00);
         span01->GetHypothesis(0)->SetRightChild(span11);
-        span01->AddHypothesis(Hypothesis(1,1,0,1,-1,-1,HyperEdge::EDGE_STR,-1,1,-1,span00,span11));
+        span01->AddHypothesis(new Hypothesis(1,1,0,1,-1,-1,HyperEdge::EDGE_STR,-1,1,-1,span00,span11));
         // Print again
         ostringstream graph_stream;
         hg.PrintHyperGraph(str01, graph_stream);

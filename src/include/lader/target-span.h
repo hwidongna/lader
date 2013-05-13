@@ -40,7 +40,7 @@ public:
     int GetLeft() const { return left_; }
     int GetRight() const { return right_; }
     // Add a hypothesis with a new hyper-edge
-    virtual void AddHypothesis(const Hypothesis & hyp);
+    void AddHypothesis(Hypothesis * hyp) { hyps_.push_back(hyp); }
     const std::set<char> & GetHasTypes() { return has_types_; }
     const std::vector<Hypothesis*> & GetHypotheses() const { return hyps_; }
     std::vector<Hypothesis*> & GetHypotheses() { return hyps_; }

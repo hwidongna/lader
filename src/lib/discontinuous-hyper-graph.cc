@@ -453,14 +453,3 @@ void DiscontinuousHyperGraph::AddLoss(LossBase* loss,
         }
     }
 }
-
-double DiscontinuousHyperGraph::Rescore(const ReordererModel & model, double loss_multiplier) {
-	BOOST_FOREACH(HyperGraph * graph, next_)
-		if (graph != NULL)
-			// Reset everything to -DBL_MAX to indicate it needs to be recalculated
-			BOOST_FOREACH(TargetSpan * stack, graph->GetStacks())
-				if (stack != NULL) // discontinuous span stack could be NULL
-					BOOST_FOREACH(Hypothesis * hyp, stack->GetHypotheses())
-			        	hyp->SetScore(-DBL_MAX);
-	return HyperGraph::Rescore(model, loss_multiplier);
-}

@@ -60,17 +60,17 @@ public:
     std::vector<TargetSpan*> & GetStacks() { return stacks_; }
 
 
-    // Scoring functions
-    double Score(const ReordererModel & model, double loss_multiplier,
-                 Hypothesis* hyp);
+    // Get a loss-augmented score for a hypothesis
+    // Do not change the original score
+    double Score(double loss_multiplier, const Hypothesis* hyp) const;
 
     // Print the whole hypergraph in JSON format
     void PrintHyperGraph(const std::vector<std::string> & sent,
                          std::ostream & out);
 
     // Rescore the hypergraph using the given model and a loss multiplier
-    // Keep the hypergraph structure defined in the hypotheses except the root stack
-    virtual double Rescore(const ReordererModel & model, double loss_multiplier);
+    // Keep the hypergraph structure stored in the stacks except the root
+    double Rescore(double loss_multiplier);
 
     const TargetSpan * GetRoot() const {
         return SafeAccess(stacks_, stacks_.size()-1);

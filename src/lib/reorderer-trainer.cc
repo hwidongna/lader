@@ -60,14 +60,14 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 					sent < (int)ranks_.size() ? &ranks_[sent] : NULL,
 					sent < (int)parses_.size() ? &parses_[sent] : NULL);
             // Parse the hypergraph, penalizing loss heavily (oracle)
-            oracle_score = hyper_graph->Rescore(model_, -1e6);
+            oracle_score = hyper_graph->Rescore(-1e6);
             oracle_features = hyper_graph->GetBest()->AccumulateFeatures(
             						hyper_graph->GetFeatures());
             oracle_loss     = hyper_graph->GetBest()->AccumulateLoss();
             oracle_score   -= oracle_loss * -1e6;
             // Parse the hypergraph, slightly boosting loss by 1.0 if we are
             // using loss-augmented inference
-            model_score = hyper_graph->Rescore(model_, (loss_aug ? 1.0 : 0.0));
+            model_score = hyper_graph->Rescore(loss_aug ? 1.0 : 0.0);
             model_loss  = hyper_graph->GetBest()->AccumulateLoss();
             model_score -= model_loss * 1;
             // Add the statistics for this iteration

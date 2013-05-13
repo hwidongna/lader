@@ -32,42 +32,25 @@ const FeatureVectorInt * HyperGraph::GetEdgeFeatures(
     return ret;
 }
 
-// Score a hypothesis
-double HyperGraph::Score(const ReordererModel & model,
-                         double loss_multiplier,
-                         Hypothesis* hyp) {
-    double score = hyp->GetScore();
-    if(score == -DBL_MAX) { 
-        score = hyp->GetLoss()*loss_multiplier;
-        if(hyp->GetEdgeType() != HyperEdge::EDGE_ROOT) {
-            EdgeFeatureMap::const_iterator fit =
-                                        features_->find(hyp->GetEdge());
-            if(fit == features_->end())
-            	THROW_ERROR("No features found in Score for " << *hyp->GetEdge());
-            score += model.ScoreFeatureVector(*fit->second);
-        }
-        hyp->SetSingleScore(score);
-        if(hyp->GetLeftChild()) 
-            score += Score(model, loss_multiplier, hyp->GetLeftHyp());
-        if(hyp->GetRightChild()) 
-            score += Score(model, loss_multiplier, hyp->GetRightHyp());
-        hyp->SetScore(score);
+double HyperGraph::Score(double loss_multiplier,
+                         const Hypothesis* hyp) const{
+    double score = hyp->GetLoss()*loss_multiplier;
+    if(hyp->GetEdgeType() != HyperEdge::EDGE_ROOT) {
+    	score += hyp->GetSingleScore();
     }
-    return score;
+    if(hyp->GetLeftChild())
+		score += Score(loss_multiplier, hyp->GetLeftHyp());
+	if(hyp->GetRightChild())
+		score += Score(loss_multiplier, hyp->GetRightHyp());
+	return score;
 }
 
-// Rescore the hypergraph using the given model and a loss multiplier
-// Keep the hypergraph structure defined in the hypotheses except the root stack
-double HyperGraph::Rescore(const ReordererModel & model, double loss_multiplier) {
-    // Reset everything to -DBL_MAX to indicate it needs to be recalculated
-    BOOST_FOREACH(TargetSpan * stack, stacks_)
-		BOOST_FOREACH(Hypothesis * hyp, stack->GetHypotheses())
-			hyp->SetScore(-DBL_MAX);
+double HyperGraph::Rescore(double loss_multiplier) {
     // Score from root for all hypotheses, while keeping the best hyp at hyps[0]
     // Therefore, this keep the forest structure by BuildHyperGraph
     std::vector<Hypothesis*> & hyps = GetRoot()->GetHypotheses();
     for(int i = 0; i < (int)hyps.size(); i++) {
-        Score(model, loss_multiplier, hyps[i]);
+        hyps[i]->SetScore(Score(loss_multiplier, hyps[i]));
         if(hyps[i]->GetScore() > hyps[0]->GetScore())
             swap(hyps[i], hyps[0]);
     }

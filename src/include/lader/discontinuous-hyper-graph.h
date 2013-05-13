@@ -31,9 +31,6 @@ public:
 			const Ranks * ranks,
 			const FeatureDataParse * parse) const;
 
-	// Rescore the hypergraph using the given model and a loss multiplier
-	double Rescore(const ReordererModel & model, double loss_multiplier);
-
 	const TargetSpan *GetStack(int l, int m, int n, int r) const
 	{
 		if(m < 0 && n < 0)
@@ -64,21 +61,6 @@ public:
 		return SafeAccess(hyper_graph->GetStacks(), GetTrgSpanID(n - m - 2, r - m - 2));
 	}
 
-//	Hypothesis *GetTrgSpan(int l, int m, int n, int r, int rank)
-//	{
-//		if (m < 0 && n < 0)
-//			return HyperGraph::GetSpanHypothesis(l, r, rank);
-//		if(l < 0 || r < 0 || (n > 0 && m >= n-1) || rank < 0)
-//			THROW_ERROR("Bad GetTrgSpan "<<rank<<"th of "
-//					"[l="<<l<<", m="<<m<<", n="<<n<<", r="<<r<<"]"<<std::endl)
-//		HyperGraph *hyper_graph = SafeAccess(next_, GetTrgSpanID(l, m));
-//		int idx = GetTrgSpanID(n - m - 2, r - m - 2);
-//	    std::vector<TargetSpan*> & stacks = hyper_graph->GetStacks();
-//		if((int)stacks.size() <= idx)
-//			return NULL;
-//		else
-//			return SafeAccess(stacks, idx)->GetHypothesis(rank);
-//	}
 	void SetStack(int l, int m, int n, int r, TargetSpan * stack) {
 		if (m < 0 && n < 0){
 			HyperGraph::SetStack(l, r , stack);

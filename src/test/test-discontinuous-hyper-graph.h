@@ -89,19 +89,19 @@ public:
         ts03 = new TargetSpan(0,3);
         tsRoot = new TargetSpan(0,3);
         // Add the hypotheses
-        ts00->AddHypothesis(new Hypothesis(1,1, edge00.Clone(), 0,0));
-        ts11->AddHypothesis(new Hypothesis(2,2, edge11.Clone(), 1,1));
-        ts22->AddHypothesis(new Hypothesis(3,3, edge22.Clone(), 2,2));
-        ts33->AddHypothesis(new Hypothesis(4,4, edge33.Clone(), 3,3));
-        ts0_2->AddHypothesis(new DiscontinuousHypothesis(1+3+5,5, edge0_2b.Clone(), 2,0, 0,0, ts00,ts22));
-        ts1_3->AddHypothesis(new DiscontinuousHypothesis(2+4+6,6, edge1_3b.Clone(), 3,1, 0,0, ts11,ts33));
-        ts01->AddHypothesis(new DiscontinuousHypothesis(1,1, edge01.Clone(), 0,1));
-        ts23->AddHypothesis(new DiscontinuousHypothesis(2,2, edge23.Clone(), 2,3));
+        ts00->AddHypothesis(new Hypothesis(1,-1, edge00.Clone(), 0,0));
+        ts11->AddHypothesis(new Hypothesis(2,-1, edge11.Clone(), 1,1));
+        ts22->AddHypothesis(new Hypothesis(3,-1, edge22.Clone(), 2,2));
+        ts33->AddHypothesis(new Hypothesis(4,-1, edge33.Clone(), 3,3));
+        ts0_2->AddHypothesis(new DiscontinuousHypothesis(1+3+5,-1, edge0_2b.Clone(), 2,0, 0,0, ts00,ts22));
+        ts1_3->AddHypothesis(new DiscontinuousHypothesis(2+4+6,-1, edge1_3b.Clone(), 3,1, 0,0, ts11,ts33));
+        ts01->AddHypothesis(new DiscontinuousHypothesis(1,-1, edge01.Clone(), 0,1));
+        ts23->AddHypothesis(new DiscontinuousHypothesis(2,-1, edge23.Clone(), 2,3));
         // the viterbi score of combining ts0_2b and ts1_3b is greater than that of ts01 and ts23
-        ts03->AddHypothesis(new Hypothesis(1+3+5+2+4+6+7,7, edge03f.Clone(), 0,3, 0,0, ts0_2, ts1_3));
-        ts03->AddHypothesis(new Hypothesis(1+2+7,7, edge03f.Clone(), 0,3, 0,0, ts01, ts23));
-        tsRoot->AddHypothesis(new Hypothesis(1+3+5+2+4+6+7, 0, 0,3, 0,3, HyperEdge::EDGE_ROOT,-1, 0,-1,ts03));
-        tsRoot->AddHypothesis(new Hypothesis(1+2+7, 0, 0,3, 0,3, HyperEdge::EDGE_ROOT,-1, 1,-1,ts03));
+        ts03->AddHypothesis(new Hypothesis(1+3+5+2+4+6+7,-1, edge03f.Clone(), 0,3, 0,0, ts0_2, ts1_3));
+        ts03->AddHypothesis(new Hypothesis(1+2+7,-1, edge03f.Clone(), 0,3, 0,0, ts01, ts23));
+        tsRoot->AddHypothesis(new Hypothesis(1+3+5+2+4+6+7, -1, 0,3, 0,3, HyperEdge::EDGE_ROOT,-1, 0,-1,ts03));
+        tsRoot->AddHypothesis(new Hypothesis(1+2+7, -1, 0,3, 0,3, HyperEdge::EDGE_ROOT,-1, 1,-1,ts03));
         // Add the features
         FeatureVectorInt 
             *fv00 = new FeatureVectorInt(1, MakePair(1,1)),
@@ -378,29 +378,29 @@ public:
     // Test that rescoring works
     int TestRescore() {
         // Create a model that assigns a weight of -1 to each production
-        ReordererModel mod;
-        for(int i = 0; i < 20; i++) {
-            ostringstream oss;
-            oss << "WEIGHT" << i;
-            mod.SetWeight(oss.str(), 0);
-        }
-        mod.SetWeight("WEIGHT10", -1);
+//        ReordererModel mod;
+//        for(int i = 0; i < 20; i++) {
+//            ostringstream oss;
+//            oss << "WEIGHT" << i;
+//            mod.SetWeight(oss.str(), 0);
+//        }
+//        mod.SetWeight("WEIGHT10", -1);
         int ret = 1;
         // Simply rescoring with this model should pick the forward production
         // with a score of -3
-        double score = my_hg->Rescore(mod, 0.0);
+        double score = my_hg->Rescore(0.0);
         if(score != -3) {
             cerr << "Rescore(mod, 0.0) != -3: " << score << endl; ret = 0;
         }
         // Rescoring with loss +1 should pick the non-BTG
         // with a loss of 1+2+3+4+5+6+7, minus a weight of 1*7 -> 21
-        score = my_hg->Rescore(mod, 1.0);
+        score = my_hg->Rescore(1.0);
         if(score != 21) {
             cerr << "Rescore(mod, 1.0) != 21: " << score << endl; ret = 0;
         }
         // Rescoring with loss -1 should pick the BTG
 		// with a loss of -1-2-7, minus a weight of 1*7 -> 21
-		score = my_hg->Rescore(mod, -1);
+		score = my_hg->Rescore(-1);
 		if(score != -17) {
 			cerr << "Rescore(mod, -1) != -17: " << score << endl; ret = 0;
 		}

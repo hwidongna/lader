@@ -62,14 +62,14 @@ public:
         ts11 = new TargetSpan(1,1);
         tsr = new TargetSpan(0,1);
         // Add the hypotheses
-        ts00->AddHypothesis(new Hypothesis(1,1,0,0,0,0,HyperEdge::EDGE_FOR));
-        ts11->AddHypothesis(new Hypothesis(2,2,1,1,1,1,HyperEdge::EDGE_FOR));
-        ts01->AddHypothesis(new Hypothesis(5,5,0,1,1,0,HyperEdge::EDGE_INV,1,0,0,ts00,ts11));
-        ts01->AddHypothesis(new Hypothesis(4,4,0,1,0,1,HyperEdge::EDGE_FOR));
-        ts01->AddHypothesis(new Hypothesis(3,3,0,1,0,1,HyperEdge::EDGE_STR,1,0,0,ts00,ts11));
-        tsr->AddHypothesis(new Hypothesis(6,6,1,0,-1,2,HyperEdge::EDGE_ROOT,-1,0,-1,ts01));
-        tsr->AddHypothesis(new Hypothesis(6,6,0,1,-1,2,HyperEdge::EDGE_ROOT,-1,1,-1,ts01));
-        tsr->AddHypothesis(new Hypothesis(6,6,0,1,-1,2,HyperEdge::EDGE_ROOT,-1,2,-1,ts01));
+        ts00->AddHypothesis(new Hypothesis(1,-1,0,0,0,0,HyperEdge::EDGE_FOR));
+        ts11->AddHypothesis(new Hypothesis(2,-1,1,1,1,1,HyperEdge::EDGE_FOR));
+        ts01->AddHypothesis(new Hypothesis(5,-1,0,1,1,0,HyperEdge::EDGE_INV,1,0,0,ts00,ts11));
+        ts01->AddHypothesis(new Hypothesis(4,-1,0,1,0,1,HyperEdge::EDGE_FOR));
+        ts01->AddHypothesis(new Hypothesis(3,-1,0,1,0,1,HyperEdge::EDGE_STR,1,0,0,ts00,ts11));
+        tsr->AddHypothesis(new Hypothesis(6,-1,1,0,-1,2,HyperEdge::EDGE_ROOT,-1,0,-1,ts01));
+        tsr->AddHypothesis(new Hypothesis(6,-1,0,1,-1,2,HyperEdge::EDGE_ROOT,-1,1,-1,ts01));
+        tsr->AddHypothesis(new Hypothesis(6,-1,0,1,-1,2,HyperEdge::EDGE_ROOT,-1,2,-1,ts01));
         // Add the features
         FeatureVectorInt 
             *fv00 = new FeatureVectorInt(1, MakePair(1,1)),
@@ -272,24 +272,24 @@ public:
 
     // Test that rescoring works
     int TestRescore() {
-        // Create a model that assigns a weight of -1 to each production
-        ReordererModel mod;
-        for(int i = 0; i < 20; i++) {
-            ostringstream oss;
-            oss << "WEIGHT" << i;
-            mod.SetWeight(oss.str(), 0);
-        }
-        mod.SetWeight("WEIGHT10", -1);
+//        // Create a model that assigns a weight of -1 to each production
+//        ReordererModel mod;
+//        for(int i = 0; i < 20; i++) {
+//            ostringstream oss;
+//            oss << "WEIGHT" << i;
+//            mod.SetWeight(oss.str(), 0);
+//        }
+//        mod.SetWeight("WEIGHT10", -1);
         int ret = 1;
         // Simply rescoring with this model should pick the forward production
         // with a score of -1
-        double score = my_hg.Rescore(mod, 0.0);
+        double score = my_hg.Rescore(0.0);
         if(score != -1) {
             cerr << "Rescore(mod, 0.0) != -1: " << score << endl; ret = 0;
         }
         // Rescoring with loss +1 should pick the inverted terminal
         // with a loss of 14, minus a weight of 3 -> 11
-        score = my_hg.Rescore(mod, 1.0);
+        score = my_hg.Rescore(1.0);
         if(score != 11) {
             cerr << "Rescore(mod, 1.0) != 11: " << score << endl; ret = 0;
         }

@@ -38,7 +38,12 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
             random_shuffle(sent_order.begin(), sent_order.end());
         // Over all values in the corpus
         int done = 0;
-        BOOST_FOREACH(int sent, sent_order) {
+        for (int sample = 0 ; sample < sent_order.size() ; sample++){
+        	if (sample >= config.GetInt("samples")){
+        		break;
+        	}
+//        BOOST_FOREACH(int sent, sent_order) {
+        	int sent = sent_order[sample];
         	if (verbose > 1)
         		cerr << "Sentence " << sent << endl;
             if(++done % 100 == 0) { cout << "."; cout.flush(); }

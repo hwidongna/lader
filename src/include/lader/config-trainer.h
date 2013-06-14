@@ -36,7 +36,8 @@ public:
         AddConfigEntry("combine_blocks", "true", "Whether to combine alignments into blocks");
         AddConfigEntry("cost", "1e-3", "The rate at which to learn");
         AddConfigEntry("feature_profile", "seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,O%SL%SR%ET,I%LR%RL%ET,CL%CL%ET,B%SB%ET,A%SA%ET,N%SN%ET,BIAS%ET", "Which features to use ");
-        AddConfigEntry("iterations", "500", "The number of iterations of training to perform.");
+        AddConfigEntry("iterations", "100", "The number of iterations of training to perform.");
+        AddConfigEntry("samples", "500", "The number of samples of training to perform.");
         AddConfigEntry("loss_profile", "chunk=1", "Which loss functions to use");
         AddConfigEntry("loss_augmented_inference", "true", "Whether to use loss-augmented inference");
         AddConfigEntry("max_term", "5", "The maximum length of a terminal ");

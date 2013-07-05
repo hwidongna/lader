@@ -9,6 +9,10 @@ fi
 
 SAMPLES=$2
 
+if [ $# -lt 2 ]
+then
+SAMPLES=3
+fi
 # This bash file provides an example of how to train a model for lader.
 # There are a couple steps, some of which are optional.
 #

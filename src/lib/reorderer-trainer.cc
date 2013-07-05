@@ -24,6 +24,10 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
     for(int i = 0 ; i < (int)(sent_order.size());i++)
         sent_order[i] = i;
 
+    // Shuffle
+    if(config.GetBool("shuffle"))
+        random_shuffle(sent_order.begin(), sent_order.end());
+
     if(gapSize > 0)
         cerr << "use a discontinuous hyper-graph: D=" << gapSize << endl;
 
@@ -33,9 +37,6 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
     cerr << "(\".\" == 100 sentences)" << endl;
     for(int iter = 0; iter < config.GetInt("iterations"); iter++) {
         double iter_model_loss = 0, iter_oracle_loss = 0;
-        // Shuffle
-        if(config.GetBool("shuffle"))
-            random_shuffle(sent_order.begin(), sent_order.end());
         // Over all values in the corpus
         int done = 0;
         for (int sample = 0 ; sample < sent_order.size() ; sample++){

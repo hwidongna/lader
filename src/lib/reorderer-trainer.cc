@@ -24,10 +24,6 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
     for(int i = 0 ; i < (int)(sent_order.size());i++)
         sent_order[i] = i;
 
-    // Shuffle
-    if(config.GetBool("shuffle"))
-        random_shuffle(sent_order.begin(), sent_order.end());
-
     if(gapSize > 0)
         cerr << "use a discontinuous hyper-graph: D=" << gapSize << endl;
 
@@ -37,14 +33,20 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
     cerr << "(\".\" == 100 sentences)" << endl;
     for(int iter = 0; iter < config.GetInt("iterations"); iter++) {
         double iter_model_loss = 0, iter_oracle_loss = 0;
-        // Over all values in the corpus
         int done = 0;
-        for (int sample = 0 ; sample < sent_order.size() ; sample++){
-        	if (sample >= config.GetInt("samples")){
+        // Over all values in the corpus
+        // Shuffle
+        if(config.GetBool("shuffle"))
+            random_shuffle(sent_order.begin(), sent_order.end());
+//        for (int sample = 0 ; sample < sent_order.size() ; sample++){
+//        	if (sample >= config.GetInt("samples")){
+//        		break;
+//        	}
+        BOOST_FOREACH(int sent, sent_order) {
+//        	int sent = sent_order[sample];
+        	if (done >= config.GetInt("samples")){
         		break;
         	}
-//        BOOST_FOREACH(int sent, sent_order) {
-        	int sent = sent_order[sample];
         	if (verbose > 1)
         		cerr << "Sentence " << sent << endl;
             if(++done % 100 == 0) { cout << "."; cout.flush(); }

@@ -91,12 +91,15 @@ void DiscontinuousHyperGraph::AddDiscontinuousHyperEdges(
 	if(right_stack == NULL) THROW_ERROR("Null right_trg "
 			"["<<right_l<<", "<<right_m<<", "<<right_n<<", "<<right_r<<"]");
 	int l, m, n, r, c;
+	// continuous + continuous = discontinuous
     if (left_m < 0 && left_m < 0 && right_m < 0 && right_n < 0){
         l = left_l; m = left_r; n = right_l; r = right_r; c = -1;
     }
+    // continuous + discontinuous = discontinuous
     else if (left_m < 0 && left_n < 0 && left_r+1 == right_l){
         l = left_l; m = right_m; n = right_n; r = right_r; c = right_l;
     }
+    // discontinuous + continuous = discontinuous
     else if (right_m < 0 && right_n < 0 && left_r+1 == right_l){
         l = left_l; m = left_m; n = left_n; r = right_r; c = right_l;
     }

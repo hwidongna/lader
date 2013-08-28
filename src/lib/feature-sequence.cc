@@ -143,6 +143,39 @@ double FeatureSequence::GetSpanFeatureValue(const FeatureDataSequence & sent,
 }
 
 
+int FeatureSequence::GetBalance(const HyperEdge & edge)
+{
+	int bal;
+    // Get the balance between the values
+    if(edge.GetClass() == 'D'){
+        DiscontinuousHyperEdge *e = (DiscontinuousHyperEdge*)(&edge);
+        // continuous + continuous = discontinuous
+        if (edge.GetCenter() < 0){
+        	return e->GetRight() - e->GetN() - e->GetM() + e->GetLeft();
+        }
+        // continuous + discontinuous = discontinuous
+        else if (edge.GetCenter() <= e->GetM()){
+        	return e->GetRight() - e->GetN() + e->GetM() - 2 * e->GetCenter() + e->GetLeft() + 2;
+        }
+        // discontinuous + continuous = discontinuous
+        else if (edge.GetCenter() > e->GetN()){
+        	return e->GetRight() + e->GetN() - e->GetM() - 2 * e->GetCenter() + e->GetLeft();
+		}
+    }
+    return edge.GetRight() - 2 * edge.GetCenter() + edge.GetLeft() + 1;
+}
+
+int FeatureSequence::GetSpanSize(const HyperEdge & edge)
+{
+	int bal;
+    // Get the balance between the values
+    if(edge.GetClass() == 'D'){
+        DiscontinuousHyperEdge *e = (DiscontinuousHyperEdge*)(&edge);
+        return (e->GetRight() - e->GetN() + 1) + (e->GetM() - e->GetLeft() + 1);
+    }
+    return edge.GetRight() - edge.GetLeft() + 1;
+}
+
 string FeatureSequence::GetEdgeFeatureString(const FeatureDataSequence & sent,
                                              const HyperEdge & edge,
                                              const std::string & str) {
@@ -153,17 +186,19 @@ string FeatureSequence::GetEdgeFeatureString(const FeatureDataSequence & sent,
         // Get the difference between values
         case 'D':
             // Distance is (r-c+1)-(c-l)
-            oss << 
-                abs(edge.GetRight()-2*edge.GetCenter()+edge.GetLeft()+1);
-            return oss.str();
+        	oss << abs(GetBalance(edge));
+        	return oss.str();
         case 'B':
         case 'L':
             // Get the balance between the values
-            bal = edge.GetRight()-2*edge.GetCenter()+edge.GetLeft()+1;
+            bal = GetBalance(edge);
             if(type == 'B') { oss << bal; return oss.str(); }
             else if(bal < 0) { return "L"; }
             else if(bal > 0) { return "R"; }
             else { return "E"; }
+        case 'N':
+            oss << GetSpanSize(edge);
+            return oss.str();
         case 'T':
             oss << (char)edge.GetType() << edge.GetClass();
             return oss.str();
@@ -181,10 +216,10 @@ double FeatureSequence::GetEdgeFeatureValue(const FeatureDataSequence & sent,
         // Get the difference between values
         case 'D':
             // Distance is (r-c+1)-(c-l)
-            return abs(edge.GetRight()-2*edge.GetCenter()+edge.GetLeft()+1);
+        	return abs(GetBalance(edge));
         case 'B':
             // Get the balance between the values
-            return edge.GetRight()-2*edge.GetCenter()+edge.GetLeft()+1;
+            return GetBalance(edge);
         default:
             THROW_ERROR("Bad edge feature value " << type);
     }
@@ -214,6 +249,10 @@ void FeatureSequence::GenerateEdgeFeatures(
                 pair<int,int> span(-1, -1);
                 switch (templ.second[i][0]) {
                     case 'S':
+                    	if (edge.GetClass() == 'D' && templ.second[i][1] == 'N'){
+							// need to refer edge information
+						}
+						else
                     		span = pair<int,int>(edge.GetLeft(), edge.GetRight());
                         break;
                     case 'L':

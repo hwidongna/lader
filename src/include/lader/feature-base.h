@@ -53,6 +53,8 @@ public:
     //  type=seq --> FeatureSequence
     static FeatureBase* CreateNew(const std::string & type);
 
+    int GetBalance(const HyperEdge & edge);
+    int GetSpanSize(const HyperEdge & edge);
 private:
 
 };

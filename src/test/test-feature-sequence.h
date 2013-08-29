@@ -25,6 +25,7 @@ public:
             edge0_2(0, 0, -1, 2, 2, HyperEdge::EDGE_STR),
             edge0_23(0, 0, -1, 2, 3, HyperEdge::EDGE_STR),
             edge01_3(0, 1, -1, 3, 3, HyperEdge::EDGE_STR),
+            edge12_4(1, 2, -1, 4, 4, HyperEdge::EDGE_STR),
             edge0_2__3(0, 0, 3, 2, 3, HyperEdge::EDGE_STR),
             edge0__1_3(0, 1, 1, 3, 3, HyperEdge::EDGE_STR){
         // Create a combined alignment
@@ -193,6 +194,7 @@ public:
         ret *= feat.GetBalance(edge0_2) == 0 ? 1 : 0;
         ret *= feat.GetBalance(edge0_23) == 1 ? 1 : 0;
         ret *= feat.GetBalance(edge01_3) == -1 ? 1 : 0;
+        ret *= feat.GetBalance(edge12_4) == -1 ? 1 : 0;
         ret *= feat.GetBalance(edge0_2__3) == -1 ? 1 : 0;
         if (ret == 0) cerr << "feat.GetBalance(edge0_2__3) != -1, but " << feat.GetBalance(edge0_2__3) << endl;
         ret *= feat.GetBalance(edge0__1_3) == 1 ? 1 : 0;
@@ -232,7 +234,7 @@ public:
 
 private:
     HyperEdge edge00, edge11, edge22, edge12t, edge12nt, edge02;
-    DiscontinuousHyperEdge edge0_2, edge0_23, edge01_3, edge0_2__3, edge0__1_3;
+    DiscontinuousHyperEdge edge0_2, edge0_23, edge01_3, edge12_4, edge0_2__3, edge0__1_3;
     Ranks cal;
     FeatureDataSequence sent, sent_pos;
 

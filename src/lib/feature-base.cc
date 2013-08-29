@@ -3,6 +3,7 @@
 #include <lader/feature-sequence.h>
 #include <lader/feature-parse.h>
 #include <lader/feature-align.h>
+#include <lader/discontinuous-hyper-edge.h>
 
 using namespace lader;
 using namespace std;
@@ -18,4 +19,41 @@ FeatureBase * FeatureBase::CreateNew(const string & type) {
     else
         THROW_ERROR("Bad feature type " << type << " (must be seq/cfg/align)");
     return NULL;
+}
+
+
+int FeatureBase::GetBalance(const HyperEdge & edge)
+{
+	int bal;
+    // Get the balance between the values
+    if(edge.GetClass() == 'D'){
+
+    	const DiscontinuousHyperEdge * e =
+    			dynamic_cast<const DiscontinuousHyperEdge*>(&edge);
+//        DiscontinuousHyperEdge *e = (DiscontinuousHyperEdge*)(&edge);
+        // continuous + continuous = discontinuous
+        if (edge.GetCenter() < 0){
+        	return e->GetRight() - e->GetN() - e->GetM() + e->GetLeft();
+        }
+        // continuous + discontinuous = discontinuous
+        else if (edge.GetCenter() <= e->GetM()){
+        	return e->GetRight() - e->GetN() + e->GetM() - 2 * e->GetCenter() + e->GetLeft() + 2;
+        }
+        // discontinuous + continuous = discontinuous
+        else if (edge.GetCenter() > e->GetN()){
+        	return e->GetRight() + e->GetN() - e->GetM() - 2 * e->GetCenter() + e->GetLeft();
+		}
+    }
+    return edge.GetRight() - 2 * edge.GetCenter() + edge.GetLeft() + 1;
+}
+
+int FeatureBase::GetSpanSize(const HyperEdge & edge)
+{
+	int bal;
+    // Get the balance between the values
+    if(edge.GetClass() == 'D'){
+        DiscontinuousHyperEdge *e = (DiscontinuousHyperEdge*)(&edge);
+        return (e->GetRight() - e->GetN() + 1) + (e->GetM() - e->GetLeft() + 1);
+    }
+    return edge.GetRight() - edge.GetLeft() + 1;
 }

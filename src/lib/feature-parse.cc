@@ -105,13 +105,12 @@ string FeatureParse::GetEdgeFeatureString(const FeatureDataParse & sent,
         // Get the difference between values
         case 'D':
             // Distance is (r-c+1)-(c-l)
-            oss << 
-                abs(edge.GetRight()-2*edge.GetCenter()+edge.GetLeft()+1);
+            oss <<
+                abs(GetBalance(edge));
             return oss.str();
         case 'B':
             // Get the balance between the values
-            oss << 
-                edge.GetRight()-2*edge.GetCenter()+edge.GetLeft()+1;
+            oss << GetBalance(edge);
             return oss.str();
         case 'T':
         	oss << (char)edge.GetType() << edge.GetClass();
@@ -130,10 +129,10 @@ double FeatureParse::GetEdgeFeatureValue(const FeatureDataParse & sent,
         // Get the difference between values
         case 'D':
             // Distance is (r-c+1)-(c-l)
-            return abs(edge.GetRight()-2*edge.GetCenter()+edge.GetLeft()+1);
+            return abs(GetBalance(edge));
         case 'B':
             // Get the balance between the values
-            return edge.GetRight()-2*edge.GetCenter()+edge.GetLeft()+1;
+            return GetBalance(edge);
         default:
             THROW_ERROR("Bad edge feature value " << type);
     }

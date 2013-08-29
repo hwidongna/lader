@@ -39,14 +39,12 @@ public:
 		}
 		return HyperEdge::operator< (rhs);
 	}
-	bool operator== (HyperEdge & rhs) const {
-		try{
-			DiscontinuousHyperEdge & drhs =
-					dynamic_cast<DiscontinuousHyperEdge&>(rhs);
-			return HyperEdge::operator ==(rhs) && m_ == drhs.m_ && n_ == drhs.n_;
-		}catch (const std::bad_cast& e){ // if rhs is base class instance
-		}
-		return false;
+	bool operator== (const HyperEdge & rhs) const {
+		if (rhs.GetClass() != 'D')
+			return false;
+		const DiscontinuousHyperEdge * drhs =
+				dynamic_cast<const DiscontinuousHyperEdge*>(&rhs);
+		return HyperEdge::operator ==(rhs) && m_ == drhs->m_ && n_ == drhs->n_;
 	}
 
 	int GetM() const { return m_; }

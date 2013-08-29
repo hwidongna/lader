@@ -17,8 +17,8 @@ namespace lader{
 class DiscontinuousHyperGraph : public HyperGraph{
 	friend class TestDiscontinuousHyperGraph;
 public:
-	DiscontinuousHyperGraph(int gapSize = 1, bool mp = false, int verbose = 0)
-	: gap_(gapSize), mp_(mp), verbose_(verbose){ }
+	DiscontinuousHyperGraph(int gapSize = 1, bool mp = false, bool full_fledged = false, int verbose = 0)
+	: gap_(gapSize), mp_(mp), full_fledged_(full_fledged), verbose_(verbose){ }
     virtual ~DiscontinuousHyperGraph(){
         BOOST_FOREACH(HyperGraph* graph, next_)
             if (graph != NULL)
@@ -96,12 +96,12 @@ protected:
     		const Sentence & sent,
     		int l, int m, int n, int r,
     		int beam_size = 0, bool save_trg = true);
-    void AddHyperEdges(
+    void AddHypotheses(
     		ReordererModel & model,	const FeatureSet & features,
     		const Sentence & sent, HypothesisQueue & q,
     		int left_l, int left_m, int left_n, int left_r,
     		int right_l, int right_m, int right_n, int right_r);
-    void AddDiscontinuousHyperEdges(
+    void AddDiscontinuousHypotheses(
     		ReordererModel & model, const FeatureSet & features,
     		const Sentence & sent, HypothesisQueue & q,
     		int left_l, int left_m, int left_n, int left_r,
@@ -112,7 +112,8 @@ private:
 	int gap_; // maximum gap size
 	bool mp_; // monotone at punctuation
 	int verbose_; // verbosity during process
-	std::vector<HyperGraph*> next_;
+    int full_fledged_; // invoke all possible permutations
+	std::vector<HyperGraph*> next_; // for discontinuous hypotheses and hyper edges
 };
 
 }

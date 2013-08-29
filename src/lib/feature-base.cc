@@ -30,9 +30,8 @@ int FeatureBase::GetBalance(const HyperEdge & edge)
 
     	const DiscontinuousHyperEdge * e =
     			dynamic_cast<const DiscontinuousHyperEdge*>(&edge);
-//        DiscontinuousHyperEdge *e = (DiscontinuousHyperEdge*)(&edge);
         // continuous + continuous = discontinuous
-        if (edge.GetCenter() < 0){
+    	if (edge.GetCenter() < 0){
         	return e->GetRight() - e->GetN() - e->GetM() + e->GetLeft();
         }
         // continuous + discontinuous = discontinuous
@@ -43,6 +42,12 @@ int FeatureBase::GetBalance(const HyperEdge & edge)
         else if (edge.GetCenter() > e->GetN()){
         	return e->GetRight() + e->GetN() - e->GetM() - 2 * e->GetCenter() + e->GetLeft();
 		}
+    	// discontinuous + discontinuous = continuous
+        else if (e->GetM() < edge.GetCenter() && edge.GetCenter() < e->GetN()){
+        	return e->GetRight() - 2 * e->GetN() - 2 * e->GetM() + 2 * e->GetCenter() + e->GetLeft() + 1;
+        }
+        else
+        	THROW_ERROR("Balance is undefined for " << *e);
     }
     return edge.GetRight() - 2 * edge.GetCenter() + edge.GetLeft() + 1;
 }
@@ -51,9 +56,14 @@ int FeatureBase::GetSpanSize(const HyperEdge & edge)
 {
 	int bal;
     // Get the balance between the values
-    if(edge.GetClass() == 'D'){
+    if(edge.GetClass() == 'D' ){
         DiscontinuousHyperEdge *e = (DiscontinuousHyperEdge*)(&edge);
-        return (e->GetRight() - e->GetN() + 1) + (e->GetM() - e->GetLeft() + 1);
+        // continuous + continuous = discontinuous
+        // continuous + discontinuous = discontinuous
+        // discontinuous + continuous = discontinuous
+        if (edge.GetCenter() < 0 || edge.GetCenter() <= e->GetM() || edge.GetCenter() > e->GetN())
+            return (e->GetRight() - e->GetN() + 1) + (e->GetM() - e->GetLeft() + 1);
     }
+	// discontinuous + discontinuous = continuous
     return edge.GetRight() - edge.GetLeft() + 1;
 }

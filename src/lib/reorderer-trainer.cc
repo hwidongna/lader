@@ -15,6 +15,7 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
         ReadParses(config.GetString("parse_in"));
     int verbose = config.GetInt("verbose");
     int gapSize = config.GetInt("gap-size");
+    bool full_fledged = config.GetBool("full_fledged");
     bool mp = config.GetBool("mp");
     // Temporary values
     bool loss_aug = config.GetBool("loss_augmented_inference");
@@ -50,7 +51,7 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
         	if (verbose > 1)
         		cerr << "Sentence " << sent << endl;
             if(++done % 100 == 0) { cout << "."; cout.flush(); }
-            HyperGraph * hyper_graph = new DiscontinuousHyperGraph(gapSize, mp, verbose);
+            HyperGraph * hyper_graph = new DiscontinuousHyperGraph(gapSize, mp, full_fledged, verbose);
             // If we are saving features for efficiency, recover the saved
             // features and replace them in the hypergraph
             if(config.GetBool("save_features") && iter != 0)

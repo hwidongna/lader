@@ -43,7 +43,7 @@ public:
 				dynamic_cast<const DiscontinuousHyperEdge*>(Hypothesis::GetEdge());
 		if (dedge == NULL)
 			THROW_ERROR("Invalide hyper-edge")
-			return dedge->GetN();
+		return dedge->GetN();
 	}
 
 

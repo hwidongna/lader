@@ -28,16 +28,14 @@ public:
 	}
 	// Comparators
 	bool operator< (const HyperEdge & rhs) const {
-		std::cerr << "bool operator< (const HyperEdge & rhs)" << std::endl;
-		try{
-			const DiscontinuousHyperEdge & drhs =
-					dynamic_cast<const DiscontinuousHyperEdge&>(rhs);
-			return HyperEdge::operator< (rhs) ||
-					(HyperEdge::operator ==(rhs) && (m_ < drhs.m_ || (
-					m_ == drhs.m_ && n_ < drhs.n_)));
-		}catch (const std::bad_cast& e) { // if rhs is base class instance
-		}
-		return HyperEdge::operator< (rhs);
+//		std::cerr << "bool operator< (const HyperEdge & rhs)" << std::endl;
+		if (rhs.GetClass() != 'D')
+			return HyperEdge::operator< (rhs);
+		const DiscontinuousHyperEdge * drhs =
+				dynamic_cast<const DiscontinuousHyperEdge*>(&rhs);
+		return HyperEdge::operator< (rhs) ||
+				(HyperEdge::operator ==(rhs) && (m_ < drhs->m_ || (
+				m_ == drhs->m_ && n_ < drhs->n_)));
 	}
 	bool operator== (const HyperEdge & rhs) const {
 		if (rhs.GetClass() != 'D')

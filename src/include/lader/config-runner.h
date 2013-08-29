@@ -30,6 +30,7 @@ public:
         AddConfigEntry("model", "", "A model to be used in reordering");
         AddConfigEntry("beam", "1", "The maximum beam size");
         AddConfigEntry("gap-size", "1", "The gap size for discontinuous hyper graph");
+        AddConfigEntry("full_fledged", "false", "Enable discontinuous hyper graph full-fledged combinations");
         AddConfigEntry("mp", "false", "Monotone at punctuation");
         AddConfigEntry("threads", "1", "The number of threads to use");
         AddConfigEntry("verbose", "0", "The level of debugging output to print 2: detail for building");

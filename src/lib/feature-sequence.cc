@@ -222,17 +222,39 @@ void FeatureSequence::GenerateEdgeFeatures(
                     		span = pair<int,int>(edge.GetLeft(), edge.GetRight());
                         break;
                     case 'L':
-                    	if (edge.GetClass() == 'D' && edge.GetCenter() < 0){
+                    	if (edge.GetClass() == 'D'){
                     		DiscontinuousHyperEdge * e = (DiscontinuousHyperEdge *)&edge;
-                    		span = pair<int,int>(e->GetLeft(),e->GetM());
+                            // continuous + continuous = discontinuous
+                    		if (edge.GetCenter() < 0)
+                    			span = pair<int,int>(e->GetLeft(),e->GetM());
+                            // continuous + discontinuous = discontinuous
+                            // discontinuous + continuous = discontinuous
+                    		else if (edge.GetCenter() <= e->GetM() || edge.GetCenter() > e->GetN())
+                    			span = pair<int,int>(edge.GetLeft(),edge.GetCenter()-1);
+                        	// discontinuous + discontinuous = continuous
+                    		else if (e->GetM() < edge.GetCenter() && edge.GetCenter() < e->GetN())
+                    			span = pair<int,int>(e->GetLeft(),e->GetN()-1);
+                    		else
+                    			THROW_ERROR("Span is undefined for " << *e)
                     	}
                     	else
                     		span = pair<int,int>(edge.GetLeft(),edge.GetCenter()-1);
                         break;
                     case 'R':
-                    	if (edge.GetClass() == 'D' && edge.GetCenter() < 0){
+                    	if (edge.GetClass() == 'D'){
                     		DiscontinuousHyperEdge * e = (DiscontinuousHyperEdge *)&edge;
-                    		span = pair<int,int>(e->GetN(), e->GetRight());
+                    		// continuous + continuous = discontinuous
+                    		if (edge.GetCenter() < 0)
+                        		span = pair<int,int>(e->GetN(), e->GetRight());
+                    		// continuous + discontinuous = discontinuous
+                    		// discontinuous + continuous = discontinuous
+                    		else if (edge.GetCenter() <= e->GetM() || edge.GetCenter() > e->GetN())
+                        		span = pair<int,int>(edge.GetCenter(), edge.GetRight());
+                    		// discontinuous + discontinuous = continuous
+                    		else if (e->GetM() < edge.GetCenter() && edge.GetCenter() < e->GetN())
+                        		span = pair<int,int>(e->GetM(), e->GetRight());
+                    		else
+                    			THROW_ERROR("Span is undefined for " << *e)
                     	}
                     	else
                     		span = pair<int,int>(edge.GetCenter(), edge.GetRight());

@@ -32,6 +32,7 @@ public:
         AddConfigEntry("attach_null", "right", "Whether to attach null alignments to the left or right");
         AddConfigEntry("beam", "100", "The maximum beam size");
         AddConfigEntry("gap-size", "1", "The gap size for discontinuous hyper graph");
+        AddConfigEntry("full_fledged", "false", "Enable discontinuous hyper graph full-fledged combinations");
         AddConfigEntry("mp", "false", "Monotone at punctuation");
         AddConfigEntry("combine_blocks", "true", "Whether to combine alignments into blocks");
         AddConfigEntry("cost", "1e-3", "The rate at which to learn");
@@ -48,7 +49,7 @@ public:
         AddConfigEntry("source_in", "", "The input file for the source sentences");
         AddConfigEntry("use_reverse", "false", "Whether to use reverse terminals ");
         AddConfigEntry("verbose", "0", "The level of debugging output to print 1: {model,oracle}{loss,score} 2: detail for building and rescoring");
-        AddConfigEntry("write_every_iter", "false", "Write the model out every time during training.");
+        AddConfigEntry("write_every_iter", "true", "Write the model out every time during training.");
 
     }
 	

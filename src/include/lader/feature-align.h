@@ -42,7 +42,7 @@ public:
     }
 
     // Check to make sure that the feature template can be interpreted
-    static bool FeatureTemplateIsLegal(const std::string & name);
+    virtual bool FeatureTemplateIsLegal(const std::string & name);
 
 private:
     CombinedAlign::NullHandler attach_;

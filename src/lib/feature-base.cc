@@ -16,6 +16,8 @@ FeatureBase * FeatureBase::CreateNew(const string & type) {
         return new FeatureParse;
     else if(type == "align")
         return new FeatureAlign;
+//    else if(type == "dynamic")
+//    	return new FeatureDynamic;
     else
         THROW_ERROR("Bad feature type " << type << " (must be seq/cfg/align)");
     return NULL;

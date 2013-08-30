@@ -23,6 +23,10 @@ public:
         NONTERM_FACTORED
     } FeatureType;
 
+    // A template for the features given the type, and a vector containing
+    // the feature name and the values to be replaced
+    typedef std::pair<FeatureType, std::vector<std::string> > FeatureTemplate;
+
     // Constructors
     FeatureBase() { }
     virtual ~FeatureBase() { }
@@ -53,8 +57,14 @@ public:
     //  type=seq --> FeatureSequence
     static FeatureBase* CreateNew(const std::string & type);
 
+    virtual bool FeatureTemplateIsLegal(const std::string & name) = 0;
+
     int GetBalance(const HyperEdge & edge);
     int GetSpanSize(const HyperEdge & edge);
+
+protected:
+    std::vector<FeatureTemplate> feature_templates_;
+
 private:
 
 };

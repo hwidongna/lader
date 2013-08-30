@@ -37,6 +37,7 @@ public:
         AddConfigEntry("combine_blocks", "true", "Whether to combine alignments into blocks");
         AddConfigEntry("cost", "1e-3", "The rate at which to learn");
         AddConfigEntry("feature_profile", "seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,O%SL%SR%ET,I%LR%RL%ET,CL%CL%ET,B%SB%ET,A%SA%ET,N%SN%ET,BIAS%ET", "Which features to use ");
+        AddConfigEntry("non_local_feature_profile", "non-local=TL%SL,TR%SR,TLR%LR,TRL%RL,TO%SL%SR,TI%LR%RL", "Which non-local features to use ");
         AddConfigEntry("iterations", "100", "The number of iterations of training to perform.");
         AddConfigEntry("samples", "500", "The number of samples of training to perform.");
         AddConfigEntry("loss_profile", "chunk=1", "Which loss functions to use");

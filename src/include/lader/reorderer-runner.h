@@ -28,6 +28,7 @@ public:
     ~ReordererRunner() {
         if(model_) delete model_;
         if(features_) delete features_;
+        if(non_local_features_) delete non_local_features_;
     }
 
     // Initialize the model
@@ -42,6 +43,7 @@ public:
         if(!in) THROW_ERROR("Couldn't read model from file (-model_in '"
                             << str << "')");
         features_ = FeatureSet::FromStream(in);
+        non_local_features_ = FeatureSet::FromStream(in);
         model_ = ReordererModel::FromStream(in);
     }
 
@@ -49,6 +51,7 @@ private:
 
     ReordererModel * model_; // The model
     FeatureSet * features_;  // The mapping on feature ids and which to use
+    FeatureSet * non_local_features_;  // The mapping on feature ids and which to use
     std::vector<OutputType> outputs_;
 
 };
@@ -57,10 +60,10 @@ private:
 class ReordererTask : public Task {
 public:
     ReordererTask(int id, const std::string & line,
-                  ReordererModel * model, FeatureSet * features,
+                  ReordererModel * model, FeatureSet * features, FeatureSet * non_local_features,
                   std::vector<ReordererRunner::OutputType> * outputs,
                   int beam, OutputCollector * collector, int gapSize, bool mp, bool full_fledged, int verbose) :
-        id_(id), line_(line), model_(model), features_(features), 
+        id_(id), line_(line), model_(model), features_(features), non_local_features_(non_local_features),
         outputs_(outputs), beam_(beam), collector_(collector),
         gap_(gapSize), mp_(mp), full_fledged_(full_fledged), verbose_(verbose) { }
     void Run();
@@ -69,6 +72,7 @@ protected:
     std::string line_;
     ReordererModel * model_; // The model
     FeatureSet * features_;  // The mapping on feature ids and which to use
+    FeatureSet * non_local_features_;  // The mapping on feature ids and which to use
     std::vector<ReordererRunner::OutputType> * outputs_;
     int beam_;
     OutputCollector * collector_;

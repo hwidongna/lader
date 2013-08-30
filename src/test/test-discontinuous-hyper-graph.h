@@ -89,19 +89,19 @@ public:
         ts03 = new TargetSpan(0,3);
         tsRoot = new TargetSpan(0,3);
         // Add the hypotheses
-        ts00->AddHypothesis(new Hypothesis(1,-1, edge00.Clone(), 0,0));
-        ts11->AddHypothesis(new Hypothesis(2,-1, edge11.Clone(), 1,1));
-        ts22->AddHypothesis(new Hypothesis(3,-1, edge22.Clone(), 2,2));
-        ts33->AddHypothesis(new Hypothesis(4,-1, edge33.Clone(), 3,3));
-        ts0_2->AddHypothesis(new DiscontinuousHypothesis(1+3+5,-1, edge0_2b.Clone(), 2,0, 0,0, ts00,ts22));
-        ts1_3->AddHypothesis(new DiscontinuousHypothesis(2+4+6,-1, edge1_3b.Clone(), 3,1, 0,0, ts11,ts33));
-        ts01->AddHypothesis(new DiscontinuousHypothesis(1,-1, edge01.Clone(), 0,1));
-        ts23->AddHypothesis(new DiscontinuousHypothesis(2,-1, edge23.Clone(), 2,3));
+        ts00->AddHypothesis(new Hypothesis(1,-1, 0, edge00.Clone(), 0,0));
+        ts11->AddHypothesis(new Hypothesis(2,-1, 0, edge11.Clone(), 1,1));
+        ts22->AddHypothesis(new Hypothesis(3,-1, 0, edge22.Clone(), 2,2));
+        ts33->AddHypothesis(new Hypothesis(4,-1, 0, edge33.Clone(), 3,3));
+        ts0_2->AddHypothesis(new DiscontinuousHypothesis(1+3+5,-1, 0, edge0_2b.Clone(), 2,0, 0,0, ts00,ts22));
+        ts1_3->AddHypothesis(new DiscontinuousHypothesis(2+4+6,-1, 0, edge1_3b.Clone(), 3,1, 0,0, ts11,ts33));
+        ts01->AddHypothesis(new DiscontinuousHypothesis(1,-1, 0, edge01.Clone(), 0,1));
+        ts23->AddHypothesis(new DiscontinuousHypothesis(2,-1, 0, edge23.Clone(), 2,3));
         // the viterbi score of combining ts0_2b and ts1_3b is greater than that of ts01 and ts23
-        ts03->AddHypothesis(new Hypothesis(1+3+5+2+4+6+7,-1, edge03f.Clone(), 0,3, 0,0, ts0_2, ts1_3));
-        ts03->AddHypothesis(new Hypothesis(1+2+7,-1, edge03f.Clone(), 0,3, 0,0, ts01, ts23));
-        tsRoot->AddHypothesis(new Hypothesis(1+3+5+2+4+6+7, -1, 0,3, 0,3, HyperEdge::EDGE_ROOT,-1, 0,-1,ts03));
-        tsRoot->AddHypothesis(new Hypothesis(1+2+7, -1, 0,3, 0,3, HyperEdge::EDGE_ROOT,-1, 1,-1,ts03));
+        ts03->AddHypothesis(new Hypothesis(1+3+5+2+4+6+7,-1, 0, edge03f.Clone(), 0,3, 0,0, ts0_2, ts1_3));
+        ts03->AddHypothesis(new Hypothesis(1+2+7,-1, 0, edge03f.Clone(), 0,3, 0,0, ts01, ts23));
+        tsRoot->AddHypothesis(new Hypothesis(1+3+5+2+4+6+7, -1, 0, 0,3, 0,3,  HyperEdge::EDGE_ROOT,-1, 0,-1,ts03));
+        tsRoot->AddHypothesis(new Hypothesis(1+2+7, -1, 0, 0,3, 0,3,  HyperEdge::EDGE_ROOT,-1, 1,-1,ts03));
         // Add the features
         FeatureVectorInt 
             *fv00 = new FeatureVectorInt(1, MakePair(1,1)),
@@ -239,17 +239,17 @@ public:
         TargetSpan *stack1 = new TargetSpan(1,1);
         TargetSpan *stack2 = new TargetSpan(2,2);
 		TargetSpan *stack3 = new TargetSpan(3,3);
-        stack0->AddHypothesis(new Hypothesis(1,1, 0,0, 0,0,HyperEdge::EDGE_FOR));
+        stack0->AddHypothesis(new Hypothesis(1,1,0, 0,0, 0,0,HyperEdge::EDGE_FOR));
         graph.HyperGraph::SetStack(0, 0, stack0);
-        stack1->AddHypothesis(new Hypothesis(2,2, 1,1, 1,1, HyperEdge::EDGE_FOR));
+        stack1->AddHypothesis(new Hypothesis(2,2,0, 1,1, 1,1, HyperEdge::EDGE_FOR));
         graph.HyperGraph::SetStack(1, 1, stack1);
-        stack2->AddHypothesis(new Hypothesis(4,4, 2,2, 2,2, HyperEdge::EDGE_FOR));
+        stack2->AddHypothesis(new Hypothesis(4,4,0, 2,2, 2,2, HyperEdge::EDGE_FOR));
         graph.HyperGraph::SetStack(2, 2, stack2);
-        stack3->AddHypothesis(new Hypothesis(8,8, 3,3, 3,3, HyperEdge::EDGE_FOR));
+        stack3->AddHypothesis(new Hypothesis(8,8,0, 3,3, 3,3, HyperEdge::EDGE_FOR));
         graph.HyperGraph::SetStack(3, 3, stack3);
         // Try processing stack01, which lead to set stack0_2
         set.SetMaxTerm(0);
-        graph.HyperGraph::SetStack(0, 1, graph.ProcessOneSpan(model, set, datas, 0, 1));
+        graph.HyperGraph::SetStack(0, 1, graph.ProcessOneSpan(model, set, non_local_set, datas, 0, 1));
         const TargetSpan *stack0_2 = graph.GetStack(0,0, 2,2);
         // The stack should contain two target spans (2,0) and (0,2),
         // each with one hypothesis
@@ -272,7 +272,7 @@ public:
     int TestBuildHyperGraph() {
         DiscontinuousHyperGraph graph(1);
         set.SetMaxTerm(1);
-        graph.BuildHyperGraph(model, set, datas, 4*3*2);
+        graph.BuildHyperGraph(model, set, non_local_set, datas, 4*3*2);
         const std::vector<TargetSpan*> & stacks = graph.GetStacks();
         int ret = 1;
         TargetSpan * stack03 = graph.HyperGraph::GetStack(0, 3);
@@ -312,7 +312,7 @@ public:
         set.SetMaxTerm(0);
         sent.FromString("this sentence has five words");
 		sent_pos.FromString("PRP NNS VB ADJ NNP");
-        graph.BuildHyperGraph(model, set, datas, 100);
+        graph.BuildHyperGraph(model, set, non_local_set, datas, 100);
         const std::vector<TargetSpan*> & stacks = graph.GetStacks();
         int ret = 1;
         TargetSpan * stack04 = graph.HyperGraph::GetStack(0, 4);
@@ -338,7 +338,7 @@ public:
 		set.SetMaxTerm(0);
 		sent.FromString("one");
 		sent_pos.FromString("NNS");
-		graph.BuildHyperGraph(model, set, datas);
+		graph.BuildHyperGraph(model, set, non_local_set, datas);
 		const std::vector<TargetSpan*> & stacks = graph.GetStacks();
 		int ret = 1;
 		// The total number of stacks should be 1 + 1: 0-0 root
@@ -418,10 +418,10 @@ public:
                    *span01 = new TargetSpan(0,1),
                    *span11 = new TargetSpan(1,1),
                    *spanr = new TargetSpan(0,1);
-        span00->AddHypothesis(new Hypothesis(1,1,0,0,-1,-1,HyperEdge::EDGE_FOR));
-        span11->AddHypothesis(new Hypothesis(1,1,1,1,-1,-1,HyperEdge::EDGE_FOR));
-        span01->AddHypothesis(new Hypothesis(1,1,0,1,-1,-1,HyperEdge::EDGE_FOR));
-        spanr->AddHypothesis(new Hypothesis(1,1,0,1,-1,-1,HyperEdge::EDGE_ROOT,-1,0,-1,span01));
+        span00->AddHypothesis(new Hypothesis(1,1,0,0,0,-1,-1,HyperEdge::EDGE_FOR));
+        span11->AddHypothesis(new Hypothesis(1,1,0,1,1,-1,-1,HyperEdge::EDGE_FOR));
+        span01->AddHypothesis(new Hypothesis(1,1,0,0,1,-1,-1,HyperEdge::EDGE_FOR));
+        spanr->AddHypothesis(new Hypothesis(1,1,0,0,1,-1,-1,HyperEdge::EDGE_ROOT,-1,0,-1,span01));
         // Get the reordering for forward
         int ret = 1;
         vector<int> for_reorder; spanr->GetReordering(for_reorder);
@@ -460,10 +460,10 @@ public:
                    *span01 = new TargetSpan(0,1),
                    *span11 = new TargetSpan(1,1),
                    *spanr = new TargetSpan(0,1);
-        span00->AddHypothesis(new Hypothesis(1,1,0,0,-1,-1,HyperEdge::EDGE_FOR));
-        span11->AddHypothesis(new Hypothesis(1,1,1,1,-1,-1,HyperEdge::EDGE_BAC));
-        span01->AddHypothesis(new Hypothesis(1,1,0,1,-1,-1,HyperEdge::EDGE_INV,-1,1,-1,span00,span11));
-        spanr->AddHypothesis(new Hypothesis(1,1,0,1,-1,-1,HyperEdge::EDGE_ROOT,-1,0,-1,span01));
+        span00->AddHypothesis(new Hypothesis(1,1,0,0,0,-1,-1,HyperEdge::EDGE_FOR));
+        span11->AddHypothesis(new Hypothesis(1,1,0,1,1,-1,-1,HyperEdge::EDGE_BAC));
+        span01->AddHypothesis(new Hypothesis(1,1,0,0,1,-1,-1,HyperEdge::EDGE_INV,-1,1,-1,span00,span11));
+        spanr->AddHypothesis(new Hypothesis(1,1,0,0,1,-1,-1,HyperEdge::EDGE_ROOT,-1,0,-1,span01));
         // Get the reordering for forward
         int ret = 1;
         span01->GetHypothesis(0)->SetType(HyperEdge::EDGE_FOR);
@@ -512,7 +512,7 @@ public:
         span01->GetHypothesis(0)->SetType(HyperEdge::EDGE_INV);
         span01->GetHypothesis(0)->SetLeftChild(span00);
         span01->GetHypothesis(0)->SetRightChild(span11);
-        span01->AddHypothesis(new Hypothesis(1,1,0,1,-1,-1,HyperEdge::EDGE_STR,-1,1,-1,span00,span11));
+        span01->AddHypothesis(new Hypothesis(1,1,0,0,1,-1,-1,HyperEdge::EDGE_STR,-1,1,-1,span00,span11));
         // Print again
         ostringstream graph_stream;
         hg.PrintHyperGraph(str01, graph_stream);
@@ -545,7 +545,7 @@ private:
     FeatureDataSequence sent, sent_pos;
     ReordererModel model;
     std::vector<double> weights;
-    FeatureSet set;
+    FeatureSet set, non_local_set;
     vector<FeatureDataBase*> datas;
     FeatureSequence *featw, *featp;
     TargetSpan *ts00, *ts11, *ts22, *ts33, *ts03, *ts01, *ts23, *tsRoot;

@@ -18,27 +18,31 @@ class TargetSpan;
 // A tuple that is used to hold hypotheses during cube pruning
 class Hypothesis {
 public:
-    Hypothesis(double viterbi_score, double single_score,
+    Hypothesis(double viterbi_score, double single_score, double non_local_score,
                HyperEdge * edge,
                int trg_left, int trg_right,
                int left_rank = -1, int right_rank = -1,
                TargetSpan* left_child = NULL, TargetSpan* right_child = NULL) :
                viterbi_score_(viterbi_score),
-               single_score_(single_score), loss_(0),
+               single_score_(single_score),
+               non_local_score_(non_local_score),
+               loss_(0),
                edge_(edge),
                trg_left_(trg_left), trg_right_(trg_right),
                left_child_(left_child), right_child_(right_child),
                left_rank_(left_rank), right_rank_(right_rank)
                { } //std::cerr << "Hypothesis " << GetEdge() << std::endl; }
 
-    Hypothesis(double viterbi_score, double single_score,
+    Hypothesis(double viterbi_score, double single_score, double non_local_score,
 				int left, int right,
 				int trg_left, int trg_right,
 				HyperEdge::Type type, int center = -1,
 				int left_rank = -1, int right_rank = -1,
 				TargetSpan* left_child = NULL, TargetSpan* right_child = NULL) :
 				viterbi_score_(viterbi_score),
-				single_score_(single_score), loss_(0),
+				single_score_(single_score),
+				non_local_score_(non_local_score),
+				loss_(0),
 				edge_(new HyperEdge(left, center, right, type)),
 				trg_left_(trg_left), trg_right_(trg_right),
 				left_child_(left_child), right_child_(right_child),
@@ -51,7 +55,9 @@ public:
     // For that case, we do not allocate a dynamic memory in this method, which lead a dangling pointer
     Hypothesis(const Hypothesis & hyp) :
 				viterbi_score_(hyp.viterbi_score_),
-				single_score_(hyp.single_score_), loss_(hyp.loss_),
+				single_score_(hyp.single_score_),
+				non_local_score_(hyp.non_local_score_),
+				loss_(hyp.loss_),
 				edge_(hyp.edge_),
 				trg_left_(hyp.trg_left_), trg_right_(hyp.trg_right_),
 				left_child_(hyp.left_child_), right_child_(hyp.right_child_),
@@ -113,6 +119,7 @@ public:
     // Accessors
     double GetScore() const { return viterbi_score_; }
     double GetSingleScore() const { return single_score_; }
+    double GetNonLocalScore() const { return non_local_score_; }
     double GetLoss() const { return loss_; }
     HyperEdge * GetEdge() const { return edge_; }
     int GetLeft() const { return edge_->GetLeft(); }
@@ -130,6 +137,7 @@ public:
 
     void SetScore(double dub) { viterbi_score_ = dub; }
     void SetSingleScore(double dub) { single_score_ = dub; }
+    void SetNonLocalScore(double dub) { non_local_score_ = dub; }
     void SetLoss(double dub) { loss_ = dub; }
     void SetEdge(HyperEdge * edge) { edge_ = edge; }
     void SetLeftChild (TargetSpan* dub)  { left_child_ = dub; }
@@ -143,14 +151,19 @@ public:
 
     // Add up the loss over an entire subtree defined by this hyp
     double AccumulateLoss();
-    FeatureVectorInt AccumulateFeatures(const EdgeFeatureMap * features);
-    void AccumulateFeatures(const EdgeFeatureMap * features,
-                            std::tr1::unordered_map<int,double> & feat_map);
+    FeatureVectorInt AccumulateFeatures(
+        		const EdgeFeatureMap * features);
+    FeatureVectorInt AccumulateFeatures(
+    		std::tr1::unordered_map<int,double> & feat_map,
+    		const EdgeFeatureMap * features);
 
 private:
+    void AccumulateFeatures(const EdgeFeatureMap * features,
+                            std::tr1::unordered_map<int,double> & feat_map);
     double viterbi_score_; // The Viterbi score for the entire subtree that
                            // this hypothesis represents
     double single_score_;  // The score for only this edge
+    double non_local_score_;  // The score for only this hypothesis
     double loss_;          // The loss for the single action represented
                            // by this hypothesis
     HyperEdge * edge_ ;	// The corresponding hyper-edge of the production

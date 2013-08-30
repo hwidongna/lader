@@ -43,12 +43,11 @@ public:
     
     // Build the hypergraph using the specified model, features and sentence
     //  beam_size: the pop limit for cube pruning
-    //  save_trg: whether to save the target side for use in calculating loss (false when testing)
     void BuildHyperGraph(ReordererModel & model,
                          const FeatureSet & features,
+                         const FeatureSet & non_local_features,
                          const Sentence & sent,
-                         int beam_size = 0,
-                         bool save_trg = true);
+                         int beam_size = 0);
 
     const TargetSpan * GetStack(int l, int r) const {
         return SafeAccess(stacks_, GetTrgSpanID(l,r));
@@ -93,13 +92,18 @@ public:
     // This is useful if you want to save the features for later use
     void ClearFeatures() { features_ = NULL; }
 
+    void AccumulateNonLocalFeatures(std::tr1::unordered_map<int,double> & feat_map,
+						ReordererModel & model,
+						const FeatureSet & feature_gen,
+						const Sentence & sent,
+						const Hypothesis & hyp);
 protected:
     virtual TargetSpan * ProcessOneSpan(ReordererModel & model,
                                const FeatureSet & features,
+                               const FeatureSet & non_local_features,
                                const Sentence & sent,
                                int l, int r,
-                               int beam_size = 0,
-                               bool save_trg = true);
+                               int beam_size = 0);
 
 
     const FeatureVectorInt * GetEdgeFeatures(
@@ -118,6 +122,12 @@ protected:
                         const FeatureSet & feature_gen,
                         const Sentence & sent,
                         const HyperEdge & edge);
+
+    double GetNonLocalScore(ReordererModel & model,
+						const FeatureSet & feature_gen,
+						const Sentence & sent,
+						const Hypothesis & left,
+						const Hypothesis & right);
 
     inline int GetTrgSpanID(int l, int r) const { 
         // If l=-1, we want the root, so return the last element of stacks_

@@ -67,28 +67,61 @@ double HyperGraph::GetEdgeScore(ReordererModel & model,
     return model.ScoreFeatureVector(SafeReference(vec));
 }
 
+// Get the score for the left and right children of a hypothesis
+double HyperGraph::GetNonLocalScore(ReordererModel & model,
+                                const FeatureSet & feature_gen,
+                                const Sentence & sent,
+                                const Hypothesis & left,
+                                const Hypothesis & right) {
+    // unlike edge features, do not store non-local features
+    const FeatureVectorInt * vec =
+    		feature_gen.MakeNonLocalFeatures(sent, left, right, model.GetFeatureIds(), model.GetAdd());
+    return model.ScoreFeatureVector(SafeReference(vec));
+}
+
+// Accumulate non-local features under a hypothesis
+void HyperGraph::AccumulateNonLocalFeatures(std::tr1::unordered_map<int,double> & feat_map,
+										ReordererModel & model,
+		                                const FeatureSet & feature_gen,
+		                                const Sentence & sent,
+		                                const Hypothesis & hyp){
+	Hypothesis * left = hyp.GetLeftHyp();
+	Hypothesis * right = hyp.GetRightHyp();
+	// root has no non-local features
+	if (hyp.GetEdgeType() != HyperEdge::EDGE_ROOT){
+		if (hyp.GetEdgeType() == HyperEdge::EDGE_STR)
+			feature_gen.MakeNonLocalFeatures(sent, *left, *right, model.GetFeatureIds(), model.GetAdd());
+		else if (hyp.GetEdgeType() == HyperEdge::EDGE_INV)
+			feature_gen.MakeNonLocalFeatures(sent, *right, *left, model.GetFeatureIds(), model.GetAdd());
+	}
+	if (left)
+		AccumulateNonLocalFeatures(feat_map, model, feature_gen, sent, *left);
+	if (right)
+		AccumulateNonLocalFeatures(feat_map, model, feature_gen, sent, *right);
+
+
+}
 // Build a hypergraph using beam search and cube pruning
 TargetSpan * HyperGraph::ProcessOneSpan(ReordererModel & model,
                                        const FeatureSet & features,
+                                       const FeatureSet & non_local_features,
                                        const Sentence & sent,
                                        int l, int r,
-                                       int beam_size, bool save_trg) {
+                                       int beam_size) {
     // Create the temporary data members for this span
     HypothesisQueue q;
-    double score, viterbi_score;
+    double score, viterbi_score, non_local_score;
     // If the length is OK, add a terminal
     if((features.GetMaxTerm() == 0) || (r-l < features.GetMaxTerm())) {
-        int tl = (save_trg ? l : -1);
-        int tr = (save_trg ? r : -1);
         // Create a hypothesis with the forward terminal
         HyperEdge * edge = new HyperEdge(l, -1, r, HyperEdge::EDGE_FOR);
         score = GetEdgeScore(model, features, sent, *edge);
-        q.push(new Hypothesis(score, score, edge, tl, tr));
+        q.push(new Hypothesis(score, score, 0, edge, l, r));
         if(features.GetUseReverse()) {
         	// Create a hypothesis with the backward terminal
         	edge = new HyperEdge(l, -1, r, HyperEdge::EDGE_BAC);
         	score = GetEdgeScore(model, features, sent, *edge);
-        	q.push(new Hypothesis(score, score, edge, tr, tl));
+        	q.push(new Hypothesis(score, score, 0, edge, r, l));
         }
     }
     TargetSpan *left_stack, *right_stack;
@@ -104,18 +137,22 @@ TargetSpan * HyperGraph::ProcessOneSpan(ReordererModel & model,
         // Add the straight terminal
         HyperEdge * edge = new HyperEdge(l, c, r, HyperEdge::EDGE_STR);
         score = GetEdgeScore(model, features, sent, *edge);
-        viterbi_score = score + left_stack->GetScore() + right_stack->GetScore();
-        q.push(new Hypothesis(viterbi_score, score, edge,
-                         left_stack->GetHypothesis(0)->GetTrgLeft(),
-                         right_stack->GetHypothesis(0)->GetTrgRight(),
+        Hypothesis * left = left_stack->GetHypothesis(0);
+        Hypothesis * right = right_stack->GetHypothesis(0);
+    	non_local_score = GetNonLocalScore(model, non_local_features, sent, *left, *right);
+    	viterbi_score = score + non_local_score + left->GetScore() + right->GetScore();
+    	q.push(new Hypothesis(viterbi_score, score, non_local_score, edge,
+                         left->GetTrgLeft(),
+                         right->GetTrgRight(),
                          0, 0, left_stack, right_stack));
         // Add the inverted terminal
         edge = new HyperEdge(l, c, r, HyperEdge::EDGE_INV);
         score = GetEdgeScore(model, features, sent, *edge);
-        viterbi_score = score + left_stack->GetScore() + right_stack->GetScore();
-        q.push(new Hypothesis(viterbi_score, score, edge,
-						 right_stack->GetHypothesis(0)->GetTrgLeft(),
-						 left_stack->GetHypothesis(0)->GetTrgRight(),
+    	non_local_score = GetNonLocalScore(model, non_local_features, sent, *right, *left);
+    	viterbi_score = score + non_local_score + left->GetScore() + right->GetScore();
+    	q.push(new Hypothesis(viterbi_score, score, non_local_score, edge,
+						 right->GetTrgLeft(),
+						 left->GetTrgRight(),
                          0, 0, left_stack, right_stack));
 
     }
@@ -143,11 +180,19 @@ TargetSpan * HyperGraph::ProcessOneSpan(ReordererModel & model,
         left_stack = GetStack(l, hyp->GetCenter()-1);
         new_left_hyp = left_stack->GetHypothesis(hyp->GetLeftRank()+1);
         if(new_left_hyp) {
-            old_left_hyp = left_stack->GetHypothesis(hyp->GetLeftRank());
+            old_left_hyp = hyp->GetLeftHyp();
+            old_right_hyp = hyp->GetRightHyp();
             Hypothesis *  new_hyp = new Hypothesis(*hyp);
             new_hyp->SetEdge(new HyperEdge(*hyp->GetEdge()));
-            new_hyp->SetScore(hyp->GetScore()
-                        - old_left_hyp->GetScore() + new_left_hyp->GetScore());
+    		if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR)
+    			non_local_score = GetNonLocalScore(model, non_local_features, sent,
+    											*new_left_hyp, *old_right_hyp);
+    		else
+    			non_local_score = GetNonLocalScore(model, non_local_features, sent,
+    											*old_right_hyp, *new_left_hyp);
+    		new_hyp->SetScore(hyp->GetScore()
+    				- old_left_hyp->GetScore() + new_left_hyp->GetScore()
+    				- old_left_hyp->GetNonLocalScore() + non_local_score);
             new_hyp->SetLeftRank(hyp->GetLeftRank()+1);
             new_hyp->SetLeftChild(left_stack);
             if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR) {
@@ -161,11 +206,19 @@ TargetSpan * HyperGraph::ProcessOneSpan(ReordererModel & model,
         right_stack = GetStack(hyp->GetCenter(),r);
         new_right_hyp = right_stack->GetHypothesis(hyp->GetRightRank()+1);
         if(new_right_hyp) {
-            old_right_hyp = right_stack->GetHypothesis(hyp->GetRightRank());
+            old_left_hyp = hyp->GetLeftHyp();
+            old_right_hyp = hyp->GetRightHyp();
             Hypothesis *  new_hyp = new Hypothesis(*hyp);
             new_hyp->SetEdge(new HyperEdge(*hyp->GetEdge()));
-            new_hyp->SetScore(hyp->GetScore()
-                    - old_right_hyp->GetScore() + new_right_hyp->GetScore());
+    		if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR)
+    			non_local_score = GetNonLocalScore(model, non_local_features, sent,
+    											*old_left_hyp, *new_right_hyp);
+    		else
+    			non_local_score = GetNonLocalScore(model, non_local_features, sent,
+    											*new_right_hyp, *old_left_hyp);
+    		new_hyp->SetScore(hyp->GetScore()
+    				- old_right_hyp->GetScore() + new_right_hyp->GetScore()
+    				- old_right_hyp->GetNonLocalScore() + non_local_score);
             new_hyp->SetRightRank(hyp->GetRightRank()+1);
             new_hyp->SetRightChild(right_stack);
             if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR) {
@@ -187,8 +240,9 @@ TargetSpan * HyperGraph::ProcessOneSpan(ReordererModel & model,
 // Build a hypergraph using beam search and cube pruning
 void HyperGraph::BuildHyperGraph(ReordererModel & model,
                                  const FeatureSet & features,
+                                 const FeatureSet & non_local_features,
                                  const Sentence & sent,
-                                 int beam_size, bool save_trg) {
+                                 int beam_size) {
     n_ = sent[0]->GetNumWords();
     stacks_.resize(n_ * (n_+1) / 2 + 1, NULL); // resize stacks in advance
     // Iterate through the left side of the span
@@ -196,15 +250,15 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
         // Move the span from l to r, building hypotheses from small to large
         for(int l = 0; l <= n_-L; l++){
             int r = l+L-1;
-            SetStack(l, r, ProcessOneSpan(model, features, sent,
-                                          l, r, beam_size, save_trg));
+            SetStack(l, r, ProcessOneSpan(model, features, non_local_features, sent,
+                                          l, r, beam_size));
         }
     }
     // Build the root node
     TargetSpan * top = GetStack(0,n_-1);
     TargetSpan * root_stack = new TargetSpan(0,n_);
     for(int i = 0; i < (int)top->size(); i++)
-        root_stack->AddHypothesis(new Hypothesis((*top)[i]->GetScore(), 0, 0, n_-1, 0, n_-1,
+        root_stack->AddHypothesis(new Hypothesis((*top)[i]->GetScore(), 0, 0, 0, n_-1, 0, n_-1,
                 HyperEdge::EDGE_ROOT, -1, i, -1, top));
     stacks_[n_ * (n_+1) / 2] = root_stack;
 }

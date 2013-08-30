@@ -87,27 +87,34 @@ protected:
     TargetSpan *ProcessOneSpan(
     		ReordererModel & model,
     		const FeatureSet & features,
+    		const FeatureSet & non_local_features,
     		const Sentence & sent,
     		int l, int r,
-    		int beam_size = 0, bool save_trg = true);
+    		int beam_size = 0);
     TargetSpan *ProcessOneDiscontinuousSpan(
     		ReordererModel & model,
     		const FeatureSet & features,
+    		const FeatureSet & non_local_features,
     		const Sentence & sent,
     		int l, int m, int n, int r,
-    		int beam_size = 0, bool save_trg = true);
+    		int beam_size = 0);
     void AddHypotheses(
-    		ReordererModel & model,	const FeatureSet & features,
+    		ReordererModel & model,
+    		const FeatureSet & features, const FeatureSet & non_local_features,
     		const Sentence & sent, HypothesisQueue & q,
     		int left_l, int left_m, int left_n, int left_r,
     		int right_l, int right_m, int right_n, int right_r);
     void AddDiscontinuousHypotheses(
-    		ReordererModel & model, const FeatureSet & features,
+    		ReordererModel & model,
+    		const FeatureSet & features, const FeatureSet & non_local_features,
     		const Sentence & sent, HypothesisQueue & q,
     		int left_l, int left_m, int left_n, int left_r,
     		int right_l, int right_m, int right_n, int right_r);
     void nextCubeItems(const Hypothesis * hyp,
-    		HypothesisQueue & q, int l, int r, bool gap=true);
+    		ReordererModel & model,
+    		const FeatureSet & features, const FeatureSet & non_local_features,
+    		const Sentence & sent, HypothesisQueue & q,
+    		int l, int r, bool gap=true);
 private:
 	int gap_; // maximum gap size
 	bool mp_; // monotone at punctuation

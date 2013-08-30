@@ -3,6 +3,7 @@
 #include <lader/feature-sequence.h>
 #include <lader/feature-parse.h>
 #include <lader/feature-align.h>
+#include <lader/feature-non-local.h>
 #include <lader/discontinuous-hyper-edge.h>
 
 using namespace lader;
@@ -16,10 +17,10 @@ FeatureBase * FeatureBase::CreateNew(const string & type) {
         return new FeatureParse;
     else if(type == "align")
         return new FeatureAlign;
-//    else if(type == "dynamic")
-//    	return new FeatureDynamic;
+    else if(type == "non-local")
+    	return new FeatureNonLocal;
     else
-        THROW_ERROR("Bad feature type " << type << " (must be seq/cfg/align)");
+        THROW_ERROR("Bad feature type " << type << " (must be seq/cfg/align/non-local)");
     return NULL;
 }
 

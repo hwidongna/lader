@@ -1,5 +1,5 @@
 LADERCPP = lader.cc hyper-graph.cc combined-alignment.cc alignment.cc \
-           feature-sequence.cc feature-set.cc feature-base.cc \
+           feature-sequence.cc feature-non-local.cc feature-set.cc feature-base.cc \
            feature-vector.cc reorderer-model.cc loss-chunk.cc \
            reorderer-trainer.cc loss-base.cc reorderer-runner.cc \
            ranks.cc reorderer-evaluator.cc loss-tau.cc dictionary.cc \

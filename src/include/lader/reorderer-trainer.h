@@ -57,6 +57,7 @@ public:
         std::ofstream out(str.c_str());
         if(!out) THROW_ERROR("Couldn't write model to file " << str);
         features_.ToStream(out);
+        non_local_features_.ToStream(out);
         model_.ToStream(out);
     }
 
@@ -71,6 +72,7 @@ private:
     std::vector<std::vector<FeatureDataBase*> > data_; // The data
     ReordererModel model_; // The model
     FeatureSet features_;  // The mapping on feature ids and which to use
+    FeatureSet non_local_features_;  // The mapping on feature ids and which to use
     std::vector<LossBase*> losses_; // The loss functions
     double learning_rate_; // The learning rate
     std::vector<EdgeFeatureMap*> saved_feats_; // Features for each hypergraph

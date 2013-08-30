@@ -5,6 +5,7 @@
 #include <lader/feature-base.h>
 #include <lader/symbol-set.h>
 #include <lader/hyper-graph.h>
+#include <lader/hypothesis.h>
 #include <boost/foreach.hpp>
 
 namespace lader {
@@ -35,6 +36,14 @@ public:
         SymbolSet<int> & feature_ids,
         bool add_features) const;
     
+    // Generates the features that can be factored over a hypothesis
+    FeatureVectorInt * MakeNonLocalFeatures(
+		const vector<FeatureDataBase*> & sent,
+		const Hypothesis & left,
+		const Hypothesis & right,
+		SymbolSet<int> & feature_ids,
+		bool add) const;
+
     // Change an integer-indexed feature vector into a string-indexed vector
     FeatureVectorString StringifyFeatureIndices(const FeatureVectorInt & vec);
 

@@ -19,12 +19,12 @@ namespace lader {
 
 class DiscontinuousHypothesis : public Hypothesis{
 public:
-	DiscontinuousHypothesis(double viterbi_score, double single_score,
+	DiscontinuousHypothesis(double viterbi_score, double single_score, double non_local_score,
 	               HyperEdge * edge,
 	               int trg_left, int trg_right,
 	               int left_rank = -1, int right_rank = -1,
 	               TargetSpan* left_child = NULL, TargetSpan* right_child = NULL) :
-	            	   Hypothesis(viterbi_score, single_score,
+	            	   Hypothesis(viterbi_score, single_score, non_local_score,
 	            			   edge,
 	            			   trg_left, trg_right,
 	            			   left_rank, right_rank,

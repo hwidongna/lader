@@ -36,7 +36,6 @@ void Hypothesis::PrintChildren( std::ostream& out ) const{
 	out << endl;
 }
 
-
 Hypothesis * Hypothesis::GetLeftHyp() const{
 	if (!left_child_ || left_rank_ >= left_child_->GetHypotheses().size())
 		return NULL;
@@ -57,8 +56,15 @@ double Hypothesis::AccumulateLoss() {
     return score;
 }
 
-FeatureVectorInt Hypothesis::AccumulateFeatures(const EdgeFeatureMap * features) {
-    std::tr1::unordered_map<int,double> feat_map;
+FeatureVectorInt Hypothesis::AccumulateFeatures(
+		const EdgeFeatureMap * features) {
+	std::tr1::unordered_map<int,double> feat_map;
+	return AccumulateFeatures(feat_map, features);
+}
+
+FeatureVectorInt Hypothesis::AccumulateFeatures(
+		std::tr1::unordered_map<int,double> & feat_map,
+		const EdgeFeatureMap * features) {
     AccumulateFeatures(features, feat_map);
     FeatureVectorInt ret;
     BOOST_FOREACH(FeaturePairInt feat_pair, feat_map)

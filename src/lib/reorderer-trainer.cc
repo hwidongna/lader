@@ -21,6 +21,7 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
     bool loss_aug = config.GetBool("loss_augmented_inference");
     double model_score = 0, model_loss = 0, oracle_score = 0, oracle_loss = 0;
     FeatureVectorInt model_features, oracle_features;
+    std::tr1::unordered_map<int,double> feat_map;
     vector<int> sent_order(data_.size());
     for(int i = 0 ; i < (int)(sent_order.size());i++)
         sent_order[i] = i;
@@ -39,10 +40,6 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
         // Shuffle
         if(config.GetBool("shuffle"))
             random_shuffle(sent_order.begin(), sent_order.end());
-//        for (int sample = 0 ; sample < sent_order.size() ; sample++){
-//        	if (sample >= config.GetInt("samples")){
-//        		break;
-//        	}
         BOOST_FOREACH(int sent, sent_order) {
 //        	int sent = sent_order[sample];
         	if (done >= config.GetInt("samples")){
@@ -60,9 +57,9 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
             // Make the hypergraph using cube pruning
             hyper_graph->BuildHyperGraph(model_,
                                         features_,
+                                        non_local_features_,
                                         data_[sent],
-                                        config.GetInt("beam"),
-                                        true);
+                                        config.GetInt("beam"));
             // Add losses to the hypotheses in the hypergraph
             BOOST_FOREACH(LossBase * loss, losses_)
             	hyper_graph->AddLoss(loss,
@@ -70,50 +67,53 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 					sent < (int)parses_.size() ? &parses_[sent] : NULL);
             // Parse the hypergraph, penalizing loss heavily (oracle)
             oracle_score = hyper_graph->Rescore(-1e6);
-            oracle_features = hyper_graph->GetBest()->AccumulateFeatures(
-            						hyper_graph->GetFeatures());
-            oracle_loss     = hyper_graph->GetBest()->AccumulateLoss();
-            oracle_score   -= oracle_loss * -1e6;
-            // Parse the hypergraph, slightly boosting loss by 1.0 if we are
-            // using loss-augmented inference
-            model_score = hyper_graph->Rescore(loss_aug ? 1.0 : 0.0);
-            model_loss  = hyper_graph->GetBest()->AccumulateLoss();
-            model_score -= model_loss * 1;
-            // Add the statistics for this iteration
-            iter_model_loss += model_loss;
-            iter_oracle_loss += oracle_loss;
-            // // --- DEBUG: Get the reordering ---
-            // vector<int> order;
-            // hyper_graph->GetRoot()->GetReordering(order);
-            // for(int i = 0; i < (int)order.size(); i++) {
-            //     if(i != 0) cout << " "; cout << order[i];
-            // }
-            // cout << endl;
-            // // --- DEBUG: check both losses match ---
-            // pair<double,double> sent_loss =
-            //    losses_[0]->CalculateSentenceLoss(order, ranks_[sent]);
-            // if(sent_loss.first != model_loss)
-            //     THROW_ERROR("sent_loss="<<sent_loss
-            //                 <<", model_loss="<<model_loss);
-            // // --- END DEBUG ---
-            if(verbose > 0) {
-                cout << "sent=" <<sent <<
-                        " oracle_score=" << oracle_score << 
-                        " model_score=" << model_score << 
-                        " oracle_loss=" << oracle_loss <<
-                        " model_loss=" << model_loss << endl;
-            }
-            model_features = hyper_graph->GetBest()->AccumulateFeatures(
-            					hyper_graph->GetFeatures());
-            // Add the difference between the vectors if there is at least
-            //  some loss
-            model_.AdjustWeights(
-                model_loss == oracle_loss ?
-                FeatureVectorInt() :
-                VectorSubtract(oracle_features, model_features));
-            // If we are saving features
-            if(config.GetBool("save_features")) {
-                if((int)saved_feats_.size() <= sent)
+			feat_map.clear();
+			hyper_graph->AccumulateNonLocalFeatures(feat_map,
+					model_,
+					non_local_features_,
+					data_[sent],
+					*hyper_graph->GetBest());
+			oracle_features = hyper_graph->GetBest()->AccumulateFeatures(feat_map, hyper_graph->GetFeatures());
+			oracle_loss = hyper_graph->GetBest()->AccumulateLoss();
+			oracle_score -= oracle_loss * -1e6;
+			// Parse the hypergraph, slightly boosting loss by 1.0 if we are
+			// using loss-augmented inference
+			model_score = hyper_graph->Rescore(loss_aug ? 1.0 : 0.0);
+			model_loss = hyper_graph->GetBest()->AccumulateLoss();
+			model_score -= model_loss * 1;
+			// Add the statistics for this iteration
+			iter_model_loss += model_loss;
+			iter_oracle_loss += oracle_loss;
+			// // --- DEBUG: Get the reordering ---
+			// vector<int> order;
+			// hyper_graph->GetRoot()->GetReordering(order);
+			// for(int i = 0; i < (int)order.size(); i++) {
+			//     if(i != 0) cout << " "; cout << order[i];
+			// }
+			// cout << endl;
+			// // --- DEBUG: check both losses match ---
+			// pair<double,double> sent_loss =
+			//    losses_[0]->CalculateSentenceLoss(order, ranks_[sent]);
+			// if(sent_loss.first != model_loss)
+			//     THROW_ERROR("sent_loss="<<sent_loss
+			//                 <<", model_loss="<<model_loss);
+			// // --- END DEBUG ---
+			if(verbose > 0){
+				cout << "sent=" << sent << " oracle_score=" << oracle_score << " model_score=" << model_score << " oracle_loss=" << oracle_loss << " model_loss=" << model_loss << endl;
+			}
+			feat_map.clear();
+			hyper_graph->AccumulateNonLocalFeatures(feat_map,
+							model_,
+							non_local_features_,
+							data_[sent],
+							*hyper_graph->GetBest());
+			model_features = hyper_graph->GetBest()->AccumulateFeatures(feat_map, hyper_graph->GetFeatures());
+			// Add the difference between the vectors if there is at least
+			//  some loss
+			model_.AdjustWeights(model_loss == oracle_loss ? FeatureVectorInt() : VectorSubtract(oracle_features, model_features));
+			// If we are saving features
+			if(config.GetBool("save_features")){
+				if((int)((saved_feats_.size())) <= sent)
                     saved_feats_.resize(sent+1);
                 saved_feats_[sent] = hyper_graph->GetFeatures();
                 hyper_graph->ClearFeatures();
@@ -146,6 +146,7 @@ void ReordererTrainer::InitializeModel(const ConfigTrainer & config) {
     features_.ParseConfiguration(config.GetString("feature_profile"));
     features_.SetMaxTerm(config.GetInt("max_term"));
     features_.SetUseReverse(config.GetBool("use_reverse"));
+    non_local_features_.ParseConfiguration(config.GetString("non_local_feature_profile"));
     model_.SetCost(config.GetDouble("cost"));
     std::vector<std::string> losses, first_last;
     algorithm::split(

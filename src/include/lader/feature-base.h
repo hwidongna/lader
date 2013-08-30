@@ -6,6 +6,7 @@
 #include <lader/feature-vector.h>
 #include <lader/feature-data-base.h>
 #include <lader/hyper-edge.h>
+#include <lader/hypothesis.h>
 #include <lader/dictionary.h>
 #include <lader/symbol-set.h>
 
@@ -45,7 +46,16 @@ public:
                                 const HyperEdge & edge,
                                 SymbolSet<int> & feature_ids,
                                 bool add,
-                                FeatureVectorInt & feats) = 0;
+                                FeatureVectorInt & feats) {}
+
+    // Generates the features that can be factored over a hypothesis
+    virtual void GenerateNonLocalFeatures(
+                                const FeatureDataBase & sentence,
+                                const Hypothesis & left,
+                        	    const Hypothesis & right,
+                                SymbolSet<int> & feature_ids,
+                                bool add,
+                                FeatureVectorInt & feats) {}
 
     // Get the type string of this particular value
     virtual std::string GetType() const = 0;

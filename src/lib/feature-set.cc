@@ -16,8 +16,22 @@ FeatureVectorInt * FeatureSet::MakeEdgeFeatures(
     // Otherwise generate the features
     FeatureVectorInt * feats = new FeatureVectorInt;
     for(int i = 0; i < (int)sent.size(); i++)
-//    	SafeAccess(feature_gens_, i)->GenerateEdgeFeatures(*sent[i], edge, feature_ids, add, *feats);
         feature_gens_[i]->GenerateEdgeFeatures(*sent[i], edge, feature_ids, add, *feats);
+    return feats;
+}
+
+// Generates the features that can be factored over a hypothesis
+FeatureVectorInt * FeatureSet::MakeNonLocalFeatures(
+        const vector<FeatureDataBase*> & sent,
+        const Hypothesis & left,
+	    const Hypothesis & right,
+        SymbolSet<int> & feature_ids,
+        bool add) const {
+    // Otherwise generate the features
+    FeatureVectorInt * feats = new FeatureVectorInt;
+    // non-local feature is not defined for parse tree
+    for(int i = 0; i < (int)sent.size() && i < (int)feature_gens_.size(); i++)
+        feature_gens_[i]->GenerateNonLocalFeatures(*sent[i], left, right, feature_ids, add, *feats);
     return feats;
 }
 

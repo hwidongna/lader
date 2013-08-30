@@ -8,6 +8,7 @@
 #include <lader/reorderer-model.h>
 #include <lader/feature-data-sequence.h>
 #include <lader/feature-sequence.h>
+#include <lader/feature-non-local.h>
 #include <lader/feature-set.h>
 #include <lader/ranks.h>
 #include <lader/hyper-graph.h>
@@ -40,9 +41,11 @@ public:
         sent.FromString(str);
         string str_pos = "PRP VBD NN";
         sent_pos.FromString(str_pos);
-        // Create a reorderer model with two weights
+        // Create a reorderer model with 4 weights
         model.SetWeight("W1", 1);
         model.SetWeight("W2", 2);
+        model.SetWeight("W3", 3);
+        model.SetWeight("W4", 4);
         // Set up the feature generators
         featw = new FeatureSequence;
         featp = new FeatureSequence;
@@ -51,6 +54,14 @@ public:
         // Set up the feature set
         set.AddFeatureGenerator(featw);
         set.AddFeatureGenerator(featp);
+        // Set up the feature generators
+        non_local_featw = new FeatureNonLocal;
+        non_local_featp = new FeatureNonLocal;
+        non_local_featw->ParseConfiguration("TO%SL%SR");
+        non_local_featp->ParseConfiguration("TI%LR%RL");
+        // Set up the feature set
+        non_local_set.AddFeatureGenerator(non_local_featw);
+        non_local_set.AddFeatureGenerator(non_local_featp);
         // Set up the data
         datas.push_back(&sent);
         datas.push_back(&sent_pos);
@@ -62,14 +73,14 @@ public:
         ts11 = new TargetSpan(1,1);
         tsr = new TargetSpan(0,1);
         // Add the hypotheses
-        ts00->AddHypothesis(new Hypothesis(1,-1,0,0,0,0,HyperEdge::EDGE_FOR));
-        ts11->AddHypothesis(new Hypothesis(2,-1,1,1,1,1,HyperEdge::EDGE_FOR));
-        ts01->AddHypothesis(new Hypothesis(5,-1,0,1,1,0,HyperEdge::EDGE_INV,1,0,0,ts00,ts11));
-        ts01->AddHypothesis(new Hypothesis(4,-1,0,1,0,1,HyperEdge::EDGE_FOR));
-        ts01->AddHypothesis(new Hypothesis(3,-1,0,1,0,1,HyperEdge::EDGE_STR,1,0,0,ts00,ts11));
-        tsr->AddHypothesis(new Hypothesis(6,-1,1,0,-1,2,HyperEdge::EDGE_ROOT,-1,0,-1,ts01));
-        tsr->AddHypothesis(new Hypothesis(6,-1,0,1,-1,2,HyperEdge::EDGE_ROOT,-1,1,-1,ts01));
-        tsr->AddHypothesis(new Hypothesis(6,-1,0,1,-1,2,HyperEdge::EDGE_ROOT,-1,2,-1,ts01));
+        ts00->AddHypothesis(new Hypothesis(1,-1,0, 0,0,0,0,HyperEdge::EDGE_FOR));
+        ts11->AddHypothesis(new Hypothesis(2,-1,0, 1,1,1,1,HyperEdge::EDGE_FOR));
+        ts01->AddHypothesis(new Hypothesis(5,-1,0, 0,1,1,0,HyperEdge::EDGE_INV,1,0,0,ts00,ts11));
+        ts01->AddHypothesis(new Hypothesis(4,-1,0, 0,1,0,1,HyperEdge::EDGE_FOR));
+        ts01->AddHypothesis(new Hypothesis(3,-1,0, 0,1,0,1,HyperEdge::EDGE_STR,1,0,0,ts00,ts11));
+        tsr->AddHypothesis(new Hypothesis(6,-1,0, 1,0,-1,2,HyperEdge::EDGE_ROOT,-1,0,-1,ts01));
+        tsr->AddHypothesis(new Hypothesis(6,-1,0, 0,1,-1,2,HyperEdge::EDGE_ROOT,-1,1,-1,ts01));
+        tsr->AddHypothesis(new Hypothesis(6,-1,0, 0,1,-1,2,HyperEdge::EDGE_ROOT,-1,2,-1,ts01));
         // Add the features
         FeatureVectorInt 
             *fv00 = new FeatureVectorInt(1, MakePair(1,1)),
@@ -167,19 +178,101 @@ public:
         return ret;
     }
 
+    int TestGetNonLocalFeaturesAndWeights() {
+        // Make a reorderer model
+        ReordererModel mod;
+        // Test that these features are made properly
+        FeatureVectorString hyp021exp;
+        hyp021exp.push_back(MakePair(string("TO||he||ate"), 1));
+        hyp021exp.push_back(MakePair(string("TI||PRP||NN"), 1));
+        FeatureVectorInt hyp021intexp;
+        hyp021intexp.push_back(MakePair(2, 1));
+        hyp021intexp.push_back(MakePair(3, 1));
+        // Make the hypergraph and get the features
+        HyperGraph graph;
+        // Create spans, and generate hypotheses
+        TargetSpan *stack00 = new TargetSpan(0,0)
+        		, *stack11 = new TargetSpan(1,1);
+        stack00->AddHypothesis(new Hypothesis(1,1,0, 0,0,0,0, HyperEdge::EDGE_FOR));
+        graph.SetStack(0, 0, stack00);
+        graph.SetStack(1, 1, stack11);
+        TargetSpan *stack01 = new TargetSpan(0,1);
+        stack01->AddHypothesis(new Hypothesis(2,2,0, 0,1,0,1, HyperEdge::EDGE_FOR));
+        TargetSpan *stack22 = new TargetSpan(2,2);
+		stack22->AddHypothesis(new Hypothesis(3,3,0, 2,2,2,2, HyperEdge::EDGE_FOR));
+		graph.SetStack(2, 2, stack22);
+		graph.SetStack(0, 1, stack01);
+		TargetSpan *stack12 = new TargetSpan(1,2);
+		stack12->AddHypothesis(new Hypothesis(5,4,1, 1,2,2,1, HyperEdge::EDGE_BAC));
+		graph.SetStack(1, 2, stack12); // just for testing
+        set.SetMaxTerm(1);
+		TargetSpan *stack02 = graph.ProcessOneSpan(mod, set, non_local_set, datas, 0, 2);
+        // The stack should contain four hypotheses: S(0,21), I(21,0), S(01,2), I(2,01)
+        int ret = 1;
+        if(stack02->size() != 4) {
+            cerr << "stack02->size() != 4: " << stack02->size() << endl; ret = 0;
+        }
+        if(!ret) return 0;
+        Hypothesis *hyp021 = stack02->GetHypothesis(0);
+        // Generate the features
+        const FeatureVectorInt * hyp021int =
+        		non_local_set.MakeNonLocalFeatures(datas,
+        				*hyp021->GetLeftHyp(), *hyp021->GetRightHyp(),
+        				mod.GetFeatureIds(), false);
+        FeatureVectorString * hyp021act =
+                        mod.StringifyFeatureVector(*hyp021int);
+        // Do the parsing and checking
+        ret *= CheckVector(hyp021exp, *hyp021act);
+        ret *= CheckVector(hyp021intexp, *hyp021int);
+        mod.SetWeight("TO||he||ate", 1);
+        mod.SetWeight("TI||PRP||NN", 2);
+        // Check to make sure that the weights are Ok
+        double weight_act = graph.GetNonLocalScore(mod, non_local_set,
+                                      datas, *hyp021->GetLeftHyp(), *hyp021->GetRightHyp());
+        if(weight_act != 1+2) {
+            cerr << "Weight is not the expected 3: "<<weight_act<<endl;
+            ret = 0;
+        }
+
+        stack11->AddHypothesis(new Hypothesis(1,1,0, 1,1,1,1, HyperEdge::EDGE_FOR));
+        TargetSpan *stack01processed = graph.ProcessOneSpan(mod, set, non_local_set, datas, 0, 1);
+        // The stack should contain two hypotheses: S(0,1), I(1,0)
+        if(stack01processed->size() != 2) {
+        	cerr << "stack01processed->size() != 2: " << stack01processed->size() << endl; ret = 0;
+        }
+//        Hypothesis *hyp01 = stack01processed->GetHypothesis(0);
+        Hypothesis *hyp10 = stack01processed->GetHypothesis(1);
+        if (hyp10->GetEdgeType() != HyperEdge::EDGE_INV){
+        	cerr << "hyp10->GetEdgeType() != HyperEdge::EDGE_INV" << endl; ret = 0;
+        }
+        FeatureVectorString hyp10exp;
+        hyp10exp.push_back(MakePair(string("TO||ate||he"), 1));
+        hyp10exp.push_back(MakePair(string("TI||VBD||PRP"), 1));
+        // Generate the features
+        const FeatureVectorInt * hyp10int =
+        		non_local_set.MakeNonLocalFeatures(datas,
+        				*hyp10->GetRightHyp(), *hyp10->GetLeftHyp(),
+        				mod.GetFeatureIds(), false);
+        FeatureVectorString * hyp10act =
+        		mod.StringifyFeatureVector(*hyp10int);
+        // Do the parsing and checking
+        ret *= CheckVector(hyp10exp, *hyp10act);
+        return ret;
+    }
+
     // Test the processing of a single span
     int TestProcessOneSpan() {
         HyperGraph graph;
         // Create two spans for 00 and 11, so we can process 01
         TargetSpan *stack00 = new TargetSpan(0,0)
         		, *stack11 = new TargetSpan(1,1);
-        stack00->AddHypothesis(new Hypothesis(1,1.0,0,0,0,0,HyperEdge::EDGE_FOR));
+        stack00->AddHypothesis(new Hypothesis(1,1,0, 0,0,0,0, HyperEdge::EDGE_FOR));
         graph.SetStack(0, 0, stack00);
-        stack11->AddHypothesis(new Hypothesis(2,2.0,1,1,1,1,HyperEdge::EDGE_FOR));
+        stack11->AddHypothesis(new Hypothesis(2,2,0, 1,1,1,1, HyperEdge::EDGE_FOR));
         graph.SetStack(1, 1, stack11);
         // Try processing 01
         set.SetMaxTerm(0);
-        TargetSpan *stack01 = graph.ProcessOneSpan(model, set, datas, 0, 1);
+        TargetSpan *stack01 = graph.ProcessOneSpan(model, set, non_local_set, datas, 0, 1);
         // The stack should contain four hypotheses: S(0,1), I(1,0), F(01), B(10)
         int ret = 1;
         if(stack01->size() != 4) {
@@ -196,19 +289,19 @@ public:
         ret = CheckVector(score_exp, score_act);
         // Check to make sure that pruning works
         set.SetMaxTerm(0);
-        TargetSpan *stack01pruned = graph.ProcessOneSpan(model, set, datas, 0, 1, 3);
+        TargetSpan *stack01pruned = graph.ProcessOneSpan(model, set, non_local_set, datas, 0, 1, 3);
         if(stack01pruned->size() != 3) {
         	cerr << "stack01->size() != 3: " << stack01pruned->size() << endl; ret = 0;
         }
 
         TargetSpan *stack22 = new TargetSpan(2,2);
-		stack22->AddHypothesis(new Hypothesis(3,3.0,2,2,2,2,HyperEdge::EDGE_FOR));
+		stack22->AddHypothesis(new Hypothesis(3,3,0, 2,2,2,2, HyperEdge::EDGE_FOR));
 		graph.SetStack(2, 2, stack22);
 		graph.SetStack(0, 1, stack01);
 		TargetSpan *stack12 = new TargetSpan(1,2);
-		stack12->AddHypothesis(new Hypothesis(4,4.0,1,2,2,1,HyperEdge::EDGE_INV));
+		stack12->AddHypothesis(new Hypothesis(4,4,0, 1,2,2,1, HyperEdge::EDGE_INV));
 		graph.SetStack(1, 2, stack12); // just for testing
-		TargetSpan *stack02 = graph.ProcessOneSpan(model, set, datas, 0, 2);
+		TargetSpan *stack02 = graph.ProcessOneSpan(model, set, non_local_set, datas, 0, 2);
 		if(stack02->size() != (4+1)*2 + 2) {
 			cerr << "stack02->size() != 12: " << stack02->size() << endl; ret = 0;
 			BOOST_FOREACH(const Hypothesis *hyp, stack02->GetHypotheses()){
@@ -225,7 +318,7 @@ public:
         HyperGraph graph;
         set.SetMaxTerm(0);
         set.SetUseReverse(false);
-        graph.BuildHyperGraph(model, set, datas);
+        graph.BuildHyperGraph(model, set, non_local_set, datas);
         const std::vector<TargetSpan*> & stacks = graph.GetStacks();
         int ret = 1;
         // The total number of stacks should be 7: 0-0 0-1 1-1 0-2 1-2 2-2 root
@@ -307,10 +400,10 @@ public:
                    *span01 = new TargetSpan(0,1),
                    *span11 = new TargetSpan(1,1),
                    *spanr = new TargetSpan(0,1);
-        span00->AddHypothesis(new Hypothesis(1,1,0,0,-1,-1,HyperEdge::EDGE_FOR));
-        span11->AddHypothesis(new Hypothesis(1,1,1,1,-1,-1,HyperEdge::EDGE_FOR));
-        span01->AddHypothesis(new Hypothesis(1,1,0,1,-1,-1,HyperEdge::EDGE_FOR));
-        spanr->AddHypothesis(new Hypothesis(1,1,0,1,-1,-1,HyperEdge::EDGE_ROOT,-1,0,-1,span01));
+        span00->AddHypothesis(new Hypothesis(1,1,0,0,0,-1,-1,HyperEdge::EDGE_FOR));
+        span11->AddHypothesis(new Hypothesis(1,1,0,1,1,-1,-1,HyperEdge::EDGE_FOR));
+        span01->AddHypothesis(new Hypothesis(1,1,0,0,1,-1,-1,HyperEdge::EDGE_FOR));
+        spanr->AddHypothesis(new Hypothesis(1,1,0,0,1,-1,-1,HyperEdge::EDGE_ROOT,-1,0,-1,span01));
         // Get the reordering for forward
         int ret = 1;
         vector<int> for_reorder; spanr->GetReordering(for_reorder);
@@ -351,10 +444,10 @@ public:
                    *span01 = new TargetSpan(0,1),
                    *span11 = new TargetSpan(1,1),
                    *spanr = new TargetSpan(0,1);
-        span00->AddHypothesis(new Hypothesis(1,1,0,0,-1,-1,HyperEdge::EDGE_FOR));
-        span11->AddHypothesis(new Hypothesis(1,1,1,1,-1,-1,HyperEdge::EDGE_BAC));
-        span01->AddHypothesis(new Hypothesis(1,1,0,1,-1,-1,HyperEdge::EDGE_INV,-1,1,-1,span00,span11));
-        spanr->AddHypothesis(new Hypothesis(1,1,0,1,-1,-1,HyperEdge::EDGE_ROOT,-1,0,-1,span01));
+        span00->AddHypothesis(new Hypothesis(1,1,0,0,0,-1,-1,HyperEdge::EDGE_FOR));
+        span11->AddHypothesis(new Hypothesis(1,1,0,1,1,-1,-1,HyperEdge::EDGE_BAC));
+        span01->AddHypothesis(new Hypothesis(1,1,0,0,1,-1,-1,HyperEdge::EDGE_INV,-1,1,-1,span00,span11));
+        spanr->AddHypothesis(new Hypothesis(1,1,0,0,1,-1,-1,HyperEdge::EDGE_ROOT,-1,0,-1,span01));
         // Get the reordering for forward
         int ret = 1;
         span01->GetHypothesis(0)->SetType(HyperEdge::EDGE_FOR);
@@ -403,7 +496,7 @@ public:
         span01->GetHypothesis(0)->SetType(HyperEdge::EDGE_INV);
         span01->GetHypothesis(0)->SetLeftChild(span00);
         span01->GetHypothesis(0)->SetRightChild(span11);
-        span01->AddHypothesis(new Hypothesis(1,1,0,1,-1,-1,HyperEdge::EDGE_STR,-1,1,-1,span00,span11));
+        span01->AddHypothesis(new Hypothesis(1,1,0,0,1,-1,-1,HyperEdge::EDGE_STR,-1,1,-1,span00,span11));
         // Print again
         ostringstream graph_stream;
         hg.PrintHyperGraph(str01, graph_stream);
@@ -415,6 +508,7 @@ public:
         int done = 0, succeeded = 0;
         done++; cout << "TestGetTrgSpanID()" << endl; if(TestGetTrgSpanID()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestGetEdgeFeaturesAndWeights()" << endl; if(TestGetEdgeFeaturesAndWeights()) succeeded++; else cout << "FAILED!!!" << endl;
+        done++; cout << "TestGetNonLocalFeaturesAndWeights()" << endl; if(TestGetNonLocalFeaturesAndWeights()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestProcessOneSpan()" << endl; if(TestProcessOneSpan()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestBuildHyperGraph()" << endl; if(TestBuildHyperGraph()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestAccumulateLoss()" << endl; if(TestAccumulateLoss()) succeeded++; else cout << "FAILED!!!" << endl;
@@ -433,9 +527,10 @@ private:
     FeatureDataSequence sent, sent_pos;
     ReordererModel model;
     std::vector<double> weights;
-    FeatureSet set;
+    FeatureSet set, non_local_set;
     vector<FeatureDataBase*> datas;
     FeatureSequence *featw, *featp;
+    FeatureNonLocal *non_local_featw, *non_local_featp;
     TargetSpan *ts00, *ts01, *ts11, *tsr;
     HyperGraph my_hg;
 

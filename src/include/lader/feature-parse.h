@@ -47,7 +47,7 @@ public:
                                 FeatureVectorInt & feats);
 
     // Get the type of this feature generator
-    virtual std::string GetType() const { return "parse"; }
+    virtual std::string GetType() const { return "cfg"; }
 
     // Check whether this is equal
     virtual bool CheckEqual(const FeatureBase & rhs) const {

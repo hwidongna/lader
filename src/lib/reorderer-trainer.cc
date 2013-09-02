@@ -84,22 +84,33 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 			// Add the statistics for this iteration
 			iter_model_loss += model_loss;
 			iter_oracle_loss += oracle_loss;
-			// // --- DEBUG: Get the reordering ---
-			// vector<int> order;
-			// hyper_graph->GetRoot()->GetReordering(order);
-			// for(int i = 0; i < (int)order.size(); i++) {
-			//     if(i != 0) cout << " "; cout << order[i];
-			// }
-			// cout << endl;
-			// // --- DEBUG: check both losses match ---
-			// pair<double,double> sent_loss =
-			//    losses_[0]->CalculateSentenceLoss(order, ranks_[sent]);
-			// if(sent_loss.first != model_loss)
-			//     THROW_ERROR("sent_loss="<<sent_loss
-			//                 <<", model_loss="<<model_loss);
-			// // --- END DEBUG ---
-			if(verbose > 0){
-				cout << "sent=" << sent << " oracle_score=" << oracle_score << " model_score=" << model_score << " oracle_loss=" << oracle_loss << " model_loss=" << model_loss << endl;
+			if (verbose > 0){
+				vector<int> order;
+//				hyper_graph->GetRoot()->GetReordering(order);
+				hyper_graph->GetReordering(order, hyper_graph->GetBest());
+				for(int i = 0; i < (int)order.size(); i++) {
+					if(i != 0) cout << " "; cout << order[i];
+				}
+				cout << endl;
+				for(int i = 0; i < (int)order.size(); i++) {
+					if(i != 0) cout << " "; cout << data_[sent][0]->GetElement(order[i]);
+				}
+				cout << endl;
+				for(int i = 0; i < (int)order.size(); i++) {
+					if(i != 0) cout << " "; cout << ranks_[sent][i];
+				}
+				cout << endl;
+				// --- DEBUG: check both losses match ---
+				double sent_loss = 0;
+				BOOST_FOREACH(LossBase * loss, losses_)
+					sent_loss += loss->CalculateSentenceLoss(order,
+									sent < (int)ranks_.size() ? &ranks_[sent] : NULL,
+									sent < (int)parses_.size() ? &parses_[sent] : NULL).first;
+				if(sent_loss != model_loss)
+					THROW_ERROR("sent_loss="<<sent_loss
+							<<", model_loss="<<model_loss);
+				cout << "sent=" << sent << " oracle_score=" << oracle_score << " model_score=" << model_score << endl
+					 << "sent_loss = "<< sent_loss << " oracle_loss=" << oracle_loss << " model_loss=" << model_loss << endl;
 			}
 			feat_map.clear();
 			hyper_graph->AccumulateNonLocalFeatures(feat_map,

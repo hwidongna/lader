@@ -260,7 +260,6 @@ void DiscontinuousHyperGraph::StartBeamSearch(
                 const FeatureVectorInt *fvi;
                 if(hyp->GetEdgeType() == HyperEdge::EDGE_STR)
                     fvi = non_local_features.MakeNonLocalFeatures(sent, *hyp->GetLeftHyp(), *hyp->GetRightHyp(), model.GetFeatureIds(), model.GetAdd());
-
                 else
                     fvi = non_local_features.MakeNonLocalFeatures(sent, *hyp->GetRightHyp(), *hyp->GetLeftHyp(), model.GetFeatureIds(), model.GetAdd());
 
@@ -435,6 +434,7 @@ void DiscontinuousHyperGraph::AccumulateNonLocalFeatures(std::tr1::unordered_map
 			fvi = feature_gen.MakeNonLocalFeatures(sent, *right, *left, model.GetFeatureIds(), model.GetAdd());
 		if (verbose_ > 1){
 			cerr << "Accumulate non-local feature of hypothesis " << hyp << endl;
+            hyp.PrintChildren(cerr);
 			FeatureVectorString * fvs = model.StringifyFeatureVector(*fvi);
 			FeatureVectorString * fws = model.StringifyWeightVector(*fvi);
 			cerr << "/********************* non-local features ***********************/" << endl;
@@ -502,5 +502,32 @@ void DiscontinuousHyperGraph::AddLoss(LossBase* loss,
             	}
         	}
         }
+    }
+}
+
+void DiscontinuousHyperGraph::GetReordering(std::vector<int> & reord, Hypothesis * hyp) const{
+    HyperEdge::Type type = hyp->GetEdgeType();
+    if (verbose_ > 1 && type != HyperEdge::EDGE_FOR && type != HyperEdge::EDGE_BAC){
+    	cerr << "Loss:" << hyp->GetLoss();
+    	if (hyp->GetEdge()->GetClass() == 'D')
+    		cerr << *dynamic_cast<DiscontinuousHypothesis*>(hyp);
+    	else
+    		cerr << *hyp;
+    	hyp->PrintChildren(cerr);
+    }
+    if(type == HyperEdge::EDGE_FOR) {
+        for(int i = hyp->GetLeft(); i <= hyp->GetRight(); i++)
+            reord.push_back(i);
+    } else if(type == HyperEdge::EDGE_BAC) {
+        for(int i = hyp->GetRight(); i >= hyp->GetLeft(); i--)
+            reord.push_back(i);
+    } else if(type == HyperEdge::EDGE_ROOT) {
+        GetReordering(reord, hyp->GetLeftHyp());
+    } else if(type == HyperEdge::EDGE_STR) {
+        GetReordering(reord, hyp->GetLeftHyp());
+        GetReordering(reord, hyp->GetRightHyp());
+    } else if(type == HyperEdge::EDGE_INV) {
+        GetReordering(reord, hyp->GetRightHyp());
+        GetReordering(reord, hyp->GetLeftHyp());
     }
 }

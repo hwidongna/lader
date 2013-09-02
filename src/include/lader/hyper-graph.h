@@ -86,6 +86,8 @@ public:
     		const Ranks * ranks,
             const FeatureDataParse * parse) const;
 
+    virtual void GetReordering(std::vector<int> & reord, Hypothesis * hyp) const;
+
     void SetFeatures(EdgeFeatureMap * features) { features_ = features;}
     EdgeFeatureMap * GetFeatures() { return features_; }
     // Clear the feature array without deleting the features themselves

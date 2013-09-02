@@ -36,8 +36,15 @@ double LossChunk::AddLossToProduction(
             break;
         // For straight and inverse non-terms, check inside values
         case HyperEdge::EDGE_STR:
+        	if(!Ranks::IsContiguous((*ranks)[trg_midleft], (*ranks)[trg_midright]))
+				loss++;
+			break;
+		// For inverse non-terms, if inside rank values are same,
+		// they should be straight. If not, it is a loss.
+		// In other words, the loss of an inverse non-term is zero
+		// only if inside rank values are step-one up.
         case HyperEdge::EDGE_INV:
-            if(!Ranks::IsContiguous((*ranks)[trg_midleft], (*ranks)[trg_midright]))
+            if(!Ranks::IsStepOneUp((*ranks)[trg_midleft], (*ranks)[trg_midright]))
                 loss++;
             break;
         case HyperEdge::EDGE_FOR:
@@ -47,7 +54,7 @@ double LossChunk::AddLossToProduction(
             break;
         case HyperEdge::EDGE_BAC:
             for(int i = trg_left; i > trg_right; i--)
-                if(!Ranks::IsContiguous((*ranks)[i], (*ranks)[i-1]))
+                if(!Ranks::IsStepOneUp((*ranks)[i], (*ranks)[i-1]))
                     loss++;
             break;
         default:
@@ -82,7 +89,12 @@ std::pair<double,double> LossChunk::CalculateSentenceLoss(
     }
     // Calculate all the rest
     for(int i = 1; i < n; i++)
-        if(!Ranks::IsContiguous((*ranks)[order[i-1]], (*ranks)[order[i]]))
+		// For inverse non-terms, if inside rank values are same,
+		// they should be straight. If not, it is a loss.
+		// In other words, the loss of an inverse non-term is zero
+		// only if inside rank values are step-one up.
+        if(!Ranks::IsContiguous((*ranks)[order[i-1]], (*ranks)[order[i]])
+        || ((*ranks)[order[i-1]] == (*ranks)[order[i]] && !Ranks::IsStepOneUp(order[i-1], order[i])))
             ret.first++;
     ret.first *= weight_;
     ret.second *= weight_;

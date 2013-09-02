@@ -46,7 +46,8 @@ double HyperGraph::Score(double loss_multiplier,
 }
 
 double HyperGraph::Rescore(double loss_multiplier) {
-    // Score from root for all hypotheses, while keeping the best hyp at hyps[0]
+    // Score all root hypotheses, and place the best hyp at hyps[0].
+	// Note that it does not modify the rest of hypotheses under the root.
     // Therefore, this keep the forest structure by BuildHyperGraph
     std::vector<Hypothesis*> & hyps = GetRoot()->GetHypotheses();
     for(int i = 0; i < (int)hyps.size(); i++) {
@@ -263,8 +264,11 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
     TargetSpan * top = GetStack(0,n_-1);
     TargetSpan * root_stack = new TargetSpan(0,n_);
     for(int i = 0; i < (int)top->size(); i++)
-        root_stack->AddHypothesis(new Hypothesis((*top)[i]->GetScore(), 0, 0, 0, n_-1, 0, n_-1,
-                HyperEdge::EDGE_ROOT, -1, i, -1, top));
+        root_stack->AddHypothesis(new Hypothesis((*top)[i]->GetScore(), 0, 0, 0, n_-1,
+        		(*top)[i]->GetTrgLeft(), (*top)[i]->GetTrgRight(),
+                HyperEdge::EDGE_ROOT, -1,
+                i, -1,
+                top, NULL));
     stacks_[n_ * (n_+1) / 2] = root_stack;
 }
 
@@ -288,6 +292,24 @@ void HyperGraph::AddLoss(LossBase* loss,
     }
 }
 
+void HyperGraph::GetReordering(std::vector<int> & reord, Hypothesis * hyp) const{
+    HyperEdge::Type type = hyp->GetEdgeType();
+    if(type == HyperEdge::EDGE_FOR) {
+        for(int i = hyp->GetLeft(); i <= hyp->GetRight(); i++)
+            reord.push_back(i);
+    } else if(type == HyperEdge::EDGE_BAC) {
+        for(int i = hyp->GetRight(); i >= hyp->GetLeft(); i--)
+            reord.push_back(i);
+    } else if(type == HyperEdge::EDGE_ROOT) {
+        GetReordering(reord, hyp->GetLeftHyp());
+    } else if(type == HyperEdge::EDGE_STR) {
+        GetReordering(reord, hyp->GetLeftHyp());
+        GetReordering(reord, hyp->GetRightHyp());
+    } else if(type == HyperEdge::EDGE_INV) {
+        GetReordering(reord, hyp->GetRightHyp());
+        GetReordering(reord, hyp->GetLeftHyp());
+    }
+}
 
 template <class T>
 inline string GetNodeString(char type, const T * hyp) {

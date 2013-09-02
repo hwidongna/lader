@@ -38,12 +38,13 @@ public:
     void Run(const ConfigRunner & config);
 
     // Write the model to a file
-    void ReadModel(const std::string & str) {
+    void ReadModel(const std::string & str, bool backward_compatibility) {
         std::ifstream in(str.c_str());
         if(!in) THROW_ERROR("Couldn't read model from file (-model_in '"
                             << str << "')");
         features_ = FeatureSet::FromStream(in);
-        non_local_features_ = FeatureSet::FromStream(in);
+        if (!backward_compatibility)
+        	non_local_features_ = FeatureSet::FromStream(in);
         model_ = ReordererModel::FromStream(in);
     }
 

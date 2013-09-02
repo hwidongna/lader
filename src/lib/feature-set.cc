@@ -52,6 +52,8 @@ vector<FeatureDataBase*> FeatureSet::ParseInput(const string & line) const {
 
 void FeatureSet::ParseConfiguration(const string & str) {
     config_str_ = str;
+    if (str.length() == 0)
+    	return;
     // Split configurations into sizes
     vector<string> configs;
     algorithm::split(configs, str, is_any_of("|"));

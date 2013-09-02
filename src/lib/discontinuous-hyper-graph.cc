@@ -145,7 +145,7 @@ void DiscontinuousHyperGraph::AddDiscontinuousHypotheses(
 			0, 0, left_stack, right_stack));
 }
 
-void DiscontinuousHyperGraph::nextCubeItems(const Hypothesis * hyp,
+void DiscontinuousHyperGraph::AddNextCubeItems(const Hypothesis * hyp,
 		ReordererModel & model,
 		const FeatureSet & features, const FeatureSet & non_local_features,
 		const Sentence & sent,	HypothesisQueue & q,
@@ -180,7 +180,8 @@ void DiscontinuousHyperGraph::nextCubeItems(const Hypothesis * hyp,
 											*old_right_hyp, *new_left_hyp);
 		new_hyp->SetScore(hyp->GetScore()
 				- old_left_hyp->GetScore() + new_left_hyp->GetScore()
-				- old_left_hyp->GetNonLocalScore() + non_local_score);
+				- hyp->GetNonLocalScore() + non_local_score);
+		new_hyp->SetNonLocalScore(non_local_score);
 		new_hyp->SetLeftRank(hyp->GetLeftRank() + 1);
 		new_hyp->SetLeftChild(left_span);
 		if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR)
@@ -214,7 +215,8 @@ void DiscontinuousHyperGraph::nextCubeItems(const Hypothesis * hyp,
 											*new_right_hyp, *old_left_hyp);
 		new_hyp->SetScore(hyp->GetScore()
 				- old_right_hyp->GetScore() + new_right_hyp->GetScore()
-				- old_right_hyp->GetNonLocalScore() + non_local_score);
+				- hyp->GetNonLocalScore() + non_local_score);
+		new_hyp->SetNonLocalScore(non_local_score);
 		new_hyp->SetRightRank(hyp->GetRightRank()+1);
 		new_hyp->SetRightChild(right_span);
 		if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR)
@@ -223,6 +225,72 @@ void DiscontinuousHyperGraph::nextCubeItems(const Hypothesis * hyp,
 			new_hyp->SetTrgLeft(new_right_hyp->GetTrgLeft());
 		q.push(new_hyp);
 	}
+}
+
+void DiscontinuousHyperGraph::StartBeamSearch(
+		int beam_size,
+		HypothesisQueue q, ReordererModel & model, const Sentence & sent,
+		const FeatureSet & features, const FeatureSet & non_local_features,
+		TargetSpan *& ret, int l, int r, bool gap)
+{
+    //cerr << "Start beam search among " << q.size() << " hypotheses" << endl;
+    int num_processed = 0;
+    while((!beam_size || num_processed < beam_size) && q.size()){
+        // Pop a hypothesis from the stack and get its target span
+        Hypothesis *hyp = q.top(); q.pop();
+        // Insert the hypothesis
+        ret->AddHypothesis(hyp);
+        num_processed++;
+
+        if(verbose_ > 1){
+        	if (gap){
+        		DiscontinuousHypothesis * dhyp =
+        				dynamic_cast<DiscontinuousHypothesis*>(hyp);
+        		cerr << "Insert the discontinuous hypothesis " << *dhyp << endl;
+        	}
+        	else
+        		cerr << "Insert the hypothesis " << *hyp << endl;
+            const FeatureVectorInt *fvi = HyperGraph::GetEdgeFeatures(model, features, sent, *hyp->GetEdge());
+            FeatureVectorString *fvs = model.StringifyFeatureVector(*fvi);
+            FeatureVectorString *fws = model.StringifyWeightVector(*fvi);
+            cerr << *fvs << endl << *fws;
+            hyp->PrintChildren(cerr);
+            delete fvs, fws;
+            if(hyp->GetLeftChild() && hyp->GetRightChild()){
+                const FeatureVectorInt *fvi;
+                if(hyp->GetEdgeType() == HyperEdge::EDGE_STR)
+                    fvi = non_local_features.MakeNonLocalFeatures(sent, *hyp->GetLeftHyp(), *hyp->GetRightHyp(), model.GetFeatureIds(), model.GetAdd());
+
+                else
+                    fvi = non_local_features.MakeNonLocalFeatures(sent, *hyp->GetRightHyp(), *hyp->GetLeftHyp(), model.GetFeatureIds(), model.GetAdd());
+
+                fvs = model.StringifyFeatureVector(*fvi);
+                fws = model.StringifyWeightVector(*fvi);
+    			cerr << "/********************* non-local features ***********************/" << endl;
+                cerr << *fvs << endl << *fws;
+                delete fvs, fws;
+            }
+			cerr << endl << "/****************************************************************/" << endl;
+
+        }
+
+        // If the next hypothesis on the stack is equal to the current
+        // hypothesis, remove it, as this just means that we added the same
+        // hypothesis
+        while(q.size() && *q.top() == *hyp){
+            delete q.top();
+            q.pop();
+        }
+        // Skip terminals
+        //		if(hyp->GetCenter() == -1) continue;
+        AddNextCubeItems(hyp, model, features, non_local_features, sent, q, l, r, gap);
+    }
+
+    while(q.size()){
+        delete q.top();
+        q.pop();
+    }
+    sort(ret->GetHypotheses().begin(), ret->GetHypotheses().end(), DescendingScore<Hypothesis>());
 }
 
 // Build a hypergraph using beam search and cube pruning
@@ -257,58 +325,9 @@ TargetSpan *DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
 					i, -1, -1, r);
 	}
 
+	bool gap = true;
 	TargetSpan * ret = new DiscontinuousTargetSpan(l, m, n, r);
-	// Start beam search
-	//cerr << "Start beam search among " << q.size() << " hypotheses" << endl;
-	int num_processed = 0;
-	while((!beam_size || num_processed < beam_size) && q.size()) {
-		// Pop a hypothesis from the stack and get its target span
-		DiscontinuousHypothesis * hyp =
-				dynamic_cast<DiscontinuousHypothesis*>(q.top()); q.pop();
-		// Insert the hypothesis
-		if (verbose_ > 1){
-			cerr << "Insert the discontinuous hypothesis " << *hyp << endl;
-			const FeatureVectorInt * fvi = HyperGraph::GetEdgeFeatures(model, features, sent, *hyp->GetEdge());
-			FeatureVectorString * fvs = model.StringifyFeatureVector(*fvi);
-			FeatureVectorString * fws = model.StringifyWeightVector(*fvi);
-			cerr << *fvs << endl << *fws;
-			hyp->PrintChildren(cerr);
-			delete fvs, fws;
-			if (hyp->GetLeftChild() && hyp->GetRightChild()){
-				const FeatureVectorInt * fvi;
-				if (hyp->GetEdgeType() == HyperEdge::EDGE_STR)
-					fvi = non_local_features.MakeNonLocalFeatures(
-									sent, *hyp->GetLeftHyp(), *hyp->GetRightHyp(), model.GetFeatureIds(), model.GetAdd());
-				else
-					fvi = non_local_features.MakeNonLocalFeatures(
-									sent, *hyp->GetRightHyp(), *hyp->GetLeftHyp(), model.GetFeatureIds(), model.GetAdd());
-				fvs = model.StringifyFeatureVector(*fvi);
-				fws = model.StringifyWeightVector(*fvi);
-				cerr << "/*************** non-local features *******************/" << endl;
-				cerr << *fvs << endl << *fws << endl;
-				cerr << "/******************************************************/" << endl;
-				delete fvs, fws;
-			}
-		}
-		ret->AddHypothesis(hyp);
-		num_processed++;
-		// If the next hypothesis on the stack is equal to the current
-		// hypothesis, remove it, as this just means that we added the same
-		// hypothesis
-		while(q.size() && *q.top() == *hyp) {
-			delete q.top();
-			q.pop();
-		}
-		// Skip terminals
-//		if(hyp->GetCenter() == -1) continue;
-		// Increment the left side if there is still a hypothesis left
-		nextCubeItems(hyp, model, features, non_local_features, sent, q, l, r, true);
-	}
-	while(q.size()) {
-		delete q.top();
-		q.pop();
-	}
-	sort(ret->GetHypotheses().begin(), ret->GetHypotheses().end(), DescendingScore<Hypothesis>());
+    StartBeamSearch(beam_size, q, model, sent, features, non_local_features, ret, l, r, gap);
 	return ret;
 }
 
@@ -390,58 +409,9 @@ TargetSpan * DiscontinuousHyperGraph::ProcessOneSpan(
 		}
 	}
 
+	bool gap = false;
 	TargetSpan * ret = new TargetSpan(l, r);
-	// Start beam search
-	int num_processed = 0;
-	while((!beam_size || num_processed < beam_size) && q.size()) {
-		// Pop a hypothesis from the stack and get its target span
-		Hypothesis * hyp = q.top(); q.pop();
-		// Insert the hypothesis
-		if (verbose_ > 1){
-			cerr << "Insert the hypothesis " << *hyp << endl;
-			const FeatureVectorInt * fvi = HyperGraph::GetEdgeFeatures(model, features, sent, *hyp->GetEdge());
-			FeatureVectorString * fvs = model.StringifyFeatureVector(*fvi);
-			FeatureVectorString * fws = model.StringifyWeightVector(*fvi);
-			cerr << *fvs << endl << *fws;
-			if (hyp->GetCenter() == -1)
-				cerr << endl;
-			else
-				hyp->PrintChildren(cerr);
-			delete fvs, fws;
-			if (hyp->GetLeftChild() && hyp->GetRightChild()){
-				const FeatureVectorInt * fvi;
-				if (hyp->GetEdgeType() == HyperEdge::EDGE_STR)
-					fvi = non_local_features.MakeNonLocalFeatures(
-									sent, *hyp->GetLeftHyp(), *hyp->GetRightHyp(), model.GetFeatureIds(), model.GetAdd());
-				else
-					fvi = non_local_features.MakeNonLocalFeatures(
-									sent, *hyp->GetRightHyp(), *hyp->GetLeftHyp(), model.GetFeatureIds(), model.GetAdd());
-				fvs = model.StringifyFeatureVector(*fvi);
-				fws = model.StringifyWeightVector(*fvi);
-				cerr << "/********************* non-local features ***********************/" << endl;
-				cerr << *fvs << endl << *fws << endl;
-				cerr << "/****************************************************************/" << endl;
-				delete fvs, fws;
-			}
-		}
-		ret->AddHypothesis(hyp);
-		num_processed++;
-		// If the next hypothesis on the stack is equal to the current
-		// hypothesis, remove it, as this just means that we added the same
-		// hypothesis
-		while(q.size() && *q.top() == *hyp) {
-			delete q.top();
-			q.pop();
-		}
-		// Skip terminals
-//		if(hyp->GetCenter() == -1) continue;
-		nextCubeItems(hyp, model, features, non_local_features, sent, q, l, r, false);
-	}
-	while(q.size()) {
-		delete q.top();
-		q.pop();
-	}
-	sort(ret->GetHypotheses().begin(), ret->GetHypotheses().end(), DescendingScore<Hypothesis>());
+    StartBeamSearch(beam_size, q, model, sent, features, non_local_features, ret, l, r, gap);
 	return ret;
 }
 

@@ -25,53 +25,46 @@ public:
                 delete graph;
     }
 
-	// Add up the loss over an entire sentence
-	void AddLoss(
-			LossBase* loss,
-			const Ranks * ranks,
-			const FeatureDataParse * parse) const;
+    void AddLoss(LossBase *loss, const Ranks *ranks, const FeatureDataParse *parse) const;
+    void AccumulateNonLocalFeatures(std::tr1::unordered_map<int,double> & feat_map,
+    		ReordererModel & model, const FeatureSet & feature_gen,
+    		const Sentence & sent, const Hypothesis & hyp);
+    const TargetSpan *GetStack(int l, int m, int n, int r) const
+    {
+        if(m < 0 && n < 0)
+            return HyperGraph::GetStack(l, r);
 
-	void AccumulateNonLocalFeatures(std::tr1::unordered_map<int,double> & feat_map,
-											ReordererModel & model,
-			                                const FeatureSet & feature_gen,
-			                                const Sentence & sent,
-			                                const Hypothesis & hyp);
+        int idx = GetTrgSpanID(l, m);
+        if (mp_ && next_.size() <= idx)
+			return NULL;
+        HyperGraph *hyper_graph = SafeAccess(next_, idx);
+        if (hyper_graph == NULL)
+			return NULL;
+        if (mp_ && hyper_graph->GetStacks().size() <= GetTrgSpanID(n - m - 2, r - m - 2))
+			return NULL;
+        return SafeAccess(hyper_graph->GetStacks(), GetTrgSpanID(n - m - 2, r - m - 2));
+    }
+    TargetSpan *GetStack(int l, int m, int n, int r)
+    {
+        if(m < 0 && n < 0)
+            return HyperGraph::GetStack(l, r);
 
-	const TargetSpan *GetStack(int l, int m, int n, int r) const
-	{
-		if(m < 0 && n < 0)
-			return HyperGraph::GetStack(l, r);
-		int idx = GetTrgSpanID(l, m);
-		if (mp_ && next_.size() <= idx)
+        int idx = GetTrgSpanID(l, m);
+        if (mp_ && next_.size() <= idx)
 			return NULL;
-		HyperGraph *hyper_graph = SafeAccess(next_, idx);
-		if (hyper_graph == NULL)
+        HyperGraph *hyper_graph = SafeAccess(next_, idx);
+        if (hyper_graph == NULL)
 			return NULL;
-		if (mp_ && hyper_graph->GetStacks().size() <= GetTrgSpanID(n - m - 2, r - m - 2))
+        if (mp_ && hyper_graph->GetStacks().size() <= GetTrgSpanID(n - m - 2, r - m - 2))
 			return NULL;
-		return SafeAccess(hyper_graph->GetStacks(), GetTrgSpanID(n - m - 2, r - m - 2));
-	}
-
-	TargetSpan *GetStack(int l, int m, int n, int r)
-	{
-		if(m < 0 && n < 0)
-			return HyperGraph::GetStack(l, r);
-		int idx = GetTrgSpanID(l, m);
-		if (mp_ && next_.size() <= idx)
-			return NULL;
-		HyperGraph *hyper_graph = SafeAccess(next_, idx);
-		if (hyper_graph == NULL)
-			return NULL;
-		if (mp_ && hyper_graph->GetStacks().size() <= GetTrgSpanID(n - m - 2, r - m - 2))
-			return NULL;
-		return SafeAccess(hyper_graph->GetStacks(), GetTrgSpanID(n - m - 2, r - m - 2));
-	}
-
-	void SetStack(int l, int m, int n, int r, TargetSpan * stack) {
-		if (m < 0 && n < 0){
-			HyperGraph::SetStack(l, r , stack);
-			return;
-		}
+        return SafeAccess(hyper_graph->GetStacks(), GetTrgSpanID(n - m - 2, r - m - 2));
+    }
+    void SetStack(int l, int m, int n, int r, TargetSpan *stack)
+    {
+        if(m < 0 && n < 0){
+            HyperGraph::SetStack(l, r, stack);
+            return;
+        }
         if(l < 0 || r < 0 || (n > 0 && m >= n-1) )
 	            THROW_ERROR("Bad SetStack "
 	            		"[l="<<l<<", m="<<m<<", n="<<n<<", r="<<r<<"]"<<std::endl)
@@ -87,46 +80,22 @@ public:
 	            stacks.resize(idx+1, NULL);
         if(stacks[idx])
             delete stacks[idx];
+
         stacks[idx] = stack;
     }
 protected:
-    TargetSpan *ProcessOneSpan(
-    		ReordererModel & model,
-    		const FeatureSet & features,
-    		const FeatureSet & non_local_features,
-    		const Sentence & sent,
-    		int l, int r,
-    		int beam_size = 0);
-    TargetSpan *ProcessOneDiscontinuousSpan(
-    		ReordererModel & model,
-    		const FeatureSet & features,
-    		const FeatureSet & non_local_features,
-    		const Sentence & sent,
-    		int l, int m, int n, int r,
-    		int beam_size = 0);
-    void AddHypotheses(
-    		ReordererModel & model,
-    		const FeatureSet & features, const FeatureSet & non_local_features,
-    		const Sentence & sent, HypothesisQueue & q,
-    		int left_l, int left_m, int left_n, int left_r,
-    		int right_l, int right_m, int right_n, int right_r);
-    void AddDiscontinuousHypotheses(
-    		ReordererModel & model,
-    		const FeatureSet & features, const FeatureSet & non_local_features,
-    		const Sentence & sent, HypothesisQueue & q,
-    		int left_l, int left_m, int left_n, int left_r,
-    		int right_l, int right_m, int right_n, int right_r);
-    void nextCubeItems(const Hypothesis * hyp,
-    		ReordererModel & model,
-    		const FeatureSet & features, const FeatureSet & non_local_features,
-    		const Sentence & sent, HypothesisQueue & q,
-    		int l, int r, bool gap=true);
+    TargetSpan *ProcessOneSpan(ReordererModel & model, const FeatureSet & features, const FeatureSet & non_local_features, const Sentence & sent, int l, int r, int beam_size = 0);
+    TargetSpan *ProcessOneDiscontinuousSpan(ReordererModel & model, const FeatureSet & features, const FeatureSet & non_local_features, const Sentence & sent, int l, int m, int n, int r, int beam_size = 0);
+    void AddHypotheses(ReordererModel & model, const FeatureSet & features, const FeatureSet & non_local_features, const Sentence & sent, HypothesisQueue & q, int left_l, int left_m, int left_n, int left_r, int right_l, int right_m, int right_n, int right_r);
+    void AddDiscontinuousHypotheses(ReordererModel & model, const FeatureSet & features, const FeatureSet & non_local_features, const Sentence & sent, HypothesisQueue & q, int left_l, int left_m, int left_n, int left_r, int right_l, int right_m, int right_n, int right_r);
+    void AddNextCubeItems(const Hypothesis *hyp, ReordererModel & model, const FeatureSet & features, const FeatureSet & non_local_features, const Sentence & sent, HypothesisQueue & q, int l, int r, bool gap = true);
+    void StartBeamSearch(int beam_size, HypothesisQueue q, ReordererModel & model, const Sentence & sent, const FeatureSet & features, const FeatureSet & non_local_features, TargetSpan *& ret, int l, int r, bool gap);
 private:
-	int gap_; // maximum gap size
-	bool mp_; // monotone at punctuation
-	int verbose_; // verbosity during process
-    int full_fledged_; // invoke all possible permutations
-	std::vector<HyperGraph*> next_; // for discontinuous hypotheses and hyper edges
+    int gap_;
+    bool mp_;
+    int verbose_;
+    int full_fledged_;
+    std::vector<HyperGraph*> next_;
 };
 
 }

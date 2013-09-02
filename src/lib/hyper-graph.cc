@@ -36,7 +36,7 @@ double HyperGraph::Score(double loss_multiplier,
                          const Hypothesis* hyp) const{
     double score = hyp->GetLoss()*loss_multiplier;
     if(hyp->GetEdgeType() != HyperEdge::EDGE_ROOT) {
-    	score += hyp->GetSingleScore();
+    	score += hyp->GetSingleScore() + hyp->GetNonLocalScore();
     }
     if(hyp->GetLeftChild())
 		score += Score(loss_multiplier, hyp->GetLeftHyp());
@@ -161,7 +161,6 @@ TargetSpan * HyperGraph::ProcessOneSpan(ReordererModel & model,
 
     }
     // Get a map to store identical target spans
-    int r_max = r+1;
     TargetSpan * ret = new TargetSpan(l, r);
     // Start beam search
     int num_processed = 0;
@@ -196,7 +195,8 @@ TargetSpan * HyperGraph::ProcessOneSpan(ReordererModel & model,
     											*old_right_hyp, *new_left_hyp);
     		new_hyp->SetScore(hyp->GetScore()
     				- old_left_hyp->GetScore() + new_left_hyp->GetScore()
-    				- old_left_hyp->GetNonLocalScore() + non_local_score);
+    				- hyp->GetNonLocalScore() + non_local_score);
+    		new_hyp->SetNonLocalScore(non_local_score);
             new_hyp->SetLeftRank(hyp->GetLeftRank()+1);
             new_hyp->SetLeftChild(left_stack);
             if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR) {
@@ -222,7 +222,8 @@ TargetSpan * HyperGraph::ProcessOneSpan(ReordererModel & model,
     											*new_right_hyp, *old_left_hyp);
     		new_hyp->SetScore(hyp->GetScore()
     				- old_right_hyp->GetScore() + new_right_hyp->GetScore()
-    				- old_right_hyp->GetNonLocalScore() + non_local_score);
+    				- hyp->GetNonLocalScore() + non_local_score);
+    		new_hyp->SetNonLocalScore(non_local_score);
             new_hyp->SetRightRank(hyp->GetRightRank()+1);
             new_hyp->SetRightChild(right_stack);
             if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR) {

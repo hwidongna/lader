@@ -8,6 +8,7 @@
 #include <boost/tokenizer.hpp>
 #include <boost/algorithm/string/join.hpp>
 #include <lader/discontinuous-hyper-edge.h>
+#include <lader/hypothesis.h>
 
 using namespace boost;
 using namespace lader;

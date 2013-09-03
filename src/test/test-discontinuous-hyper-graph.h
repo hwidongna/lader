@@ -55,7 +55,7 @@ public:
         // Create a reorderer model with weights
         model.SetWeight("SW||ate||rice||IC", -1);
         model.SetWeight("SP||VBD||NN||IC", -1);
-        // prefer non-BTG more than BTG
+        // prefer non-ITG more than ITG
         model.SetWeight("SW||he||rice||ID", 1);
         model.SetWeight("SP||PRP||NN||ID", 1);
         model.SetWeight("SW||he||rice||SD", 2);
@@ -282,7 +282,46 @@ public:
         // The total number of stacks should be 11: 0-0 0-1 1-1 0-2 1-2 2-2 0-3 1-3 2-3 3-3 root
         if(stacks.size() != 11) {
             cerr << "stacks.size() != 11: " << stacks.size() << endl; ret = 0;
-        // The number of target spans should be 4*3*2: including non-BTGs
+        // The number of target spans should be 4*3*2: including non-ITGs
+        } else if (stack03->size() != 4*3*2) {
+            cerr << "Root node stack03->size() != 4*3*2: " << stack03->size()<< endl;
+            BOOST_FOREACH(const Hypothesis *hyp, stack03->GetHypotheses())
+            	cerr << " " << hyp->GetTrgLeft() << "-" <<hyp->GetTrgRight() << endl;
+            ret = 0;
+        } else if (stackRoot->size() != stack03->size()) {
+            cerr << "Root hypotheses " << stackRoot->size()
+                 << " and root spans " << stack03->size() << " don't match." << endl; ret = 0;
+        }
+
+        BOOST_FOREACH(TargetSpan * stack, stacks)
+			BOOST_FOREACH(Hypothesis * hyp, stack->GetHypotheses()){
+				Hypothesis * lhyp = hyp->GetLeftHyp();
+				Hypothesis * rhyp = hyp->GetRightHyp();
+				if (hyp->GetScore() !=
+						hyp->GetSingleScore()
+						+ (lhyp ? lhyp->GetScore() : 0)
+						+ (rhyp ? rhyp->GetScore() : 0) ){
+					cerr << "Incorrect viterbi score " << *hyp << endl;
+					hyp->PrintChildren(cerr);
+					ret = 0;
+				}
+			}
+        return ret;
+    }
+
+    int TestBuildHyperGraphCubeGrowing() {
+        DiscontinuousHyperGraph graph(1, true);
+        graph.SetVerbose(2);
+        set.SetMaxTerm(1);
+        graph.BuildHyperGraph(model, set, non_local_set, datas, 4*3*2);
+        const std::vector<TargetSpan*> & stacks = graph.GetStacks();
+        int ret = 1;
+        TargetSpan * stack03 = graph.HyperGraph::GetStack(0, 3);
+        TargetSpan * stackRoot = graph.HyperGraph::GetRoot();
+        // The total number of stacks should be 11: 0-0 0-1 1-1 0-2 1-2 2-2 0-3 1-3 2-3 3-3 root
+        if(stacks.size() != 11) {
+            cerr << "stacks.size() != 11: " << stacks.size() << endl; ret = 0;
+        // The number of target spans should be 4*3*2: including non-ITGs
         } else if (stack03->size() != 4*3*2) {
             cerr << "Root node stack03->size() != 4*3*2: " << stack03->size()<< endl;
             BOOST_FOREACH(const Hypothesis *hyp, stack03->GetHypotheses())
@@ -394,13 +433,13 @@ public:
         if(score != -3) {
             cerr << "Rescore(mod, 0.0) != -3: " << score << endl; ret = 0;
         }
-        // Rescoring with loss +1 should pick the non-BTG
+        // Rescoring with loss +1 should pick the non-ITG
         // with a loss of 1+2+3+4+5+6+7, minus a weight of 1*7 -> 21
         score = my_hg->Rescore(1.0);
         if(score != 21) {
             cerr << "Rescore(mod, 1.0) != 21: " << score << endl; ret = 0;
         }
-        // Rescoring with loss -1 should pick the BTG
+        // Rescoring with loss -1 should pick the ITG
 		// with a loss of -1-2-7, minus a weight of 1*7 -> 21
 		score = my_hg->Rescore(-1);
 		if(score != -17) {
@@ -542,6 +581,7 @@ public:
         done++; cout << "TestGetEdgeFeaturesAndWeights()" << endl; if(TestGetEdgeFeaturesAndWeights()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestProcessOneSpan()" << endl; if(TestProcessOneSpan()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestBuildHyperGraph()" << endl; if(TestBuildHyperGraph()) succeeded++; else cout << "FAILED!!!" << endl;
+        done++; cout << "TestBuildHyperGraphCubeGrowing()" << endl; if(TestBuildHyperGraphCubeGrowing()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestAccumulateLoss()" << endl; if(TestAccumulateLoss()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestAccumulateFeatures()" << endl; if(TestAccumulateFeatures()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestRescore()" << endl; if(TestRescore()) succeeded++; else cout << "FAILED!!!" << endl;

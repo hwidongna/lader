@@ -10,15 +10,21 @@ using namespace std;
 using namespace boost;
 
 void ReordererTask::Run() {
+    int beam = config_.GetInt("beam");
+    int gapSize = config_.GetInt("gap-size");
+    bool cube_growing = config_.GetBool("cube_growing");
+    bool mp = config_.GetBool("mp");
+    bool full_fledged = config_.GetBool("full_fledged");
+    int verbose = config_.GetInt("verbose");
     // Load the data
-	if (verbose_ > 1)
+	if (verbose > 1)
 		cerr << "Sentence " << id_ << endl;
     std::vector<FeatureDataBase*> datas = features_->ParseInput(line_);
     // Save the original string
     vector<string> words = ((FeatureDataSequence*)datas[0])->GetSequence();
     // Build the hypergraph
-    HyperGraph * hyper_graph = new DiscontinuousHyperGraph(gap_, mp_, full_fledged_, verbose_);
-    hyper_graph->BuildHyperGraph(*model_, *features_, *non_local_features_, datas, beam_);
+    HyperGraph * hyper_graph = new DiscontinuousHyperGraph(gapSize, cube_growing, mp, full_fledged, verbose);
+    hyper_graph->BuildHyperGraph(*model_, *features_, *non_local_features_, datas, beam);
     // Reorder
     std::vector<int> reordering;
     hyper_graph->GetReordering(reordering, hyper_graph->GetBest());
@@ -58,20 +64,11 @@ void ReordererRunner::Run(const ConfigRunner & config) {
     OutputCollector collector;
 
     std::string line;
-    int id = 0, beam = config.GetInt("beam");
-    int gapSize = config.GetInt("gap-size");
-    bool full_fledged = config.GetBool("full_fledged");
-    bool mp = config.GetBool("mp");
-    int verbose = config.GetInt("verbose");
     std::string source_in = config.GetString("source_in");
     std::ifstream in(source_in.c_str());
-    if (gapSize > 0)
-    	cerr << "use discontinuous hyper-graph: D=" << gapSize << endl;
-    if (mp)
-        cerr << "enable monotone at punctuation to prevent excessive reordering" << endl;
+    int id = 0;
     while(std::getline(in != NULL? in : std::cin, line)) {
-    	ReordererTask *task = new ReordererTask(id++, line, model_, features_, non_local_features_, &outputs_,
-    			beam, &collector, gapSize, mp, full_fledged, verbose);
+    	ReordererTask *task = new ReordererTask(id++, line, model_, features_, non_local_features_, &outputs_, config, &collector);
         pool.Submit(task);
     }
     if (in) in.close();

@@ -118,20 +118,26 @@ TargetSpan * HyperGraph::ProcessOneSpan(ReordererModel & model,
                                        const Sentence & sent,
                                        int l, int r,
                                        int beam_size) {
+    // Get a map to store identical target spans
+    TargetSpan * ret = new TargetSpan(l, r);
+    HypothesisQueue * q;
+	if (cube_growing_)
+		q = &ret->GetCands();
     // Create the temporary data members for this span
-    HypothesisQueue q;
+	else
+		q = new HypothesisQueue;
     double score, viterbi_score, non_local_score;
     // If the length is OK, add a terminal
     if((features.GetMaxTerm() == 0) || (r-l < features.GetMaxTerm())) {
         // Create a hypothesis with the forward terminal
         HyperEdge * edge = new HyperEdge(l, -1, r, HyperEdge::EDGE_FOR);
         score = GetEdgeScore(model, features, sent, *edge);
-        q.push(new Hypothesis(score, score, 0, edge, l, r));
+        q->push(new Hypothesis(score, score, 0, edge, l, r));
         if(features.GetUseReverse()) {
         	// Create a hypothesis with the backward terminal
         	edge = new HyperEdge(l, -1, r, HyperEdge::EDGE_BAC);
         	score = GetEdgeScore(model, features, sent, *edge);
-        	q.push(new Hypothesis(score, score, 0, edge, r, l));
+        	q->push(new Hypothesis(score, score, 0, edge, r, l));
         }
     }
     TargetSpan *left_stack, *right_stack;
@@ -144,14 +150,21 @@ TargetSpan * HyperGraph::ProcessOneSpan(ReordererModel & model,
         right_stack = GetStack(c, r);
         if(left_stack == NULL) THROW_ERROR("Target l="<<l<<", c-1="<<c-1);
         if(right_stack == NULL) THROW_ERROR("Target c="<<c<<", r="<<r);
+        Hypothesis * left, *right;
+        if (cube_growing_){
+        	left = left_stack->LazyKthBest(0, model, features, non_local_features, sent);
+        	right = right_stack->LazyKthBest(0, model, features, non_local_features, sent);
+        }
+        else{
+        	left = left_stack->GetHypothesis(0);
+        	right = right_stack->GetHypothesis(0);
+        }
         // Add the straight terminal
         HyperEdge * edge = new HyperEdge(l, c, r, HyperEdge::EDGE_STR);
         score = GetEdgeScore(model, features, sent, *edge);
-        Hypothesis * left = left_stack->GetHypothesis(0);
-        Hypothesis * right = right_stack->GetHypothesis(0);
     	non_local_score = GetNonLocalScore(model, non_local_features, sent, *left, *right);
     	viterbi_score = score + non_local_score + left->GetScore() + right->GetScore();
-    	q.push(new Hypothesis(viterbi_score, score, non_local_score, edge,
+    	q->push(new Hypothesis(viterbi_score, score, non_local_score, edge,
                          left->GetTrgLeft(),
                          right->GetTrgRight(),
                          0, 0, left_stack, right_stack));
@@ -160,28 +173,30 @@ TargetSpan * HyperGraph::ProcessOneSpan(ReordererModel & model,
         score = GetEdgeScore(model, features, sent, *edge);
     	non_local_score = GetNonLocalScore(model, non_local_features, sent, *right, *left);
     	viterbi_score = score + non_local_score + left->GetScore() + right->GetScore();
-    	q.push(new Hypothesis(viterbi_score, score, non_local_score, edge,
+    	q->push(new Hypothesis(viterbi_score, score, non_local_score, edge,
 						 right->GetTrgLeft(),
 						 left->GetTrgRight(),
                          0, 0, left_stack, right_stack));
 
     }
-    // Get a map to store identical target spans
-    TargetSpan * ret = new TargetSpan(l, r);
+    // For cube growing, search is lazy
+    if (cube_growing_)
+    	return ret;
+
     // Start beam search
     int num_processed = 0;
-    while((!beam_size || num_processed < beam_size) && q.size()) {
+    while((!beam_size || num_processed < beam_size) && q->size()) {
         // Pop a hypothesis from the stack and get its target span
-        Hypothesis * hyp = q.top(); q.pop();
+        Hypothesis * hyp = q->top(); q->pop();
         // Insert the hypothesis
         ret->AddHypothesis(hyp);
         num_processed++;
         // If the next hypothesis on the stack is equal to the current
         // hypothesis, remove it, as this just means that we added the same
         // hypothesis
-        while(q.size() && *q.top() == *hyp) {
-        	delete q.top();
-        	q.pop();
+        while(q->size() && *q->top() == *hyp) {
+        	delete q->top();
+        	q->pop();
         }
         // Skip terminals
         if(hyp->GetCenter() == -1) continue;
@@ -210,7 +225,7 @@ TargetSpan * HyperGraph::ProcessOneSpan(ReordererModel & model,
             } else {
                 new_hyp->SetTrgRight(new_left_hyp->GetTrgRight());
             }
-            q.push(new_hyp);
+            q->push(new_hyp);
         }
         // Increment the right side if there is still a hypothesis right
         right_stack = GetStack(hyp->GetCenter(),r);
@@ -237,14 +252,15 @@ TargetSpan * HyperGraph::ProcessOneSpan(ReordererModel & model,
             } else {
                 new_hyp->SetTrgLeft(new_right_hyp->GetTrgLeft());
             }
-            q.push(new_hyp);
+            q->push(new_hyp);
         }
     }
-    while(q.size()) {
-    	delete q.top();
-    	q.pop();
+    while(q->size()) {
+    	delete q->top();
+    	q->pop();
     }
     sort(ret->GetHypotheses().begin(), ret->GetHypotheses().end(), DescendingScore<Hypothesis>());
+    delete q;
     return ret;
 }
 
@@ -261,6 +277,9 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
         // Move the span from l to r, building hypotheses from small to large
         for(int l = 0; l <= n_-L; l++){
             int r = l+L-1;
+            // TODO: parallelize processing in a row
+            // need to lock GetEdgeScore() -> GetEdgeFeatures() -> model.GetFeatureId().GetId()
+            // need to lock GetNonLocalScore() -> model.GetFeatureId().GetId()
             SetStack(l, r, ProcessOneSpan(model, features, non_local_features, sent,
                                           l, r, beam_size));
         }
@@ -268,16 +287,25 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
     // Build the root node
     TargetSpan * top = GetStack(0,n_-1);
     TargetSpan * root_stack = new TargetSpan(0,n_);
-    for(int i = 0; i < (int)top->size(); i++)
-        root_stack->AddHypothesis(new Hypothesis((*top)[i]->GetScore(), 0, 0,
+    for(int i = 0; !beam_size || i < beam_size; i++){
+    	Hypothesis * hyp = NULL;
+    	if (cube_growing_)
+    		hyp = top->LazyKthBest(i, model, features, non_local_features, sent);
+    	else if (i < (int) top->size())
+    		hyp = (*top)[i];
+    	if (!hyp)
+    		break;
+    	// TODO: non-local feature for root hypothesis
+    	// e.g. reordered bigram for sentence boudaries
+        root_stack->AddHypothesis(new Hypothesis(hyp->GetScore(), 0, 0,
         		0, n_-1,
-        		(*top)[i]->GetTrgLeft(), (*top)[i]->GetTrgRight(),
+        		hyp->GetTrgLeft(), hyp->GetTrgRight(),
                 HyperEdge::EDGE_ROOT, -1,
                 i, -1,
                 top, NULL));
+    }
     stacks_[n_ * (n_+1) / 2] = root_stack;
 }
-
 
 void HyperGraph::AddLoss(LossBase* loss,
 		const Ranks * ranks, const FeatureDataParse * parse) const{

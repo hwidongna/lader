@@ -340,6 +340,33 @@ public:
         return ret;
     }
 
+    int TestBuildHyperGraphCubeGrowing() {
+        HyperGraph graph(true);
+        set.SetMaxTerm(0);
+        set.SetUseReverse(false);
+        graph.BuildHyperGraph(model, set, non_local_set, datas);
+        const std::vector<TargetSpan*> & stacks = graph.GetStacks();
+        int ret = 1;
+        // The total number of stacks should be 7: 0-0 0-1 1-1 0-2 1-2 2-2 root
+        if(stacks.size() != 7) {
+            cerr << "stacks.size() != 7: " << stacks.size() << endl; ret = 0;
+        // The number of hypotheses should be 9: 0:1::2 1:0::2 0::1:2 0::2:1 2::0:1 2::1:0 1:2::0 2:1::0 012
+        // Four hypotheses are duplicated, and thus truncated: 01::2 0::12 2::01 12::0
+        } else if (stacks[3]->size() != 2*2*2 + 1) {
+            cerr << "Root node stacks[3]->size() != 9: " <<stacks[3]->size()<< endl;
+            BOOST_FOREACH(const Hypothesis *hyp, stacks[3]->GetHypotheses()){
+                cerr << *hyp <<  endl;
+            }
+            ret = 0;
+        } else if (stacks[6]->size() != stacks[3]->size()) {
+            cerr << "Root hypotheses " << stacks[6]->size()
+                 << " and root spans " << stacks[3]->size() << " don't match." <<
+                 endl; ret = 0;
+        }
+        set.SetUseReverse(true);
+        return ret;
+    }
+
     int TestAccumulateLoss() {
         // The value of the loss should be 1+2+5+6 = 14 (3 and 4 are not best)
         double val = tsr->GetHypothesis(0)->AccumulateLoss();
@@ -520,6 +547,7 @@ public:
         done++; cout << "TestGetNonLocalFeaturesAndWeights()" << endl; if(TestGetNonLocalFeaturesAndWeights()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestProcessOneSpan()" << endl; if(TestProcessOneSpan()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestBuildHyperGraph()" << endl; if(TestBuildHyperGraph()) succeeded++; else cout << "FAILED!!!" << endl;
+        done++; cout << "TestBuildHyperGraphCubeGrowing()" << endl; if(TestBuildHyperGraphCubeGrowing()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestAccumulateLoss()" << endl; if(TestAccumulateLoss()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestAccumulateFeatures()" << endl; if(TestAccumulateFeatures()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestRescore()" << endl; if(TestRescore()) succeeded++; else cout << "FAILED!!!" << endl;

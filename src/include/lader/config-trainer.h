@@ -34,6 +34,7 @@ public:
         AddConfigEntry("gap-size", "1", "The gap size for discontinuous hyper graph");
         AddConfigEntry("full_fledged", "false", "Enable discontinuous hyper graph full-fledged combinations");
         AddConfigEntry("mp", "false", "Monotone at punctuation");
+        AddConfigEntry("cube_growing", "true", "Use Cube Growing for construction of hyper graph");
         AddConfigEntry("combine_blocks", "true", "Whether to combine alignments into blocks");
         AddConfigEntry("cost", "1e-3", "The rate at which to learn");
         AddConfigEntry("feature_profile", "seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,O%SL%SR%ET,I%LR%RL%ET,CL%CL%ET,B%SB%ET,A%SA%ET,N%SN%ET,BIAS%ET", "Which features to use ");

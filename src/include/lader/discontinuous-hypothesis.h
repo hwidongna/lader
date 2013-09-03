@@ -46,15 +46,15 @@ public:
 
 	DiscontinuousHypothesis(const Hypothesis & hyp) : Hypothesis(hyp) {	}
 	int GetM() const{
-		const DiscontinuousHyperEdge * dedge =
-				dynamic_cast<const DiscontinuousHyperEdge*>(Hypothesis::GetEdge());
+		DiscontinuousHyperEdge * dedge =
+				dynamic_cast<DiscontinuousHyperEdge*>(this->GetEdge());
 		if (dedge == NULL)
 			THROW_ERROR("Invalide hyper-edge")
 		return dedge->GetM();
 	}
 	int GetN() const{
-		const DiscontinuousHyperEdge * dedge =
-				dynamic_cast<const DiscontinuousHyperEdge*>(Hypothesis::GetEdge());
+		DiscontinuousHyperEdge * dedge =
+				dynamic_cast<DiscontinuousHyperEdge*>(this->GetEdge());
 		if (dedge == NULL)
 			THROW_ERROR("Invalide hyper-edge")
 		return dedge->GetN();
@@ -63,11 +63,11 @@ public:
 
     // Comparators
     bool operator< (const Hypothesis & rhs) const {
-//    	cerr << "operator<" << Hypothesis::GetEdge() << endl;
-    	const DiscontinuousHyperEdge * dedge = // why does this cause NULL?
-    			dynamic_cast<const DiscontinuousHyperEdge*>(Hypothesis::GetEdge());
-    	const DiscontinuousHyperEdge * rhsdedge =
-    			dynamic_cast<const DiscontinuousHyperEdge*>(rhs.GetEdge());
+//    	cerr << "operator<" << this->GetEdge() << endl;
+    	DiscontinuousHyperEdge * dedge = // why does this cause NULL?
+    			dynamic_cast<DiscontinuousHyperEdge*>(this->GetEdge());
+    	DiscontinuousHyperEdge * rhsdedge =
+    			dynamic_cast<DiscontinuousHyperEdge*>(rhs.GetEdge());
     	if (dedge == NULL || rhsdedge == NULL)
     		THROW_ERROR("Invalide hyper-edge")
         return Hypothesis::operator< (rhs) || (
@@ -75,10 +75,10 @@ public:
 				dedge->GetM() == rhsdedge->GetM() && dedge->GetN() < rhsdedge->GetN())));
     }
     bool operator== (const Hypothesis & rhs) const {
-    	const DiscontinuousHyperEdge * dedge =
-    			dynamic_cast<const DiscontinuousHyperEdge*>(Hypothesis::GetEdge());
+    	DiscontinuousHyperEdge * dedge =
+    			dynamic_cast<DiscontinuousHyperEdge*>(this->GetEdge());
     	const DiscontinuousHyperEdge * rhsdedge =
-    			dynamic_cast<const DiscontinuousHyperEdge*>(rhs.GetEdge());
+    			dynamic_cast<DiscontinuousHyperEdge*>(rhs.GetEdge());
     	if (dedge == NULL || rhsdedge == NULL)
     		THROW_ERROR("Invalide hyper-edge")
         return Hypothesis::operator== (rhs) &&

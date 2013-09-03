@@ -6,12 +6,12 @@
 #include <lader/feature-vector.h>
 #include <lader/feature-data-base.h>
 #include <lader/hyper-edge.h>
-#include <lader/hypothesis.h>
 #include <lader/dictionary.h>
 #include <lader/symbol-set.h>
 
 namespace lader {
 
+class Hypothesis;
 // A virtual class for feature generators
 // Four functions must be implemented to create a feature generator
 //   ParseConfiguration, ParseData, GenerateEdgeFeatures

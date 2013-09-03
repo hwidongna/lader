@@ -22,6 +22,10 @@ public:
     virtual ~TargetSpan() {
         BOOST_FOREACH(Hypothesis * hyp, hyps_)
             delete hyp;
+        while(cands_.size()) {
+        	delete cands_.top();
+        	cands_.pop();
+        }
     }
 
     void LabelWithIds(int & curr_id){
@@ -33,6 +37,28 @@ public:
     			hyp->GetRightChild()->LabelWithIds(curr_id);
     	}
     	id_ = curr_id++;
+    }
+
+    Hypothesis * LazyKthBest(int k,
+    		ReordererModel & model,
+    		const FeatureSet & features, const FeatureSet & non_local_features,
+    		const Sentence & sent){
+    	while ((int)hyps_.size() < k+1 && (int)cands_.size() > 0){
+    		Hypothesis * hyp = cands_.top(); cands_.pop();
+    		hyps_.push_back(hyp);
+    		hyp->LazyNext(cands_, model, features, non_local_features, sent);
+            // If the next hypothesis on the stack is equal to the current
+            // hypothesis, remove it, as this just means that we added the same
+            // hypothesis
+            while(cands_.size() && *cands_.top() == *hyp) {
+            	delete cands_.top();
+            	cands_.pop();
+            }
+    	}
+    	if ( k < (int)hyps_.size()){
+    		return hyps_[k];
+    	}
+    	return NULL;
     }
 
     double GetScore() const {
@@ -54,6 +80,7 @@ public:
         else
         	return hyps_[i];
     }
+    HypothesisQueue & GetCands() { return cands_; }
     size_t size() const { return hyps_.size(); }
     const Hypothesis* operator[] (size_t val) const { return hyps_[val]; }
     Hypothesis* operator[] (size_t val) { return hyps_[val]; }
@@ -63,6 +90,7 @@ public:
     
 protected:
     std::vector<Hypothesis*> hyps_;
+    HypothesisQueue cands_;
 
 private:
     int left_, right_;

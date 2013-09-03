@@ -17,6 +17,7 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
     int gapSize = config.GetInt("gap-size");
     bool full_fledged = config.GetBool("full_fledged");
     bool mp = config.GetBool("mp");
+    bool cube_growing = config.GetBool("cube_growing");
     // Temporary values
     bool loss_aug = config.GetBool("loss_augmented_inference");
     double model_score = 0, model_loss = 0, oracle_score = 0, oracle_loss = 0;
@@ -48,14 +49,14 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
         	if (verbose > 1)
         		cerr << "Sentence " << sent << endl;
             if(++done % 100 == 0) { cout << "."; cout.flush(); }
-            HyperGraph * hyper_graph = new DiscontinuousHyperGraph(gapSize, mp, full_fledged, verbose);
+            HyperGraph * hyper_graph = new DiscontinuousHyperGraph(gapSize, cube_growing, mp, full_fledged, verbose);
             // If we are saving features for efficiency, recover the saved
             // features and replace them in the hypergraph
             if(config.GetBool("save_features") && iter != 0)
                 hyper_graph->SetFeatures(SafeAccess(saved_feats_, sent));
             // TODO: a loss-augmented parsing would result a different forest
-            // Make the hypergraph using cube pruning
-            hyper_graph->BuildHyperGraph(model_,
+            // Make the hypergraph using cube pruning/growing
+			hyper_graph->BuildHyperGraph(model_,
                                         features_,
                                         non_local_features_,
                                         data_[sent],

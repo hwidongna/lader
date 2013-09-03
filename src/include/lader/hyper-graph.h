@@ -27,7 +27,7 @@ public:
     friend class TestHyperGraph;
     friend class TestDiscontinuousHyperGraph;
 
-    HyperGraph() : features_(0), n_(-1) { }
+    HyperGraph(bool cube_growing = false) : features_(0), n_(-1), cube_growing_(cube_growing){ }
 
     virtual ~HyperGraph() {
         if(features_) {
@@ -42,7 +42,7 @@ public:
     }
     
     // Build the hypergraph using the specified model, features and sentence
-    //  beam_size: the pop limit for cube pruning
+    //  beam_size: the pop limit for cube pruning/growing
     void BuildHyperGraph(ReordererModel & model,
                          const FeatureSet & features,
                          const FeatureSet & non_local_features,
@@ -108,7 +108,6 @@ protected:
                                int l, int r,
                                int beam_size = 0);
 
-
     const FeatureVectorInt * GetEdgeFeatures(
                                 ReordererModel & model,
                                 const FeatureSet & feature_gen,
@@ -164,7 +163,8 @@ private:
 protected:
     // The length of the sentence
     int n_;
-
+    // use cube growing for search
+    bool cube_growing_;
 };
 
 }

@@ -63,10 +63,9 @@ public:
     ReordererTask(int id, const std::string & line,
                   ReordererModel * model, FeatureSet * features, FeatureSet * non_local_features,
                   std::vector<ReordererRunner::OutputType> * outputs,
-                  int beam, OutputCollector * collector, int gapSize, bool mp, bool full_fledged, int verbose) :
+                  const ConfigRunner& config, OutputCollector * collector) :
         id_(id), line_(line), model_(model), features_(features), non_local_features_(non_local_features),
-        outputs_(outputs), beam_(beam), collector_(collector),
-        gap_(gapSize), mp_(mp), full_fledged_(full_fledged), verbose_(verbose) { }
+        outputs_(outputs), collector_(collector), config_(config) { }
     void Run();
 protected:
     int id_;
@@ -75,12 +74,8 @@ protected:
     FeatureSet * features_;  // The mapping on feature ids and which to use
     FeatureSet * non_local_features_;  // The mapping on feature ids and which to use
     std::vector<ReordererRunner::OutputType> * outputs_;
-    int beam_;
     OutputCollector * collector_;
-    int gap_;
-    bool full_fledged_;
-    bool mp_;
-    int verbose_;
+    const ConfigRunner& config_;
 };
 
 }

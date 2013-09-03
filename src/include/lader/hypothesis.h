@@ -4,6 +4,10 @@
 #include <lader/hyper-edge.h>
 #include <lader/feature-vector.h>
 #include <lader/util.h>
+#include <lader/hypothesis-queue.h>
+#include <lader/feature-data-base.h>
+#include <lader/reorderer-model.h>
+#include <lader/feature-set.h>
 #include <sstream>
 #include <iostream>
 #include <vector>
@@ -160,6 +164,10 @@ public:
     FeatureVectorInt AccumulateFeatures(
     		std::tr1::unordered_map<int,double> & feat_map,
     		const EdgeFeatureMap * features);
+    void LazyNext(HypothesisQueue & q, ReordererModel & model,
+    		const FeatureSet & features, const FeatureSet & non_local_features,
+    		const Sentence & sent);
+    bool IsTerminal() const { return GetEdgeType() == HyperEdge::EDGE_FOR || GetEdgeType() == HyperEdge::EDGE_BAC; }
 
 private:
     void AccumulateFeatures(const EdgeFeatureMap * features,

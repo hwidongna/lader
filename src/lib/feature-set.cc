@@ -9,7 +9,7 @@ using namespace boost;
 
 // Generates the features that can be factored over a node
 FeatureVectorInt * FeatureSet::MakeEdgeFeatures(
-        const vector<FeatureDataBase*> & sent,
+		const Sentence & sent,
         const HyperEdge & edge,
         SymbolSet<int> & feature_ids,
         bool add) const {
@@ -22,7 +22,7 @@ FeatureVectorInt * FeatureSet::MakeEdgeFeatures(
 
 // Generates the features that can be factored over a hypothesis
 FeatureVectorInt * FeatureSet::MakeNonLocalFeatures(
-        const vector<FeatureDataBase*> & sent,
+		const Sentence & sent,
         const Hypothesis & left,
 	    const Hypothesis & right,
         SymbolSet<int> & feature_ids,

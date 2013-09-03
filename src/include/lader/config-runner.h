@@ -33,6 +33,7 @@ public:
         AddConfigEntry("full_fledged", "false", "Enable discontinuous hyper graph full-fledged combinations");
         AddConfigEntry("backward_compatibility", "false", "Support model trained from previous version without non-local feature templates");
         AddConfigEntry("mp", "false", "Monotone at punctuation");
+        AddConfigEntry("cube_growing", "true", "Use Cube Growing for construction of hyper graph");
         AddConfigEntry("threads", "1", "The number of threads to use");
         AddConfigEntry("verbose", "0", "The level of debugging output to print 2: detail for building");
         AddConfigEntry("source_in", "", "The input file for the source sentences");

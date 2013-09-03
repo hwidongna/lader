@@ -267,7 +267,7 @@ void DiscontinuousHyperGraph::StartBeamSearch(
                 fws = model.StringifyWeightVector(*fvi);
     			cerr << "/********************* non-local features ***********************/" << endl;
                 cerr << *fvs << endl << *fws;
-                delete fvs, fws;
+                delete fvi, fvs, fws;
             }
 			cerr << endl << "/****************************************************************/" << endl;
 
@@ -444,6 +444,7 @@ void DiscontinuousHyperGraph::AccumulateNonLocalFeatures(std::tr1::unordered_map
 		}
         BOOST_FOREACH(FeaturePairInt feat_pair, *fvi)
             feat_map[feat_pair.first] += feat_pair.second;
+        delete fvi;
 	}
 	if (left)
 		AccumulateNonLocalFeatures(feat_map, model, feature_gen, sent, *left);

@@ -75,9 +75,13 @@ double HyperGraph::GetNonLocalScore(ReordererModel & model,
                                 const Hypothesis & left,
                                 const Hypothesis & right) {
     // unlike edge features, do not store non-local features
-    const FeatureVectorInt * vec =
+	// in order to avoid too much memory usage
+	// TODO: make this optional?
+    const FeatureVectorInt * fvi =
     		feature_gen.MakeNonLocalFeatures(sent, left, right, model.GetFeatureIds(), model.GetAdd());
-    return model.ScoreFeatureVector(SafeReference(vec));
+    double score = model.ScoreFeatureVector(SafeReference(fvi));
+    delete fvi;
+    return score;
 }
 
 // Accumulate non-local features under a hypothesis
@@ -93,13 +97,14 @@ void HyperGraph::AccumulateNonLocalFeatures(std::tr1::unordered_map<int,double> 
 		return;
 	// root has no non-local features
 	if (hyp.GetEdgeType() != HyperEdge::EDGE_ROOT){
-		const FeatureVectorInt * vec;
+		const FeatureVectorInt * fvi;
 		if (hyp.GetEdgeType() == HyperEdge::EDGE_STR)
-			vec = feature_gen.MakeNonLocalFeatures(sent, *left, *right, model.GetFeatureIds(), model.GetAdd());
+			fvi = feature_gen.MakeNonLocalFeatures(sent, *left, *right, model.GetFeatureIds(), model.GetAdd());
 		else if (hyp.GetEdgeType() == HyperEdge::EDGE_INV)
-			vec = feature_gen.MakeNonLocalFeatures(sent, *right, *left, model.GetFeatureIds(), model.GetAdd());
-        BOOST_FOREACH(FeaturePairInt feat_pair, *vec)
+			fvi = feature_gen.MakeNonLocalFeatures(sent, *right, *left, model.GetFeatureIds(), model.GetAdd());
+        BOOST_FOREACH(FeaturePairInt feat_pair, *fvi)
             feat_map[feat_pair.first] += feat_pair.second;
+        delete fvi;
 	}
 	if (left)
 		AccumulateNonLocalFeatures(feat_map, model, feature_gen, sent, *left);

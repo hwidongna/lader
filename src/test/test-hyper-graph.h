@@ -404,34 +404,43 @@ public:
         span11->AddHypothesis(new Hypothesis(1,1,0,1,1,-1,-1,HyperEdge::EDGE_FOR));
         span01->AddHypothesis(new Hypothesis(1,1,0,0,1,-1,-1,HyperEdge::EDGE_FOR));
         spanr->AddHypothesis(new Hypothesis(1,1,0,0,1,-1,-1,HyperEdge::EDGE_ROOT,-1,0,-1,span01));
+        HyperGraph graph;
+        graph.SetStack(0,0, span00);
+        graph.SetStack(1,1, span11);
+        graph.SetStack(0,1, span01);
+        graph.SetStack(0,2, spanr);
         // Get the reordering for forward
         int ret = 1;
-        vector<int> for_reorder; spanr->GetReordering(for_reorder);
-        ostringstream for_oss; spanr->PrintParse(str01, for_oss);
-        ret = min(ret, CheckVector(vec01, for_reorder));
-        ret = min(ret, CheckString("(F (FW 0) (FW 1))", for_oss.str()));
-        // Get the reordering bac backward
-        span01->GetHypothesis(0)->SetType(HyperEdge::EDGE_BAC);
-        vector<int> bac_reorder; spanr->GetReordering(bac_reorder);
-        ostringstream bac_oss; spanr->PrintParse(str01, bac_oss);
-        ret = min(ret, CheckVector(vec10, bac_reorder));
-        ret = min(ret, CheckString("(B (BW 0) (BW 1))", bac_oss.str()));
-        // Get the reordering for forward
-        span01->GetHypothesis(0)->SetType(HyperEdge::EDGE_STR);
-        span01->GetHypothesis(0)->SetLeftChild(span00);
-        span01->GetHypothesis(0)->SetLeftRank(0);
-        span01->GetHypothesis(0)->SetRightChild(span11);
-        span01->GetHypothesis(0)->SetRightRank(0);
-        vector<int> str_reorder; spanr->GetReordering(str_reorder);
-        ostringstream str_oss; spanr->PrintParse(str01, str_oss);
-        ret = min(ret, CheckVector(vec01, str_reorder));
-        ret = min(ret,CheckString("(S (F (FW 0)) (F (FW 1)))",str_oss.str()));
-        // Get the reordering for forward
-        span01->GetHypothesis(0)->SetType(HyperEdge::EDGE_INV);
-        vector<int> inv_reorder; spanr->GetReordering(inv_reorder);
-        ostringstream inv_oss; spanr->PrintParse(str01, inv_oss);
-        ret = min(ret, CheckVector(vec10, inv_reorder)); 
-        ret = min(ret,CheckString("(I (F (FW 0)) (F (FW 1)))",inv_oss.str()));
+        vector<int> for_reorder;
+        graph.GetReordering(for_reorder, graph.GetBest());
+         ostringstream for_oss; spanr->GetHypothesis(0)->PrintParse(str01, for_oss);
+         ret = min(ret, CheckVector(vec01, for_reorder));
+         ret = min(ret, CheckString("(F (FW 0) (FW 1))", for_oss.str()));
+         // Get the reordering bac backward
+         span01->GetHypothesis(0)->SetType(HyperEdge::EDGE_BAC);
+         vector<int> bac_reorder;
+         graph.GetReordering(bac_reorder, graph.GetBest());
+         ostringstream bac_oss; spanr->GetHypothesis(0)->PrintParse(str01, bac_oss);
+         ret = min(ret, CheckVector(vec10, bac_reorder));
+         ret = min(ret, CheckString("(B (BW 0) (BW 1))", bac_oss.str()));
+         // Get the reordering for forward
+         span01->GetHypothesis(0)->SetType(HyperEdge::EDGE_STR);
+         span01->GetHypothesis(0)->SetLeftChild(span00);
+         span01->GetHypothesis(0)->SetLeftRank(0);
+         span01->GetHypothesis(0)->SetRightChild(span11);
+         span01->GetHypothesis(0)->SetRightRank(0);
+         vector<int> str_reorder;
+         graph.GetReordering(str_reorder, graph.GetBest());
+         ostringstream str_oss; spanr->GetHypothesis(0)->PrintParse(str01, str_oss);
+         ret = min(ret, CheckVector(vec01, str_reorder));
+         ret = min(ret,CheckString("(S (F (FW 0)) (F (FW 1)))",str_oss.str()));
+         // Get the reordering for forward
+         span01->GetHypothesis(0)->SetType(HyperEdge::EDGE_INV);
+         vector<int> inv_reorder;
+         graph.GetReordering(inv_reorder, graph.GetBest());
+         ostringstream inv_oss;spanr->GetHypothesis(0)->PrintParse(str01, inv_oss);
+         ret = min(ret, CheckVector(vec10, inv_reorder));
+         ret = min(ret,CheckString("(I (F (FW 0)) (F (FW 1)))",inv_oss.str()));
         return ret;
     }
 

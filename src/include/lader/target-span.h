@@ -24,13 +24,16 @@ public:
             delete hyp;
     }
 
-    // Print a parse tree in Penn Treebank format
-    void PrintParse(const std::vector<std::string> & strs,
-                    std::ostream & out) const;
-
-    void GetReordering(std::vector<int> & reord) const;
-
-    void LabelWithIds(int & curr_id);
+    void LabelWithIds(int & curr_id){
+    	if(id_ != -1) return;
+    	BOOST_FOREACH(Hypothesis * hyp, hyps_) {
+    		if(hyp->GetLeftChild())
+    			hyp->GetLeftChild()->LabelWithIds(curr_id);
+    		if(hyp->GetRightChild())
+    			hyp->GetRightChild()->LabelWithIds(curr_id);
+    	}
+    	id_ = curr_id++;
+    }
 
     double GetScore() const {
         double ret = !hyps_.size() ? -DBL_MAX : hyps_[0]->GetScore();

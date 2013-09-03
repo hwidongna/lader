@@ -19,6 +19,20 @@ namespace lader {
 
 class DiscontinuousHypothesis : public Hypothesis{
 public:
+	// just for testing
+	DiscontinuousHypothesis(double viterbi_score, double single_score, double non_local_score,
+					int left, int m,
+					int n, int right,
+					int trg_left, int trg_right,
+					HyperEdge::Type type, int center = -1,
+					int left_rank = -1, int right_rank = -1,
+					TargetSpan* left_child = NULL, TargetSpan* right_child = NULL) :
+	            	   Hypothesis(viterbi_score, single_score, non_local_score,
+	            			   new DiscontinuousHyperEdge(left, m, center, n, right, type),
+	            			   trg_left, trg_right,
+	            			   left_rank, right_rank,
+	            			   left_child, right_child) { }
+
 	DiscontinuousHypothesis(double viterbi_score, double single_score, double non_local_score,
 	               HyperEdge * edge,
 	               int trg_left, int trg_right,

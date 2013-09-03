@@ -6,6 +6,8 @@
 #include <lader/util.h>
 #include <sstream>
 #include <iostream>
+#include <vector>
+using namespace std;
 
 namespace lader {
 
@@ -148,6 +150,8 @@ public:
     void SetTrgRight(int dub) { trg_right_ = dub; }
     void SetType(HyperEdge::Type type) { edge_->SetType(type); } // only for testing
     virtual void PrintChildren( std::ostream& out ) const;
+    // Print a parse tree in Penn Treebank format
+    void PrintParse(const vector<string> & strs, ostream & out) const;
 
     // Add up the loss over an entire subtree defined by this hyp
     double AccumulateLoss();

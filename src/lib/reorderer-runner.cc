@@ -21,7 +21,7 @@ void ReordererTask::Run() {
     hyper_graph->BuildHyperGraph(*model_, *features_, *non_local_features_, datas, beam_);
     // Reorder
     std::vector<int> reordering;
-    hyper_graph->GetRoot()->GetReordering(reordering);
+    hyper_graph->GetReordering(reordering, hyper_graph->GetBest());
     datas[0]->Reorder(reordering);
     // Print the string
     ostringstream oss;
@@ -30,7 +30,7 @@ void ReordererTask::Run() {
         if(outputs_->at(i) == ReordererRunner::OUTPUT_STRING) {
             oss << datas[0]->ToString();
         } else if(outputs_->at(i) == ReordererRunner::OUTPUT_PARSE) {
-            hyper_graph->GetRoot()->PrintParse(words, oss);
+            hyper_graph->GetBest()->PrintParse(words, oss);
         } else if(outputs_->at(i) == ReordererRunner::OUTPUT_HYPERGRAPH) {
             hyper_graph->PrintHyperGraph(words, oss);
         } else if(outputs_->at(i) == ReordererRunner::OUTPUT_ORDER) {

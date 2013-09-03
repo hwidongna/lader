@@ -264,7 +264,8 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
     TargetSpan * top = GetStack(0,n_-1);
     TargetSpan * root_stack = new TargetSpan(0,n_);
     for(int i = 0; i < (int)top->size(); i++)
-        root_stack->AddHypothesis(new Hypothesis((*top)[i]->GetScore(), 0, 0, 0, n_-1,
+        root_stack->AddHypothesis(new Hypothesis((*top)[i]->GetScore(), 0, 0,
+        		0, n_-1,
         		(*top)[i]->GetTrgLeft(), (*top)[i]->GetTrgRight(),
                 HyperEdge::EDGE_ROOT, -1,
                 i, -1,
@@ -293,6 +294,8 @@ void HyperGraph::AddLoss(LossBase* loss,
 }
 
 void HyperGraph::GetReordering(std::vector<int> & reord, Hypothesis * hyp) const{
+	if (hyp == NULL)
+		return;
     HyperEdge::Type type = hyp->GetEdgeType();
     if(type == HyperEdge::EDGE_FOR) {
         for(int i = hyp->GetLeft(); i <= hyp->GetRight(); i++)

@@ -14,6 +14,8 @@
 #include <lader/ranks.h>
 #include <lader/feature-base.h>
 #include <lader/discontinuous-hyper-graph.h>
+#include <lader/discontinuous-hypothesis.h>
+
 using namespace std;
 
 namespace lader {
@@ -409,45 +411,59 @@ public:
 
     // Test various types of reordering in the hypergraph
     int TestReorderingAndPrint() {
-        // Create the expected reordering vectors
-        vector<int> vec01(2,0); vec01[0] = 0; vec01[1] = 1;
-        vector<int> vec10(2,0); vec10[0] = 1; vec10[1] = 0;
-        vector<string> str01(2); str01[0] = "0"; str01[1] = "1";
+        // Create the expected reordering Inside-Out vectors
+        vector<int> vec1302(4,0); vec1302[0] = 1; vec1302[1] = 3; vec1302[2] = 0; vec1302[3] = 2;
+        vector<int> vec2031(4,0); vec2031[0] = 2; vec2031[1] = 0; vec2031[2] = 3; vec2031[3] = 1;
+        vector<string> str(4); str[0] = "0"; str[1] = "1"; str[2] = "2"; str[3] = "3";
         // Create a forest that can handle various things
         TargetSpan *span00 = new TargetSpan(0,0),
-                   *span01 = new TargetSpan(0,1),
                    *span11 = new TargetSpan(1,1),
-                   *spanr = new TargetSpan(0,1);
+                   *span22 = new TargetSpan(2,2),
+                   *span33 = new TargetSpan(3,3),
+                   *span0_2 = new DiscontinuousTargetSpan(0,0, 2,2),
+                   *span1_3 = new DiscontinuousTargetSpan(1,1, 3,3),
+                   *span03 = new TargetSpan(0,3),
+                   *spanr = new TargetSpan(0,3);
         span00->AddHypothesis(new Hypothesis(1,1,0,0,0,-1,-1,HyperEdge::EDGE_FOR));
         span11->AddHypothesis(new Hypothesis(1,1,0,1,1,-1,-1,HyperEdge::EDGE_FOR));
-        span01->AddHypothesis(new Hypothesis(1,1,0,0,1,-1,-1,HyperEdge::EDGE_FOR));
-        spanr->AddHypothesis(new Hypothesis(1,1,0,0,1,-1,-1,HyperEdge::EDGE_ROOT,-1,0,-1,span01));
-        // Get the reordering for forward
+        span22->AddHypothesis(new Hypothesis(1,1,0,2,2,-1,-1,HyperEdge::EDGE_FOR));
+        span33->AddHypothesis(new Hypothesis(1,1,0,3,3,-1,-1,HyperEdge::EDGE_FOR));
+        span0_2->AddHypothesis(new DiscontinuousHypothesis(1,1,0,
+        		0,0, 2,2, 0,2, HyperEdge::EDGE_STR, -1,
+        		0,0, span00, span22));
+        span0_2->AddHypothesis(new DiscontinuousHypothesis(1,1,0,
+        		0,0, 2,2, 2,0, HyperEdge::EDGE_INV, -1,
+        		0,0, span00, span22));
+        span1_3->AddHypothesis(new DiscontinuousHypothesis(1,1,0,
+        		1,1, 3,3, 1,3, HyperEdge::EDGE_STR, -1,
+        		0,0, span11, span33));
+        span1_3->AddHypothesis(new DiscontinuousHypothesis(1,1,0,
+        		1,1, 3,3, 3,1, HyperEdge::EDGE_INV, -1,
+        		0,0, span11, span33));
+        span03->AddHypothesis(new Hypothesis(1,1,0, 0,3, 1,2, HyperEdge::EDGE_INV,-1, 0,0, span0_2, span1_3));
+        span03->AddHypothesis(new Hypothesis(1,1,0, 0,3, 2,1, HyperEdge::EDGE_STR,-1, 1,1, span0_2, span1_3));
+        spanr->AddHypothesis(new Hypothesis(1,1,0, 0,3, 1,2, HyperEdge::EDGE_ROOT,-1,0,-1, span03));
+        spanr->AddHypothesis(new Hypothesis(1,1,0, 0,3, 2,1, HyperEdge::EDGE_ROOT,-1,1,-1, span03));
+        DiscontinuousHyperGraph graph(1);
+        graph.HyperGraph::SetStack(0,0, span00);
+        graph.HyperGraph::SetStack(1,1, span11);
+        graph.HyperGraph::SetStack(2,2, span22);
+        graph.HyperGraph::SetStack(3,3, span33);
+        graph.SetStack(0,0, 2,2, span0_2);
+        graph.SetStack(1,1, 3,3, span1_3);
+        // Get the reordering for 1302
         int ret = 1;
-        vector<int> for_reorder; spanr->GetReordering(for_reorder);
-         ostringstream for_oss; spanr->PrintParse(str01, for_oss);
-         ret = min(ret, CheckVector(vec01, for_reorder));
-         ret = min(ret, CheckString("(F (FW 0) (FW 1))", for_oss.str()));
-         // Get the reordering bac backward
-         span01->GetHypothesis(0)->SetType(HyperEdge::EDGE_BAC);
-         vector<int> bac_reorder; spanr->GetReordering(bac_reorder);
-         ostringstream bac_oss; spanr->PrintParse(str01, bac_oss);
-         ret = min(ret, CheckVector(vec10, bac_reorder));
-         ret = min(ret, CheckString("(B (BW 0) (BW 1))", bac_oss.str()));
-         // Get the reordering for forward
-         span01->GetHypothesis(0)->SetType(HyperEdge::EDGE_STR);
-         span01->GetHypothesis(0)->SetLeftChild(span00);
-         span01->GetHypothesis(0)->SetRightChild(span11);
-         vector<int> str_reorder; spanr->GetReordering(str_reorder);
-         ostringstream str_oss; spanr->PrintParse(str01, str_oss);
-         ret = min(ret, CheckVector(vec01, str_reorder));
-         ret = min(ret,CheckString("(S (F (FW 0)) (F (FW 1)))",str_oss.str()));
-         // Get the reordering for forward
-         span01->GetHypothesis(0)->SetType(HyperEdge::EDGE_INV);
-         vector<int> inv_reorder; spanr->GetReordering(inv_reorder);
-         ostringstream inv_oss; spanr->PrintParse(str01, inv_oss);
-         ret = min(ret, CheckVector(vec10, inv_reorder));
-         ret = min(ret,CheckString("(I (F (FW 0)) (F (FW 1)))",inv_oss.str()));
+        vector<int> reorder1302;
+        graph.GetReordering(reorder1302, spanr->GetHypothesis(0));
+        ostringstream for_oss; spanr->GetHypothesis(0)->PrintParse(str, for_oss);
+        ret = min(ret, CheckVector(vec1302, reorder1302));
+        ret = min(ret, CheckString("(I (S (F (FW 0)) (F (FW 2))) (S (F (FW 1)) (F (FW 3))))", for_oss.str()));
+        // Get the reordering for 2031
+        vector<int> reorder2031;
+        graph.GetReordering(reorder2031, spanr->GetHypothesis(1));
+        ostringstream bac_oss; spanr->GetHypothesis(1)->PrintParse(str, bac_oss);
+        ret = min(ret, CheckVector(vec2031, reorder2031));
+        ret = min(ret, CheckString("(S (I (F (FW 0)) (F (FW 2))) (I (F (FW 1)) (F (FW 3))))", bac_oss.str()));
         return ret;
     }
 

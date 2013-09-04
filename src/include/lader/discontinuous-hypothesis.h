@@ -84,6 +84,16 @@ public:
         return Hypothesis::operator== (rhs) &&
         		dedge->GetM() == rhsdedge->GetM() && dedge->GetN() == rhsdedge->GetN();
     }
+
+    virtual Hypothesis *Clone() const{
+        DiscontinuousHyperEdge *dedge =
+        		dynamic_cast<DiscontinuousHyperEdge*>(this->GetEdge());
+        if (dedge == NULL)
+        	THROW_ERROR("Invalide hyper-edge")
+    	Hypothesis * new_hyp = new DiscontinuousHypothesis(*this);
+    	new_hyp->SetEdge(dedge->Clone());
+    	return new_hyp;
+    }
 };
 
 }

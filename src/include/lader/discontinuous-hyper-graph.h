@@ -90,7 +90,6 @@ protected:
     TargetSpan *ProcessOneDiscontinuousSpan(ReordererModel & model, const FeatureSet & features, const FeatureSet & non_local_features, const Sentence & sent, int l, int m, int n, int r, int beam_size = 0);
     void AddHypotheses(ReordererModel & model, const FeatureSet & features, const FeatureSet & non_local_features, const Sentence & sent, HypothesisQueue & q, int left_l, int left_m, int left_n, int left_r, int right_l, int right_m, int right_n, int right_r);
     void AddDiscontinuousHypotheses(ReordererModel & model, const FeatureSet & features, const FeatureSet & non_local_features, const Sentence & sent, HypothesisQueue & q, int left_l, int left_m, int left_n, int left_r, int right_l, int right_m, int right_n, int right_r);
-    void AddNextCubeItems(const Hypothesis *hyp, ReordererModel & model, const FeatureSet & features, const FeatureSet & non_local_features, const Sentence & sent, HypothesisQueue & q, int l, int r);
     void StartBeamSearch(int beam_size, HypothesisQueue q, ReordererModel & model, const Sentence & sent, const FeatureSet & features, const FeatureSet & non_local_features, TargetSpan * ret, int l, int r);
 private:
     int gap_;

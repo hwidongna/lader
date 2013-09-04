@@ -23,7 +23,7 @@ public:
 		HyperEdge(l, c, r, t),
 		m_(m), n_(n) { }
 
-	HyperEdge * Clone() const{
+	virtual HyperEdge * Clone() const{
 		return new DiscontinuousHyperEdge(GetLeft(), m_, GetCenter(), n_, GetRight(), GetType());
 	}
 	// Comparators

@@ -200,60 +200,18 @@ TargetSpan * HyperGraph::ProcessOneSpan(ReordererModel & model,
         }
         // Skip terminals
         if(hyp->GetCenter() == -1) continue;
-        // Increment the left side if there is still a hypothesis left
-        left_stack = GetStack(l, hyp->GetCenter()-1);
-        new_left_hyp = left_stack->GetHypothesis(hyp->GetLeftRank()+1);
-        if(new_left_hyp) {
-            old_left_hyp = hyp->GetLeftHyp();
-            old_right_hyp = hyp->GetRightHyp();
-            Hypothesis *  new_hyp = new Hypothesis(*hyp);
-            new_hyp->SetEdge(new HyperEdge(*hyp->GetEdge()));
-    		if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR)
-    			non_local_score = GetNonLocalScore(model, non_local_features, sent,
-    											*new_left_hyp, *old_right_hyp);
-    		else
-    			non_local_score = GetNonLocalScore(model, non_local_features, sent,
-    											*old_right_hyp, *new_left_hyp);
-    		new_hyp->SetScore(hyp->GetScore()
-    				- old_left_hyp->GetScore() + new_left_hyp->GetScore()
-    				- hyp->GetNonLocalScore() + non_local_score);
-    		new_hyp->SetNonLocalScore(non_local_score);
-            new_hyp->SetLeftRank(hyp->GetLeftRank()+1);
-            new_hyp->SetLeftChild(left_stack);
-            if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR) {
-                new_hyp->SetTrgLeft(new_left_hyp->GetTrgLeft());
-            } else {
-                new_hyp->SetTrgRight(new_left_hyp->GetTrgRight());
-            }
-            q->push(new_hyp);
-        }
-        // Increment the right side if there is still a hypothesis right
-        right_stack = GetStack(hyp->GetCenter(),r);
-        new_right_hyp = right_stack->GetHypothesis(hyp->GetRightRank()+1);
-        if(new_right_hyp) {
-            old_left_hyp = hyp->GetLeftHyp();
-            old_right_hyp = hyp->GetRightHyp();
-            Hypothesis *  new_hyp = new Hypothesis(*hyp);
-            new_hyp->SetEdge(new HyperEdge(*hyp->GetEdge()));
-    		if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR)
-    			non_local_score = GetNonLocalScore(model, non_local_features, sent,
-    											*old_left_hyp, *new_right_hyp);
-    		else
-    			non_local_score = GetNonLocalScore(model, non_local_features, sent,
-    											*new_right_hyp, *old_left_hyp);
-    		new_hyp->SetScore(hyp->GetScore()
-    				- old_right_hyp->GetScore() + new_right_hyp->GetScore()
-    				- hyp->GetNonLocalScore() + non_local_score);
-    		new_hyp->SetNonLocalScore(non_local_score);
-            new_hyp->SetRightRank(hyp->GetRightRank()+1);
-            new_hyp->SetRightChild(right_stack);
-            if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR) {
-                new_hyp->SetTrgRight(new_right_hyp->GetTrgRight());
-            } else {
-                new_hyp->SetTrgLeft(new_right_hyp->GetTrgLeft());
-            }
-            q->push(new_hyp);
-        }
+
+    	Hypothesis * new_left = NULL, *new_right = NULL;
+
+    	TargetSpan *left_span = hyp->GetLeftChild();
+    	if (left_span)
+    		new_left = left_span->GetHypothesis(hyp->GetLeftRank()+1);
+    	hyp->IncrementLeft(new_left, model, non_local_features, sent, *q);
+
+    	TargetSpan *right_span = hyp->GetRightChild();
+    	if (right_span)
+    		new_right = right_span->GetHypothesis(hyp->GetRightRank()+1);
+    	hyp->IncrementRight(new_right, model, non_local_features, sent, *q);
     }
     while(q->size()) {
     	delete q->top();

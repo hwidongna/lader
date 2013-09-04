@@ -61,10 +61,6 @@ public:
     	return NULL;
     }
 
-    double GetScore() const {
-        double ret = !hyps_.size() ? -DBL_MAX : hyps_[0]->GetScore();
-        return ret;
-    }
     int GetId() const { return id_; }
     int GetLeft() const { return left_; }
     int GetRight() const { return right_; }

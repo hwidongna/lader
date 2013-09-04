@@ -135,99 +135,103 @@ inline double ComputeNonLocalScore(ReordererModel & model,
     return score;
 }
 
+// Clone a hypothesis with a hyper edge, which could be discontinuous
+Hypothesis *Hypothesis::Clone() const
+{
+    Hypothesis *new_hyp;
+    HyperEdge *edge = this->GetEdge();
+    DiscontinuousHyperEdge *dedge = dynamic_cast<DiscontinuousHyperEdge*>(edge);
+    // discontinuous + discontinuous = continuous
+    if(dedge){
+        new_hyp = new Hypothesis(*this);
+        new_hyp->SetEdge(dedge->Clone());
+    }
+    // continuous + continuous = continuous
+    else
+    {
+        new_hyp = new Hypothesis(*this);
+        new_hyp->SetEdge(edge->Clone());
+    }
+    return new_hyp;
+}
+
+// Increment the left side if there is still a hypothesis left
+void Hypothesis::IncrementLeft(Hypothesis *new_left,
+		ReordererModel & model,
+		const FeatureSet & non_local_features,
+		const Sentence & sent, HypothesisQueue & q)
+{
+    if (new_left != NULL){
+		Hypothesis * old_left= GetLeftHyp();
+		Hypothesis * old_right = GetRightHyp();
+        // Clone this hypothesis
+		Hypothesis * new_hyp = Clone();
+        // Recompute non-local score
+		double non_local_score;
+		if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR)
+			non_local_score = ComputeNonLocalScore(model, non_local_features, sent,
+											*new_left, *old_right);
+		else
+			non_local_score = ComputeNonLocalScore(model, non_local_features, sent,
+											*old_right, *new_left);
+		new_hyp->SetScore(GetScore()
+				- old_left->GetScore() + new_left->GetScore()
+				- GetNonLocalScore() + non_local_score);
+		new_hyp->SetNonLocalScore(non_local_score);
+		new_hyp->SetLeftRank(GetLeftRank() + 1);
+		if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR)
+			new_hyp->SetTrgLeft(new_left->GetTrgLeft());
+		else
+			new_hyp->SetTrgRight(new_left->GetTrgRight());
+		q.push(new_hyp);
+	}
+}
+
+// Increment the right side if there is still a hypothesis right
+void Hypothesis::IncrementRight(Hypothesis *new_right,
+		ReordererModel & model,
+		const FeatureSet & non_local_features,
+		const Sentence & sent, HypothesisQueue & q)
+{
+    if (new_right != NULL){
+    	Hypothesis * old_left = GetLeftHyp();
+    	Hypothesis * old_right = GetRightHyp();
+        // Clone this hypothesis
+        Hypothesis * new_hyp = Clone();
+        // Recompute non-local score
+		double non_local_score;
+		if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR)
+			non_local_score = ComputeNonLocalScore(model, non_local_features, sent,
+											*old_left, *new_right);
+		else
+			non_local_score = ComputeNonLocalScore(model, non_local_features, sent,
+											*new_right, *old_left);
+		new_hyp->SetScore(GetScore()
+				- old_right->GetScore() + new_right->GetScore()
+				- GetNonLocalScore() + non_local_score);
+		new_hyp->SetNonLocalScore(non_local_score);
+		new_hyp->SetRightRank(GetRightRank()+1);
+		if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR)
+			new_hyp->SetTrgRight(new_right->GetTrgRight());
+		else
+			new_hyp->SetTrgLeft(new_right->GetTrgLeft());
+		q.push(new_hyp);
+	}
+}
+
 // For cube growing
 void Hypothesis::LazyNext(HypothesisQueue & q, ReordererModel & model,
 		const FeatureSet & features, const FeatureSet & non_local_features,
 		const Sentence & sent){
-	Hypothesis * new_hyp,
-	*new_left_hyp = NULL, *old_left_hyp = NULL,
-	*new_right_hyp = NULL, *old_right_hyp = NULL;
-	double non_local_score;
-    HyperEdge *edge = this->GetEdge();
-    DiscontinuousHyperEdge *dedge =
-    		dynamic_cast<DiscontinuousHyperEdge*>(edge);
-	DiscontinuousHypothesis * dhyp =
-			dynamic_cast<DiscontinuousHypothesis*>(this);
+	Hypothesis * new_left = NULL, *new_right = NULL;
+
 	TargetSpan *left_span = GetLeftChild();
-	// Increment the left side if there is still a hypothesis left
 	if (left_span)
-		new_left_hyp = left_span->LazyKthBest(GetLeftRank()+1, model, features, non_local_features, sent);
-	if (new_left_hyp != NULL){
-        old_left_hyp = GetLeftHyp();
-        old_right_hyp = GetRightHyp();
-        // discontinuous + continuous = discontinuous
-        // continuous + discontinuous = discontinuous
-        if (dedge && dhyp){
-        	new_hyp = new DiscontinuousHypothesis(*dhyp);
-        	new_hyp->SetEdge(dedge->Clone());
-        }
-        // discontinuous + discontinuous = continuous
-        else if (dedge && !dhyp){
-        	new_hyp = new Hypothesis(*this);
-        	new_hyp->SetEdge(dedge->Clone());
-        }
-        // continuous + continuous = continuous
-        else{
-        	new_hyp = new Hypothesis(*this);
-        	new_hyp->SetEdge(edge->Clone());
-        }
-		if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR)
-			non_local_score = ComputeNonLocalScore(model, non_local_features, sent,
-											*new_left_hyp, *old_right_hyp);
-		else
-			non_local_score = ComputeNonLocalScore(model, non_local_features, sent,
-											*old_right_hyp, *new_left_hyp);
-		new_hyp->SetScore(GetScore()
-				- old_left_hyp->GetScore() + new_left_hyp->GetScore()
-				- GetNonLocalScore() + non_local_score);
-		new_hyp->SetNonLocalScore(non_local_score);
-		new_hyp->SetLeftRank(GetLeftRank() + 1);
-		new_hyp->SetLeftChild(left_span);
-		if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR)
-			new_hyp->SetTrgLeft(new_left_hyp->GetTrgLeft());
-		else
-			new_hyp->SetTrgRight(new_left_hyp->GetTrgRight());
-		q.push(new_hyp);
-	}
+		new_left = left_span->LazyKthBest(GetLeftRank()+1, model, features, non_local_features, sent);
+    IncrementLeft(new_left, model, non_local_features, sent, q);
+
 	TargetSpan *right_span = GetRightChild();
-	// Increment the right side if there is still a hypothesis right
 	if (right_span)
-		new_right_hyp = right_span->LazyKthBest(GetRightRank()+1, model, features, non_local_features, sent);
-	if (new_right_hyp != NULL){
-        old_left_hyp = GetLeftHyp();
-        old_right_hyp = GetRightHyp();
-        // discontinuous + continuous = discontinuous
-        // continuous + discontinuous = discontinuous
-        if (dedge && dhyp){
-        	new_hyp = new DiscontinuousHypothesis(*dhyp);
-        	new_hyp->SetEdge(dedge->Clone());
-        }
-        // discontinuous + discontinuous = continuous
-        else if (dedge && !dhyp){
-        	new_hyp = new Hypothesis(*this);
-        	new_hyp->SetEdge(dedge->Clone());
-        }
-        // continuous + continuous = continuous
-        else{
-        	new_hyp = new Hypothesis(*this);
-        	new_hyp->SetEdge(edge->Clone());
-        }
-		if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR)
-			non_local_score = ComputeNonLocalScore(model, non_local_features, sent,
-											*old_left_hyp, *new_right_hyp);
-		else
-			non_local_score = ComputeNonLocalScore(model, non_local_features, sent,
-											*new_right_hyp, *old_left_hyp);
-		new_hyp->SetScore(GetScore()
-				- old_right_hyp->GetScore() + new_right_hyp->GetScore()
-				- GetNonLocalScore() + non_local_score);
-		new_hyp->SetNonLocalScore(non_local_score);
-		new_hyp->SetRightRank(GetRightRank()+1);
-		new_hyp->SetRightChild(right_span);
-		if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR)
-			new_hyp->SetTrgRight(new_right_hyp->GetTrgRight());
-		else
-			new_hyp->SetTrgLeft(new_right_hyp->GetTrgLeft());
-		q.push(new_hyp);
-	}
+		new_right = right_span->LazyKthBest(GetRightRank()+1, model, features, non_local_features, sent);
+    IncrementRight(new_right, model, non_local_features, sent, q);
 }

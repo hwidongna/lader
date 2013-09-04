@@ -23,7 +23,7 @@ AC_PROG_CXX
 AC_PROG_CC
 
 AC_LANG_CPLUSPLUS
-LDFLAGS="$LDFLAGS -lpthread"
+LDFLAGS="$LDFLAGS -lpthread -lrt"
 
 # Checks for libraries.
 

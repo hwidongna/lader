@@ -139,9 +139,6 @@ inline double ComputeNonLocalScore(ReordererModel & model,
 void Hypothesis::LazyNext(HypothesisQueue & q, ReordererModel & model,
 		const FeatureSet & features, const FeatureSet & non_local_features,
 		const Sentence & sent){
-	if (IsTerminal()){
-		return;
-	}
 	Hypothesis * new_hyp,
 	*new_left_hyp = NULL, *old_left_hyp = NULL,
 	*new_right_hyp = NULL, *old_right_hyp = NULL;

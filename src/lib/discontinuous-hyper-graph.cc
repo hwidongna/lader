@@ -430,8 +430,7 @@ TargetSpan * DiscontinuousHyperGraph::ProcessOneSpan(
 			// Add the straight non-terminal
 			HyperEdge * edge = new HyperEdge(l, i, r, HyperEdge::EDGE_STR);
 			score = GetEdgeScore(model, features, sent, *edge);
-			double non_local_score;
-			non_local_score = GetNonLocalScore(model, non_local_features, sent,
+			double non_local_score = GetNonLocalScore(model, non_local_features, sent,
 					*left, *right);
 			double viterbi_score = score + non_local_score +
 					left_stack->GetScore() + right_stack->GetScore();

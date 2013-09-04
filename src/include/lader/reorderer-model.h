@@ -29,8 +29,9 @@ public:
         return ret;
     }
 
-    // Perform one round of Pegasos
-    void AdjustWeights(const FeatureVectorInt & feats);
+    // Perform one round of Pegasos or the Perceptron
+    void AdjustWeightsPerceptron(const FeatureVectorInt & feats);
+    void AdjustWeightsPegasos(const FeatureVectorInt & feats);
 
     // Get the feature IDs
     SymbolSet<int> & GetFeatureIds() {

@@ -280,6 +280,7 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
             // TODO: parallelize processing in a row
             // need to lock GetEdgeScore() -> GetEdgeFeatures() -> model.GetFeatureId().GetId()
             // need to lock GetNonLocalScore() -> model.GetFeatureId().GetId()
+            // need to lock LazyNext() for cube growing
             SetStack(l, r, ProcessOneSpan(model, features, non_local_features, sent,
                                           l, r, beam_size));
         }

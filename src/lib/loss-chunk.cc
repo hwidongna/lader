@@ -19,6 +19,13 @@ double LossChunk::AddLossToProduction(Hypothesis * hyp,
 	return AddLossToProduction(hyp->GetLeft(), hyp->GetCenter(), hyp->GetRight(),
 			trg_left, trg_midleft, trg_midright, trg_right, hyp->GetEdgeType(), ranks, parse);
 }
+
+bool LossChunk::IsStraight(const Ranks *& ranks, int trg_midleft, int trg_midright)
+{
+    return Ranks::IsStepOneUp((*ranks)[trg_midleft], (*ranks)[trg_midright]) ||
+    		((*ranks)[trg_midleft] == (*ranks)[trg_midright] && trg_midleft + 1 == trg_midright);
+}
+
 double LossChunk::AddLossToProduction(
         int src_left, int src_mid, int src_right,
         int trg_left, int trg_midleft, int trg_midright, int trg_right,
@@ -35,21 +42,16 @@ double LossChunk::AddLossToProduction(
                 loss++;
             break;
         // For straight and inverse non-terms, check inside values
+		// If inside rank values are same,
+		// they should be straight. If not, it is a loss.
         case HyperEdge::EDGE_STR:
-        	if(!Ranks::IsContiguous((*ranks)[trg_midleft], (*ranks)[trg_midright]))
+        case HyperEdge::EDGE_INV:
+        	if(!IsStraight(ranks, trg_midleft, trg_midright))
 				loss++;
 			break;
-		// For inverse non-terms, if inside rank values are same,
-		// they should be straight. If not, it is a loss.
-		// In other words, the loss of an inverse non-term is zero
-		// only if inside rank values are step-one up.
-        case HyperEdge::EDGE_INV:
-            if(!Ranks::IsStepOneUp((*ranks)[trg_midleft], (*ranks)[trg_midright]))
-                loss++;
-            break;
         case HyperEdge::EDGE_FOR:
             for(int i = trg_left; i < trg_right; i++)
-                if(!Ranks::IsContiguous((*ranks)[i], (*ranks)[i+1]))
+                if(!IsStraight(ranks, i, i+1))
                     loss++;
             break;
         case HyperEdge::EDGE_BAC:

@@ -47,6 +47,7 @@ public:
         al.AddAlignment(MakePair(2,0));
         al.AddAlignment(MakePair(3,2));
         cal = CombinedAlign(words, al);
+        ranks = Ranks(cal);
         // Create a sentence
         string str = "he ate rice .";
         sent.FromString(str);
@@ -377,7 +378,7 @@ public:
     	ReordererModel model;
     	DiscontinuousHyperGraph graph(1);
     	graph.LoadLM("/tmp/ngram.arpa");
-    	graph.SetVerbose(2);
+//    	graph.SetVerbose(2);
     	set.SetMaxTerm(1);
     	set.SetUseReverse(false);
     	graph.BuildHyperGraph(model, set, non_local_set, datas);
@@ -477,6 +478,28 @@ public:
         return CheckVector(exp, act);
     }
 
+    int TestAddLoss() {
+    	DiscontinuousHyperGraph graph(1);
+    	set.SetMaxTerm(1);
+    	graph.BuildHyperGraph(model, set, non_local_set, datas, 4*3*2);
+    	LossChunk loss;
+    	loss.Initialize(&ranks, NULL);
+    	graph.AddLoss(&loss, &ranks, NULL);
+    	TargetSpan * span1_3 = graph.GetStack(1,1, 3,3);
+    	int ret = 1;
+    	BOOST_FOREACH(Hypothesis * hyp, span1_3->GetHypotheses()){
+    		if (hyp->GetEdgeType() == HyperEdge::EDGE_STR && hyp->GetLoss() != 1){
+    			cerr << "Expect loss 1 != " << hyp->GetLoss() << *hyp << endl;
+    			ret = 0;
+    		}
+    		if (hyp->GetEdgeType() == HyperEdge::EDGE_INV && hyp->GetLoss() != 0){
+    			cerr << "Expect loss 0 != " << hyp->GetLoss() << *hyp << endl;
+    			ret = 0;
+    		}
+    	}
+
+    	return ret;
+    }
     // Test that rescoring works
     int TestRescore() {
         // Create a model that assigns a weight of -1 to each production
@@ -644,6 +667,7 @@ public:
         done++; cout << "TestBuildHyperGraph()" << endl; if(TestBuildHyperGraph()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestBuildHyperGraphCubeGrowing()" << endl; if(TestBuildHyperGraphCubeGrowing()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestBuildHyperGraphPlusLM()" << endl; if(TestBuildHyperGraphPlusLM()) succeeded++; else cout << "FAILED!!!" << endl;
+        done++; cout << "TestAddLoss()" << endl; if(TestAddLoss()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestAccumulateLoss()" << endl; if(TestAccumulateLoss()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestAccumulateFeatures()" << endl; if(TestAccumulateFeatures()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestRescore()" << endl; if(TestRescore()) succeeded++; else cout << "FAILED!!!" << endl;

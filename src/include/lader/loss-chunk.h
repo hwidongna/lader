@@ -23,16 +23,14 @@ public:
         int trg_left, int trg_midleft, int trg_midright, int trg_right,
         HyperEdge::Type type,
         const Ranks * ranks, const FeatureDataParse * parse);
-
-    // Calculate the accuracy of a single sentence
-    virtual std::pair<double,double> CalculateSentenceLoss(
-            const std::vector<int> order,
-            const Ranks * ranks, const FeatureDataParse * parse);
-
-    virtual std::string GetName() const { return "chunk"; }
-
+    virtual std::pair<double,double> CalculateSentenceLoss(const std::vector<int> order, const Ranks *ranks, const FeatureDataParse *parse);
+    virtual std::string GetName() const
+    {
+        return "chunk";
+    }
 
 private:
+    bool IsStraight(const Ranks *& ranks, int trg_midleft, int trg_midright);
 
 };
 

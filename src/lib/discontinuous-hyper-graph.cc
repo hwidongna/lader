@@ -474,10 +474,10 @@ void DiscontinuousHyperGraph::AddLoss(LossBase* loss,
             	continue;
             for (int i = l+1 ; i <= r ; i++){
             	for (int d = 1 ; d <= D ; d++){
-					if ( i+d <= r && r+d < N && GetStack(l,i-1,i+d,r) != NULL){
+					if ( r+d < N && GetStack(l,i-1,i+d,r+d) != NULL){
 						if (verbose_ > 1)
-							cerr << "AddLoss ["<<l<<", "<<i-1<<", "<<i+d<<", "<<r<<"]" << endl;
-						BOOST_FOREACH(Hypothesis* hyp, GetStack(l,i-1,i+d,r)->GetHypotheses()) {
+							cerr << "AddLoss ["<<l<<", "<<i-1<<", "<<i+d<<", "<<r+d<<"]" << endl;
+						BOOST_FOREACH(Hypothesis* hyp, GetStack(l,i-1,i+d,r+d)->GetHypotheses()) {
 							// DEBUG
 							hyp->SetLoss(hyp->GetLoss() +
 									loss->AddLossToProduction(hyp, ranks, parse));

@@ -158,6 +158,13 @@ void DiscontinuousHyperGraph::AddDiscontinuousHypotheses(
 	edge = new DiscontinuousHyperEdge(l, m, c, n, r, HyperEdge::EDGE_STR);
 	score = GetEdgeScore(model, features, sent, *edge);
 	non_local_score = GetNonLocalScore(model, non_local_features, sent, *left, *right);
+    lm::ngram::Model::State out;
+	if (bigram_)
+		non_local_score += bigram_->Score(
+				left->GetState(),
+				bigram_->GetVocabulary().Index(
+						sent[0]->GetElement(right->GetTrgLeft())),
+				out);
 	viterbi_score = score + non_local_score + left->GetScore() + right->GetScore();
 	q.push(new DiscontinuousHypothesis(viterbi_score, score, non_local_score, edge,
 			left->GetTrgLeft(),
@@ -167,6 +174,12 @@ void DiscontinuousHyperGraph::AddDiscontinuousHypotheses(
 	edge = new DiscontinuousHyperEdge(l, m, c, n, r, HyperEdge::EDGE_INV);
 	score = GetEdgeScore(model, features, sent, *edge);
 	non_local_score = GetNonLocalScore(model, non_local_features, sent, *right, *left);
+	if (bigram_)
+		non_local_score += bigram_->Score(
+				right->GetState(),
+				bigram_->GetVocabulary().Index(
+						sent[0]->GetElement(left->GetTrgLeft())),
+				out);
 	viterbi_score = score + non_local_score + left->GetScore() + right->GetScore();
 	q.push(new DiscontinuousHypothesis(viterbi_score, score, non_local_score, edge,
 			right->GetTrgLeft(),
@@ -484,8 +497,9 @@ void DiscontinuousHyperGraph::GetReordering(std::vector<int> & reord, Hypothesis
     HyperEdge::Type type = hyp->GetEdgeType();
     if (verbose_ > 1 && !hyp->IsTerminal()){
     	cerr << "Loss:" << hyp->GetLoss();
-    	if (hyp->GetEdge()->GetClass() == 'D')
-    		cerr << *dynamic_cast<DiscontinuousHypothesis*>(hyp);
+    	DiscontinuousHypothesis* dhyp = dynamic_cast<DiscontinuousHypothesis*>(hyp);
+    	if (dhyp)
+    		cerr << *dhyp;
     	else
     		cerr << *hyp;
     	hyp->PrintChildren(cerr);

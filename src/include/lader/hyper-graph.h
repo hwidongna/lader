@@ -30,16 +30,24 @@ public:
 
     HyperGraph(bool cube_growing = false) : features_(0), n_(-1), cube_growing_(cube_growing), bigram_(0){ }
 
-    virtual ~HyperGraph() {
+    void Clear()
+    {
         if(features_) {
             BOOST_FOREACH(EdgeFeaturePair efp, *features_){
             	delete efp.first;
                 delete efp.second;
             }
             delete features_;
+            ClearFeatures();
         }
         BOOST_FOREACH(TargetSpan * stack, stacks_)
             delete stack;
+        stacks_.clear();
+    }
+
+    virtual ~HyperGraph()
+    {
+        Clear();
         if (bigram_)
         	delete bigram_;
     }

@@ -375,8 +375,9 @@ public:
     			"\\end\\";
     	out.close();
     	ReordererModel model;
-    	DiscontinuousHyperGraph graph(0);
+    	DiscontinuousHyperGraph graph(1);
     	graph.LoadLM("/tmp/ngram.arpa");
+    	graph.SetVerbose(2);
     	set.SetMaxTerm(1);
     	set.SetUseReverse(false);
     	graph.BuildHyperGraph(model, set, non_local_set, datas);

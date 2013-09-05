@@ -119,7 +119,7 @@ void HyperGraph::AddTerminals(int l, int r, const FeatureSet & features, Reorder
 {
     // If the length is OK, add a terminal
     if((features.GetMaxTerm() == 0) || (r - l < features.GetMaxTerm())){
-        double score, viterbi_score, non_local_score;
+        double score, non_local_score;
         // Create a hypothesis with the forward terminal
         Model::State out;
         non_local_score = 0.0;
@@ -135,8 +135,8 @@ void HyperGraph::AddTerminals(int l, int r, const FeatureSet & features, Reorder
             }
         }
         HyperEdge *edge = new HyperEdge(l, -1, r, HyperEdge::EDGE_FOR);
-        score = GetEdgeScore(model, features, sent, *edge) + non_local_score;
-        q->push(new Hypothesis(score, score, non_local_score, edge, l, r, out));
+        score = GetEdgeScore(model, features, sent, *edge);
+        q->push(new Hypothesis(score + non_local_score, score, non_local_score, edge, l, r, out));
         if(features.GetUseReverse()){
             // Create a hypothesis with the backward terminal
             Model::State out;
@@ -153,8 +153,8 @@ void HyperGraph::AddTerminals(int l, int r, const FeatureSet & features, Reorder
                 }
             }
             edge = new HyperEdge(l, -1, r, HyperEdge::EDGE_BAC);
-            score = GetEdgeScore(model, features, sent, *edge) + non_local_score;
-            q->push(new Hypothesis(score, score, non_local_score, edge, r, l, out));
+            score = GetEdgeScore(model, features, sent, *edge);
+            q->push(new Hypothesis(score + non_local_score, score, non_local_score, edge, r, l, out));
         }
 
     }

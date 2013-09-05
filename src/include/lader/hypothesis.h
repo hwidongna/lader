@@ -11,6 +11,7 @@
 #include <sstream>
 #include <iostream>
 #include <vector>
+#include "lm/model.hh"
 using namespace std;
 
 namespace lader {
@@ -24,251 +25,274 @@ class TargetSpan;
 // A tuple that is used to hold hypotheses during cube pruning
 class Hypothesis {
 public:
-    Hypothesis(double viterbi_score, double single_score, double non_local_score,
-               HyperEdge * edge,
-               int trg_left, int trg_right,
-               int left_rank = -1, int right_rank = -1,
-               TargetSpan* left_child = NULL, TargetSpan* right_child = NULL) :
-               viterbi_score_(viterbi_score),
-               single_score_(single_score),
-               non_local_score_(non_local_score),
-               loss_(0),
-               edge_(edge),
-               trg_left_(trg_left), trg_right_(trg_right),
-               left_child_(left_child), right_child_(right_child),
-               left_rank_(left_rank), right_rank_(right_rank)
-               { }
+	Hypothesis(double viterbi_score, double single_score,
+			double non_local_score, HyperEdge * edge, int trg_left,
+			int trg_right, int left_rank = -1, int right_rank = -1,
+			TargetSpan* left_child = NULL, TargetSpan* right_child = NULL) :
+			viterbi_score_(viterbi_score), single_score_(single_score), non_local_score_(
+					non_local_score), loss_(0), edge_(edge), trg_left_(
+					trg_left), trg_right_(trg_right), left_child_(left_child), right_child_(
+					right_child), left_rank_(left_rank), right_rank_(right_rank) {
+	}
 
-    Hypothesis(double viterbi_score, double single_score, double non_local_score, int left, int right, int trg_left, int trg_right, HyperEdge::Type type, int center = -1, int left_rank = -1, int right_rank = -1, TargetSpan *left_child = NULL, TargetSpan *right_child = NULL)
-    :viterbi_score_(viterbi_score), single_score_(single_score), non_local_score_(non_local_score), loss_(0), edge_(new HyperEdge(left, center, right, type)), trg_left_(trg_left), trg_right_(trg_right), left_child_(left_child), right_child_(right_child), left_rank_(left_rank), right_rank_(right_rank)
-    {
-    }
+	Hypothesis(double viterbi_score, double single_score,
+			double non_local_score, HyperEdge * edge, int trg_left,
+			int trg_right, lm::ngram::State state, int left_rank = -1,
+			int right_rank = -1, TargetSpan* left_child = NULL,
+			TargetSpan* right_child = NULL) :
+			viterbi_score_(viterbi_score), single_score_(single_score), non_local_score_(
+					non_local_score), state_(state), loss_(0), edge_(edge), trg_left_(
+					trg_left), trg_right_(trg_right), left_child_(left_child), right_child_(
+					right_child), left_rank_(left_rank), right_rank_(right_rank) {
+	}
 
-    Hypothesis(const Hypothesis & hyp)
-    :viterbi_score_(hyp.viterbi_score_), single_score_(hyp.single_score_), non_local_score_(hyp.non_local_score_), loss_(hyp.loss_), edge_(hyp.edge_), trg_left_(hyp.trg_left_), trg_right_(hyp.trg_right_), left_child_(hyp.left_child_), right_child_(hyp.right_child_), left_rank_(hyp.left_rank_), right_rank_(hyp.right_rank_)
-    {
-    }
+	Hypothesis(double viterbi_score, double single_score,
+			double non_local_score, int left, int right, int trg_left,
+			int trg_right, HyperEdge::Type type, int center = -1,
+			int left_rank = -1, int right_rank = -1, TargetSpan *left_child =
+					NULL, TargetSpan *right_child = NULL) :
+			viterbi_score_(viterbi_score), single_score_(single_score), non_local_score_(
+					non_local_score), loss_(0), edge_(
+					new HyperEdge(left, center, right, type)), trg_left_(
+					trg_left), trg_right_(trg_right), left_child_(left_child), right_child_(
+					right_child), left_rank_(left_rank), right_rank_(right_rank) {
+	}
 
-    virtual ~Hypothesis()
-    {
-        if (edge_ != NULL){
-    		delete edge_;
-    	}
-    }
+//	Hypothesis(const Hypothesis & hyp) :
+//			viterbi_score_(hyp.viterbi_score_), single_score_(
+//					hyp.single_score_), non_local_score_(hyp.non_local_score_), loss_(
+//					hyp.loss_), edge_(hyp.edge_), trg_left_(hyp.trg_left_), trg_right_(
+//					hyp.trg_right_), left_child_(hyp.left_child_), right_child_(
+//					hyp.right_child_), left_rank_(hyp.left_rank_), right_rank_(
+//					hyp.right_rank_) {
+//	}
 
-    std::string GetRuleString(const std::vector<std::string> & sent, char left_val = 0, char right_val = 0) const
-    {
-        std::ostringstream ret;
-        ret << "[" << (char)(((GetEdgeType()))) << "] |||";
-        if(left_val){
-            ret << " [" << left_val << "]";
-            if(right_val)
-                ret << " [" << right_val << "]";
+	virtual ~Hypothesis() {
+		if (edge_ != NULL)
+			delete edge_;
+	}
 
-        }else{
-            for(int i = GetLeft();i <= GetRight();i++){
-                ret << " ";
-                for(int j = 0;j < (int)(((sent[i].length())));j++){
-                    if(sent[i][j] == '\\' || sent[i][j] == '\"')
-                        ret << "\\";
+	std::string GetRuleString(const std::vector<std::string> & sent,
+			char left_val = 0, char right_val = 0) const {
+		std::ostringstream ret;
+		ret << "[" << (char) (((GetEdgeType()))) << "] |||";
+		if (left_val) {
+			ret << " [" << left_val << "]";
+			if (right_val)
+				ret << " [" << right_val << "]";
 
-                    ret << sent[i][j];
-                }
-            }
+		} else {
+			for (int i = GetLeft(); i <= GetRight(); i++) {
+				ret << " ";
+				for (int j = 0; j < (int) (((sent[i].length()))); j++) {
+					if (sent[i][j] == '\\' || sent[i][j] == '\"')
+						ret << "\\";
 
-        }
+					ret << sent[i][j];
+				}
+			}
 
-        return ret.str();
-    }
+		}
 
-    virtual bool operator <(const Hypothesis & rhs) const
-    {
-        return viterbi_score_ < rhs.viterbi_score_ || (viterbi_score_ == rhs.viterbi_score_ && (trg_left_ < rhs.trg_left_ || (trg_left_ == rhs.trg_left_ && (trg_right_ < rhs.trg_right_ || (trg_right_ == rhs.trg_right_ && (GetEdgeType() < rhs.GetEdgeType() || (GetEdgeType() == rhs.GetEdgeType() && (GetCenter() < rhs.GetCenter() || (GetCenter() == rhs.GetCenter() && (left_child_ < rhs.left_child_ || (left_child_ == rhs.left_child_ && (right_child_ < rhs.right_child_))))))))))));
-    }
+		return ret.str();
+	}
 
-    virtual bool operator ==(const Hypothesis & rhs) const
-    {
-        return viterbi_score_ == rhs.viterbi_score_ && trg_left_ == rhs.trg_left_ && trg_right_ == rhs.trg_right_ && GetEdgeType() == rhs.GetEdgeType() && GetCenter() == rhs.GetCenter() && left_child_ == rhs.left_child_ && right_child_ == rhs.right_child_;
-    }
+	virtual bool operator <(const Hypothesis & rhs) const {
+		return viterbi_score_ < rhs.viterbi_score_
+				|| (viterbi_score_ == rhs.viterbi_score_
+						&& (trg_left_ < rhs.trg_left_
+								|| (trg_left_ == rhs.trg_left_
+										&& (trg_right_ < rhs.trg_right_
+												|| (trg_right_ == rhs.trg_right_
+														&& (GetEdgeType()
+																< rhs.GetEdgeType()
+																|| (GetEdgeType()
+																		== rhs.GetEdgeType()
+																		&& (GetCenter()
+																				< rhs.GetCenter()
+																				|| (GetCenter()
+																						== rhs.GetCenter()
+																						&& (left_child_
+																								< rhs.left_child_
+																								|| (left_child_
+																										== rhs.left_child_
+																										&& (right_child_
+																												< rhs.right_child_))))))))))));
+	}
 
-    double GetScore() const
-    {
-        return viterbi_score_;
-    }
+	virtual bool operator ==(const Hypothesis & rhs) const {
+		return viterbi_score_ == rhs.viterbi_score_
+				&& trg_left_ == rhs.trg_left_ && trg_right_ == rhs.trg_right_
+				&& GetEdgeType() == rhs.GetEdgeType()
+				&& GetCenter() == rhs.GetCenter()
+				&& left_child_ == rhs.left_child_
+				&& right_child_ == rhs.right_child_;
+	}
 
-    double GetSingleScore() const
-    {
-        return single_score_;
-    }
+	double GetScore() const {
+		return viterbi_score_;
+	}
 
-    double GetNonLocalScore() const
-    {
-        return non_local_score_;
-    }
+	double GetSingleScore() const {
+		return single_score_;
+	}
 
-    double GetLoss() const
-    {
-        return loss_;
-    }
+	double GetNonLocalScore() const {
+		return non_local_score_;
+	}
 
-    HyperEdge *GetEdge() const
-    {
-        return edge_;
-    }
+	double GetLoss() const {
+		return loss_;
+	}
 
-    int GetLeft() const
-    {
-        return edge_->GetLeft();
-    }
+	HyperEdge *GetEdge() const {
+		return edge_;
+	}
 
-    int GetRight() const
-    {
-        return edge_->GetRight();
-    }
+	int GetLeft() const {
+		return edge_->GetLeft();
+	}
 
-    int GetTrgLeft() const
-    {
-        return trg_left_;
-    }
+	int GetRight() const {
+		return edge_->GetRight();
+	}
 
-    int GetTrgRight() const
-    {
-        return trg_right_;
-    }
+	int GetTrgLeft() const {
+		return trg_left_;
+	}
 
-    int GetCenter() const
-    {
-        return edge_->GetCenter();
-    }
+	int GetTrgRight() const {
+		return trg_right_;
+	}
 
-    HyperEdge::Type GetEdgeType() const
-    {
-        return edge_->GetType();
-    }
+	int GetCenter() const {
+		return edge_->GetCenter();
+	}
 
-    TargetSpan *GetLeftChild() const
-    {
-        return left_child_;
-    }
+	HyperEdge::Type GetEdgeType() const {
+		return edge_->GetType();
+	}
 
-    TargetSpan *GetRightChild() const
-    {
-        return right_child_;
-    }
+	TargetSpan *GetLeftChild() const {
+		return left_child_;
+	}
 
-    int GetLeftRank() const
-    {
-        return left_rank_;
-    }
+	TargetSpan *GetRightChild() const {
+		return right_child_;
+	}
 
-    int GetRightRank() const
-    {
-        return right_rank_;
-    }
+	int GetLeftRank() const {
+		return left_rank_;
+	}
 
-    Hypothesis *GetLeftHyp() const;
-    Hypothesis *GetRightHyp() const;
-    void SetScore(double dub)
-    {
-        viterbi_score_ = dub;
-    }
+	int GetRightRank() const {
+		return right_rank_;
+	}
 
-    void SetSingleScore(double dub)
-    {
-        single_score_ = dub;
-    }
+	Hypothesis *GetLeftHyp() const;
+	Hypothesis *GetRightHyp() const;
+	lm::ngram::Model::State GetState() const {
+		return state_;
+	}
 
-    void SetNonLocalScore(double dub)
-    {
-        non_local_score_ = dub;
-    }
+	void SetScore(double dub) {
+		viterbi_score_ = dub;
+	}
 
-    void SetLoss(double dub)
-    {
-        loss_ = dub;
-    }
+	void SetSingleScore(double dub) {
+		single_score_ = dub;
+	}
 
-    void SetEdge(HyperEdge *edge)
-    {
-        edge_ = edge;
-    }
+	void SetNonLocalScore(double dub) {
+		non_local_score_ = dub;
+	}
 
-    void SetLeftChild(TargetSpan *dub)
-    {
-        left_child_ = dub;
-    }
+	void SetLoss(double dub) {
+		loss_ = dub;
+	}
 
-    void SetRightChild(TargetSpan *dub)
-    {
-        right_child_ = dub;
-    }
+	void SetEdge(HyperEdge *edge) {
+		edge_ = edge;
+	}
 
-    void SetLeftRank(int dub)
-    {
-        left_rank_ = dub;
-    }
+	void SetLeftChild(TargetSpan *dub) {
+		left_child_ = dub;
+	}
 
-    void SetRightRank(int dub)
-    {
-        right_rank_ = dub;
-    }
+	void SetRightChild(TargetSpan *dub) {
+		right_child_ = dub;
+	}
 
-    void SetTrgLeft(int dub)
-    {
-        trg_left_ = dub;
-    }
+	void SetLeftRank(int dub) {
+		left_rank_ = dub;
+	}
 
-    void SetTrgRight(int dub)
-    {
-        trg_right_ = dub;
-    }
+	void SetRightRank(int dub) {
+		right_rank_ = dub;
+	}
 
-    void SetType(HyperEdge::Type type)
-    {
-        edge_->SetType(type);
-    }
+	void SetTrgLeft(int dub) {
+		trg_left_ = dub;
+	}
 
-    virtual void PrintChildren(std::ostream & out) const;
-    void PrintParse(const vector<string> & strs, ostream & out) const;
-    double AccumulateLoss();
-    FeatureVectorInt AccumulateFeatures(const EdgeFeatureMap *features);
-    FeatureVectorInt AccumulateFeatures(std::tr1::unordered_map<int,double> & feat_map, const EdgeFeatureMap *features);
-    void LazyNext(HypothesisQueue & q, ReordererModel & model, const FeatureSet & features, const FeatureSet & non_local_features, const Sentence & sent);
-    bool IsTerminal() const
-    {
-        return GetEdgeType() == HyperEdge::EDGE_FOR || GetEdgeType() == HyperEdge::EDGE_BAC;
-    }
+	void SetTrgRight(int dub) {
+		trg_right_ = dub;
+	}
 
-    virtual Hypothesis *Clone() const;
-    void IncrementLeft(Hypothesis *new_hyp, ReordererModel & model, const FeatureSet & non_local_features, const Sentence & sent, HypothesisQueue & q);
-    void IncrementRight(Hypothesis *new_right, ReordererModel & model, const FeatureSet & non_local_features, const Sentence & sent, HypothesisQueue & q);
+	void SetType(HyperEdge::Type type) {
+		edge_->SetType(type);
+	}
+
+	virtual void PrintChildren(std::ostream & out) const;
+	void PrintParse(const vector<string> & strs, ostream & out) const;
+	double AccumulateLoss();
+	FeatureVectorInt AccumulateFeatures(const EdgeFeatureMap *features);
+	FeatureVectorInt AccumulateFeatures(
+			std::tr1::unordered_map<int, double> & feat_map
+			, const EdgeFeatureMap *features);
+	void LazyNext(HypothesisQueue & q, ReordererModel & model,
+			const FeatureSet & features, const FeatureSet & non_local_features,
+			const Sentence & sent, const lm::ngram::Model * bigram);
+	bool IsTerminal() const {
+		return GetEdgeType() == HyperEdge::EDGE_FOR
+				|| GetEdgeType() == HyperEdge::EDGE_BAC;
+	}
+
+	virtual Hypothesis *Clone() const;
+	void IncrementLeft(Hypothesis *new_hyp, ReordererModel & model,
+			const FeatureSet & non_local_features, const Sentence & sent,
+			const lm::ngram::Model * bigram, HypothesisQueue & q);
+	void IncrementRight(Hypothesis *new_right, ReordererModel & model,
+			const FeatureSet & non_local_features, const Sentence & sent,
+			const lm::ngram::Model * bigram, HypothesisQueue & q);
 private:
-    void AccumulateFeatures(const EdgeFeatureMap *features, std::tr1::unordered_map<int,double> & feat_map);
-    double viterbi_score_;
-    double single_score_;
-    double non_local_score_;
-    double loss_;
-    HyperEdge *edge_;
-    int trg_left_, trg_right_;
-    TargetSpan *left_child_, *right_child_;
-    int left_rank_, right_rank_;
+	void AccumulateFeatures(const EdgeFeatureMap *features,
+			std::tr1::unordered_map<int, double> & feat_map);
+	double viterbi_score_;
+	double single_score_;
+	double non_local_score_;
+	double loss_;
+	HyperEdge *edge_;
+	int trg_left_, trg_right_;
+	TargetSpan *left_child_, *right_child_;
+	int left_rank_, right_rank_;
+	lm::ngram::Model::State state_;
 };
 
 }
 
 namespace std {
 // Output function for pairs
-inline std::ostream& operator << ( std::ostream& out, 
-                                   const lader::Hypothesis & rhs )
-{
-    out << "<" << rhs.GetLeft() << ", " << rhs.GetRight() << ", "
-    	<< rhs.GetTrgLeft() << ", " << rhs.GetTrgRight() << ", "
-    	<< (char)rhs.GetEdgeType() << ", " << rhs.GetCenter() << " :: "
-    	<< rhs.GetScore() << ", " << rhs.GetSingleScore() << ", " << rhs.GetNonLocalScore() << ">";
-    return out;
+inline std::ostream& operator <<(std::ostream& out,
+		const lader::Hypothesis & rhs) {
+	out << "<" << rhs.GetLeft() << ", " << rhs.GetRight() << ", "
+			<< rhs.GetTrgLeft() << ", " << rhs.GetTrgRight() << ", "
+			<< (char) rhs.GetEdgeType() << ", " << rhs.GetCenter() << " :: "
+			<< rhs.GetScore() << ", " << rhs.GetSingleScore() << ", "
+			<< rhs.GetNonLocalScore() << ">";
+	return out;
 }
 }
-
 
 #endif
 

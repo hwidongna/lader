@@ -23,7 +23,9 @@ AC_PROG_CXX
 AC_PROG_CC
 
 AC_LANG_CPLUSPLUS
-LDFLAGS="$LDFLAGS -lpthread -lrt"
+LIBS="-lpthread -lrt -lkenlm"
+CPPFLAGS="-DKENLM_MAX_ORDER=6"
+LDFLAGS="-L/home/leona/git/kenlm/lib"
 
 # Checks for libraries.
 

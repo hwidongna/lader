@@ -156,24 +156,31 @@ Hypothesis *Hypothesis::Clone() const
 }
 
 // Increment the left side if there is still a hypothesis left
-void Hypothesis::IncrementLeft(Hypothesis *new_left,
-		ReordererModel & model,
-		const FeatureSet & non_local_features,
-		const Sentence & sent, HypothesisQueue & q)
+void Hypothesis::IncrementLeft(Hypothesis *new_left, ReordererModel & model,
+		const FeatureSet & non_local_features, const Sentence & sent,
+		const lm::ngram::Model * bigram, HypothesisQueue & q)
 {
-    if (new_left != NULL){
+   if (new_left != NULL){
 		Hypothesis * old_left= GetLeftHyp();
 		Hypothesis * old_right = GetRightHyp();
         // Clone this hypothesis
 		Hypothesis * new_hyp = Clone();
         // Recompute non-local score
-		double non_local_score;
+		double non_local_score = 0.0;
 		if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR)
 			non_local_score = ComputeNonLocalScore(model, non_local_features, sent,
 											*new_left, *old_right);
 		else
 			non_local_score = ComputeNonLocalScore(model, non_local_features, sent,
 											*old_right, *new_left);
+		if (bigram){
+			lm::ngram::Model::State out;
+			non_local_score += bigram->Score(
+					old_left->GetState(),
+					bigram->GetVocabulary().Index(
+							sent[0]->GetElement(new_left->GetTrgLeft())),
+					GetLeft() +1 != GetRight() ? out : new_hyp->state_);
+		}
 		new_hyp->SetScore(GetScore()
 				- old_left->GetScore() + new_left->GetScore()
 				- GetNonLocalScore() + non_local_score);
@@ -188,10 +195,9 @@ void Hypothesis::IncrementLeft(Hypothesis *new_left,
 }
 
 // Increment the right side if there is still a hypothesis right
-void Hypothesis::IncrementRight(Hypothesis *new_right,
-		ReordererModel & model,
-		const FeatureSet & non_local_features,
-		const Sentence & sent, HypothesisQueue & q)
+void Hypothesis::IncrementRight(Hypothesis *new_right, ReordererModel & model,
+		const FeatureSet & non_local_features, const Sentence & sent,
+		const lm::ngram::Model * bigram, HypothesisQueue & q)
 {
     if (new_right != NULL){
     	Hypothesis * old_left = GetLeftHyp();
@@ -199,13 +205,21 @@ void Hypothesis::IncrementRight(Hypothesis *new_right,
         // Clone this hypothesis
         Hypothesis * new_hyp = Clone();
         // Recompute non-local score
-		double non_local_score;
+		double non_local_score = 0.0;
 		if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR)
 			non_local_score = ComputeNonLocalScore(model, non_local_features, sent,
 											*old_left, *new_right);
 		else
 			non_local_score = ComputeNonLocalScore(model, non_local_features, sent,
 											*new_right, *old_left);
+		if (bigram){
+			lm::ngram::Model::State out;
+			non_local_score += bigram->Score(
+					old_left->GetState(),
+					bigram->GetVocabulary().Index(
+							sent[0]->GetElement(new_right->GetTrgLeft())),
+					GetLeft() +1 != GetRight() ? out : new_hyp->state_);
+		}
 		new_hyp->SetScore(GetScore()
 				- old_right->GetScore() + new_right->GetScore()
 				- GetNonLocalScore() + non_local_score);
@@ -222,16 +236,16 @@ void Hypothesis::IncrementRight(Hypothesis *new_right,
 // For cube growing
 void Hypothesis::LazyNext(HypothesisQueue & q, ReordererModel & model,
 		const FeatureSet & features, const FeatureSet & non_local_features,
-		const Sentence & sent){
+		const Sentence & sent, const lm::ngram::Model * bigram){
 	Hypothesis * new_left = NULL, *new_right = NULL;
 
 	TargetSpan *left_span = GetLeftChild();
 	if (left_span)
-		new_left = left_span->LazyKthBest(GetLeftRank()+1, model, features, non_local_features, sent);
-    IncrementLeft(new_left, model, non_local_features, sent, q);
+		new_left = left_span->LazyKthBest(GetLeftRank()+1, model, features, non_local_features, sent, bigram);
+    IncrementLeft(new_left, model, non_local_features, sent, bigram, q);
 
 	TargetSpan *right_span = GetRightChild();
 	if (right_span)
-		new_right = right_span->LazyKthBest(GetRightRank()+1, model, features, non_local_features, sent);
-    IncrementRight(new_right, model, non_local_features, sent, q);
+		new_right = right_span->LazyKthBest(GetRightRank()+1, model, features, non_local_features, sent, bigram);
+    IncrementRight(new_right, model, non_local_features, sent, bigram, q);
 }

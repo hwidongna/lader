@@ -50,6 +50,8 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
             if(done % 100 == 0) { cout << "."; cout.flush(); }
             if(done % 100*80 == 0) { cout << endl; cout.flush(); }
             HyperGraph * hyper_graph = new DiscontinuousHyperGraph(gapSize, cube_growing, mp, full_fledged, verbose);
+            if (config.GetString("bigram").length())
+            	hyper_graph->LoadLM(config.GetString("bigram").c_str());
             // If we are saving features for efficiency, recover the saved
             // features and replace them in the hypergraph
             if(config.GetBool("save_features") && iter != 0)

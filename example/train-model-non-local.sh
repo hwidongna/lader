@@ -1,5 +1,7 @@
 #!/bin/bash
 set -e
+export LD_LIBRARY_PATH=$HOME/git/kenlm/lib
+
 GAP=$1
 SAMPLES=$2
 VERBOSE=$3

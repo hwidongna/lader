@@ -9,6 +9,7 @@
 #include <lader/util.h>
 #include <lader/loss-base.h>
 #include <tr1/unordered_map>
+#include "lm/model.hh"
 
 namespace lader {
 
@@ -27,7 +28,7 @@ public:
     friend class TestHyperGraph;
     friend class TestDiscontinuousHyperGraph;
 
-    HyperGraph(bool cube_growing = false) : features_(0), n_(-1), cube_growing_(cube_growing){ }
+    HyperGraph(bool cube_growing = false) : features_(0), n_(-1), cube_growing_(cube_growing), bigram_(0){ }
 
     virtual ~HyperGraph() {
         if(features_) {
@@ -39,132 +40,111 @@ public:
         }
         BOOST_FOREACH(TargetSpan * stack, stacks_)
             delete stack;
+        if (bigram_)
+        	delete bigram_;
     }
-    
-    // Build the hypergraph using the specified model, features and sentence
-    //  beam_size: the pop limit for cube pruning/growing
-    void BuildHyperGraph(ReordererModel & model,
-                         const FeatureSet & features,
-                         const FeatureSet & non_local_features,
-                         const Sentence & sent,
-                         int beam_size = 0);
-
-    const TargetSpan * GetStack(int l, int r) const {
-        return SafeAccess(stacks_, GetTrgSpanID(l,r));
+    void BuildHyperGraph(ReordererModel & model, const FeatureSet & features, const FeatureSet & non_local_features, const Sentence & sent, int beam_size = 0);
+    const TargetSpan *GetStack(int l, int r) const
+    {
+        return SafeAccess(stacks_, GetTrgSpanID(l, r));
     }
-    TargetSpan * GetStack(int l, int r) {
-        return SafeAccess(stacks_, GetTrgSpanID(l,r));
+
+    TargetSpan *GetStack(int l, int r)
+    {
+        return SafeAccess(stacks_, GetTrgSpanID(l, r));
     }
-    const std::vector<TargetSpan*> & GetStacks() const { return stacks_; }
-    std::vector<TargetSpan*> & GetStacks() { return stacks_; }
 
+    const std::vector<TargetSpan*> & GetStacks() const
+    {
+        return stacks_;
+    }
 
-    // Get a loss-augmented score for a hypothesis
-    // Do not change the original score
-    double Score(double loss_multiplier, const Hypothesis* hyp) const;
+    std::vector<TargetSpan*> & GetStacks()
+    {
+        return stacks_;
+    }
 
-    // Print the whole hypergraph in JSON format
-    void PrintHyperGraph(const std::vector<std::string> & sent,
-                         std::ostream & out);
-
-    // Rescore the hypergraph using the given model and a loss multiplier
-    // Keep the hypergraph structure stored in the stacks except the root
+    double Score(double loss_multiplier, const Hypothesis *hyp) const;
+    void PrintHyperGraph(const std::vector<std::string> & sent, std::ostream & out);
     double Rescore(double loss_multiplier);
-
-    const TargetSpan * GetRoot() const {
-        return SafeAccess(stacks_, stacks_.size()-1);
+    const TargetSpan *GetRoot() const
+    {
+        return SafeAccess(stacks_, stacks_.size() - 1);
     }
-    TargetSpan * GetRoot() {
-        return SafeAccess(stacks_, stacks_.size()-1);
+
+    TargetSpan *GetRoot()
+    {
+        return SafeAccess(stacks_, stacks_.size() - 1);
     }
-    Hypothesis * GetBest() {
-    	return SafeAccess(stacks_, stacks_.size()-1)->GetHypothesis(0);
+
+    Hypothesis *GetBest()
+    {
+        return SafeAccess(stacks_, stacks_.size() - 1)->GetHypothesis(0);
     }
-    // Add up the loss over an entire sentence
-    virtual void AddLoss(
-    		LossBase* loss,
-    		const Ranks * ranks,
-            const FeatureDataParse * parse) const;
 
-    virtual void GetReordering(std::vector<int> & reord, Hypothesis * hyp) const;
+    virtual void AddLoss(LossBase *loss, const Ranks *ranks, const FeatureDataParse *parse) const;
+    virtual void GetReordering(std::vector<int> & reord, Hypothesis *hyp) const;
+    void SetFeatures(EdgeFeatureMap *features)
+    {
+        features_ = features;
+    }
 
-    void SetFeatures(EdgeFeatureMap * features) { features_ = features;}
-    EdgeFeatureMap * GetFeatures() { return features_; }
-    // Clear the feature array without deleting the features themselves
-    // This is useful if you want to save the features for later use
-    void ClearFeatures() { features_ = NULL; }
+    EdgeFeatureMap *GetFeatures()
+    {
+        return features_;
+    }
 
-    // Accumulate all non-local feature under a hypothesis
-    virtual void AccumulateNonLocalFeatures(std::tr1::unordered_map<int,double> & feat_map,
-						ReordererModel & model,
-						const FeatureSet & feature_gen,
-						const Sentence & sent,
-						const Hypothesis & hyp);
+    void ClearFeatures()
+    {
+        features_ = NULL;
+    }
+
+    virtual void AccumulateNonLocalFeatures(std::tr1::unordered_map<int,double> & feat_map, ReordererModel & model, const FeatureSet & feature_gen, const Sentence & sent, const Hypothesis & hyp);
+    void LoadLM(const char *file)
+    {
+        bigram_ = new lm::ngram::Model(file);
+    }
+
 protected:
-    virtual TargetSpan * ProcessOneSpan(ReordererModel & model,
-                               const FeatureSet & features,
-                               const FeatureSet & non_local_features,
-                               const Sentence & sent,
-                               int l, int r,
-                               int beam_size = 0);
+    virtual TargetSpan *ProcessOneSpan(ReordererModel & model, const FeatureSet & features, const FeatureSet & non_local_features, const Sentence & sent, int l, int r, int beam_size = 0);
+    const FeatureVectorInt *GetEdgeFeatures(ReordererModel & model, const FeatureSet & feature_gen, const Sentence & sent, const HyperEdge & edge);
+    void SetEdgeFeatures(const HyperEdge & edge, FeatureVectorInt *feat)
+    {
+        if(!features_)
+            features_ = new EdgeFeatureMap;
 
-    const FeatureVectorInt * GetEdgeFeatures(
-                                ReordererModel & model,
-                                const FeatureSet & feature_gen,
-                                const Sentence & sent,
-                                const HyperEdge & edge);
-
-    // only for test
-    void SetEdgeFeatures(const HyperEdge & edge, FeatureVectorInt * feat) {
-        if(!features_) features_ = new EdgeFeatureMap;
         features_->insert(MakePair(edge.Clone(), feat));
     }
+    double GetEdgeScore(ReordererModel & model, const FeatureSet & feature_gen, const Sentence & sent, const HyperEdge & edge);
+    double GetNonLocalScore(ReordererModel & model, const FeatureSet & feature_gen, const Sentence & sent, const Hypothesis & left, const Hypothesis & right);
+    inline int GetTrgSpanID(int l, int r) const
+    {
+        if(l == -1)
+            return stacks_.size() - 1;
 
-    double GetEdgeScore(ReordererModel & model,
-                        const FeatureSet & feature_gen,
-                        const Sentence & sent,
-                        const HyperEdge & edge);
-
-    double GetNonLocalScore(ReordererModel & model,
-						const FeatureSet & feature_gen,
-						const Sentence & sent,
-						const Hypothesis & left,
-						const Hypothesis & right);
-
-    inline int GetTrgSpanID(int l, int r) const { 
-        // If l=-1, we want the root, so return the last element of stacks_
-        if(l == -1) return stacks_.size() - 1;
-        return r*(r+1)/2 + l;
+        return r * (r + 1) / 2 + l;
     }
-
-    virtual void SetStack(int l, int r, TargetSpan * stack) {
-#ifdef LADER_SAFE
+    virtual void SetStack(int l, int r, TargetSpan *stack)
+    {
         if(l < 0 || r < 0)
-            THROW_ERROR("Bad SetStack (l="<<l<<", r="<<r<<")"<<std::endl);
-#endif
-        int idx = HyperGraph::GetTrgSpanID(l,r);
+            THROW_ERROR("Bad SetStack (l="<<l<<", r="<<r<<")"<<std::endl)
+        ;
+        int idx = HyperGraph::GetTrgSpanID(l, r);
         if((int)stacks_.size() <= idx)
             stacks_.resize(idx+1, NULL);
-        if(stacks_[idx]) delete stacks_[idx];
+        if(stacks_[idx])
+            delete stacks_[idx];
+
         stacks_[idx] = stack;
     }
-
 private:
-
-    // A map containing feature vectors for each of the edges
-    EdgeFeatureMap * features_;
-    // Stacks containing the hypotheses for each span
-    // The indexing for the outer vector is:
-    //  0-0 -> 0, 0-1 -> 1, 1-1 -> 2, 0-2 -> 3 ...
-    // And can be recovered by GetHypothesis.
-    // The inner vector contains target spans in descending rank of score
+    EdgeFeatureMap *features_;
     std::vector<TargetSpan*> stacks_;
-
 protected:
-    // The length of the sentence
+    void AddTerminals(int l, int r, const FeatureSet & features, ReordererModel & model, const Sentence & sent, HypothesisQueue *& q);
     int n_;
-    // use cube growing for search
     bool cube_growing_;
+    lm::ngram::Model * bigram_;
 };
 
 }

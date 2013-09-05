@@ -9,10 +9,12 @@
 #include <tr1/unordered_map>
 #include <boost/algorithm/string.hpp>
 #include <iostream>
+#include "lm/word_index.hh"
 
 using namespace lader;
 using namespace std;
 using namespace boost;
+using namespace lm::ngram;
 
 // Return the edge feature vector
 const FeatureVectorInt * HyperGraph::GetEdgeFeatures(
@@ -63,7 +65,7 @@ double HyperGraph::GetEdgeScore(ReordererModel & model,
                                 const FeatureSet & feature_gen,
                                 const Sentence & sent,
                                 const HyperEdge & edge) {
-    const FeatureVectorInt * vec = 
+    const FeatureVectorInt * vec =
                 GetEdgeFeatures(model, feature_gen, sent, edge);
     return model.ScoreFeatureVector(SafeReference(vec));
 }
@@ -111,6 +113,54 @@ void HyperGraph::AccumulateNonLocalFeatures(std::tr1::unordered_map<int,double> 
 	if (right)
 		AccumulateNonLocalFeatures(feat_map, model, feature_gen, sent, *right);
 }
+
+// If the length is OK, add a terminal
+void HyperGraph::AddTerminals(int l, int r, const FeatureSet & features, ReordererModel & model, const Sentence & sent, HypothesisQueue *& q)
+{
+    // If the length is OK, add a terminal
+    if((features.GetMaxTerm() == 0) || (r - l < features.GetMaxTerm())){
+        double score, viterbi_score, non_local_score;
+        // Create a hypothesis with the forward terminal
+        Model::State out;
+        non_local_score = 0.0;
+        if(bigram_){
+            Model::State state = bigram_->NullContextState();
+            for(int i = l;i <= r;i++){
+            	if (i-l+1 < bigram_->Order())
+            		bigram_->Score(state, bigram_->GetVocabulary().Index(sent[0]->GetElement(i)), out);
+            	else
+            		non_local_score +=
+					bigram_->Score(state, bigram_->GetVocabulary().Index(sent[0]->GetElement(i)), out);
+                state = out;
+            }
+        }
+        HyperEdge *edge = new HyperEdge(l, -1, r, HyperEdge::EDGE_FOR);
+        score = GetEdgeScore(model, features, sent, *edge) + non_local_score;
+        q->push(new Hypothesis(score, score, non_local_score, edge, l, r, out));
+        if(features.GetUseReverse()){
+            // Create a hypothesis with the backward terminal
+            Model::State out;
+            non_local_score = 0.0;
+            if(bigram_){
+                Model::State state = bigram_->NullContextState();
+                for(int i = r;i >= l;i--){
+                	if (r-i+1 < bigram_->Order())
+						bigram_->Score(state, bigram_->GetVocabulary().Index(sent[0]->GetElement(i)), out);
+					else
+						non_local_score +=
+						bigram_->Score(state, bigram_->GetVocabulary().Index(sent[0]->GetElement(i)), out);
+                    state = out;
+                }
+            }
+            edge = new HyperEdge(l, -1, r, HyperEdge::EDGE_BAC);
+            score = GetEdgeScore(model, features, sent, *edge) + non_local_score;
+            q->push(new Hypothesis(score, score, non_local_score, edge, r, l, out));
+        }
+
+    }
+
+}
+
 // Build a hypergraph using beam search and cube pruning
 TargetSpan * HyperGraph::ProcessOneSpan(ReordererModel & model,
                                        const FeatureSet & features,
@@ -123,26 +173,19 @@ TargetSpan * HyperGraph::ProcessOneSpan(ReordererModel & model,
     HypothesisQueue * q;
 	if (cube_growing_)
 		q = &ret->GetCands();
-    // Create the temporary data members for this span
-	else
-		q = new HypothesisQueue;
+
+    else
+        // Create the temporary data members for this span
+        q = new HypothesisQueue;
+
     double score, viterbi_score, non_local_score;
     // If the length is OK, add a terminal
-    if((features.GetMaxTerm() == 0) || (r-l < features.GetMaxTerm())) {
-        // Create a hypothesis with the forward terminal
-        HyperEdge * edge = new HyperEdge(l, -1, r, HyperEdge::EDGE_FOR);
-        score = GetEdgeScore(model, features, sent, *edge);
-        q->push(new Hypothesis(score, score, 0, edge, l, r));
-        if(features.GetUseReverse()) {
-        	// Create a hypothesis with the backward terminal
-        	edge = new HyperEdge(l, -1, r, HyperEdge::EDGE_BAC);
-        	score = GetEdgeScore(model, features, sent, *edge);
-        	q->push(new Hypothesis(score, score, 0, edge, r, l));
-        }
-    }
+    AddTerminals(l, r, features, model, sent, q);
+
     TargetSpan *left_stack, *right_stack;
     Hypothesis *new_left_hyp, *old_left_hyp,
                *new_right_hyp, *old_right_hyp;
+    lm::ngram::Model::State out;
     // Add the best hypotheses for each non-terminal to the queue
     for(int c = l+1; c <= r; c++) {
         // Find the best hypotheses on the left and right side
@@ -152,8 +195,8 @@ TargetSpan * HyperGraph::ProcessOneSpan(ReordererModel & model,
         if(right_stack == NULL) THROW_ERROR("Target c="<<c<<", r="<<r);
         Hypothesis * left, *right;
         if (cube_growing_){
-        	left = left_stack->LazyKthBest(0, model, features, non_local_features, sent);
-        	right = right_stack->LazyKthBest(0, model, features, non_local_features, sent);
+        	left = left_stack->LazyKthBest(0, model, features, non_local_features, sent, bigram_);
+        	right = right_stack->LazyKthBest(0, model, features, non_local_features, sent, bigram_);
         }
         else{
         	left = left_stack->GetHypothesis(0);
@@ -163,19 +206,33 @@ TargetSpan * HyperGraph::ProcessOneSpan(ReordererModel & model,
         HyperEdge * edge = new HyperEdge(l, c, r, HyperEdge::EDGE_STR);
         score = GetEdgeScore(model, features, sent, *edge);
     	non_local_score = GetNonLocalScore(model, non_local_features, sent, *left, *right);
+    	if (bigram_)
+    		non_local_score += bigram_->Score(
+					left->GetState(),
+					bigram_->GetVocabulary().Index(
+							sent[0]->GetElement(right->GetTrgLeft())),
+					out);
     	viterbi_score = score + non_local_score + left->GetScore() + right->GetScore();
     	q->push(new Hypothesis(viterbi_score, score, non_local_score, edge,
                          left->GetTrgLeft(),
                          right->GetTrgRight(),
+                         l+1 == r ? out : right->GetState(),
                          0, 0, left_stack, right_stack));
         // Add the inverted terminal
         edge = new HyperEdge(l, c, r, HyperEdge::EDGE_INV);
         score = GetEdgeScore(model, features, sent, *edge);
     	non_local_score = GetNonLocalScore(model, non_local_features, sent, *right, *left);
+    	if (bigram_)
+			non_local_score += bigram_->Score(
+					right->GetState(),
+					bigram_->GetVocabulary().Index(
+							sent[0]->GetElement(left->GetTrgLeft())),
+					out);
     	viterbi_score = score + non_local_score + left->GetScore() + right->GetScore();
     	q->push(new Hypothesis(viterbi_score, score, non_local_score, edge,
 						 right->GetTrgLeft(),
 						 left->GetTrgRight(),
+						 l+1 == r ? out : left->GetState(),
                          0, 0, left_stack, right_stack));
 
     }
@@ -206,12 +263,12 @@ TargetSpan * HyperGraph::ProcessOneSpan(ReordererModel & model,
     	TargetSpan *left_span = hyp->GetLeftChild();
     	if (left_span)
     		new_left = left_span->GetHypothesis(hyp->GetLeftRank()+1);
-    	hyp->IncrementLeft(new_left, model, non_local_features, sent, *q);
+    	hyp->IncrementLeft(new_left, model, non_local_features, sent, bigram_, *q);
 
     	TargetSpan *right_span = hyp->GetRightChild();
     	if (right_span)
     		new_right = right_span->GetHypothesis(hyp->GetRightRank()+1);
-    	hyp->IncrementRight(new_right, model, non_local_features, sent, *q);
+    	hyp->IncrementRight(new_right, model, non_local_features, sent, bigram_, *q);
     }
     while(q->size()) {
     	delete q->top();
@@ -249,14 +306,29 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
     for(int i = 0; !beam_size || i < beam_size; i++){
     	Hypothesis * hyp = NULL;
     	if (cube_growing_)
-    		hyp = top->LazyKthBest(i, model, features, non_local_features, sent);
+    		hyp = top->LazyKthBest(i, model, features, non_local_features, sent, bigram_);
     	else if (i < (int) top->size())
     		hyp = (*top)[i];
     	if (!hyp)
     		break;
-    	// TODO: non-local feature for root hypothesis
-    	// e.g. reordered bigram for sentence boudaries
-        root_stack->AddHypothesis(new Hypothesis(hyp->GetScore(), 0, 0,
+    	double non_local_score = 0.0;
+    	if (bigram_){
+    		lm::ngram::Model::State state = bigram_->BeginSentenceState();
+    		lm::ngram::Model::State out;
+    		// begin of sentence
+    		non_local_score += bigram_->Score(
+					state,
+					bigram_->GetVocabulary().Index(
+							sent[0]->GetElement(hyp->GetTrgLeft())),
+					out);
+    		// end of sentence
+    		non_local_score += bigram_->Score(
+    							hyp->GetState(),
+    							bigram_->GetVocabulary().Index("</s>"),
+    							out);
+    	}
+        root_stack->AddHypothesis(new Hypothesis(
+        		hyp->GetScore() + non_local_score, 0, non_local_score,
         		0, n_-1,
         		hyp->GetTrgLeft(), hyp->GetTrgRight(),
                 HyperEdge::EDGE_ROOT, -1,
@@ -311,7 +383,7 @@ inline string GetNodeString(char type, const T * hyp) {
     if(!hyp) return "";
     ostringstream oss;
     oss << type << "-" << hyp->GetLeft() << "-" << hyp->GetRight();
-    return oss.str(); 
+    return oss.str();
 }
 
 // Print the whole hypergraph

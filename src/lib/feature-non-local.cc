@@ -19,6 +19,8 @@ bool FeatureNonLocal::FeatureTemplateIsLegal(const string & name) {
         return false;
     if(name[0] == 'S' || name[0] == 'L' || name[0] == 'R')
         return name[1] == 'L' || name[1] == 'R';
+//    else if(name[0] == 'B')
+//    	return name[1] == 'E' || name[1] == 'P';
     return false;
 }
 
@@ -59,11 +61,24 @@ string FeatureNonLocal::GetNonLocalFeatureString(const FeatureDataSequence & sen
                                              const string & str) {
     ostringstream oss;
     char type = str[1];
+    lm::WordIndex lword, rword;
+    lm::FullScoreReturn ret;
     switch (type) {
         case 'L':
             return sent.GetElement(l);
         case 'R':
             return sent.GetElement(r);
+//        case 'E':
+//        	// TODO: qunatize probability
+//        case 'P':
+//        	if (!bigram_)
+//        		THROW_ERROR("Load language model first");
+//        	lword = bigram_->GetVocabulary().Index(sent.GetElement(l));
+//        	rword = bigram_->GetVocabulary().Index(sent.GetElement(r));
+//        	State out_state;
+//        	ret = bigram_->FullScoreForgotState(&lword, &lword, rword, out_state);
+//            oss << ret.prob;
+//            return oss.str();
         default:
             THROW_ERROR("Bad span feature type " << type);
     }
@@ -98,9 +113,10 @@ void FeatureNonLocal::GenerateNonLocalFeatures(
 					values << "||" << GetNonLocalFeatureString(sent_seq,
 							right.GetTrgLeft(), right.GetTrgRight(), templ.second[i]);
 					break;
-			}
-        	if(templ.second[i].length() >= 3) {
-				// TODO: utilize reordered n-gram
+//				case 'B':
+//					values << "||" << GetNonLocalFeatureString(sent_seq,
+//							left.GetTrgRight(), right.GetTrgLeft(), templ.second[i]);
+//					break;
 			}
         }
         if (feat_val){

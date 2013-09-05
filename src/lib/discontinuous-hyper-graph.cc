@@ -41,8 +41,8 @@ void DiscontinuousHyperGraph::AddHypotheses(
 	HyperEdge * edge;
     Hypothesis * left, *right;
     if (cube_growing_){
-    	left = left_stack->LazyKthBest(0, model, features, non_local_features, sent);
-    	right = right_stack->LazyKthBest(0, model, features, non_local_features, sent);
+    	left = left_stack->LazyKthBest(0, model, features, non_local_features, sent, bigram_);
+    	right = right_stack->LazyKthBest(0, model, features, non_local_features, sent, bigram_);
     }
     else{
     	left = left_stack->GetHypothesis(0);
@@ -76,10 +76,18 @@ void DiscontinuousHyperGraph::AddHypotheses(
 
 	score = GetEdgeScore(model, features, sent, *edge);
 	non_local_score = GetNonLocalScore(model, non_local_features, sent, *left, *right);
+    lm::ngram::Model::State out;
+	if (bigram_)
+		non_local_score += bigram_->Score(
+				left->GetState(),
+				bigram_->GetVocabulary().Index(
+						sent[0]->GetElement(right->GetTrgLeft())),
+				out);
 	viterbi_score = score + non_local_score + left->GetScore() + right->GetScore();
 	q.push(new Hypothesis(viterbi_score, score, non_local_score, edge,
 			left->GetTrgLeft(),
 			right->GetTrgRight(),
+			l+1 == r ? out : right->GetState(),
 			0, 0, left_stack, right_stack));
 	// Add the inverted terminal
 	if (m < 0 && n < 0)
@@ -88,10 +96,17 @@ void DiscontinuousHyperGraph::AddHypotheses(
 		edge = new DiscontinuousHyperEdge(l, m, c, n, r, HyperEdge::EDGE_INV);
 	score = GetEdgeScore(model, features, sent, *edge);
 	non_local_score = GetNonLocalScore(model, non_local_features, sent, *right, *left);
+	if (bigram_)
+		non_local_score += bigram_->Score(
+				right->GetState(),
+				bigram_->GetVocabulary().Index(
+						sent[0]->GetElement(left->GetTrgLeft())),
+				out);
 	viterbi_score = score + non_local_score + left->GetScore() + right->GetScore();
 	q.push(new Hypothesis(viterbi_score, score, non_local_score, edge,
 			right->GetTrgLeft(),
 			left->GetTrgRight(),
+			l+1 == r ? out : left->GetState(),
 			0, 0, left_stack, right_stack));
 }
 
@@ -115,8 +130,8 @@ void DiscontinuousHyperGraph::AddDiscontinuousHypotheses(
 	HyperEdge * edge;
     Hypothesis * left, *right;
     if (cube_growing_){
-    	left = left_stack->LazyKthBest(0, model, features, non_local_features, sent);
-    	right = right_stack->LazyKthBest(0, model, features, non_local_features, sent);
+    	left = left_stack->LazyKthBest(0, model, features, non_local_features, sent, bigram_);
+    	right = right_stack->LazyKthBest(0, model, features, non_local_features, sent, bigram_);
     }
     else{
     	left = left_stack->GetHypothesis(0);
@@ -219,12 +234,12 @@ void DiscontinuousHyperGraph::StartBeamSearch(
     	TargetSpan *left_span = hyp->GetLeftChild();
     	if (left_span)
     		new_left = left_span->GetHypothesis(hyp->GetLeftRank()+1);
-    	hyp->IncrementLeft(new_left, model, non_local_features, sent, q);
+    	hyp->IncrementLeft(new_left, model, non_local_features, sent, bigram_, q);
 
     	TargetSpan *right_span = hyp->GetRightChild();
     	if (right_span)
     		new_right = right_span->GetHypothesis(hyp->GetRightRank()+1);
-    	hyp->IncrementRight(new_right, model, non_local_features, sent, q);
+    	hyp->IncrementRight(new_right, model, non_local_features, sent, bigram_, q);
     }
 
     while(q.size()){
@@ -302,18 +317,7 @@ TargetSpan * DiscontinuousHyperGraph::ProcessOneSpan(
 		q = new HypothesisQueue;
 	double score;
 	// If the length is OK, add a terminal
-	if((features.GetMaxTerm() == 0) || (r-l < features.GetMaxTerm())) {
-		// Create a hypothesis with the forward terminal
-		HyperEdge * edge = new HyperEdge(l, -1, r, HyperEdge::EDGE_FOR);
-		score = GetEdgeScore(model, features, sent, *edge);
-		q->push(new Hypothesis(score, score, 0, edge, l, r));
-		if(features.GetUseReverse()) {
-			// Create a hypothesis with the backward terminal
-			edge = new HyperEdge(l, -1, r, HyperEdge::EDGE_BAC);
-			score = GetEdgeScore(model, features, sent, *edge);
-			q->push(new Hypothesis(score, score, 0, edge, r, l));
-		}
-	}
+	AddTerminals(l, r, features, model, sent, q);
 
     bool hasPunct = false;
     for (int i = l; i <= r; i++ )
@@ -332,8 +336,8 @@ TargetSpan * DiscontinuousHyperGraph::ProcessOneSpan(
 			if(right_stack == NULL) THROW_ERROR("Target c="<<i<<", r="<<r);
 	        Hypothesis * left, *right;
 	        if (cube_growing_){
-	        	left = left_stack->LazyKthBest(0, model, features, non_local_features, sent);
-	        	right = right_stack->LazyKthBest(0, model, features, non_local_features, sent);
+	        	left = left_stack->LazyKthBest(0, model, features, non_local_features, sent, bigram_);
+	        	right = right_stack->LazyKthBest(0, model, features, non_local_features, sent, bigram_);
 	        }
 	        else{
 	        	left = left_stack->GetHypothesis(0);

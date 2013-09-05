@@ -12,6 +12,7 @@
 #include <lader/feature-set.h>
 #include <lader/ranks.h>
 #include <lader/hyper-graph.h>
+#include <fstream>
 
 namespace lader {
 
@@ -366,6 +367,7 @@ public:
         set.SetUseReverse(true);
         return ret;
     }
+
 
     int TestAccumulateLoss() {
         // The value of the loss should be 1+2+5+6 = 14 (3 and 4 are not best)

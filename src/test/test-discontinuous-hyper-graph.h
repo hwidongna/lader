@@ -311,7 +311,6 @@ public:
 
     int TestBuildHyperGraphCubeGrowing() {
         DiscontinuousHyperGraph graph(1, true);
-        graph.SetVerbose(2);
         set.SetMaxTerm(1);
         graph.BuildHyperGraph(model, set, non_local_set, datas, 4*3*2);
         const std::vector<TargetSpan*> & stacks = graph.GetStacks();
@@ -346,6 +345,67 @@ public:
 				}
 			}
         return ret;
+    }
+
+    int TestBuildHyperGraphPlusLM() {
+    	// Create a reordered ngram and write it to /tmp/ngram.arpa
+    	ofstream out("/tmp/ngram.arpa");
+    	out <<  "\n" <<
+    			"\\data\\\n" <<
+    			"ngram 1= 6\n" <<
+    			"ngram 2= 8\n" <<
+    			"\n" <<
+    			"\\1-grams:\n" <<
+    			"-6.64062	<s>	-1.364\n" <<
+    			"-1.1635	</s>\n" <<
+    			"-1.97746	he	-0.812584\n" <<
+    			"-3.4157	ate	-1.18094\n" <<
+    			"-1.66158	rice	-0.928251\n" <<
+    			"-1.139057	.	-0.845098\n" <<
+    			"\n" <<
+    			"\\2-grams:\n" <<
+    			"-6.64062	<s> he\n" <<
+    			"-0.2922095	he rice\n" <<
+    			"-0.7273645	he ate\n" <<
+    			"-1.1635	rice ate\n" <<
+    			"-1.97746	ate rice\n" <<
+    			"-0.4846522	ate .\n" <<
+    			"-1.07153	rice .\n" <<
+    			"-0.0602359	. </s>\n" <<
+    			"\\end\\";
+    	out.close();
+    	ReordererModel model;
+    	DiscontinuousHyperGraph graph(0);
+    	graph.LoadLM("/tmp/ngram.arpa");
+    	set.SetMaxTerm(1);
+    	set.SetUseReverse(false);
+    	graph.BuildHyperGraph(model, set, non_local_set, datas);
+    	const std::vector<TargetSpan*> & stacks = graph.GetStacks();
+    	int ret = 1;
+    	lm::ngram::Model::State state = graph.bigram_->BeginSentenceState();
+    	lm::ngram::Model::State out_state;
+    	double ngram_score = 0.0;
+    	ngram_score += graph.bigram_->Score(state,
+    			graph.bigram_->GetVocabulary().Index("he"), out_state);
+    	state = out_state;
+    	ngram_score += graph.bigram_->Score(state,
+    			graph.bigram_->GetVocabulary().Index("rice"), out_state);
+    	state = out_state;
+    	ngram_score += graph.bigram_->Score(state,
+    			graph.bigram_->GetVocabulary().Index("ate"), out_state);
+    	state = out_state;
+    	ngram_score += graph.bigram_->Score(state,
+    			graph.bigram_->GetVocabulary().Index("."), out_state);
+    	state = out_state;
+		ngram_score += graph.bigram_->Score(state,
+				graph.bigram_->GetVocabulary().Index("</s>"), out_state);
+    	Hypothesis * best = graph.GetBest();
+    	if (best->GetScore() != ngram_score){
+    		cerr << "The best hypotheses " << *best << " != non-local score " << ngram_score << endl;
+    		ret = 0;
+    	}
+    	set.SetUseReverse(true);
+    	return ret;
     }
 
     int TestBuildHyperGraphGap2() {
@@ -582,6 +642,7 @@ public:
         done++; cout << "TestProcessOneSpan()" << endl; if(TestProcessOneSpan()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestBuildHyperGraph()" << endl; if(TestBuildHyperGraph()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestBuildHyperGraphCubeGrowing()" << endl; if(TestBuildHyperGraphCubeGrowing()) succeeded++; else cout << "FAILED!!!" << endl;
+        done++; cout << "TestBuildHyperGraphPlusLM()" << endl; if(TestBuildHyperGraphPlusLM()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestAccumulateLoss()" << endl; if(TestAccumulateLoss()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestAccumulateFeatures()" << endl; if(TestAccumulateFeatures()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestRescore()" << endl; if(TestRescore()) succeeded++; else cout << "FAILED!!!" << endl;

@@ -42,11 +42,11 @@ public:
     Hypothesis * LazyKthBest(int k,
     		ReordererModel & model,
     		const FeatureSet & features, const FeatureSet & non_local_features,
-    		const Sentence & sent){
+    		const Sentence & sent, const lm::ngram::Model * bigram){
     	while ((int)hyps_.size() < k+1 && (int)cands_.size() > 0){
     		Hypothesis * hyp = cands_.top(); cands_.pop();
     		hyps_.push_back(hyp);
-    		hyp->LazyNext(cands_, model, features, non_local_features, sent);
+    		hyp->LazyNext(cands_, model, features, non_local_features, sent, bigram);
             // If the next hypothesis on the stack is equal to the current
             // hypothesis, remove it, as this just means that we added the same
             // hypothesis

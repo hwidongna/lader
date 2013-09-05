@@ -24,6 +24,8 @@ void ReordererTask::Run() {
     vector<string> words = ((FeatureDataSequence*)datas[0])->GetSequence();
     // Build the hypergraph
     HyperGraph * hyper_graph = new DiscontinuousHyperGraph(gapSize, cube_growing, mp, full_fledged, verbose);
+    if (config_.GetString("bigram").length())
+		hyper_graph->LoadLM(config_.GetString("bigram").c_str());
     hyper_graph->BuildHyperGraph(*model_, *features_, *non_local_features_, datas, beam);
     // Reorder
     std::vector<int> reordering;

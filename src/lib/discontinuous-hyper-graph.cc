@@ -206,17 +206,10 @@ void DiscontinuousHyperGraph::StartBeamSearch(
             delete q.top();
             q.pop();
         }
+        // TODO: manage unique permutations regardless of structure
         // skip unnecessary hypothesis
-        bool skip = false;
-        if (!hyp->IsTerminal()){
-        	DiscontinuousHypothesis * left =
-        			dynamic_cast<DiscontinuousHypothesis*>(hyp->GetLeftHyp());
-        	DiscontinuousHypothesis * right =
-        			dynamic_cast<DiscontinuousHypothesis*>(hyp->GetRightHyp());
-        	skip = left && right
-					&& (hyp->GetEdgeType() == left->GetEdgeType()
-					|| hyp->GetEdgeType() == right->GetEdgeType());
-        }
+        bool skip = hyp->CanSkip();
+
         // Insert the hypothesis
         if (!skip){
         	ret->AddHypothesis(hyp);

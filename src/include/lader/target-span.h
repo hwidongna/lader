@@ -58,6 +58,7 @@ public:
 						|| hyp->GetEdgeType() == right->GetEdgeType());
 			}
             // Insert the hypothesis
+    		// TODO: manage unique permutations regardless of structure
             if (!skip)
 				hyps_.push_back(hyp);
     		hyp->LazyNext(cands_, model, features, non_local_features, sent, bigram);

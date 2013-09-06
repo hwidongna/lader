@@ -246,6 +246,7 @@ TargetSpan * HyperGraph::ProcessOneSpan(ReordererModel & model,
         // Pop a hypothesis from the stack and get its target span
         Hypothesis * hyp = q->top(); q->pop();
         // Insert the hypothesis
+        // TODO: manage unique permutations regardless of structure
         ret->AddHypothesis(hyp);
         num_processed++;
         // If the next hypothesis on the stack is equal to the current

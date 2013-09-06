@@ -263,6 +263,7 @@ public:
 	}
 
 	virtual Hypothesis *Clone() const;
+	virtual bool CanSkip();
 	void IncrementLeft(Hypothesis *new_hyp, ReordererModel & model,
 			const FeatureSet & non_local_features, const Sentence & sent,
 			const lm::ngram::Model * bigram, HypothesisQueue & q);

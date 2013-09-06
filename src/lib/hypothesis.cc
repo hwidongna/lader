@@ -155,6 +155,23 @@ Hypothesis *Hypothesis::Clone() const
     return new_hyp;
 }
 
+// We can skip this hypothesis in search
+// if this hypothesis produce an ITG permutation from discontinuous children
+bool Hypothesis::CanSkip() {
+	bool skip = false;
+	if (!IsTerminal()) {
+		DiscontinuousHypothesis * left =
+				dynamic_cast<DiscontinuousHypothesis*>(GetLeftHyp());
+		DiscontinuousHypothesis * right =
+				dynamic_cast<DiscontinuousHypothesis*>(GetRightHyp());
+		// discontinuous + discotinuous = continuous
+		return left && right
+				&& (GetEdgeType() == left->GetEdgeType()
+				|| GetEdgeType() == right->GetEdgeType());
+	}
+	return false;
+}
+
 // Increment the left side if there is still a hypothesis left
 void Hypothesis::IncrementLeft(Hypothesis *new_left, ReordererModel & model,
 		const FeatureSet & non_local_features, const Sentence & sent,

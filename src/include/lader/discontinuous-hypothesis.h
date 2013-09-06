@@ -111,6 +111,22 @@ public:
     	new_hyp->SetEdge(dedge->Clone());
     	return new_hyp;
     }
+
+    // We can skip this hypothesis in search
+    // if this hypothesis produce an ITG permutation from discontinuous children
+    virtual bool CanSkip() {
+    	if (!IsTerminal()){
+    		DiscontinuousHypothesis * left =
+    				dynamic_cast<DiscontinuousHypothesis*>(GetLeftHyp());
+    		DiscontinuousHypothesis * right =
+    				dynamic_cast<DiscontinuousHypothesis*>(GetRightHyp());
+    		// continuous + discotinuous = discontinuous
+    		// discontinuous + cotinuous = discontinuous
+    		return (left && GetEdgeType() == left->GetEdgeType())
+    				|| (right && GetEdgeType() == right->GetEdgeType());
+    	}
+    	return false;
+    }
 };
 
 }

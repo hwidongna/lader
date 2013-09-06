@@ -224,11 +224,11 @@ void DiscontinuousHyperGraph::StartBeamSearch(
 			if(verbose_ > 1){
 				DiscontinuousHypothesis * dhyp =
 						dynamic_cast<DiscontinuousHypothesis*>(hyp);
-				if (dhyp){
-					cerr << "Insert the discontinuous hypothesis " << *dhyp << endl;
-				}
-				else
-					cerr << "Insert the hypothesis " << *hyp << endl;
+				cerr << "Insert " << num_processed << "th hypothesis ";
+				if (dhyp) cerr << *dhyp;
+				else cerr << *hyp;
+				cerr << endl;
+
 				const FeatureVectorInt *fvi = HyperGraph::GetEdgeFeatures(model, features, sent, *hyp->GetEdge());
 				FeatureVectorString *fvs = model.StringifyFeatureVector(*fvi);
 				FeatureVectorString *fws = model.StringifyWeightVector(*fvi);
@@ -404,7 +404,8 @@ TargetSpan * DiscontinuousHyperGraph::ProcessOneSpan(
 						l, i-1, i+d, j-1,
 						i, i-1+d, j, r);
 			}
-			if ( r + d < N){
+			// Process [0, m, n, N-1] is meaningless
+			if ( r+d < N && r+d-l+1 != N){
 				SetStack(l, i-1, i+d, r+d,
 						ProcessOneDiscontinuousSpan(
 								model, features, non_local_features, sent,
@@ -496,7 +497,8 @@ void DiscontinuousHyperGraph::AddLoss(LossBase* loss,
             	continue;
             for (int i = l+1 ; i <= r ; i++){
             	for (int d = 1 ; d <= D ; d++){
-					if ( r+d < N && GetStack(l,i-1,i+d,r+d) != NULL){
+            		// Process [0, m, n, N-1] is meaningless
+					if ( r+d < N && r+d-l+1 != N && GetStack(l,i-1,i+d,r+d) != NULL){
 						if (verbose_ > 1)
 							cerr << "AddLoss ["<<l<<", "<<i-1<<", "<<i+d<<", "<<r+d<<"]" << endl;
 						BOOST_FOREACH(Hypothesis* hyp, GetStack(l,i-1,i+d,r+d)->GetHypotheses()) {
@@ -504,7 +506,9 @@ void DiscontinuousHyperGraph::AddLoss(LossBase* loss,
 							hyp->SetLoss(hyp->GetLoss() +
 									loss->AddLossToProduction(hyp, ranks, parse));
 							if (verbose_ > 1){
-								cerr << "Loss=" << hyp->GetLoss() << ":" << *hyp;
+								DiscontinuousHypothesis * dhyp =
+										dynamic_cast<DiscontinuousHypothesis*>(hyp);
+								cerr << "Loss=" << hyp->GetLoss() << ":" << *dhyp;
 								hyp->PrintChildren(cerr);
 							}
 						}

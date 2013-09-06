@@ -306,6 +306,27 @@ public:
 					hyp->PrintChildren(cerr);
 					ret = 0;
 				}
+				DiscontinuousHypothesis * dhyp =
+						dynamic_cast<DiscontinuousHypothesis*>(hyp);
+				const FeatureVectorInt *fvi = graph.GetEdgeFeatures(model, set, datas, *hyp->GetEdge());
+				FeatureVectorString *fvs = model.StringifyFeatureVector(*fvi);
+				bool error = false;
+				BOOST_FOREACH(FeaturePairString feat, *fvs){
+					string edgetype = feat.first.substr(feat.first.size()-2);
+					if (edgetype[0] != hyp->GetEdgeType()){
+						cerr << "Incorrect edge type ";
+						error = true;
+					}
+					if (edgetype[1] != hyp->GetEdge()->GetClass()){
+						cerr << "Incorrect edge class ";
+						error = true;
+					}
+				}
+				if (error){
+					cerr << (dhyp ? *dhyp : *hyp) << endl << *fvs << endl;
+					ret = 0;
+				}
+				delete fvs;
 			}
         return ret;
     }
@@ -415,7 +436,7 @@ public:
         set.SetMaxTerm(0);
         sent.FromString("this sentence has five words");
 		sent_pos.FromString("PRP NNS VB ADJ NNP");
-        graph.BuildHyperGraph(model, set, non_local_set, datas, 100);
+        graph.BuildHyperGraph(model, set, non_local_set, datas, 5*4*3*2);
         const std::vector<TargetSpan*> & stacks = graph.GetStacks();
         int ret = 1;
         TargetSpan * stack04 = graph.HyperGraph::GetStack(0, 4);
@@ -423,9 +444,9 @@ public:
         // The total number of stacks should be 6*5/2 + 1: 0-0 0-1 1-1 0-2 1-2 2-2 0-3 1-3 2-3 3-3 0-4 1-4 2-4 3-4 4-4 root
         if(stacks.size() != 16) {
             cerr << "stacks.size() != 16: " << stacks.size() << endl; ret = 0;
-        // The number of target spans should be 100:
-        } else if (stack04->size() != 100) {
-            cerr << "Root node stack04->size() != 100: " << stack04->size()<< endl;
+        // The number of target spans should be 5*4*3*2 =720:
+        } else if (stack04->size() != 5*4*3*2) {
+            cerr << "Root node stack04->size() != 720: " << stack04->size()<< endl;
             BOOST_FOREACH(const Hypothesis *hyp, stack04->GetHypotheses())
             	cerr << " " << hyp->GetTrgLeft() << "-" <<hyp->GetTrgRight() << endl;
             ret = 0;

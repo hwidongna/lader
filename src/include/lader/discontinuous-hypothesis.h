@@ -123,7 +123,8 @@ inline std::ostream& operator << ( std::ostream& out,
     out << "<" << rhs.GetLeft() << ", " << rhs.GetM() << ", "
 		<< rhs.GetN() << ", " << rhs.GetRight() << ", "
 		<< rhs.GetTrgLeft() << ", " << rhs.GetTrgRight() << ", "
-		<< (char)rhs.GetEdgeType() << ", " << rhs.GetCenter() << " :: "
+		<< (char) rhs.GetEdgeType() << (char) rhs.GetEdge()->GetClass() << ", "
+		<< rhs.GetCenter() << " :: "
     	<< rhs.GetScore() << ", " << rhs.GetSingleScore() << ", " << rhs.GetNonLocalScore() << ">";
     return out;
 }

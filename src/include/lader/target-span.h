@@ -102,6 +102,7 @@ public:
     
 protected:
     std::vector<Hypothesis*> hyps_;
+    // For cube growing
     HypothesisQueue cands_;
 
 private:

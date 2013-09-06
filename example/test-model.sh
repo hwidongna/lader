@@ -62,8 +62,8 @@ echo "../src/bin/lader -gap-size $GAP -model output/train-g$GAP.mod -out_format 
 
 else
 
-echo "../src/bin/lader -gap-size $GAP -model output/train-g$GAP.mod -out_format order,string,parse -beam $BEAM -cube_growing $CUBE_GROWING -verbose $VERBOSE -bigram $BIGRAM < output/test.en.annot > output/test.en.reordered"
-../src/bin/lader -gap-size $GAP -model output/train-g$GAP.mod -out_format order,string,parse -beam $BEAM -cube_growing $CUBE_GROWING -verbose $VERBOSE -bigram $BIGRAM < output/test.en.annot > output/test.en.reordered
+echo "../src/bin/lader -gap-size $GAP -model output/train-g$GAP.mod -out_format order,string,parse -beam $BEAM -cube_growing $CUBE_GROWING -verbose $VERBOSE -bigram $BIGRAM < output/test.en.annot > output/test.en.reordered 2> output/test.en.reordered.log"
+../src/bin/lader -gap-size $GAP -model output/train-g$GAP.mod -out_format order,string,parse -beam $BEAM -cube_growing $CUBE_GROWING -verbose $VERBOSE -bigram $BIGRAM < output/test.en.annot > output/test.en.reordered 2> output/test.en.reordered.log
 
 fi
 

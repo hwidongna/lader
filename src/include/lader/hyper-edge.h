@@ -43,7 +43,7 @@ public:
             t_ < rhs.t_))))));
     }
     virtual bool operator== (const HyperEdge & rhs) const {
-        return l_ == rhs.l_ && c_ == rhs.c_ && r_ == rhs.r_ && t_ == rhs.t_;
+        return l_ == rhs.l_ && c_ == rhs.c_ && r_ == rhs.r_ && t_ == rhs.t_ && GetClass() == rhs.GetClass();
     }
     size_t hash() const {
         return t_*HYPEREDGE_TMULT+l_*HYPEREDGE_LMULT+c_*HYPEREDGE_CMULT+r_;

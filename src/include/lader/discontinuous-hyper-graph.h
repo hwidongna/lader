@@ -17,8 +17,8 @@ namespace lader{
 class DiscontinuousHyperGraph : public HyperGraph{
 	friend class TestDiscontinuousHyperGraph;
 public:
-	DiscontinuousHyperGraph(int gapSize = 1, bool cube_growing = false, bool mp = false, bool full_fledged = false, int verbose = 0)
-	: HyperGraph(cube_growing), gap_(gapSize), mp_(mp), full_fledged_(full_fledged), verbose_(verbose){ }
+	DiscontinuousHyperGraph(int gapSize = 1, bool cube_growing = false, bool full_fledged = false, bool mp = false, int verbose = 0)
+	: HyperGraph(cube_growing), gap_(gapSize), full_fledged_(full_fledged), mp_(mp), verbose_(verbose){ }
     virtual ~DiscontinuousHyperGraph(){
         BOOST_FOREACH(HyperGraph* graph, next_)
             if (graph != NULL)
@@ -26,7 +26,6 @@ public:
     }
 
     virtual void AddLoss(LossBase *loss, const Ranks *ranks, const FeatureDataParse *parse) const;
-    virtual void GetReordering(std::vector<int> & reord, Hypothesis * hyp) const;
     virtual void AccumulateNonLocalFeatures(std::tr1::unordered_map<int,double> & feat_map,
     		ReordererModel & model, const FeatureSet & feature_gen,
     		const Sentence & sent, const Hypothesis & hyp);
@@ -90,7 +89,7 @@ protected:
     TargetSpan *ProcessOneDiscontinuousSpan(ReordererModel & model, const FeatureSet & features, const FeatureSet & non_local_features, const Sentence & sent, int l, int m, int n, int r, int beam_size = 0);
     void AddHypotheses(ReordererModel & model, const FeatureSet & features, const FeatureSet & non_local_features, const Sentence & sent, HypothesisQueue & q, int left_l, int left_m, int left_n, int left_r, int right_l, int right_m, int right_n, int right_r);
     void AddDiscontinuousHypotheses(ReordererModel & model, const FeatureSet & features, const FeatureSet & non_local_features, const Sentence & sent, HypothesisQueue & q, int left_l, int left_m, int left_n, int left_r, int right_l, int right_m, int right_n, int right_r);
-    void StartBeamSearch(int beam_size, HypothesisQueue q, ReordererModel & model, const Sentence & sent, const FeatureSet & features, const FeatureSet & non_local_features, TargetSpan * ret, int l, int r);
+    void StartBeamSearch(int beam_size, HypothesisQueue & q, ReordererModel & model, const Sentence & sent, const FeatureSet & features, const FeatureSet & non_local_features, TargetSpan * ret, int l, int r);
 private:
     int gap_;
     bool mp_;

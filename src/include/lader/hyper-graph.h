@@ -91,7 +91,6 @@ public:
     }
 
     virtual void AddLoss(LossBase *loss, const Ranks *ranks, const FeatureDataParse *parse) const;
-    virtual void GetReordering(std::vector<int> & reord, Hypothesis *hyp) const;
     void SetFeatures(EdgeFeatureMap *features)
     {
         features_ = features;

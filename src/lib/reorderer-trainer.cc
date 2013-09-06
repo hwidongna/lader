@@ -35,7 +35,7 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
     cerr << "(\".\" == 100 sentences)" << endl;
 	struct timespec build={0,0}, oracle={0,0}, model={0,0}, adjust={0,0};
 	struct timespec tstart={0,0}, tend={0,0};
-	DiscontinuousHyperGraph hyper_graph(gapSize, cube_growing, mp, full_fledged, verbose);
+	DiscontinuousHyperGraph hyper_graph(gapSize, cube_growing, full_fledged, mp, verbose);
 	if (config.GetString("bigram").length())
 		hyper_graph.LoadLM(config.GetString("bigram").c_str());
     for(int iter = 0; iter < config.GetInt("iterations"); iter++) {
@@ -113,7 +113,7 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 			iter_oracle_loss += oracle_loss;
 			if (verbose > 0){
 				vector<int> order;
-				hyper_graph.GetReordering(order, hyper_graph.GetBest());
+				hyper_graph.GetBest()->GetReordering(order, verbose > 1);
 				for(int i = 0; i < (int)order.size(); i++) {
 					if(i != 0) cout << " "; cout << order[i];
 				}

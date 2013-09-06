@@ -273,6 +273,7 @@ public:
         graph.SetStack(1, 1, stack11);
         // Try processing 01
         set.SetMaxTerm(0);
+    	set.SetUseReverse(true);
         TargetSpan *stack01 = graph.ProcessOneSpan(model, set, non_local_set, datas, 0, 1);
         // The stack should contain four hypotheses: S(0,1), I(1,0), F(01), B(10)
         int ret = 1;
@@ -289,7 +290,6 @@ public:
         score_act[3] = stack01->GetHypothesis(3)->GetScore();
         ret = CheckVector(score_exp, score_act);
         // Check to make sure that pruning works
-        set.SetMaxTerm(0);
         TargetSpan *stack01pruned = graph.ProcessOneSpan(model, set, non_local_set, datas, 0, 1, 3);
         if(stack01pruned->size() != 3) {
         	cerr << "stack01->size() != 3: " << stack01pruned->size() << endl; ret = 0;
@@ -300,11 +300,12 @@ public:
 		graph.SetStack(2, 2, stack22);
 		graph.SetStack(0, 1, stack01);
 		TargetSpan *stack12 = new TargetSpan(1,2);
-		stack12->AddHypothesis(new Hypothesis(4,4,0, 1,2,2,1, HyperEdge::EDGE_INV));
+		stack12->AddHypothesis(new Hypothesis(4,4,0, 1,2,2,1, HyperEdge::EDGE_BAC));
 		graph.SetStack(1, 2, stack12); // just for testing
 		TargetSpan *stack02 = graph.ProcessOneSpan(model, set, non_local_set, datas, 0, 2);
-		if(stack02->size() != (4+1)*2 + 2) {
-			cerr << "stack02->size() != 12: " << stack02->size() << endl; ret = 0;
+        // The number of hypothesis should be 3! + 1
+		if(stack02->size() != 3*2 + 1) {
+			cerr << "stack02->size() != 7: " << stack02->size() << endl; ret = 0;
 			BOOST_FOREACH(const Hypothesis *hyp, stack02->GetHypotheses()){
 				cerr << *hyp;
 				hyp->PrintChildren(cerr);
@@ -325,13 +326,27 @@ public:
         // The total number of stacks should be 7: 0-0 0-1 1-1 0-2 1-2 2-2 root
         if(stacks.size() != 7) {
             cerr << "stacks.size() != 7: " << stacks.size() << endl; ret = 0;
-        // The number of target spans should be 6: 0-1 1-0 0-2 2-0 1-2 2-1
-        } else if (stacks[3]->size() != ((3+3)*2 + 1)) {
-            cerr << "Root node stacks[3]->size() != 13: " <<stacks[3]->size()<< endl;
-            BOOST_FOREACH(const Hypothesis *hyp, stacks[3]->GetHypotheses()){
-                cerr << *hyp <<  endl;
-            }
-            ret = 0;
+            // The number of hypothesis should be 2! + 1
+        } else if (graph.GetStack(0,1)->size() != 2 + 1) {
+        	cerr << "stacks[0,1]->size() != 3: " <<graph.GetStack(0,1)->size()<< endl;
+        	BOOST_FOREACH(const Hypothesis *hyp, graph.GetStack(0,1)->GetHypotheses()){
+        		cerr << *hyp <<  endl;
+        	}
+        	ret = 0;
+            // The number of hypothesis should be 2! + 1
+        } else if (graph.GetStack(1,2)->size() != 2 + 1) {
+        	cerr << "stacks[1,2]->size() != 3: " <<graph.GetStack(1,2)->size()<< endl;
+        	BOOST_FOREACH(const Hypothesis *hyp, graph.GetStack(1,2)->GetHypotheses()){
+        		cerr << *hyp <<  endl;
+        	}
+        	ret = 0;
+        	// The number of hypothesis should be 3! + 1
+        } else if (stacks[3]->size() != 3*2 + 1) {
+        	cerr << "Root node stacks[3]->size() != 7: " <<stacks[3]->size()<< endl;
+        	BOOST_FOREACH(const Hypothesis *hyp, stacks[3]->GetHypotheses()){
+        		cerr << *hyp <<  endl;
+        	}
+        	ret = 0;
         } else if (stacks[6]->size() != stacks[3]->size()) {
             cerr << "Root hypotheses " << stacks[6]->size()
                  << " and root spans " << stacks[3]->size() << " don't match." <<
@@ -351,10 +366,9 @@ public:
         // The total number of stacks should be 7: 0-0 0-1 1-1 0-2 1-2 2-2 root
         if(stacks.size() != 7) {
             cerr << "stacks.size() != 7: " << stacks.size() << endl; ret = 0;
-        // The number of hypotheses should be 9: 0:1::2 1:0::2 0::1:2 0::2:1 2::0:1 2::1:0 1:2::0 2:1::0 012
-        // Four hypotheses are duplicated, and thus truncated: 01::2 0::12 2::01 12::0
-        } else if (stacks[3]->size() != 2*2*2 + 1) {
-            cerr << "Root node stacks[3]->size() != 9: " <<stacks[3]->size()<< endl;
+		// The number of hypothesis should be 3! + 1
+        } else if (stacks[3]->size() != 3*2 + 1) {
+            cerr << "Root node stacks[3]->size() != 7: " <<stacks[3]->size()<< endl;
             BOOST_FOREACH(const Hypothesis *hyp, stacks[3]->GetHypotheses()){
                 cerr << *hyp <<  endl;
             }
@@ -441,14 +455,14 @@ public:
         // Get the reordering for forward
         int ret = 1;
         vector<int> for_reorder;
-        graph.GetReordering(for_reorder, graph.GetBest());
+        graph.GetBest()->GetReordering(for_reorder);
          ostringstream for_oss; spanr->GetHypothesis(0)->PrintParse(str01, for_oss);
          ret = min(ret, CheckVector(vec01, for_reorder));
          ret = min(ret, CheckString("(F (FW 0) (FW 1))", for_oss.str()));
          // Get the reordering bac backward
          span01->GetHypothesis(0)->SetType(HyperEdge::EDGE_BAC);
          vector<int> bac_reorder;
-         graph.GetReordering(bac_reorder, graph.GetBest());
+         graph.GetBest()->GetReordering(bac_reorder);
          ostringstream bac_oss; spanr->GetHypothesis(0)->PrintParse(str01, bac_oss);
          ret = min(ret, CheckVector(vec10, bac_reorder));
          ret = min(ret, CheckString("(B (BW 0) (BW 1))", bac_oss.str()));
@@ -459,14 +473,14 @@ public:
          span01->GetHypothesis(0)->SetRightChild(span11);
          span01->GetHypothesis(0)->SetRightRank(0);
          vector<int> str_reorder;
-         graph.GetReordering(str_reorder, graph.GetBest());
+         graph.GetBest()->GetReordering(str_reorder);
          ostringstream str_oss; spanr->GetHypothesis(0)->PrintParse(str01, str_oss);
          ret = min(ret, CheckVector(vec01, str_reorder));
          ret = min(ret,CheckString("(S (F (FW 0)) (F (FW 1)))",str_oss.str()));
          // Get the reordering for forward
          span01->GetHypothesis(0)->SetType(HyperEdge::EDGE_INV);
          vector<int> inv_reorder;
-         graph.GetReordering(inv_reorder, graph.GetBest());
+         graph.GetBest()->GetReordering(inv_reorder);
          ostringstream inv_oss;spanr->GetHypothesis(0)->PrintParse(str01, inv_oss);
          ret = min(ret, CheckVector(vec10, inv_reorder));
          ret = min(ret,CheckString("(I (F (FW 0)) (F (FW 1)))",inv_oss.str()));

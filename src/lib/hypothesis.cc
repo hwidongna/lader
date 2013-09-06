@@ -83,6 +83,34 @@ Hypothesis * Hypothesis::GetRightHyp() const{
 	return right_child_->GetHypothesis(right_rank_);
 }
 
+void Hypothesis::GetReordering(std::vector<int> & reord, bool verbose) const{
+	HyperEdge::Type type = this->GetEdgeType();
+	if (verbose && !this->IsTerminal()){
+		cerr << "Loss:" << this->GetLoss();
+		const DiscontinuousHypothesis* dhyp =
+				dynamic_cast<const DiscontinuousHypothesis*>(this);
+		if (dhyp)
+			cerr << *dhyp;
+		else
+			cerr << *this;
+		this->PrintChildren(cerr);
+	}
+	if(type == HyperEdge::EDGE_FOR) {
+		for(int i = this->GetLeft(); i <= this->GetRight(); i++)
+			reord.push_back(i);
+	} else if(type == HyperEdge::EDGE_BAC) {
+		for(int i = this->GetRight(); i >= this->GetLeft(); i--)
+			reord.push_back(i);
+	} else if(type == HyperEdge::EDGE_ROOT) {
+		GetLeftHyp()->GetReordering(reord);
+	} else if(type == HyperEdge::EDGE_STR) {
+		GetLeftHyp()->GetReordering(reord);
+		GetRightHyp()->GetReordering(reord);
+	} else if(type == HyperEdge::EDGE_INV) {
+		GetRightHyp()->GetReordering(reord);
+		GetLeftHyp()->GetReordering(reord);
+	}
+}
 // Add up the loss over an entire subtree defined by span of this hypothesis
 double Hypothesis::AccumulateLoss() {
     double score = GetLoss();

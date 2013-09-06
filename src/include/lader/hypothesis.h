@@ -102,36 +102,26 @@ public:
 	}
 
 	virtual bool operator <(const Hypothesis & rhs) const {
-		return viterbi_score_ < rhs.viterbi_score_
-				|| (viterbi_score_ == rhs.viterbi_score_
-						&& (trg_left_ < rhs.trg_left_
-								|| (trg_left_ == rhs.trg_left_
-										&& (trg_right_ < rhs.trg_right_
-												|| (trg_right_ == rhs.trg_right_
-														&& (GetEdgeType()
-																< rhs.GetEdgeType()
-																|| (GetEdgeType()
-																		== rhs.GetEdgeType()
-																		&& (GetCenter()
-																				< rhs.GetCenter()
-																				|| (GetCenter()
-																						== rhs.GetCenter()
-																						&& (left_child_
-																								< rhs.left_child_
-																								|| (left_child_
-																										== rhs.left_child_
-																										&& (right_child_
-																												< rhs.right_child_))))))))))));
+		// just compare viterbi_score
+		return viterbi_score_ < rhs.viterbi_score_;
 	}
 
 	virtual bool operator ==(const Hypothesis & rhs) const {
-		return viterbi_score_ == rhs.viterbi_score_
-				&& trg_left_ == rhs.trg_left_ && trg_right_ == rhs.trg_right_
-				&& GetEdgeType() == rhs.GetEdgeType()
-				&& GetCenter() == rhs.GetCenter()
-				&& left_child_ == rhs.left_child_
-				&& right_child_ == rhs.right_child_;
+		// a terminal hypothesis is alwasy unique
+		if (IsTerminal() || rhs.IsTerminal()
+		|| GetLeft() != rhs.GetLeft() || GetRight() != rhs.GetRight()
+		|| trg_left_ != rhs.trg_left_ || trg_right_ != rhs.trg_right_)
+			return false;
+		vector<int> this_reorder;
+		vector<int> rhs_reorder;
+		GetReordering(this_reorder);
+		rhs.GetReordering(rhs_reorder);
+		return this_reorder.size() == rhs_reorder.size()
+				&& std::equal(this_reorder.begin(), this_reorder.end(),
+						rhs_reorder.begin());
 	}
+
+	void GetReordering(std::vector<int> & reord, bool verbose = false) const;
 
 	double GetScore() const {
 		return viterbi_score_;

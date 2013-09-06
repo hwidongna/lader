@@ -47,28 +47,16 @@ public:
     	while ((int)hyps_.size() < k+1 && (int)cands_.size() > 0){
     		Hypothesis * hyp = cands_.top(); cands_.pop();
             // skip unnecessary hypothesis
-            bool skip = false;
-            if (!hyp->IsTerminal()){
-            	DiscontinuousHypothesis * left =
-            			dynamic_cast<DiscontinuousHypothesis*>(hyp->GetLeftHyp());
-            	DiscontinuousHypothesis * right =
-            			dynamic_cast<DiscontinuousHypothesis*>(hyp->GetRightHyp());
-            	skip = left && right
-						&& (hyp->GetEdgeType() == left->GetEdgeType()
-						|| hyp->GetEdgeType() == right->GetEdgeType());
-			}
             // Insert the hypothesis
-    		// TODO: manage unique permutations regardless of structure
-            if (!skip)
-				hyps_.push_back(hyp);
+            bool skip = hyp->CanSkip() || !AddUniqueHypothesis(hyp);
     		hyp->LazyNext(cands_, model, features, non_local_features, sent, bigram);
             // If the next hypothesis on the stack is equal to the current
             // hypothesis, remove it, as this just means that we added the same
             // hypothesis
-            while(cands_.size() && *cands_.top() == *hyp) {
-            	delete cands_.top();
-            	cands_.pop();
-            }
+//            while(cands_.size() && *cands_.top() == *hyp) {
+//            	delete cands_.top();
+//            	cands_.pop();
+//            }
             if (skip)
             	delete hyp;
     	}
@@ -83,6 +71,14 @@ public:
     int GetRight() const { return right_; }
     // Add a hypothesis with a new hyper-edge
     void AddHypothesis(Hypothesis * hyp) { hyps_.push_back(hyp); }
+    // Add an unique hypothesis with a new hyper-edge
+    bool AddUniqueHypothesis(Hypothesis * hyp) {
+    	BOOST_FOREACH(Hypothesis * prev, hyps_)
+			if (*prev == *hyp)
+				return false;
+    	hyps_.push_back(hyp);
+    	return true;
+    }
     const std::set<char> & GetHasTypes() { return has_types_; }
     const std::vector<Hypothesis*> & GetHypotheses() const { return hyps_; }
     std::vector<Hypothesis*> & GetHypotheses() { return hyps_; }

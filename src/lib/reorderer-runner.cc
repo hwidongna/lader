@@ -23,13 +23,13 @@ void ReordererTask::Run() {
     // Save the original string
     vector<string> words = ((FeatureDataSequence*)datas[0])->GetSequence();
     // Build the hypergraph
-    HyperGraph * hyper_graph = new DiscontinuousHyperGraph(gapSize, cube_growing, mp, full_fledged, verbose);
+    HyperGraph * hyper_graph = new DiscontinuousHyperGraph(gapSize, cube_growing, full_fledged, mp, verbose);
     if (config_.GetString("bigram").length())
 		hyper_graph->LoadLM(config_.GetString("bigram").c_str());
     hyper_graph->BuildHyperGraph(*model_, *features_, *non_local_features_, datas, beam);
     // Reorder
     std::vector<int> reordering;
-    hyper_graph->GetReordering(reordering, hyper_graph->GetBest());
+    hyper_graph->GetBest()->GetReordering(reordering);
     datas[0]->Reorder(reordering);
     // Print the string
     ostringstream oss;

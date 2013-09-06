@@ -190,7 +190,7 @@ void DiscontinuousHyperGraph::AddDiscontinuousHypotheses(
 // For cube pruning
 void DiscontinuousHyperGraph::StartBeamSearch(
 		int beam_size,
-		HypothesisQueue q, ReordererModel & model, const Sentence & sent,
+		HypothesisQueue & q, ReordererModel & model, const Sentence & sent,
 		const FeatureSet & features, const FeatureSet & non_local_features,
 		TargetSpan * ret, int l, int r)
 {
@@ -202,17 +202,14 @@ void DiscontinuousHyperGraph::StartBeamSearch(
         // If the next hypothesis on the stack is equal to the current
         // hypothesis, remove it, as this just means that we added the same
         // hypothesis
-        while(q.size() && *q.top() == *hyp){
-            delete q.top();
-            q.pop();
-        }
-        // TODO: manage unique permutations regardless of structure
+//        while(q.size() && *q.top() == *hyp){
+//            delete q.top();
+//            q.pop();
+//        }
         // skip unnecessary hypothesis
-        bool skip = hyp->CanSkip();
-
         // Insert the hypothesis
+        bool skip = hyp->CanSkip() || !ret->AddUniqueHypothesis(hyp);
         if (!skip){
-        	ret->AddHypothesis(hyp);
         	num_processed++;
 			if(verbose_ > 1){
 				DiscontinuousHypothesis * dhyp =
@@ -509,33 +506,5 @@ void DiscontinuousHyperGraph::AddLoss(LossBase* loss,
             	}
         	}
         }
-    }
-}
-
-void DiscontinuousHyperGraph::GetReordering(std::vector<int> & reord, Hypothesis * hyp) const{
-    HyperEdge::Type type = hyp->GetEdgeType();
-    if (verbose_ > 1 && !hyp->IsTerminal()){
-    	cerr << "Loss:" << hyp->GetLoss();
-    	DiscontinuousHypothesis* dhyp = dynamic_cast<DiscontinuousHypothesis*>(hyp);
-    	if (dhyp)
-    		cerr << *dhyp;
-    	else
-    		cerr << *hyp;
-    	hyp->PrintChildren(cerr);
-    }
-    if(type == HyperEdge::EDGE_FOR) {
-        for(int i = hyp->GetLeft(); i <= hyp->GetRight(); i++)
-            reord.push_back(i);
-    } else if(type == HyperEdge::EDGE_BAC) {
-        for(int i = hyp->GetRight(); i >= hyp->GetLeft(); i--)
-            reord.push_back(i);
-    } else if(type == HyperEdge::EDGE_ROOT) {
-        GetReordering(reord, hyp->GetLeftHyp());
-    } else if(type == HyperEdge::EDGE_STR) {
-        GetReordering(reord, hyp->GetLeftHyp());
-        GetReordering(reord, hyp->GetRightHyp());
-    } else if(type == HyperEdge::EDGE_INV) {
-        GetReordering(reord, hyp->GetRightHyp());
-        GetReordering(reord, hyp->GetLeftHyp());
     }
 }

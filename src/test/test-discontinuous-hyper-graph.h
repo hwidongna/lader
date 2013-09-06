@@ -432,7 +432,8 @@ public:
     }
 
     int TestBuildHyperGraphGap2() {
-        DiscontinuousHyperGraph graph(2);
+    	// use full-fledged version
+        DiscontinuousHyperGraph graph(2, true, true);
         set.SetMaxTerm(0);
         sent.FromString("this sentence has five words");
 		sent_pos.FromString("PRP NNS VB ADJ NNP");
@@ -598,13 +599,13 @@ public:
         // Get the reordering for 1302
         int ret = 1;
         vector<int> reorder1302;
-        graph.GetReordering(reorder1302, spanr->GetHypothesis(0));
+        spanr->GetHypothesis(0)->GetReordering(reorder1302);
         ostringstream for_oss; spanr->GetHypothesis(0)->PrintParse(str, for_oss);
         ret = min(ret, CheckVector(vec1302, reorder1302));
         ret = min(ret, CheckString("(I (S (F (FW 0)) (F (FW 2))) (S (F (FW 1)) (F (FW 3))))", for_oss.str()));
         // Get the reordering for 2031
         vector<int> reorder2031;
-        graph.GetReordering(reorder2031, spanr->GetHypothesis(1));
+        spanr->GetHypothesis(1)->GetReordering(reorder2031);
         ostringstream bac_oss; spanr->GetHypothesis(1)->PrintParse(str, bac_oss);
         ret = min(ret, CheckVector(vec2031, reorder2031));
         ret = min(ret, CheckString("(S (I (F (FW 0)) (F (FW 2))) (I (F (FW 1)) (F (FW 3))))", bac_oss.str()));

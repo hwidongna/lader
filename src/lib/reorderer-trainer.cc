@@ -35,6 +35,9 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
     cerr << "(\".\" == 100 sentences)" << endl;
 	struct timespec build={0,0}, oracle={0,0}, model={0,0}, adjust={0,0};
 	struct timespec tstart={0,0}, tend={0,0};
+	DiscontinuousHyperGraph hyper_graph(gapSize, cube_growing, mp, full_fledged, verbose);
+	if (config.GetString("bigram").length())
+		hyper_graph.LoadLM(config.GetString("bigram").c_str());
     for(int iter = 0; iter < config.GetInt("iterations"); iter++) {
         double iter_model_loss = 0, iter_oracle_loss = 0;
         int done = 0;
@@ -49,17 +52,15 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
         		cerr << "Sentence " << sent << endl;
             if(done % 100 == 0) { cout << "."; cout.flush(); }
             if(done % 100*80 == 0) { cout << endl; cout.flush(); }
-            HyperGraph * hyper_graph = new DiscontinuousHyperGraph(gapSize, cube_growing, mp, full_fledged, verbose);
-            if (config.GetString("bigram").length())
-            	hyper_graph->LoadLM(config.GetString("bigram").c_str());
+            hyper_graph.Clear();
             // If we are saving features for efficiency, recover the saved
             // features and replace them in the hypergraph
             if(config.GetBool("save_features") && iter != 0)
-                hyper_graph->SetFeatures(SafeAccess(saved_feats_, sent));
+                hyper_graph.SetFeatures(SafeAccess(saved_feats_, sent));
             clock_gettime(CLOCK_MONOTONIC, &tstart);
             // TODO: a loss-augmented parsing would result a different forest
             // Make the hypergraph using cube pruning/growing
-			hyper_graph->BuildHyperGraph(model_,
+			hyper_graph.BuildHyperGraph(model_,
                                         features_,
                                         non_local_features_,
                                         data_[sent],
@@ -68,25 +69,25 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 			build.tv_sec += tend.tv_sec - tstart.tv_sec;
 			build.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
 			if (verbose > 0)
-				printf("hyper_graph->BuildHyperGraph took about %.5f seconds\n",
+				printf("hyper_graph.BuildHyperGraph took about %.5f seconds\n",
 						((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) -
 						((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec));
 			// Add losses to the hypotheses in the hypergraph
             BOOST_FOREACH(LossBase * loss, losses_)
-            	hyper_graph->AddLoss(loss,
+            	hyper_graph.AddLoss(loss,
 					sent < (int)ranks_.size() ? &ranks_[sent] : NULL,
 					sent < (int)parses_.size() ? &parses_[sent] : NULL);
             // Parse the hypergraph, penalizing loss heavily (oracle)
             clock_gettime(CLOCK_MONOTONIC, &tstart);
-            oracle_score = hyper_graph->Rescore(-1e6);
+            oracle_score = hyper_graph.Rescore(-1e6);
 			feat_map.clear();
-			hyper_graph->AccumulateNonLocalFeatures(feat_map,
+			hyper_graph.AccumulateNonLocalFeatures(feat_map,
 					model_,
 					non_local_features_,
 					data_[sent],
-					*hyper_graph->GetBest());
-			oracle_features = hyper_graph->GetBest()->AccumulateFeatures(feat_map, hyper_graph->GetFeatures());
-			oracle_loss = hyper_graph->GetBest()->AccumulateLoss();
+					*hyper_graph.GetBest());
+			oracle_features = hyper_graph.GetBest()->AccumulateFeatures(feat_map, hyper_graph.GetFeatures());
+			oracle_loss = hyper_graph.GetBest()->AccumulateLoss();
 			oracle_score -= oracle_loss * -1e6;
 			clock_gettime(CLOCK_MONOTONIC, &tend);
 			oracle.tv_sec += tend.tv_sec - tstart.tv_sec;
@@ -94,16 +95,16 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 			// Parse the hypergraph, slightly boosting loss by 1.0 if we are
 			// using loss-augmented inference
             clock_gettime(CLOCK_MONOTONIC, &tstart);
-			model_score = hyper_graph->Rescore(loss_aug ? 1.0 : 0.0);
-			model_loss = hyper_graph->GetBest()->AccumulateLoss();
+			model_score = hyper_graph.Rescore(loss_aug ? 1.0 : 0.0);
+			model_loss = hyper_graph.GetBest()->AccumulateLoss();
 			model_score -= model_loss * 1;
 			feat_map.clear();
-			hyper_graph->AccumulateNonLocalFeatures(feat_map,
+			hyper_graph.AccumulateNonLocalFeatures(feat_map,
 							model_,
 							non_local_features_,
 							data_[sent],
-							*hyper_graph->GetBest());
-			model_features = hyper_graph->GetBest()->AccumulateFeatures(feat_map, hyper_graph->GetFeatures());
+							*hyper_graph.GetBest());
+			model_features = hyper_graph.GetBest()->AccumulateFeatures(feat_map, hyper_graph.GetFeatures());
 			clock_gettime(CLOCK_MONOTONIC, &tend);
 			model.tv_sec += tend.tv_sec - tstart.tv_sec;
 			model.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
@@ -112,7 +113,7 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 			iter_oracle_loss += oracle_loss;
 			if (verbose > 0){
 				vector<int> order;
-				hyper_graph->GetReordering(order, hyper_graph->GetBest());
+				hyper_graph.GetReordering(order, hyper_graph.GetBest());
 				for(int i = 0; i < (int)order.size(); i++) {
 					if(i != 0) cout << " "; cout << order[i];
 				}
@@ -156,13 +157,12 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 			if(config.GetBool("save_features")){
 				if((int)((saved_feats_.size())) <= sent)
                     saved_feats_.resize(sent+1);
-                saved_feats_[sent] = hyper_graph->GetFeatures();
-                hyper_graph->ClearFeatures();
+                saved_feats_[sent] = hyper_graph.GetFeatures();
+                hyper_graph.ClearFeatures();
             }
 			clock_gettime(CLOCK_MONOTONIC, &tend);
 			adjust.tv_sec += tend.tv_sec - tstart.tv_sec;
 			adjust.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
-            delete hyper_graph;
         }
         cout << "Finished iteration " << iter << " with loss " << iter_model_loss << " (oracle: " << iter_oracle_loss << ")" << endl;
         cout << "Running time on average: "

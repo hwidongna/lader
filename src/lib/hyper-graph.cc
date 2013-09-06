@@ -312,9 +312,9 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
     	if (!hyp)
     		break;
     	double non_local_score = 0.0;
+    	lm::ngram::Model::State out;
     	if (bigram_){
     		lm::ngram::Model::State state = bigram_->BeginSentenceState();
-    		lm::ngram::Model::State out;
     		// begin of sentence
     		non_local_score += bigram_->Score(
 					state,
@@ -329,9 +329,9 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
     	}
         root_stack->AddHypothesis(new Hypothesis(
         		hyp->GetScore() + non_local_score, 0, non_local_score,
-        		0, n_-1,
+        		new HyperEdge(0, -1, n_-1, HyperEdge::EDGE_ROOT),
         		hyp->GetTrgLeft(), hyp->GetTrgRight(),
-                HyperEdge::EDGE_ROOT, -1,
+        		out,
                 i, -1,
                 top, NULL));
     }

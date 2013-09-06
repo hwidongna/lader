@@ -18,7 +18,22 @@ using namespace std;
 namespace lader {
 
 class DiscontinuousHypothesis : public Hypothesis{
+
 public:
+	DiscontinuousHypothesis(double viterbi_score, double single_score, double non_local_score,
+	               HyperEdge * edge,
+	               int trg_left, int trg_right,
+	               lm::ngram::State state,
+	               int left_rank = -1, int right_rank = -1,
+	               TargetSpan* left_child = NULL, TargetSpan* right_child = NULL) :
+	            	   Hypothesis(viterbi_score, single_score, non_local_score,
+	            			   edge,
+	            			   trg_left, trg_right,
+	            			   state,
+	            			   left_rank, right_rank,
+	            			   left_child, right_child) { }
+protected:
+	friend class TestDiscontinuousHyperGraph;
 	// just for testing
 	DiscontinuousHypothesis(double viterbi_score, double single_score, double non_local_score,
 					int left, int m,
@@ -30,9 +45,10 @@ public:
 	            	   Hypothesis(viterbi_score, single_score, non_local_score,
 	            			   new DiscontinuousHyperEdge(left, m, center, n, right, type),
 	            			   trg_left, trg_right,
+	            			   lm::ngram::State(),
 	            			   left_rank, right_rank,
 	            			   left_child, right_child) { }
-
+	// just for testing
 	DiscontinuousHypothesis(double viterbi_score, double single_score, double non_local_score,
 	               HyperEdge * edge,
 	               int trg_left, int trg_right,
@@ -41,9 +57,10 @@ public:
 	            	   Hypothesis(viterbi_score, single_score, non_local_score,
 	            			   edge,
 	            			   trg_left, trg_right,
+	            			   lm::ngram::State(),
 	            			   left_rank, right_rank,
 	            			   left_child, right_child) { }
-
+public:
 	DiscontinuousHypothesis(const Hypothesis & hyp) : Hypothesis(hyp) {	}
 	int GetM() const{
 		DiscontinuousHyperEdge * dedge =

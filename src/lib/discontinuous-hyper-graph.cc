@@ -167,8 +167,8 @@ void DiscontinuousHyperGraph::AddDiscontinuousHypotheses(
 				out);
 	viterbi_score = score + non_local_score + left->GetScore() + right->GetScore();
 	q.push(new DiscontinuousHypothesis(viterbi_score, score, non_local_score, edge,
-			left->GetTrgLeft(),
-			right->GetTrgRight(),
+			left->GetTrgLeft(), right->GetTrgRight(),
+			l+1 == r ? out : right->GetState(),
 			0, 0, left_stack, right_stack));
 	// Add the inverted terminal
 	edge = new DiscontinuousHyperEdge(l, m, c, n, r, HyperEdge::EDGE_INV);
@@ -182,8 +182,8 @@ void DiscontinuousHyperGraph::AddDiscontinuousHypotheses(
 				out);
 	viterbi_score = score + non_local_score + left->GetScore() + right->GetScore();
 	q.push(new DiscontinuousHypothesis(viterbi_score, score, non_local_score, edge,
-			right->GetTrgLeft(),
-			left->GetTrgRight(),
+			right->GetTrgLeft(), left->GetTrgRight(),
+			l+1 == r ? out : left->GetState(),
 			0, 0, left_stack, right_stack));
 }
 
@@ -199,41 +199,6 @@ void DiscontinuousHyperGraph::StartBeamSearch(
     while((!beam_size || num_processed < beam_size) && q.size()){
         // Pop a hypothesis from the stack and get its target span
         Hypothesis *hyp = q.top(); q.pop();
-        // Insert the hypothesis
-        ret->AddHypothesis(hyp);
-        num_processed++;
-
-        if(verbose_ > 1){
-			DiscontinuousHypothesis * dhyp =
-					dynamic_cast<DiscontinuousHypothesis*>(hyp);
-        	if (dhyp){
-        		cerr << "Insert the discontinuous hypothesis " << *dhyp << endl;
-        	}
-        	else
-        		cerr << "Insert the hypothesis " << *hyp << endl;
-            const FeatureVectorInt *fvi = HyperGraph::GetEdgeFeatures(model, features, sent, *hyp->GetEdge());
-            FeatureVectorString *fvs = model.StringifyFeatureVector(*fvi);
-            FeatureVectorString *fws = model.StringifyWeightVector(*fvi);
-            cerr << *fvs << endl << *fws;
-            hyp->PrintChildren(cerr);
-            delete fvs, fws;
-            if(hyp->GetLeftChild() && hyp->GetRightChild()){
-                const FeatureVectorInt *fvi;
-                if(hyp->GetEdgeType() == HyperEdge::EDGE_STR)
-                    fvi = non_local_features.MakeNonLocalFeatures(sent, *hyp->GetLeftHyp(), *hyp->GetRightHyp(), model.GetFeatureIds(), model.GetAdd());
-                else
-                    fvi = non_local_features.MakeNonLocalFeatures(sent, *hyp->GetRightHyp(), *hyp->GetLeftHyp(), model.GetFeatureIds(), model.GetAdd());
-
-                fvs = model.StringifyFeatureVector(*fvi);
-                fws = model.StringifyWeightVector(*fvi);
-    			cerr << "/********************* non-local features ***********************/" << endl;
-                cerr << *fvs << endl << *fws;
-                delete fvi, fvs, fws;
-            }
-			cerr << endl << "/****************************************************************/" << endl;
-
-        }
-
         // If the next hypothesis on the stack is equal to the current
         // hypothesis, remove it, as this just means that we added the same
         // hypothesis
@@ -241,6 +206,52 @@ void DiscontinuousHyperGraph::StartBeamSearch(
             delete q.top();
             q.pop();
         }
+        // skip unnecessary hypothesis
+        bool skip = false;
+        if (!hyp->IsTerminal()){
+        	DiscontinuousHypothesis * left =
+        			dynamic_cast<DiscontinuousHypothesis*>(hyp->GetLeftHyp());
+        	DiscontinuousHypothesis * right =
+        			dynamic_cast<DiscontinuousHypothesis*>(hyp->GetRightHyp());
+        	skip = left && right
+					&& (hyp->GetEdgeType() == left->GetEdgeType()
+					|| hyp->GetEdgeType() == right->GetEdgeType());
+        }
+        // Insert the hypothesis
+        if (!skip){
+        	ret->AddHypothesis(hyp);
+        	num_processed++;
+			if(verbose_ > 1){
+				DiscontinuousHypothesis * dhyp =
+						dynamic_cast<DiscontinuousHypothesis*>(hyp);
+				if (dhyp){
+					cerr << "Insert the discontinuous hypothesis " << *dhyp << endl;
+				}
+				else
+					cerr << "Insert the hypothesis " << *hyp << endl;
+				const FeatureVectorInt *fvi = HyperGraph::GetEdgeFeatures(model, features, sent, *hyp->GetEdge());
+				FeatureVectorString *fvs = model.StringifyFeatureVector(*fvi);
+				FeatureVectorString *fws = model.StringifyWeightVector(*fvi);
+				cerr << *fvs << endl << *fws;
+				hyp->PrintChildren(cerr);
+				delete fvs, fws;
+				if(hyp->GetLeftChild() && hyp->GetRightChild()){
+					const FeatureVectorInt *fvi;
+					if(hyp->GetEdgeType() == HyperEdge::EDGE_STR)
+						fvi = non_local_features.MakeNonLocalFeatures(sent, *hyp->GetLeftHyp(), *hyp->GetRightHyp(), model.GetFeatureIds(), model.GetAdd());
+					else
+						fvi = non_local_features.MakeNonLocalFeatures(sent, *hyp->GetRightHyp(), *hyp->GetLeftHyp(), model.GetFeatureIds(), model.GetAdd());
+
+					fvs = model.StringifyFeatureVector(*fvi);
+					fws = model.StringifyWeightVector(*fvi);
+					cerr << "/********************* non-local features ***********************/" << endl;
+					cerr << *fvs << endl << *fws;
+					delete fvi, fvs, fws;
+				}
+				cerr << endl << "/****************************************************************/" << endl;
+			}
+        }
+
         // Add next cube items
     	Hypothesis * new_left = NULL, *new_right = NULL;
 
@@ -253,6 +264,9 @@ void DiscontinuousHyperGraph::StartBeamSearch(
     	if (right_span)
     		new_right = right_span->GetHypothesis(hyp->GetRightRank()+1);
     	hyp->IncrementRight(new_right, model, non_local_features, sent, bigram_, q);
+
+    	if (skip)
+    		delete hyp;
     }
 
     while(q.size()){
@@ -361,11 +375,19 @@ TargetSpan * DiscontinuousHyperGraph::ProcessOneSpan(
 			score = GetEdgeScore(model, features, sent, *edge);
 			double non_local_score = GetNonLocalScore(model, non_local_features, sent,
 					*left, *right);
+		    lm::ngram::Model::State out;
+			if (bigram_)
+				non_local_score += bigram_->Score(
+						left->GetState(),
+						bigram_->GetVocabulary().Index(
+								sent[0]->GetElement(right->GetTrgLeft())),
+						out);
 			double viterbi_score = score + non_local_score +
 					left->GetScore() + right->GetScore();
 			q->push(new Hypothesis(viterbi_score, score, non_local_score, edge,
 					left->GetTrgLeft(),
 					right->GetTrgRight(),
+					l+1 == r ? out : right->GetState(),
 					0, 0, left_stack, right_stack));
 			continue;
 		}

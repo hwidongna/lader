@@ -3,6 +3,7 @@
 
 #include <boost/foreach.hpp>
 #include <lader/hypothesis.h>
+#include <lader/discontinuous-hypothesis.h>
 #include <lader/symbol-set.h>
 #include <lader/util.h>
 #include <vector>
@@ -45,7 +46,20 @@ public:
     		const Sentence & sent, const lm::ngram::Model * bigram){
     	while ((int)hyps_.size() < k+1 && (int)cands_.size() > 0){
     		Hypothesis * hyp = cands_.top(); cands_.pop();
-    		hyps_.push_back(hyp);
+            // skip unnecessary hypothesis
+            bool skip = false;
+            if (!hyp->IsTerminal()){
+            	DiscontinuousHypothesis * left =
+            			dynamic_cast<DiscontinuousHypothesis*>(hyp->GetLeftHyp());
+            	DiscontinuousHypothesis * right =
+            			dynamic_cast<DiscontinuousHypothesis*>(hyp->GetRightHyp());
+            	skip = left && right
+						&& (hyp->GetEdgeType() == left->GetEdgeType()
+						|| hyp->GetEdgeType() == right->GetEdgeType());
+			}
+            // Insert the hypothesis
+            if (!skip)
+				hyps_.push_back(hyp);
     		hyp->LazyNext(cands_, model, features, non_local_features, sent, bigram);
             // If the next hypothesis on the stack is equal to the current
             // hypothesis, remove it, as this just means that we added the same
@@ -54,6 +68,8 @@ public:
             	delete cands_.top();
             	cands_.pop();
             }
+            if (skip)
+            	delete hyp;
     	}
     	if ( k < (int)hyps_.size()){
     		return hyps_[k];

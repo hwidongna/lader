@@ -68,17 +68,6 @@ string FeatureNonLocal::GetNonLocalFeatureString(const FeatureDataSequence & sen
             return sent.GetElement(l);
         case 'R':
             return sent.GetElement(r);
-//        case 'E':
-//        	// TODO: qunatize probability
-//        case 'P':
-//        	if (!bigram_)
-//        		THROW_ERROR("Load language model first");
-//        	lword = bigram_->GetVocabulary().Index(sent.GetElement(l));
-//        	rword = bigram_->GetVocabulary().Index(sent.GetElement(r));
-//        	State out_state;
-//        	ret = bigram_->FullScoreForgotState(&lword, &lword, rword, out_state);
-//            oss << ret.prob;
-//            return oss.str();
         default:
             THROW_ERROR("Bad span feature type " << type);
     }
@@ -113,10 +102,6 @@ void FeatureNonLocal::GenerateNonLocalFeatures(
 					values << "||" << GetNonLocalFeatureString(sent_seq,
 							right.GetTrgLeft(), right.GetTrgRight(), templ.second[i]);
 					break;
-//				case 'B':
-//					values << "||" << GetNonLocalFeatureString(sent_seq,
-//							left.GetTrgRight(), right.GetTrgLeft(), templ.second[i]);
-//					break;
 			}
         }
         if (feat_val){

@@ -75,12 +75,14 @@ double HyperGraph::GetNonLocalScore(ReordererModel & model,
                                 const FeatureSet & feature_gen,
                                 const Sentence & sent,
                                 const Hypothesis & left,
-                                const Hypothesis & right) {
+                                const Hypothesis & right,
+                                lm::ngram::State & out) {
     // unlike edge features, do not store non-local features
 	// in order to avoid too much memory usage
-	// TODO: make this optional?
     const FeatureVectorInt * fvi =
-    		feature_gen.MakeNonLocalFeatures(sent, left, right, model.GetFeatureIds(), model.GetAdd());
+    		feature_gen.MakeNonLocalFeatures(sent, left,
+			right, model.GetFeatureIds(), model.GetAdd(),
+			bigram_, &out);
     double score = model.ScoreFeatureVector(SafeReference(fvi));
     delete fvi;
     return score;
@@ -99,11 +101,16 @@ void HyperGraph::AccumulateNonLocalFeatures(std::tr1::unordered_map<int,double> 
 		return;
 	// root has no non-local features
 	if (hyp.GetEdgeType() != HyperEdge::EDGE_ROOT){
+		lm::ngram::State out;
 		const FeatureVectorInt * fvi;
 		if (hyp.GetEdgeType() == HyperEdge::EDGE_STR)
-			fvi = feature_gen.MakeNonLocalFeatures(sent, *left, *right, model.GetFeatureIds(), model.GetAdd());
+			fvi = feature_gen.MakeNonLocalFeatures(sent, *left, *right,
+					model.GetFeatureIds(), model.GetAdd(),
+					bigram_, &out);
 		else if (hyp.GetEdgeType() == HyperEdge::EDGE_INV)
-			fvi = feature_gen.MakeNonLocalFeatures(sent, *right, *left, model.GetFeatureIds(), model.GetAdd());
+			fvi = feature_gen.MakeNonLocalFeatures(sent, *right, *left,
+					model.GetFeatureIds(), model.GetAdd(),
+					bigram_, &out);
         BOOST_FOREACH(FeaturePairInt feat_pair, *fvi)
             feat_map[feat_pair.first] += feat_pair.second;
         delete fvi;
@@ -129,7 +136,7 @@ void HyperGraph::AddTerminals(int l, int r, const FeatureSet & features, Reorder
             	if (i-l+1 < bigram_->Order())
             		bigram_->Score(state, bigram_->GetVocabulary().Index(sent[0]->GetElement(i)), out);
             	else
-            		non_local_score +=
+            		non_local_score += model.GetWeight("BIGRAM") *
 					bigram_->Score(state, bigram_->GetVocabulary().Index(sent[0]->GetElement(i)), out);
                 state = out;
             }
@@ -147,7 +154,7 @@ void HyperGraph::AddTerminals(int l, int r, const FeatureSet & features, Reorder
                 	if (r-i+1 < bigram_->Order())
 						bigram_->Score(state, bigram_->GetVocabulary().Index(sent[0]->GetElement(i)), out);
 					else
-						non_local_score +=
+						non_local_score += model.GetWeight("BIGRAM") *
 						bigram_->Score(state, bigram_->GetVocabulary().Index(sent[0]->GetElement(i)), out);
                     state = out;
                 }
@@ -205,13 +212,7 @@ TargetSpan * HyperGraph::ProcessOneSpan(ReordererModel & model,
         // Add the straight terminal
         HyperEdge * edge = new HyperEdge(l, c, r, HyperEdge::EDGE_STR);
         score = GetEdgeScore(model, features, sent, *edge);
-    	non_local_score = GetNonLocalScore(model, non_local_features, sent, *left, *right);
-    	if (bigram_)
-    		non_local_score += bigram_->Score(
-					left->GetState(),
-					bigram_->GetVocabulary().Index(
-							sent[0]->GetElement(right->GetTrgLeft())),
-					out);
+    	non_local_score = GetNonLocalScore(model, non_local_features, sent, *left, *right, out);
     	viterbi_score = score + non_local_score + left->GetScore() + right->GetScore();
     	q->push(new Hypothesis(viterbi_score, score, non_local_score, edge,
                          left->GetTrgLeft(),
@@ -221,13 +222,7 @@ TargetSpan * HyperGraph::ProcessOneSpan(ReordererModel & model,
         // Add the inverted terminal
         edge = new HyperEdge(l, c, r, HyperEdge::EDGE_INV);
         score = GetEdgeScore(model, features, sent, *edge);
-    	non_local_score = GetNonLocalScore(model, non_local_features, sent, *right, *left);
-    	if (bigram_)
-			non_local_score += bigram_->Score(
-					right->GetState(),
-					bigram_->GetVocabulary().Index(
-							sent[0]->GetElement(left->GetTrgLeft())),
-					out);
+    	non_local_score = GetNonLocalScore(model, non_local_features, sent, *right, *left, out);
     	viterbi_score = score + non_local_score + left->GetScore() + right->GetScore();
     	q->push(new Hypothesis(viterbi_score, score, non_local_score, edge,
 						 right->GetTrgLeft(),
@@ -329,6 +324,7 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
     							hyp->GetState(),
     							bigram_->GetVocabulary().Index("</s>"),
     							out);
+    		non_local_score *= model.GetWeight("BIGRAM");
     	}
         root_stack->AddHypothesis(new Hypothesis(
         		hyp->GetScore() + non_local_score, 0, non_local_score,

@@ -75,14 +75,8 @@ void DiscontinuousHyperGraph::AddHypotheses(
 		edge = new DiscontinuousHyperEdge(l, m, c, n, r, HyperEdge::EDGE_STR);
 
 	score = GetEdgeScore(model, features, sent, *edge);
-	non_local_score = GetNonLocalScore(model, non_local_features, sent, *left, *right);
     lm::ngram::Model::State out;
-	if (bigram_)
-		non_local_score += bigram_->Score(
-				left->GetState(),
-				bigram_->GetVocabulary().Index(
-						sent[0]->GetElement(right->GetTrgLeft())),
-				out);
+	non_local_score = GetNonLocalScore(model, non_local_features, sent, *left, *right, out);
 	viterbi_score = score + non_local_score + left->GetScore() + right->GetScore();
 	q.push(new Hypothesis(viterbi_score, score, non_local_score, edge,
 			left->GetTrgLeft(),
@@ -95,13 +89,7 @@ void DiscontinuousHyperGraph::AddHypotheses(
 	else
 		edge = new DiscontinuousHyperEdge(l, m, c, n, r, HyperEdge::EDGE_INV);
 	score = GetEdgeScore(model, features, sent, *edge);
-	non_local_score = GetNonLocalScore(model, non_local_features, sent, *right, *left);
-	if (bigram_)
-		non_local_score += bigram_->Score(
-				right->GetState(),
-				bigram_->GetVocabulary().Index(
-						sent[0]->GetElement(left->GetTrgLeft())),
-				out);
+	non_local_score = GetNonLocalScore(model, non_local_features, sent, *right, *left, out);
 	viterbi_score = score + non_local_score + left->GetScore() + right->GetScore();
 	q.push(new Hypothesis(viterbi_score, score, non_local_score, edge,
 			right->GetTrgLeft(),
@@ -154,17 +142,11 @@ void DiscontinuousHyperGraph::AddDiscontinuousHypotheses(
 				"["<<l<<", "<<m<<", "<<n<<", "<<r<<"]");
 //    cerr << "Add discontinous str & inv "<<
 //				"["<<l<<", "<<m<<", "<<n<<", "<<r<<"]" << endl;
+	lm::ngram::Model::State out;
 	// Add the straight terminal
 	edge = new DiscontinuousHyperEdge(l, m, c, n, r, HyperEdge::EDGE_STR);
 	score = GetEdgeScore(model, features, sent, *edge);
-	non_local_score = GetNonLocalScore(model, non_local_features, sent, *left, *right);
-    lm::ngram::Model::State out;
-	if (bigram_)
-		non_local_score += bigram_->Score(
-				left->GetState(),
-				bigram_->GetVocabulary().Index(
-						sent[0]->GetElement(right->GetTrgLeft())),
-				out);
+	non_local_score = GetNonLocalScore(model, non_local_features, sent, *left, *right, out);
 	viterbi_score = score + non_local_score + left->GetScore() + right->GetScore();
 	q.push(new DiscontinuousHypothesis(viterbi_score, score, non_local_score, edge,
 			left->GetTrgLeft(), right->GetTrgRight(),
@@ -173,13 +155,7 @@ void DiscontinuousHyperGraph::AddDiscontinuousHypotheses(
 	// Add the inverted terminal
 	edge = new DiscontinuousHyperEdge(l, m, c, n, r, HyperEdge::EDGE_INV);
 	score = GetEdgeScore(model, features, sent, *edge);
-	non_local_score = GetNonLocalScore(model, non_local_features, sent, *right, *left);
-	if (bigram_)
-		non_local_score += bigram_->Score(
-				right->GetState(),
-				bigram_->GetVocabulary().Index(
-						sent[0]->GetElement(left->GetTrgLeft())),
-				out);
+	non_local_score = GetNonLocalScore(model, non_local_features, sent, *right, *left, out);
 	viterbi_score = score + non_local_score + left->GetScore() + right->GetScore();
 	q.push(new DiscontinuousHypothesis(viterbi_score, score, non_local_score, edge,
 			right->GetTrgLeft(), left->GetTrgRight(),
@@ -225,13 +201,19 @@ void DiscontinuousHyperGraph::StartBeamSearch(
 				cerr << *fvs << endl << *fws;
 				hyp->PrintChildren(cerr);
 				delete fvs, fws;
-				if(hyp->GetLeftChild() && hyp->GetRightChild()){
-					const FeatureVectorInt *fvi;
-					if(hyp->GetEdgeType() == HyperEdge::EDGE_STR)
-						fvi = non_local_features.MakeNonLocalFeatures(sent, *hyp->GetLeftHyp(), *hyp->GetRightHyp(), model.GetFeatureIds(), model.GetAdd());
-					else
-						fvi = non_local_features.MakeNonLocalFeatures(sent, *hyp->GetRightHyp(), *hyp->GetLeftHyp(), model.GetFeatureIds(), model.GetAdd());
-
+				Hypothesis * left =hyp->GetLeftHyp();
+				Hypothesis * right =hyp->GetRightHyp();
+				if(left && right){
+					lm::ngram::State out;
+					const FeatureVectorInt * fvi;
+					if (hyp->GetEdgeType() == HyperEdge::EDGE_STR)
+						fvi = non_local_features.MakeNonLocalFeatures(sent, *left, *right,
+								model.GetFeatureIds(), model.GetAdd(),
+								bigram_, &out);
+					else if (hyp->GetEdgeType() == HyperEdge::EDGE_INV)
+						fvi = non_local_features.MakeNonLocalFeatures(sent, *right, *left,
+								model.GetFeatureIds(), model.GetAdd(),
+								bigram_, &out);
 					fvs = model.StringifyFeatureVector(*fvi);
 					fws = model.StringifyWeightVector(*fvi);
 					cerr << "/********************* non-local features ***********************/" << endl;
@@ -344,6 +326,7 @@ TargetSpan * DiscontinuousHyperGraph::ProcessOneSpan(
 	int D = gap_;
 	if (verbose_ > 1)
 		cerr << "Process ["<<l<<", "<<r<<"]" << endl;
+	lm::ngram::Model::State out;
 	for (int i = l+1 ; i <= r ; i++){
 		if (hasPunct && mp_){ // monotone at punctuation
 			TargetSpan *left_stack, *right_stack;
@@ -363,15 +346,8 @@ TargetSpan * DiscontinuousHyperGraph::ProcessOneSpan(
 			// Add the straight non-terminal
 			HyperEdge * edge = new HyperEdge(l, i, r, HyperEdge::EDGE_STR);
 			score = GetEdgeScore(model, features, sent, *edge);
-			double non_local_score = GetNonLocalScore(model, non_local_features, sent,
-					*left, *right);
-		    lm::ngram::Model::State out;
-			if (bigram_)
-				non_local_score += bigram_->Score(
-						left->GetState(),
-						bigram_->GetVocabulary().Index(
-								sent[0]->GetElement(right->GetTrgLeft())),
-						out);
+			double non_local_score =
+					GetNonLocalScore(model, non_local_features, sent, *left, *right, out);
 			double viterbi_score = score + non_local_score +
 					left->GetScore() + right->GetScore();
 			q->push(new Hypothesis(viterbi_score, score, non_local_score, edge,
@@ -427,11 +403,16 @@ void DiscontinuousHyperGraph::AccumulateNonLocalFeatures(std::tr1::unordered_map
 		return;
 	// the root has no non-local features
 	if (hyp.GetEdgeType() != HyperEdge::EDGE_ROOT){
+		lm::ngram::State out;
 		const FeatureVectorInt * fvi;
 		if (hyp.GetEdgeType() == HyperEdge::EDGE_STR)
-			fvi = feature_gen.MakeNonLocalFeatures(sent, *left, *right, model.GetFeatureIds(), model.GetAdd());
+			fvi = feature_gen.MakeNonLocalFeatures(sent, *left, *right,
+					model.GetFeatureIds(), model.GetAdd(),
+					bigram_, &out);
 		else if (hyp.GetEdgeType() == HyperEdge::EDGE_INV)
-			fvi = feature_gen.MakeNonLocalFeatures(sent, *right, *left, model.GetFeatureIds(), model.GetAdd());
+			fvi = feature_gen.MakeNonLocalFeatures(sent, *right, *left,
+					model.GetFeatureIds(), model.GetAdd(),
+					bigram_, &out);
 		if (verbose_ > 1){
 			cerr << "Accumulate non-local feature of hypothesis " << hyp << endl;
             hyp.PrintChildren(cerr);

@@ -155,9 +155,13 @@ inline double ComputeNonLocalScore(ReordererModel & model,
                                 const FeatureSet & feature_gen,
                                 const Sentence & sent,
                                 const Hypothesis & left,
-                                const Hypothesis & right) {
+                                const Hypothesis & right,
+                                const lm::ngram::Model * bigram = NULL,
+                                lm::ngram::State * out = NULL) {
     const FeatureVectorInt * fvi =
-    		feature_gen.MakeNonLocalFeatures(sent, left, right, model.GetFeatureIds(), model.GetAdd());
+    		feature_gen.MakeNonLocalFeatures(sent, left, right,
+    				model.GetFeatureIds(), model.GetAdd(),
+    				bigram, out);
     double score = model.ScoreFeatureVector(SafeReference(fvi));
     delete fvi;
     return score;
@@ -211,30 +215,25 @@ void Hypothesis::IncrementLeft(Hypothesis *new_left, ReordererModel & model,
         // Clone this hypothesis
 		Hypothesis * new_hyp = Clone();
         // Recompute non-local score
+		lm::ngram::Model::State out;
 		double non_local_score = 0.0;
 		if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR)
 			non_local_score = ComputeNonLocalScore(model, non_local_features, sent,
-											*new_left, *old_right);
+											*new_left, *old_right, bigram, &out);
 		else
 			non_local_score = ComputeNonLocalScore(model, non_local_features, sent,
-											*old_right, *new_left);
-		if (bigram){
-			lm::ngram::Model::State out;
-			non_local_score += bigram->Score(
-					old_left->GetState(),
-					bigram->GetVocabulary().Index(
-							sent[0]->GetElement(new_left->GetTrgLeft())),
-					GetLeft() +1 != GetRight() ? out : new_hyp->state_);
-		}
-		new_hyp->SetScore(GetScore()
-				- old_left->GetScore() + new_left->GetScore()
-				- GetNonLocalScore() + non_local_score);
-		new_hyp->SetNonLocalScore(non_local_score);
-		new_hyp->SetLeftRank(GetLeftRank() + 1);
+											*old_right, *new_left, bigram, &out);
+		if (GetLeft() +1 == GetRight())
+			new_hyp->state_ = out;
+		new_hyp->viterbi_score_ = viterbi_score_
+				- old_left->viterbi_score_ + new_left->viterbi_score_
+				- non_local_score_ + non_local_score;
+		new_hyp->non_local_score_ = non_local_score;
+		new_hyp->left_rank_++;
 		if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR)
-			new_hyp->SetTrgLeft(new_left->GetTrgLeft());
+			new_hyp->trg_left_ = new_left->trg_left_;
 		else
-			new_hyp->SetTrgRight(new_left->GetTrgRight());
+			new_hyp->trg_right_ = new_left->trg_right_;
 		q.push(new_hyp);
 	}
 }
@@ -250,30 +249,25 @@ void Hypothesis::IncrementRight(Hypothesis *new_right, ReordererModel & model,
         // Clone this hypothesis
         Hypothesis * new_hyp = Clone();
         // Recompute non-local score
+        lm::ngram::Model::State out;
 		double non_local_score = 0.0;
 		if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR)
 			non_local_score = ComputeNonLocalScore(model, non_local_features, sent,
-											*old_left, *new_right);
+											*old_left, *new_right, bigram, &out);
 		else
 			non_local_score = ComputeNonLocalScore(model, non_local_features, sent,
-											*new_right, *old_left);
-		if (bigram){
-			lm::ngram::Model::State out;
-			non_local_score += bigram->Score(
-					old_left->GetState(),
-					bigram->GetVocabulary().Index(
-							sent[0]->GetElement(new_right->GetTrgLeft())),
-					GetLeft() +1 != GetRight() ? out : new_hyp->state_);
-		}
-		new_hyp->SetScore(GetScore()
-				- old_right->GetScore() + new_right->GetScore()
-				- GetNonLocalScore() + non_local_score);
-		new_hyp->SetNonLocalScore(non_local_score);
-		new_hyp->SetRightRank(GetRightRank()+1);
+											*new_right, *old_left, bigram, &out);
+		if (GetLeft() +1 == GetRight())
+			new_hyp->state_ = out;
+		new_hyp->viterbi_score_ = viterbi_score_
+				- old_right->viterbi_score_ + new_right->viterbi_score_
+				- non_local_score_ + non_local_score;
+		new_hyp->non_local_score_ = non_local_score;
+		new_hyp->right_rank_++;
 		if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR)
-			new_hyp->SetTrgRight(new_right->GetTrgRight());
+			new_hyp->trg_right_ = new_right->trg_right_;
 		else
-			new_hyp->SetTrgLeft(new_right->GetTrgLeft());
+			new_hyp->trg_left_ = new_right->trg_left_;
 		q.push(new_hyp);
 	}
 }

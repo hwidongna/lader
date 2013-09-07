@@ -6,7 +6,8 @@ GAP=$1
 BEAM=$2
 VERBOSE=$3
 CUBE_GROWING=$4
-BIGRAM=$5
+FULL_FLEDGED=$5
+BIGRAM=$6
 
 if [ $# -lt 1 ]
 then
@@ -26,6 +27,11 @@ fi
 if [ $# -lt 4 ]
 then
 CUBE_GROWING=false
+fi
+
+if [ $# -lt 5 ]
+then
+FULL_FLEDGED=false
 fi
 
 # This bash file provides an example of how to run lader and evaluate its
@@ -54,16 +60,16 @@ paste data/test.en output/test.en.class data/test.en.pos data/test.en.parse > ou
 # of the reordered words in the original sentence. Let's output all of them
 # for now.
 
-if [ $# -lt 5 ]
+if [ $# -lt 6 ]
 then
 
-echo "../src/bin/lader -gap-size $GAP -model output/train-g$GAP.mod -out_format order,string,parse -beam $BEAM -cube_growing $CUBE_GROWING -verbose $VERBOSE < output/test.en.annot > output/test.en.reordered"
-../src/bin/lader -gap-size $GAP -model output/train-g$GAP.mod -out_format order,string,parse -beam $BEAM -cube_growing $CUBE_GROWING -verbose $VERBOSE < output/test.en.annot > output/test.en.reordered
+echo "../src/bin/lader -gap-size $GAP -model output/train-g$GAP.mod -out_format order,string,parse -beam $BEAM -cube_growing $CUBE_GROWING -full_fledged $FULL_FLEDGED -verbose $VERBOSE < output/test.en.annot > output/test.en.reordered"
+../src/bin/lader -gap-size $GAP -model output/train-g$GAP.mod -out_format order,string,parse -beam $BEAM -cube_growing $CUBE_GROWING -full_fledged $FULL_FLEDGED -verbose $VERBOSE < output/test.en.annot > output/test.en.reordered
 
 else
 
-echo "../src/bin/lader -gap-size $GAP -model output/train-g$GAP.mod -out_format order,string,parse -beam $BEAM -cube_growing $CUBE_GROWING -verbose $VERBOSE -bigram $BIGRAM < output/test.en.annot > output/test.en.reordered 2> output/test.en.reordered.log"
-../src/bin/lader -gap-size $GAP -model output/train-g$GAP.mod -out_format order,string,parse -beam $BEAM -cube_growing $CUBE_GROWING -verbose $VERBOSE -bigram $BIGRAM < output/test.en.annot > output/test.en.reordered 2> output/test.en.reordered.log
+echo "../src/bin/lader -gap-size $GAP -model output/train-g$GAP.mod -out_format order,string,parse -beam $BEAM -cube_growing $CUBE_GROWING -full_fledged $FULL_FLEDGED -verbose $VERBOSE -bigram $BIGRAM < output/test.en.annot > output/test.en.reordered 2> output/test.en.reordered.log"
+../src/bin/lader -gap-size $GAP -model output/train-g$GAP.mod -out_format order,string,parse -beam $BEAM -cube_growing $CUBE_GROWING -full_fledged $FULL_FLEDGED -verbose $VERBOSE -bigram $BIGRAM < output/test.en.annot > output/test.en.reordered 2> output/test.en.reordered.log
 
 fi
 

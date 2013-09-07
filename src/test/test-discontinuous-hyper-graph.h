@@ -402,6 +402,7 @@ public:
 //    	graph.SetVerbose(2);
     	set.SetMaxTerm(1);
     	set.SetUseReverse(false);
+    	model.SetWeight("BIGRAM", 1.0);
     	graph.BuildHyperGraph(model, set, non_local_set, datas);
     	const std::vector<TargetSpan*> & stacks = graph.GetStacks();
     	int ret = 1;

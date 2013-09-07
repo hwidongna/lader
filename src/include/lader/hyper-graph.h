@@ -113,8 +113,12 @@ public:
     }
 
 protected:
-    virtual TargetSpan *ProcessOneSpan(ReordererModel & model, const FeatureSet & features, const FeatureSet & non_local_features, const Sentence & sent, int l, int r, int beam_size = 0);
-    const FeatureVectorInt *GetEdgeFeatures(ReordererModel & model, const FeatureSet & feature_gen, const Sentence & sent, const HyperEdge & edge);
+    virtual TargetSpan *ProcessOneSpan(ReordererModel & model,
+			const FeatureSet & features, const FeatureSet & non_local_features,
+			const Sentence & sent, int l, int r, int beam_size = 0);
+	const FeatureVectorInt *GetEdgeFeatures(ReordererModel & model,
+			const FeatureSet & feature_gen, const Sentence & sent,
+			const HyperEdge & edge);
     void SetEdgeFeatures(const HyperEdge & edge, FeatureVectorInt *feat)
     {
         if(!features_)
@@ -122,8 +126,13 @@ protected:
 
         features_->insert(MakePair(edge.Clone(), feat));
     }
-    double GetEdgeScore(ReordererModel & model, const FeatureSet & feature_gen, const Sentence & sent, const HyperEdge & edge);
-    double GetNonLocalScore(ReordererModel & model, const FeatureSet & feature_gen, const Sentence & sent, const Hypothesis & left, const Hypothesis & right);
+    double GetEdgeScore(ReordererModel & model, const FeatureSet & feature_gen,
+			const Sentence & sent, const HyperEdge & edge);
+    double GetNonLocalScore(ReordererModel & model,
+			const FeatureSet & feature_gen, const Sentence & sent,
+			const Hypothesis & left, const Hypothesis & right,
+			lm::ngram::State & out);
+
     inline int GetTrgSpanID(int l, int r) const
     {
         if(l == -1)

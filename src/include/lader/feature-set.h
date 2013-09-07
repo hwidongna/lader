@@ -5,6 +5,7 @@
 #include <lader/feature-base.h>
 #include <lader/symbol-set.h>
 #include <boost/foreach.hpp>
+#include "lm/model.hh"
 
 namespace lader {
 
@@ -41,7 +42,9 @@ public:
 		const Hypothesis & left,
 		const Hypothesis & right,
 		SymbolSet<int> & feature_ids,
-		bool add) const;
+		bool add,
+		const lm::ngram::Model * bigram = NULL,
+		lm::ngram::State * out = NULL) const;
 
     // Change an integer-indexed feature vector into a string-indexed vector
     FeatureVectorString StringifyFeatureIndices(const FeatureVectorInt & vec);

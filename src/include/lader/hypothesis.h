@@ -7,7 +7,6 @@
 #include <lader/hypothesis-queue.h>
 #include <lader/feature-data-base.h>
 #include <lader/reorderer-model.h>
-#include <lader/feature-set.h>
 #include <sstream>
 #include <iostream>
 #include <vector>
@@ -21,6 +20,7 @@ typedef std::tr1::unordered_map<const HyperEdge*, FeatureVectorInt*,
 typedef std::pair<const HyperEdge*, FeatureVectorInt*> EdgeFeaturePair;
 
 class TargetSpan;
+class FeatureSet;
 
 // A tuple that is used to hold hypotheses during cube pruning
 class Hypothesis {
@@ -286,6 +286,10 @@ inline std::ostream& operator <<(std::ostream& out,
 			<< rhs.GetCenter() << " :: "
 			<< rhs.GetScore() << ", " << rhs.GetSingleScore() << ", "
 			<< rhs.GetNonLocalScore() << ">";
+	vector<int> reorder;
+	rhs.GetReordering(reorder);
+	BOOST_FOREACH(int i, reorder)
+		out << " " << i;
 	return out;
 }
 }

@@ -227,9 +227,10 @@ public:
         ret *= CheckVector(hyp021intexp, *hyp021int);
         mod.SetWeight("TO||he||ate", 1);
         mod.SetWeight("TI||PRP||NN", 2);
+        lm::ngram::State out;
         // Check to make sure that the weights are Ok
         double weight_act = graph.GetNonLocalScore(mod, non_local_set,
-                                      datas, *hyp021->GetLeftHyp(), *hyp021->GetRightHyp());
+                                      datas, *hyp021->GetLeftHyp(), *hyp021->GetRightHyp(), out);
         if(weight_act != 1+2) {
             cerr << "Weight is not the expected 3: "<<weight_act<<endl;
             ret = 0;

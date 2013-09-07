@@ -15,6 +15,8 @@
 using namespace std;
 namespace lader {
 
+class HyperGraph;
+
 class TargetSpan {
 public:
     TargetSpan(int left, int right, int trg_left=-1, int trg_right=-1)
@@ -38,32 +40,6 @@ public:
     			hyp->GetRightChild()->LabelWithIds(curr_id);
     	}
     	id_ = curr_id++;
-    }
-
-    Hypothesis * LazyKthBest(int k,
-    		ReordererModel & model,
-    		const FeatureSet & features, const FeatureSet & non_local_features,
-    		const Sentence & sent, const lm::ngram::Model * bigram){
-    	while ((int)hyps_.size() < k+1 && (int)cands_.size() > 0){
-    		Hypothesis * hyp = cands_.top(); cands_.pop();
-            // skip unnecessary hypothesis
-            // Insert the hypothesis
-            bool skip = hyp->CanSkip() || !AddUniqueHypothesis(hyp);
-    		hyp->LazyNext(cands_, model, features, non_local_features, sent, bigram);
-            // If the next hypothesis on the stack is equal to the current
-            // hypothesis, remove it, as this just means that we added the same
-            // hypothesis
-//            while(cands_.size() && *cands_.top() == *hyp) {
-//            	delete cands_.top();
-//            	cands_.pop();
-//            }
-            if (skip)
-            	delete hyp;
-    	}
-    	if ( k < (int)hyps_.size()){
-    		return hyps_[k];
-    	}
-    	return NULL;
     }
 
     int GetId() const { return id_; }
@@ -91,6 +67,7 @@ public:
     }
     HypothesisQueue & GetCands() { return cands_; }
     size_t size() const { return hyps_.size(); }
+    size_t CandSize() const { return cands_.size(); }
     const Hypothesis* operator[] (size_t val) const { return hyps_[val]; }
     Hypothesis* operator[] (size_t val) { return hyps_[val]; }
     void ResetId() { id_ = -1; has_types_.clear(); }

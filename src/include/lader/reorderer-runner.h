@@ -9,6 +9,7 @@
 #include <lader/loss-base.h>
 #include <lader/thread-pool.h>
 #include <lader/output-collector.h>
+#include <lader/hyper-graph.h>
 
 namespace lader {
 
@@ -63,9 +64,10 @@ public:
     ReordererTask(int id, const std::string & line,
                   ReordererModel * model, FeatureSet * features, FeatureSet * non_local_features,
                   std::vector<ReordererRunner::OutputType> * outputs,
-                  const ConfigRunner& config, OutputCollector * collector) :
+                  const ConfigRunner& config, HyperGraph * hyper_graph,
+                  OutputCollector * collector) :
         id_(id), line_(line), model_(model), features_(features), non_local_features_(non_local_features),
-        outputs_(outputs), collector_(collector), config_(config) { }
+        outputs_(outputs), collector_(collector), config_(config), hyper_graph_(hyper_graph) { }
     void Run();
 protected:
     int id_;
@@ -76,6 +78,7 @@ protected:
     std::vector<ReordererRunner::OutputType> * outputs_;
     OutputCollector * collector_;
     const ConfigRunner& config_;
+    HyperGraph * hyper_graph_;
 };
 
 }

@@ -150,23 +150,6 @@ void Hypothesis::AccumulateFeatures(const EdgeFeatureMap * features,
     if(GetRightHyp())GetRightHyp()->AccumulateFeatures(features,feat_map);
 }
 
-// Get the score for the left and right children of a hypothesis
-inline double ComputeNonLocalScore(ReordererModel & model,
-                                const FeatureSet & feature_gen,
-                                const Sentence & sent,
-                                const Hypothesis & left,
-                                const Hypothesis & right,
-                                const lm::ngram::Model * bigram = NULL,
-                                lm::ngram::State * out = NULL) {
-    const FeatureVectorInt * fvi =
-    		feature_gen.MakeNonLocalFeatures(sent, left, right,
-    				model.GetFeatureIds(), model.GetAdd(),
-    				bigram, out);
-    double score = model.ScoreFeatureVector(SafeReference(fvi));
-    delete fvi;
-    return score;
-}
-
 // Clone a hypothesis with a hyper edge, which could be discontinuous
 Hypothesis *Hypothesis::Clone() const
 {
@@ -202,89 +185,4 @@ bool Hypothesis::CanSkip() {
 				|| GetEdgeType() == right->GetEdgeType());
 	}
 	return false;
-}
-
-// Increment the left side if there is still a hypothesis left
-void Hypothesis::IncrementLeft(Hypothesis *new_left, ReordererModel & model,
-		const FeatureSet & non_local_features, const Sentence & sent,
-		const lm::ngram::Model * bigram, HypothesisQueue & q)
-{
-   if (new_left != NULL){
-		Hypothesis * old_left= GetLeftHyp();
-		Hypothesis * old_right = GetRightHyp();
-        // Clone this hypothesis
-		Hypothesis * new_hyp = Clone();
-        // Recompute non-local score
-		lm::ngram::Model::State out;
-		double non_local_score = 0.0;
-		if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR)
-			non_local_score = ComputeNonLocalScore(model, non_local_features, sent,
-											*new_left, *old_right, bigram, &out);
-		else
-			non_local_score = ComputeNonLocalScore(model, non_local_features, sent,
-											*old_right, *new_left, bigram, &out);
-		if (GetLeft() +1 == GetRight())
-			new_hyp->state_ = out;
-		new_hyp->viterbi_score_ = viterbi_score_
-				- old_left->viterbi_score_ + new_left->viterbi_score_
-				- non_local_score_ + non_local_score;
-		new_hyp->non_local_score_ = non_local_score;
-		new_hyp->left_rank_++;
-		if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR)
-			new_hyp->trg_left_ = new_left->trg_left_;
-		else
-			new_hyp->trg_right_ = new_left->trg_right_;
-		q.push(new_hyp);
-	}
-}
-
-// Increment the right side if there is still a hypothesis right
-void Hypothesis::IncrementRight(Hypothesis *new_right, ReordererModel & model,
-		const FeatureSet & non_local_features, const Sentence & sent,
-		const lm::ngram::Model * bigram, HypothesisQueue & q)
-{
-    if (new_right != NULL){
-    	Hypothesis * old_left = GetLeftHyp();
-    	Hypothesis * old_right = GetRightHyp();
-        // Clone this hypothesis
-        Hypothesis * new_hyp = Clone();
-        // Recompute non-local score
-        lm::ngram::Model::State out;
-		double non_local_score = 0.0;
-		if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR)
-			non_local_score = ComputeNonLocalScore(model, non_local_features, sent,
-											*old_left, *new_right, bigram, &out);
-		else
-			non_local_score = ComputeNonLocalScore(model, non_local_features, sent,
-											*new_right, *old_left, bigram, &out);
-		if (GetLeft() +1 == GetRight())
-			new_hyp->state_ = out;
-		new_hyp->viterbi_score_ = viterbi_score_
-				- old_right->viterbi_score_ + new_right->viterbi_score_
-				- non_local_score_ + non_local_score;
-		new_hyp->non_local_score_ = non_local_score;
-		new_hyp->right_rank_++;
-		if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR)
-			new_hyp->trg_right_ = new_right->trg_right_;
-		else
-			new_hyp->trg_left_ = new_right->trg_left_;
-		q.push(new_hyp);
-	}
-}
-
-// For cube growing
-void Hypothesis::LazyNext(HypothesisQueue & q, ReordererModel & model,
-		const FeatureSet & features, const FeatureSet & non_local_features,
-		const Sentence & sent, const lm::ngram::Model * bigram){
-	Hypothesis * new_left = NULL, *new_right = NULL;
-
-	TargetSpan *left_span = GetLeftChild();
-	if (left_span)
-		new_left = left_span->LazyKthBest(GetLeftRank()+1, model, features, non_local_features, sent, bigram);
-    IncrementLeft(new_left, model, non_local_features, sent, bigram, q);
-
-	TargetSpan *right_span = GetRightChild();
-	if (right_span)
-		new_right = right_span->LazyKthBest(GetRightRank()+1, model, features, non_local_features, sent, bigram);
-    IncrementRight(new_right, model, non_local_features, sent, bigram, q);
 }

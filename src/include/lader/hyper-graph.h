@@ -27,6 +27,7 @@ public:
     
     friend class TestHyperGraph;
     friend class TestDiscontinuousHyperGraph;
+    friend class Hypothesis;
 
     HyperGraph(bool cube_growing = false) : features_(0), n_(-1), cube_growing_(cube_growing), bigram_(0){ }
 
@@ -106,13 +107,48 @@ public:
         features_ = NULL;
     }
 
-    virtual void AccumulateNonLocalFeatures(std::tr1::unordered_map<int,double> & feat_map, ReordererModel & model, const FeatureSet & feature_gen, const Sentence & sent, const Hypothesis & hyp);
+    virtual void AccumulateNonLocalFeatures(
+			std::tr1::unordered_map<int, double> & feat_map
+			, ReordererModel & model, const FeatureSet & feature_gen
+			, const Sentence & sent, const Hypothesis * hyp);
     void LoadLM(const char *file)
     {
         bigram_ = new lm::ngram::Model(file);
     }
 
+
 protected:
+    // For both cube pruning/growing
+    void IncrementLeft(const Hypothesis *old_hyp, const Hypothesis *new_left,
+			ReordererModel & model, const FeatureSet & non_local_features,
+			const Sentence & sent, HypothesisQueue & q);
+	void IncrementRight(const Hypothesis *old_hyp, const Hypothesis *new_right,
+			ReordererModel & model, const FeatureSet & non_local_features,
+			const Sentence & sent, HypothesisQueue & q);
+
+	// For cube growing
+	void LazyNext(HypothesisQueue & q, ReordererModel & model,
+			const FeatureSet & features, const FeatureSet & non_local_features,
+			const Sentence & sent, const Hypothesis * hyp);
+    Hypothesis * LazyKthBest(TargetSpan * stack, int k,
+    		ReordererModel & model,
+    		const FeatureSet & features, const FeatureSet & non_local_features,
+    		const Sentence & sent){
+    	while (stack->size() < k+1 && stack->CandSize() > 0){
+    		HypothesisQueue & q = stack->GetCands();
+    		Hypothesis * hyp = q.top(); q.pop();
+            // skip unnecessary hypothesis
+            // Insert the hypothesis
+            bool skip = hyp->CanSkip() || !stack->AddUniqueHypothesis(hyp);
+            LazyNext(q, model, features, non_local_features, sent, hyp);
+            if (skip)
+            	delete hyp;
+    	}
+    	if ( k < (int)stack->size()){
+    		return stack->GetHypothesis(k);
+    	}
+    	return NULL;
+    }
     virtual TargetSpan *ProcessOneSpan(ReordererModel & model,
 			const FeatureSet & features, const FeatureSet & non_local_features,
 			const Sentence & sent, int l, int r, int beam_size = 0);
@@ -128,10 +164,15 @@ protected:
     }
     double GetEdgeScore(ReordererModel & model, const FeatureSet & feature_gen,
 			const Sentence & sent, const HyperEdge & edge);
+    const FeatureVectorInt *GetNonLocalFeatures(const HyperEdge * edge,
+    		const Hypothesis *left, const Hypothesis *right, const FeatureSet & feature_gen,
+    		const Sentence & sent, ReordererModel & model, lm::ngram::State * out);
     double GetNonLocalScore(ReordererModel & model,
 			const FeatureSet & feature_gen, const Sentence & sent,
-			const Hypothesis & left, const Hypothesis & right,
-			lm::ngram::State & out);
+			const HyperEdge *edge, const Hypothesis *left,	const Hypothesis *right,
+			lm::ngram::State *out = NULL);
+    double GetRootBigram(const Sentence & sent, const Hypothesis *hyp,
+			lm::ngram::Model::State * out);
 
     inline int GetTrgSpanID(int l, int r) const
     {
@@ -156,6 +197,7 @@ protected:
 private:
     EdgeFeatureMap *features_;
     std::vector<TargetSpan*> stacks_;
+
 protected:
     void AddTerminals(int l, int r, const FeatureSet & features, ReordererModel & model, const Sentence & sent, HypothesisQueue *& q);
     int n_;

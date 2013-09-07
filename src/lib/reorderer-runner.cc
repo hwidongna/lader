@@ -11,10 +11,6 @@ using namespace boost;
 
 void ReordererTask::Run() {
     int beam = config_.GetInt("beam");
-    int gapSize = config_.GetInt("gap-size");
-    bool cube_growing = config_.GetBool("cube_growing");
-    bool mp = config_.GetBool("mp");
-    bool full_fledged = config_.GetBool("full_fledged");
     int verbose = config_.GetInt("verbose");
     // Load the data
 	if (verbose > 1)
@@ -23,13 +19,11 @@ void ReordererTask::Run() {
     // Save the original string
     vector<string> words = ((FeatureDataSequence*)datas[0])->GetSequence();
     // Build the hypergraph
-    HyperGraph * hyper_graph = new DiscontinuousHyperGraph(gapSize, cube_growing, full_fledged, mp, verbose);
-    if (config_.GetString("bigram").length())
-		hyper_graph->LoadLM(config_.GetString("bigram").c_str());
-    hyper_graph->BuildHyperGraph(*model_, *features_, *non_local_features_, datas, beam);
+    hyper_graph_->Clear();
+    hyper_graph_->BuildHyperGraph(*model_, *features_, *non_local_features_, datas, beam);
     // Reorder
     std::vector<int> reordering;
-    hyper_graph->GetBest()->GetReordering(reordering);
+    hyper_graph_->GetBest()->GetReordering(reordering);
     datas[0]->Reorder(reordering);
     // Print the string
     ostringstream oss;
@@ -38,9 +32,9 @@ void ReordererTask::Run() {
         if(outputs_->at(i) == ReordererRunner::OUTPUT_STRING) {
             oss << datas[0]->ToString();
         } else if(outputs_->at(i) == ReordererRunner::OUTPUT_PARSE) {
-            hyper_graph->GetBest()->PrintParse(words, oss);
+            hyper_graph_->GetBest()->PrintParse(words, oss);
         } else if(outputs_->at(i) == ReordererRunner::OUTPUT_HYPERGRAPH) {
-            hyper_graph->PrintHyperGraph(words, oss);
+            hyper_graph_->PrintHyperGraph(words, oss);
         } else if(outputs_->at(i) == ReordererRunner::OUTPUT_ORDER) {
             for(int j = 0; j < (int)reordering.size(); j++) {
                 if(j != 0) oss << " ";
@@ -50,7 +44,6 @@ void ReordererTask::Run() {
             THROW_ERROR("Unimplemented output format");
         }
     }
-    delete hyper_graph;
     oss << endl;
     collector_->Write(id_, oss.str(), "");
     // Clean up the data
@@ -69,12 +62,23 @@ void ReordererRunner::Run(const ConfigRunner & config) {
     std::string source_in = config.GetString("source_in");
     std::ifstream in(source_in.c_str());
     int id = 0;
+    int gapSize = config.GetInt("gap-size");
+    bool cube_growing = config.GetBool("cube_growing");
+    bool mp = config.GetBool("mp");
+    bool full_fledged = config.GetBool("full_fledged");
+    int verbose = config.GetInt("verbose");
+    HyperGraph * hyper_graph = new DiscontinuousHyperGraph(gapSize, cube_growing, full_fledged, mp, verbose);
+    if (config.GetString("bigram").length())
+		hyper_graph->LoadLM(config.GetString("bigram").c_str());
     while(std::getline(in != NULL? in : std::cin, line)) {
-    	ReordererTask *task = new ReordererTask(id++, line, model_, features_, non_local_features_, &outputs_, config, &collector);
+    	ReordererTask *task = new ReordererTask(id++, line, model_, features_,
+				non_local_features_, &outputs_, config, hyper_graph,
+				&collector);
         pool.Submit(task);
     }
     if (in) in.close();
     pool.Stop(true); 
+    delete hyper_graph;
 }
 
 // Initialize the model

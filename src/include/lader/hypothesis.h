@@ -237,6 +237,10 @@ public:
 		edge_->SetType(type);
 	}
 
+	void SetState(lm::ngram::State out){
+		state_ = out;
+	}
+
 	virtual void PrintChildren(std::ostream & out) const;
 	void PrintParse(const vector<string> & strs, ostream & out) const;
 	double AccumulateLoss();
@@ -244,9 +248,6 @@ public:
 	FeatureVectorInt AccumulateFeatures(
 			std::tr1::unordered_map<int, double> & feat_map
 			, const EdgeFeatureMap *features);
-	void LazyNext(HypothesisQueue & q, ReordererModel & model,
-			const FeatureSet & features, const FeatureSet & non_local_features,
-			const Sentence & sent, const lm::ngram::Model * bigram);
 	bool IsTerminal() const {
 		return GetEdgeType() == HyperEdge::EDGE_FOR
 				|| GetEdgeType() == HyperEdge::EDGE_BAC;
@@ -254,12 +255,6 @@ public:
 
 	virtual Hypothesis *Clone() const;
 	virtual bool CanSkip();
-	void IncrementLeft(Hypothesis *new_hyp, ReordererModel & model,
-			const FeatureSet & non_local_features, const Sentence & sent,
-			const lm::ngram::Model * bigram, HypothesisQueue & q);
-	void IncrementRight(Hypothesis *new_right, ReordererModel & model,
-			const FeatureSet & non_local_features, const Sentence & sent,
-			const lm::ngram::Model * bigram, HypothesisQueue & q);
 private:
 	void AccumulateFeatures(const EdgeFeatureMap *features,
 			std::tr1::unordered_map<int, double> & feat_map);

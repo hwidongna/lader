@@ -41,8 +41,8 @@ void DiscontinuousHyperGraph::AddHypotheses(
 	HyperEdge * edge;
     Hypothesis * left, *right;
     if (cube_growing_){
-    	left = left_stack->LazyKthBest(0, model, features, non_local_features, sent, bigram_);
-    	right = right_stack->LazyKthBest(0, model, features, non_local_features, sent, bigram_);
+    	left = LazyKthBest(left_stack, 0, model, features, non_local_features, sent);
+    	right = LazyKthBest(right_stack, 0, model, features, non_local_features, sent);
     }
     else{
     	left = left_stack->GetHypothesis(0);
@@ -76,7 +76,7 @@ void DiscontinuousHyperGraph::AddHypotheses(
 
 	score = GetEdgeScore(model, features, sent, *edge);
     lm::ngram::Model::State out;
-	non_local_score = GetNonLocalScore(model, non_local_features, sent, *left, *right, out);
+	non_local_score = GetNonLocalScore(model, non_local_features, sent, edge, left, right, &out);
 	viterbi_score = score + non_local_score + left->GetScore() + right->GetScore();
 	q.push(new Hypothesis(viterbi_score, score, non_local_score, edge,
 			left->GetTrgLeft(),
@@ -89,7 +89,7 @@ void DiscontinuousHyperGraph::AddHypotheses(
 	else
 		edge = new DiscontinuousHyperEdge(l, m, c, n, r, HyperEdge::EDGE_INV);
 	score = GetEdgeScore(model, features, sent, *edge);
-	non_local_score = GetNonLocalScore(model, non_local_features, sent, *right, *left, out);
+	non_local_score = GetNonLocalScore(model, non_local_features, sent, edge, left, right, &out);
 	viterbi_score = score + non_local_score + left->GetScore() + right->GetScore();
 	q.push(new Hypothesis(viterbi_score, score, non_local_score, edge,
 			right->GetTrgLeft(),
@@ -118,8 +118,8 @@ void DiscontinuousHyperGraph::AddDiscontinuousHypotheses(
 	HyperEdge * edge;
     Hypothesis * left, *right;
     if (cube_growing_){
-    	left = left_stack->LazyKthBest(0, model, features, non_local_features, sent, bigram_);
-    	right = right_stack->LazyKthBest(0, model, features, non_local_features, sent, bigram_);
+    	left = LazyKthBest(left_stack, 0, model, features, non_local_features, sent);
+    	right = LazyKthBest(right_stack, 0, model, features, non_local_features, sent);
     }
     else{
     	left = left_stack->GetHypothesis(0);
@@ -146,7 +146,7 @@ void DiscontinuousHyperGraph::AddDiscontinuousHypotheses(
 	// Add the straight terminal
 	edge = new DiscontinuousHyperEdge(l, m, c, n, r, HyperEdge::EDGE_STR);
 	score = GetEdgeScore(model, features, sent, *edge);
-	non_local_score = GetNonLocalScore(model, non_local_features, sent, *left, *right, out);
+	non_local_score = GetNonLocalScore(model, non_local_features, sent, edge, left, right, &out);
 	viterbi_score = score + non_local_score + left->GetScore() + right->GetScore();
 	q.push(new DiscontinuousHypothesis(viterbi_score, score, non_local_score, edge,
 			left->GetTrgLeft(), right->GetTrgRight(),
@@ -155,7 +155,7 @@ void DiscontinuousHyperGraph::AddDiscontinuousHypotheses(
 	// Add the inverted terminal
 	edge = new DiscontinuousHyperEdge(l, m, c, n, r, HyperEdge::EDGE_INV);
 	score = GetEdgeScore(model, features, sent, *edge);
-	non_local_score = GetNonLocalScore(model, non_local_features, sent, *right, *left, out);
+	non_local_score = GetNonLocalScore(model, non_local_features, sent, edge, left, right, &out);
 	viterbi_score = score + non_local_score + left->GetScore() + right->GetScore();
 	q.push(new DiscontinuousHypothesis(viterbi_score, score, non_local_score, edge,
 			right->GetTrgLeft(), left->GetTrgRight(),
@@ -175,13 +175,6 @@ void DiscontinuousHyperGraph::StartBeamSearch(
     while((!beam_size || num_processed < beam_size) && q.size()){
         // Pop a hypothesis from the stack and get its target span
         Hypothesis *hyp = q.top(); q.pop();
-        // If the next hypothesis on the stack is equal to the current
-        // hypothesis, remove it, as this just means that we added the same
-        // hypothesis
-//        while(q.size() && *q.top() == *hyp){
-//            delete q.top();
-//            q.pop();
-//        }
         // skip unnecessary hypothesis
         // Insert the hypothesis
         bool skip = hyp->CanSkip() || !ret->AddUniqueHypothesis(hyp);
@@ -205,15 +198,8 @@ void DiscontinuousHyperGraph::StartBeamSearch(
 				Hypothesis * right =hyp->GetRightHyp();
 				if(left && right){
 					lm::ngram::State out;
-					const FeatureVectorInt * fvi;
-					if (hyp->GetEdgeType() == HyperEdge::EDGE_STR)
-						fvi = non_local_features.MakeNonLocalFeatures(sent, *left, *right,
-								model.GetFeatureIds(), model.GetAdd(),
-								bigram_, &out);
-					else if (hyp->GetEdgeType() == HyperEdge::EDGE_INV)
-						fvi = non_local_features.MakeNonLocalFeatures(sent, *right, *left,
-								model.GetFeatureIds(), model.GetAdd(),
-								bigram_, &out);
+					const FeatureVectorInt * fvi = GetNonLocalFeatures(hyp->GetEdge(), left, right,
+							non_local_features, sent, model, &out);
 					fvs = model.StringifyFeatureVector(*fvi);
 					fws = model.StringifyWeightVector(*fvi);
 					cerr << "/********************* non-local features ***********************/" << endl;
@@ -230,12 +216,12 @@ void DiscontinuousHyperGraph::StartBeamSearch(
     	TargetSpan *left_span = hyp->GetLeftChild();
     	if (left_span)
     		new_left = left_span->GetHypothesis(hyp->GetLeftRank()+1);
-    	hyp->IncrementLeft(new_left, model, non_local_features, sent, bigram_, q);
+    	IncrementLeft(hyp, new_left, model, non_local_features, sent, q);
 
     	TargetSpan *right_span = hyp->GetRightChild();
     	if (right_span)
     		new_right = right_span->GetHypothesis(hyp->GetRightRank()+1);
-    	hyp->IncrementRight(new_right, model, non_local_features, sent, bigram_, q);
+    	IncrementRight(hyp, new_right, model, non_local_features, sent, q);
 
     	if (skip)
     		delete hyp;
@@ -336,8 +322,8 @@ TargetSpan * DiscontinuousHyperGraph::ProcessOneSpan(
 			if(right_stack == NULL) THROW_ERROR("Target c="<<i<<", r="<<r);
 	        Hypothesis * left, *right;
 	        if (cube_growing_){
-	        	left = left_stack->LazyKthBest(0, model, features, non_local_features, sent, bigram_);
-	        	right = right_stack->LazyKthBest(0, model, features, non_local_features, sent, bigram_);
+	        	left = LazyKthBest(left_stack, 0, model, features, non_local_features, sent);
+	        	right = LazyKthBest(right_stack, 0, model, features, non_local_features, sent);
 	        }
 	        else{
 	        	left = left_stack->GetHypothesis(0);
@@ -346,8 +332,8 @@ TargetSpan * DiscontinuousHyperGraph::ProcessOneSpan(
 			// Add the straight non-terminal
 			HyperEdge * edge = new HyperEdge(l, i, r, HyperEdge::EDGE_STR);
 			score = GetEdgeScore(model, features, sent, *edge);
-			double non_local_score =
-					GetNonLocalScore(model, non_local_features, sent, *left, *right, out);
+			double 	non_local_score = GetNonLocalScore(model, non_local_features, sent,
+					edge, left, right, &out);
 			double viterbi_score = score + non_local_score +
 					left->GetScore() + right->GetScore();
 			q->push(new Hypothesis(viterbi_score, score, non_local_score, edge,
@@ -395,27 +381,33 @@ void DiscontinuousHyperGraph::AccumulateNonLocalFeatures(std::tr1::unordered_map
 										ReordererModel & model,
 		                                const FeatureSet & feature_gen,
 		                                const Sentence & sent,
-		                                const Hypothesis & hyp){
-	Hypothesis * left = hyp.GetLeftHyp();
-	Hypothesis * right = hyp.GetRightHyp();
+		                                const Hypothesis * hyp){
+	Hypothesis * left = hyp->GetLeftHyp();
+	Hypothesis * right = hyp->GetRightHyp();
 	// terminals have no non-local features
 	if (!left && !right)
 		return;
 	// the root has no non-local features
-	if (hyp.GetEdgeType() != HyperEdge::EDGE_ROOT){
+	// root has only the bigram feature on the boundaries
+	if (hyp->GetEdgeType() == HyperEdge::EDGE_ROOT){
 		lm::ngram::State out;
-		const FeatureVectorInt * fvi;
-		if (hyp.GetEdgeType() == HyperEdge::EDGE_STR)
-			fvi = feature_gen.MakeNonLocalFeatures(sent, *left, *right,
-					model.GetFeatureIds(), model.GetAdd(),
-					bigram_, &out);
-		else if (hyp.GetEdgeType() == HyperEdge::EDGE_INV)
-			fvi = feature_gen.MakeNonLocalFeatures(sent, *right, *left,
-					model.GetFeatureIds(), model.GetAdd(),
-					bigram_, &out);
+		double rootBigram = GetRootBigram(sent, hyp, &out);
+		feat_map[model.GetFeatureIds().GetId("BIGRAM")] += rootBigram;
 		if (verbose_ > 1){
 			cerr << "Accumulate non-local feature of hypothesis " << hyp << endl;
-            hyp.PrintChildren(cerr);
+            hyp->PrintChildren(cerr);
+            cerr << "/********************* non-local features ***********************/" << endl;
+			cerr << "BIGRAM:" << rootBigram << endl << "BIGRAM:" << model.GetWeight("BIGRAM") << endl;
+			cerr << "/****************************************************************/" << endl;
+		}
+	}
+	else{
+		lm::ngram::State out;
+		const FeatureVectorInt * fvi = GetNonLocalFeatures(hyp->GetEdge(), left, right,
+				feature_gen, sent, model, &out);
+		if (verbose_ > 1){
+			cerr << "Accumulate non-local feature of hypothesis " << hyp << endl;
+            hyp->PrintChildren(cerr);
 			FeatureVectorString * fvs = model.StringifyFeatureVector(*fvi);
 			FeatureVectorString * fws = model.StringifyWeightVector(*fvi);
 			cerr << "/********************* non-local features ***********************/" << endl;
@@ -428,9 +420,9 @@ void DiscontinuousHyperGraph::AccumulateNonLocalFeatures(std::tr1::unordered_map
         delete fvi;
 	}
 	if (left)
-		AccumulateNonLocalFeatures(feat_map, model, feature_gen, sent, *left);
+		AccumulateNonLocalFeatures(feat_map, model, feature_gen, sent, left);
 	if (right)
-		AccumulateNonLocalFeatures(feat_map, model, feature_gen, sent, *right);
+		AccumulateNonLocalFeatures(feat_map, model, feature_gen, sent, right);
 }
 
 void DiscontinuousHyperGraph::AddLoss(LossBase* loss,

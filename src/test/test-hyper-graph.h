@@ -182,13 +182,6 @@ public:
     int TestGetNonLocalFeaturesAndWeights() {
         // Make a reorderer model
         ReordererModel mod;
-        // Test that these features are made properly
-        FeatureVectorString hyp021exp;
-        hyp021exp.push_back(MakePair(string("TO||he||ate"), 1));
-        hyp021exp.push_back(MakePair(string("TI||PRP||NN"), 1));
-        FeatureVectorInt hyp021intexp;
-        hyp021intexp.push_back(MakePair(2, 1));
-        hyp021intexp.push_back(MakePair(3, 1));
         // Make the hypergraph and get the features
         HyperGraph graph;
         // Create spans, and generate hypotheses
@@ -223,14 +216,20 @@ public:
         FeatureVectorString * hyp021act =
                         mod.StringifyFeatureVector(*hyp021int);
         // Do the parsing and checking
+        // Test that these features are made properly
+        FeatureVectorString hyp021exp;
+        hyp021exp.push_back(MakePair(string("TO||he||ate"), 1));
+        hyp021exp.push_back(MakePair(string("TI||PRP||NN"), 1));
         ret *= CheckVector(hyp021exp, *hyp021act);
+        FeatureVectorInt hyp021intexp;
+        hyp021intexp.push_back(MakePair(mod.GetFeatureIds().GetId("TO||he||ate"), 1));
+        hyp021intexp.push_back(MakePair(mod.GetFeatureIds().GetId("TI||PRP||NN"), 1));
         ret *= CheckVector(hyp021intexp, *hyp021int);
         mod.SetWeight("TO||he||ate", 1);
         mod.SetWeight("TI||PRP||NN", 2);
-        lm::ngram::State out;
         // Check to make sure that the weights are Ok
         double weight_act = graph.GetNonLocalScore(mod, non_local_set,
-                                      datas, *hyp021->GetLeftHyp(), *hyp021->GetRightHyp(), out);
+                                      datas, hyp021->GetEdge(), hyp021->GetLeftHyp(), hyp021->GetRightHyp());
         if(weight_act != 1+2) {
             cerr << "Weight is not the expected 3: "<<weight_act<<endl;
             ret = 0;

@@ -408,24 +408,24 @@ public:
     	int ret = 1;
     	lm::ngram::Model::State state = graph.bigram_->BeginSentenceState();
     	lm::ngram::Model::State out_state;
-    	double ngram_score = 0.0;
-    	ngram_score += graph.bigram_->Score(state,
+    	double bigram_score = 0.0;
+    	bigram_score += graph.bigram_->Score(state,
     			graph.bigram_->GetVocabulary().Index("he"), out_state);
     	state = out_state;
-    	ngram_score += graph.bigram_->Score(state,
+    	bigram_score += graph.bigram_->Score(state,
     			graph.bigram_->GetVocabulary().Index("rice"), out_state);
     	state = out_state;
-    	ngram_score += graph.bigram_->Score(state,
+    	bigram_score += graph.bigram_->Score(state,
     			graph.bigram_->GetVocabulary().Index("ate"), out_state);
     	state = out_state;
-    	ngram_score += graph.bigram_->Score(state,
+    	bigram_score += graph.bigram_->Score(state,
     			graph.bigram_->GetVocabulary().Index("."), out_state);
     	state = out_state;
-		ngram_score += graph.bigram_->Score(state,
+		bigram_score += graph.bigram_->Score(state,
 				graph.bigram_->GetVocabulary().Index("</s>"), out_state);
     	Hypothesis * best = graph.GetBest();
-    	if (best->GetScore() != ngram_score){
-    		cerr << "The best hypotheses " << *best << " != non-local score " << ngram_score << endl;
+    	if (best->GetScore() != bigram_score){
+    		cerr << "The best hypotheses " << *best << " != " << bigram_score << endl;
     		ret = 0;
     	}
     	set.SetUseReverse(true);

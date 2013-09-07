@@ -42,9 +42,7 @@ public:
 		const Hypothesis & left,
 		const Hypothesis & right,
 		SymbolSet<int> & feature_ids,
-		bool add,
-		const lm::ngram::Model * bigram = NULL,
-		lm::ngram::State * out = NULL) const;
+		bool add) const;
 
     // Change an integer-indexed feature vector into a string-indexed vector
     FeatureVectorString StringifyFeatureIndices(const FeatureVectorInt & vec);

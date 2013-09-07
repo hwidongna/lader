@@ -85,7 +85,7 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 					model_,
 					non_local_features_,
 					data_[sent],
-					*hyper_graph.GetBest());
+					hyper_graph.GetBest());
 			oracle_features = hyper_graph.GetBest()->AccumulateFeatures(feat_map, hyper_graph.GetFeatures());
 			oracle_loss = hyper_graph.GetBest()->AccumulateLoss();
 			oracle_score -= oracle_loss * -1e6;
@@ -103,7 +103,7 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 							model_,
 							non_local_features_,
 							data_[sent],
-							*hyper_graph.GetBest());
+							hyper_graph.GetBest());
 			model_features = hyper_graph.GetBest()->AccumulateFeatures(feat_map, hyper_graph.GetFeatures());
 			clock_gettime(CLOCK_MONOTONIC, &tend);
 			model.tv_sec += tend.tv_sec - tstart.tv_sec;

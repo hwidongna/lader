@@ -79,9 +79,9 @@ public:
         ts01->AddHypothesis(new Hypothesis(5,-1,0, 0,1,1,0,HyperEdge::EDGE_INV,1,0,0,ts00,ts11));
         ts01->AddHypothesis(new Hypothesis(4,-1,0, 0,1,0,1,HyperEdge::EDGE_FOR));
         ts01->AddHypothesis(new Hypothesis(3,-1,0, 0,1,0,1,HyperEdge::EDGE_STR,1,0,0,ts00,ts11));
-        tsr->AddHypothesis(new Hypothesis(6,-1,0, 1,0,-1,2,HyperEdge::EDGE_ROOT,-1,0,-1,ts01));
-        tsr->AddHypothesis(new Hypothesis(6,-1,0, 0,1,-1,2,HyperEdge::EDGE_ROOT,-1,1,-1,ts01));
-        tsr->AddHypothesis(new Hypothesis(6,-1,0, 0,1,-1,2,HyperEdge::EDGE_ROOT,-1,2,-1,ts01));
+        tsr->AddHypothesis(new Hypothesis(6,0,0, 1,0,-1,2,HyperEdge::EDGE_ROOT,-1,0,-1,ts01));
+        tsr->AddHypothesis(new Hypothesis(6,0,0, 0,1,-1,2,HyperEdge::EDGE_ROOT,-1,1,-1,ts01));
+        tsr->AddHypothesis(new Hypothesis(6,0,0, 0,1,-1,2,HyperEdge::EDGE_ROOT,-1,2,-1,ts01));
         // Add the features
         FeatureVectorInt 
             *fv00 = new FeatureVectorInt(1, MakePair(1,1)),

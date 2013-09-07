@@ -111,10 +111,7 @@ const FeatureVectorInt *HyperGraph::GetNonLocalFeatures(const HyperEdge * edge,
 double HyperGraph::Score(double loss_multiplier,
                          const Hypothesis* hyp) const{
     double score = hyp->GetLoss()*loss_multiplier;
-    // TODO: score of root also include non-local score?
-    if(hyp->GetEdgeType() != HyperEdge::EDGE_ROOT) {
-    	score += hyp->GetSingleScore() + hyp->GetNonLocalScore();
-    }
+	score += hyp->GetSingleScore() + hyp->GetNonLocalScore();
     if(hyp->GetLeftChild())
 		score += Score(loss_multiplier, hyp->GetLeftHyp());
 	if(hyp->GetRightChild())
@@ -171,14 +168,12 @@ void HyperGraph::AccumulateNonLocalFeatures(std::tr1::unordered_map<int,double> 
 		                                const Hypothesis * hyp){
 	Hypothesis * left = hyp->GetLeftHyp();
 	Hypothesis * right = hyp->GetRightHyp();
-	// terminals have no non-local features
-	if (!left || !right)
-		return;
 	// root has only the bigram feature on the boundaries
 	if (hyp->GetEdgeType() == HyperEdge::EDGE_ROOT){
 		lm::ngram::State out;
 		feat_map[model.GetFeatureIds().GetId("BIGRAM")] += GetRootBigram(sent, hyp, &out);
 	}
+	// terminals may have bigram features
 	else{
 		lm::ngram::State out;
 		const FeatureVectorInt * fvi = GetNonLocalFeatures(hyp->GetEdge(), left, right,

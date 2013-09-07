@@ -103,8 +103,8 @@ public:
         // the viterbi score of combining ts0_2b and ts1_3b is greater than that of ts01 and ts23
         ts03->AddHypothesis(new Hypothesis(1+3+5+2+4+6+7,-1, 0, edge03f.Clone(), 0,3, 0,0, ts0_2, ts1_3));
         ts03->AddHypothesis(new Hypothesis(1+2+7,-1, 0, edge03f.Clone(), 0,3, 0,0, ts01, ts23));
-        tsRoot->AddHypothesis(new Hypothesis(1+3+5+2+4+6+7, -1, 0, 0,3, 0,3,  HyperEdge::EDGE_ROOT,-1, 0,-1,ts03));
-        tsRoot->AddHypothesis(new Hypothesis(1+2+7, -1, 0, 0,3, 0,3,  HyperEdge::EDGE_ROOT,-1, 1,-1,ts03));
+        tsRoot->AddHypothesis(new Hypothesis(1+3+5+2+4+6+7, 0, 0, 0,3, 0,3,  HyperEdge::EDGE_ROOT,-1, 0,-1,ts03));
+        tsRoot->AddHypothesis(new Hypothesis(1+2+7, 0, 0, 0,3, 0,3,  HyperEdge::EDGE_ROOT,-1, 1,-1,ts03));
         // Add the features
         FeatureVectorInt 
             *fv00 = new FeatureVectorInt(1, MakePair(1,1)),
@@ -399,7 +399,7 @@ public:
     	ReordererModel model;
     	DiscontinuousHyperGraph graph(1);
     	graph.LoadLM("/tmp/ngram.arpa");
-//    	graph.SetVerbose(2);
+    	graph.SetVerbose(2);
     	set.SetMaxTerm(1);
     	set.SetUseReverse(false);
     	model.SetWeight("BIGRAM", 1.0);

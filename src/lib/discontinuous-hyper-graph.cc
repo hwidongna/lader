@@ -193,10 +193,12 @@ void DiscontinuousHyperGraph::StartBeamSearch(
 				FeatureVectorString *fws = model.StringifyWeightVector(*fvi);
 				cerr << *fvs << endl << *fws;
 				hyp->PrintChildren(cerr);
+				// do not delete fvi for edge, will be deleted later
 				delete fvs, fws;
 				Hypothesis * left =hyp->GetLeftHyp();
 				Hypothesis * right =hyp->GetRightHyp();
-				if(left && right){
+				// termininals may have bigram features
+				if((left && right) || hyp->IsTerminal()){
 					lm::ngram::State out;
 					const FeatureVectorInt * fvi = GetNonLocalFeatures(hyp->GetEdge(), left, right,
 							non_local_features, sent, model, &out);
@@ -384,29 +386,31 @@ void DiscontinuousHyperGraph::AccumulateNonLocalFeatures(std::tr1::unordered_map
 		                                const Hypothesis * hyp){
 	Hypothesis * left = hyp->GetLeftHyp();
 	Hypothesis * right = hyp->GetRightHyp();
-	// terminals have no non-local features
-	if (!left && !right)
-		return;
-	// the root has no non-local features
 	// root has only the bigram feature on the boundaries
 	if (hyp->GetEdgeType() == HyperEdge::EDGE_ROOT){
 		lm::ngram::State out;
 		double rootBigram = GetRootBigram(sent, hyp, &out);
 		feat_map[model.GetFeatureIds().GetId("BIGRAM")] += rootBigram;
 		if (verbose_ > 1){
-			cerr << "Accumulate non-local feature of hypothesis " << hyp << endl;
+			cerr << "Accumulate non-local feature of hypothesis " << *hyp << endl;
             hyp->PrintChildren(cerr);
             cerr << "/********************* non-local features ***********************/" << endl;
 			cerr << "BIGRAM:" << rootBigram << endl << "BIGRAM:" << model.GetWeight("BIGRAM") << endl;
 			cerr << "/****************************************************************/" << endl;
 		}
 	}
+	// terminals may have bigram features
 	else{
 		lm::ngram::State out;
 		const FeatureVectorInt * fvi = GetNonLocalFeatures(hyp->GetEdge(), left, right,
 				feature_gen, sent, model, &out);
 		if (verbose_ > 1){
-			cerr << "Accumulate non-local feature of hypothesis " << hyp << endl;
+			const DiscontinuousHypothesis * dhyp =
+					dynamic_cast<const DiscontinuousHypothesis*>(hyp);
+			cerr << "Accumulate non-local feature of hypothesis ";
+			if (dhyp) cerr << *dhyp;
+			else cerr << *hyp;
+			cerr << endl;
             hyp->PrintChildren(cerr);
 			FeatureVectorString * fvs = model.StringifyFeatureVector(*fvi);
 			FeatureVectorString * fws = model.StringifyWeightVector(*fvi);

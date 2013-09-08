@@ -359,7 +359,8 @@ TargetSpan * DiscontinuousHyperGraph::ProcessOneSpan(
 						i, i-1+d, j, r);
 			}
 			// Process [0, m, n, N-1] is meaningless
-			if ( r+d < N && r+d-l+1 != N){
+			// Process [l, m, n, r] s.t. m-l < D or r-n < D
+			if ( r+d < N && r+d-l+1 != N && (i-l <= D || r-i+1 <= D)){
 				SetStack(l, i-1, i+d, r+d,
 						ProcessOneDiscontinuousSpan(
 								model, features, non_local_features, sent,
@@ -465,7 +466,7 @@ void DiscontinuousHyperGraph::AddLoss(LossBase* loss,
             for (int i = l+1 ; i <= r ; i++){
             	for (int d = 1 ; d <= D ; d++){
             		// Process [0, m, n, N-1] is meaningless
-					if ( r+d < N && r+d-l+1 != N && GetStack(l,i-1,i+d,r+d) != NULL){
+					if ( r+d < N && r+d-l+1 != N && (i-l <= D || r-i+1 <= D)){
 						if (verbose_ > 1)
 							cerr << "AddLoss ["<<l<<", "<<i-1<<", "<<i+d<<", "<<r+d<<"]" << endl;
 						BOOST_FOREACH(Hypothesis* hyp, GetStack(l,i-1,i+d,r+d)->GetHypotheses()) {

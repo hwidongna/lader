@@ -50,8 +50,8 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
         		break;
         	if (verbose > 1)
         		cerr << "Sentence " << sent << endl;
-            if(done % 100 == 0) { cout << "."; cout.flush(); }
-            if(done % 100*80 == 0) { cout << endl; cout.flush(); }
+            if(done % 100 == 0) cerr << ".";
+            if(done % 100*80 == 0) cerr << endl; cout.flush();
             hyper_graph.Clear();
             // If we are saving features for efficiency, recover the saved
             // features and replace them in the hypergraph

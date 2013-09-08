@@ -193,8 +193,17 @@ public:
         double loss2 = lf.CalculateSentenceLoss(order, &ranks, NULL).first;
         if(loss2 != WEIGHT){
             cerr << "loss2 " << loss2/WEIGHT << " != 1" << endl;
-            ret = 2;
+            ret = 0;
         }
+
+        Alignment al(MakePair(4,3));
+        vector<string> words(4,"x");
+        Ranks zeros(CombinedAlign(words, al));
+        double loss3 = lf.CalculateSentenceLoss(order, &zeros, NULL).first;
+        if(loss3 != WEIGHT*3){
+			cerr << "loss3 " << loss3/WEIGHT << " != 3" << endl;
+			ret = 0;
+		}
         return ret;
     }
 

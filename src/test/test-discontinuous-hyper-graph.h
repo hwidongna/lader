@@ -399,7 +399,7 @@ public:
     	ReordererModel model;
     	DiscontinuousHyperGraph graph(1);
     	graph.LoadLM("/tmp/ngram.arpa");
-    	graph.SetVerbose(2);
+//    	graph.SetVerbose(2);
     	set.SetMaxTerm(1);
     	set.SetUseReverse(false);
     	model.SetWeight("BIGRAM", 1.0);

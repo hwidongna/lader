@@ -2,6 +2,7 @@
 #include <boost/algorithm/string.hpp>
 #include <lader/discontinuous-hyper-graph.h>
 #include <time.h>
+#include <cstdlib>
 using namespace lader;
 using namespace boost;
 using namespace std;
@@ -30,7 +31,9 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 
     cerr << "Total " << sent_order.size() << " sentences, "
     		<< "Sample " << samples << " sentences" << endl;
-
+    // Shuffle the whole orders for the first time
+	if(config.GetBool("shuffle"))
+		random_shuffle(sent_order.begin(), sent_order.end());
     // Perform an iteration
     cerr << "(\".\" == 100 sentences)" << endl;
 	struct timespec build={0,0}, oracle={0,0}, model={0,0}, adjust={0,0};
@@ -41,9 +44,10 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
     for(int iter = 0; iter < config.GetInt("iterations"); iter++) {
         double iter_model_loss = 0, iter_oracle_loss = 0;
         int done = 0;
-        // Shuffle
-        if(config.GetBool("shuffle"))
-            random_shuffle(sent_order.begin(), sent_order.end());
+        // Shuffle the sample size
+        if(iter != 0 && config.GetBool("shuffle"))
+            random_shuffle(sent_order.begin(),
+            		sent_order.size() > samples ? sent_order.begin() + samples: sent_order.end());
         // Over all values in the corpus
         BOOST_FOREACH(int sent, sent_order) {
         	if (done++ >= samples)
@@ -51,7 +55,7 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
         	if (verbose > 1)
         		cerr << "Sentence " << sent << endl;
             if(done % 100 == 0) cerr << ".";
-            if(done % 100*80 == 0) cerr << endl; cout.flush();
+            if(done % 100*80 == 0) cerr << endl;
             hyper_graph.Clear();
             // If we are saving features for efficiency, recover the saved
             // features and replace them in the hypergraph
@@ -60,9 +64,9 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
             clock_gettime(CLOCK_MONOTONIC, &tstart);
             // TODO: a loss-augmented parsing would result a different forest
             // Make the hypergraph using cube pruning/growing
-			hyper_graph.BuildHyperGraph(model_,
-                                        features_,
-                                        non_local_features_,
+			hyper_graph.BuildHyperGraph(*model_,
+                                        *features_,
+                                        *non_local_features_,
                                         data_[sent],
                                         config.GetInt("beam"));
 			clock_gettime(CLOCK_MONOTONIC, &tend);
@@ -82,8 +86,8 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
             oracle_score = hyper_graph.Rescore(-1e6);
 			feat_map.clear();
 			hyper_graph.AccumulateNonLocalFeatures(feat_map,
-					model_,
-					non_local_features_,
+					*model_,
+					*non_local_features_,
 					data_[sent],
 					hyper_graph.GetBest());
 			oracle_features = hyper_graph.GetBest()->AccumulateFeatures(feat_map, hyper_graph.GetFeatures());
@@ -100,8 +104,8 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 			model_score -= model_loss * 1;
 			feat_map.clear();
 			hyper_graph.AccumulateNonLocalFeatures(feat_map,
-							model_,
-							non_local_features_,
+							*model_,
+							*non_local_features_,
 							data_[sent],
 							hyper_graph.GetBest());
 			model_features = hyper_graph.GetBest()->AccumulateFeatures(feat_map, hyper_graph.GetFeatures());
@@ -142,13 +146,13 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 			//  some loss
             clock_gettime(CLOCK_MONOTONIC, &tstart);
             if(config.GetString("learner") == "pegasos") {
-                model_.AdjustWeightsPegasos(
+                model_->AdjustWeightsPegasos(
                     model_loss == oracle_loss ?
                     FeatureVectorInt() :
                     VectorSubtract(oracle_features, model_features));
             } else if(config.GetString("learner") == "perceptron") {
                 if(model_loss != oracle_loss)
-                    model_.AdjustWeightsPerceptron(
+                	model_->AdjustWeightsPerceptron(
                         VectorSubtract(oracle_features, model_features));
             } else {
                 THROW_ERROR("Bad learner: " << config.GetString("learner"));
@@ -170,33 +174,56 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
         		<< ", oracle " << ((double)oracle.tv_sec + 1.0e-9*oracle.tv_nsec) / (iter+1) << "s"
         		<< ", model " << ((double)model.tv_sec + 1.0e-9*model.tv_nsec)  / (iter+1) << "s"
         		<< ", adjust " << ((double)adjust.tv_sec + 1.0e-9*adjust.tv_nsec)  / (iter+1) << "s" << endl;
+        cout.flush();
         bool last_iter = (iter_model_loss == iter_oracle_loss ||
                           iter == config.GetInt("iterations") - 1);
-        if(config.GetBool("write_every_iter") || last_iter) {
+        if(last_iter) {
             WriteModel(config.GetString("model_out"));
-            if(last_iter)
-                break;
+            break;
+        }
+        // write every iteration to a different file
+        else if(config.GetBool("write_every_iter")){
+        	stringstream ss;
+        	ss << ".it" << iter;
+        	WriteModel(config.GetString("model_out") + ss.str());
         }
     }
 }
 
 void ReordererTrainer::InitializeModel(const ConfigTrainer & config) {
     srand(time(NULL));
+    // Load the model from  a file if it exists, otherwise note features
+    if(config.GetString("model_in").length() != 0) {
+        std::ifstream in(config.GetString("model_in").c_str());
+        if(!in) THROW_ERROR("Couldn't read model from file (-model_in '"
+                            << config.GetString("model_in") << "')");
+        cerr << "Load the exising model";
+        features_ = FeatureSet::FromStream(in);
+        if (!config.GetBool("backward_compatibility"))
+        	non_local_features_ = FeatureSet::FromStream(in);
+        model_ = ReordererModel::FromStream(in);
+    }
+    else {
+        model_ = new ReordererModel;
+        features_ = new FeatureSet;
+        non_local_features_ = new FeatureSet;
+        features_->ParseConfiguration(config.GetString("feature_profile"));
+        non_local_features_->ParseConfiguration(config.GetString("non_local_feature_profile"));
+        features_->SetMaxTerm(config.GetInt("max_term"));
+        features_->SetUseReverse(config.GetBool("use_reverse"));
+    }
     ofstream model_out(config.GetString("model_out").c_str());
     if(!model_out)
         THROW_ERROR("Must specify a valid model output with -model_out ('"
                         <<config.GetString("model_out")<<"')");
+    // Load the other config
     attach_ = config.GetString("attach_null") == "left" ? 
                 CombinedAlign::ATTACH_NULL_LEFT :
                 CombinedAlign::ATTACH_NULL_RIGHT;
     combine_ = config.GetBool("combine_blocks") ? 
                 CombinedAlign::COMBINE_BLOCKS :
                 CombinedAlign::LEAVE_BLOCKS_AS_IS;
-    features_.ParseConfiguration(config.GetString("feature_profile"));
-    features_.SetMaxTerm(config.GetInt("max_term"));
-    features_.SetUseReverse(config.GetBool("use_reverse"));
-    non_local_features_.ParseConfiguration(config.GetString("non_local_feature_profile"));
-    model_.SetCost(config.GetDouble("cost"));
+    model_->SetCost(config.GetDouble("cost"));
     std::vector<std::string> losses, first_last;
     algorithm::split(
         losses, config.GetString("loss_profile"), is_any_of("|"));

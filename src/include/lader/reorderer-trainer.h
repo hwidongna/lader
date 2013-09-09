@@ -30,6 +30,9 @@ public:
             }
             delete feat;
         }
+        delete model_;
+        delete features_;
+        delete non_local_features_;
     }
 
     // Initialize the model
@@ -43,7 +46,7 @@ public:
         std::string line;
         data_.clear();
         while(getline(in, line))
-            data_.push_back(features_.ParseInput(line));
+            data_.push_back(features_->ParseInput(line));
     }
 
     // Read in the alignments
@@ -56,9 +59,9 @@ public:
     void WriteModel(const std::string & str) {
         std::ofstream out(str.c_str());
         if(!out) THROW_ERROR("Couldn't write model to file " << str);
-        features_.ToStream(out);
-        non_local_features_.ToStream(out);
-        model_.ToStream(out);
+        features_->ToStream(out);
+        non_local_features_->ToStream(out);
+        model_->ToStream(out);
     }
 
     // Train the reorderer incrementally, building they hypergraph each time
@@ -70,9 +73,9 @@ private:
     std::vector<Ranks> ranks_; // The alignments to use in training
     std::vector<FeatureDataParse> parses_; // The parses to use in training
     std::vector<std::vector<FeatureDataBase*> > data_; // The data
-    ReordererModel model_; // The model
-    FeatureSet features_;  // The mapping on feature ids and which to use
-    FeatureSet non_local_features_;  // The mapping on feature ids and which to use
+    ReordererModel * model_; // The model
+    FeatureSet * features_;  // The mapping on feature ids and which to use
+    FeatureSet * non_local_features_;  // The mapping on feature ids and which to use
     std::vector<LossBase*> losses_; // The loss functions
     double learning_rate_; // The learning rate
     std::vector<EdgeFeatureMap*> saved_feats_; // Features for each hypergraph

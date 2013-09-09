@@ -172,8 +172,8 @@ Hypothesis *Hypothesis::Clone() const
 
 // We can skip this hypothesis in search
 // if this hypothesis produce an ITG permutation from discontinuous children
-bool Hypothesis::CanSkip() {
-	bool skip = false;
+// max_seq is unused here
+bool Hypothesis::CanSkip(int max_seq) {
 	if (!IsTerminal()) {
 		DiscontinuousHypothesis * left =
 				dynamic_cast<DiscontinuousHypothesis*>(GetLeftHyp());

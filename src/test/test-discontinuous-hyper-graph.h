@@ -332,7 +332,7 @@ public:
     }
 
     int TestBuildHyperGraphCubeGrowing() {
-        DiscontinuousHyperGraph graph(1, true);
+        DiscontinuousHyperGraph graph(1, 1, true);
         set.SetMaxTerm(1);
         graph.BuildHyperGraph(model, set, non_local_set, datas, 4*3*2);
         const std::vector<TargetSpan*> & stacks = graph.GetStacks();
@@ -434,8 +434,8 @@ public:
 
     int TestBuildHyperGraphGap2() {
     	// use full-fledged version
-        DiscontinuousHyperGraph graph(2, true, true);
-        set.SetMaxTerm(0);
+        DiscontinuousHyperGraph graph(2, 0, true, true);
+        set.SetMaxTerm(1);
         sent.FromString("this sentence has five words");
 		sent_pos.FromString("PRP NNS VB ADJ NNP");
         graph.BuildHyperGraph(model, set, non_local_set, datas, 5*4*3*2);

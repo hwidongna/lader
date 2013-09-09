@@ -16,6 +16,7 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
         ReadParses(config.GetString("parse_in"));
     int verbose = config.GetInt("verbose");
     int gapSize = config.GetInt("gap-size");
+    int max_seq = config.GetInt("max-seq");
     bool full_fledged = config.GetBool("full_fledged");
     bool mp = config.GetBool("mp");
     bool cube_growing = config.GetBool("cube_growing");
@@ -38,7 +39,7 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
     cerr << "(\".\" == 100 sentences)" << endl;
 	struct timespec build={0,0}, oracle={0,0}, model={0,0}, adjust={0,0};
 	struct timespec tstart={0,0}, tend={0,0};
-	DiscontinuousHyperGraph hyper_graph(gapSize, cube_growing, full_fledged, mp, verbose);
+	DiscontinuousHyperGraph hyper_graph(gapSize, max_seq, cube_growing, full_fledged, mp, verbose);
 	if (config.GetString("bigram").length())
 		hyper_graph.LoadLM(config.GetString("bigram").c_str());
     for(int iter = 0; iter < config.GetInt("iterations"); iter++) {
@@ -55,7 +56,7 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
         	if (verbose > 1)
         		cerr << "Sentence " << sent << endl;
             if(done % 100 == 0) cerr << ".";
-            if(done % 100*80 == 0) cerr << endl;
+            if(done % (100*80) == 0) cerr << endl;
             hyper_graph.Clear();
             // If we are saving features for efficiency, recover the saved
             // features and replace them in the hypergraph
@@ -63,6 +64,7 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
                 hyper_graph.SetFeatures(SafeAccess(saved_feats_, sent));
             clock_gettime(CLOCK_MONOTONIC, &tstart);
             // TODO: a loss-augmented parsing would result a different forest
+            // We want to find a derivation that minimize loss and maximize model score
             // Make the hypergraph using cube pruning/growing
 			hyper_graph.BuildHyperGraph(*model_,
                                         *features_,

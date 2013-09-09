@@ -282,13 +282,35 @@ void HyperGraph::LazyNext(HypothesisQueue & q, ReordererModel & model,
 
 	TargetSpan *left_span = hyp->GetLeftChild();
 	if (left_span)
-		new_left = LazyKthBest(left_span, hyp->GetLeftRank()+1, model, features, non_local_features, sent);
+		new_left = this->LazyKthBest(left_span, hyp->GetLeftRank() + 1,
+				model, features, non_local_features, sent);
     IncrementLeft(hyp, new_left, model, non_local_features, sent, q);
 
 	TargetSpan *right_span = hyp->GetRightChild();
 	if (right_span)
-		new_right = LazyKthBest(right_span, hyp->GetRightRank()+1, model, features, non_local_features, sent);
+		new_right = this->LazyKthBest(right_span, hyp->GetRightRank() + 1,
+				model, features, non_local_features, sent);
     IncrementRight(hyp, new_right, model, non_local_features, sent, q);
+}
+
+// For cube growing
+Hypothesis * HyperGraph::LazyKthBest(TargetSpan * stack, int k,
+		ReordererModel & model, const FeatureSet & features,
+		const FeatureSet & non_local_features, const Sentence & sent){
+	while (stack->size() < k+1 && stack->CandSize() > 0){
+		HypothesisQueue & q = stack->GetCands();
+		Hypothesis * hyp = q.top(); q.pop();
+		// skip unnecessary hypothesis
+		// Insert the hypothesis if unique
+		bool skip = hyp->CanSkip() || !stack->AddUniqueHypothesis(hyp);
+		LazyNext(q, model, features, non_local_features, sent, hyp);
+		if (skip)
+			delete hyp;
+	}
+	if ( k < (int)stack->size()){
+		return stack->GetHypothesis(k);
+	}
+	return NULL;
 }
 
 // Build a hypergraph using beam search and cube pruning
@@ -363,7 +385,7 @@ TargetSpan * HyperGraph::ProcessOneSpan(ReordererModel & model,
     while((!beam_size || num_processed < beam_size) && q->size()) {
         // Pop a hypothesis from the stack and get its target span
         Hypothesis * hyp = q->top(); q->pop();
-        // Insert the hypothesis
+        // Insert the hypothesis if unique
         bool skip = !ret->AddUniqueHypothesis(hyp);
         if (!skip)
         	num_processed++;

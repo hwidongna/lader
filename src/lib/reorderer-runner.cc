@@ -63,11 +63,12 @@ void ReordererRunner::Run(const ConfigRunner & config) {
     std::ifstream in(source_in.c_str());
     int id = 0;
     int gapSize = config.GetInt("gap-size");
+    int max_seq = config.GetInt("max-seq");
     bool cube_growing = config.GetBool("cube_growing");
     bool mp = config.GetBool("mp");
     bool full_fledged = config.GetBool("full_fledged");
     int verbose = config.GetInt("verbose");
-    HyperGraph * hyper_graph = new DiscontinuousHyperGraph(gapSize, cube_growing, full_fledged, mp, verbose);
+    HyperGraph * hyper_graph = new DiscontinuousHyperGraph(gapSize, max_seq, cube_growing, full_fledged, mp, verbose);
     if (config.GetString("bigram").length())
 		hyper_graph->LoadLM(config.GetString("bigram").c_str());
     while(std::getline(in != NULL? in : std::cin, line)) {

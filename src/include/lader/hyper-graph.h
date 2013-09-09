@@ -127,28 +127,12 @@ protected:
 			const Sentence & sent, HypothesisQueue & q);
 
 	// For cube growing
-	void LazyNext(HypothesisQueue & q, ReordererModel & model,
+	virtual void LazyNext(HypothesisQueue & q, ReordererModel & model,
 			const FeatureSet & features, const FeatureSet & non_local_features,
 			const Sentence & sent, const Hypothesis * hyp);
-    Hypothesis * LazyKthBest(TargetSpan * stack, int k,
-    		ReordererModel & model,
-    		const FeatureSet & features, const FeatureSet & non_local_features,
-    		const Sentence & sent){
-    	while (stack->size() < k+1 && stack->CandSize() > 0){
-    		HypothesisQueue & q = stack->GetCands();
-    		Hypothesis * hyp = q.top(); q.pop();
-            // skip unnecessary hypothesis
-            // Insert the hypothesis
-            bool skip = hyp->CanSkip() || !stack->AddUniqueHypothesis(hyp);
-            LazyNext(q, model, features, non_local_features, sent, hyp);
-            if (skip)
-            	delete hyp;
-    	}
-    	if ( k < (int)stack->size()){
-    		return stack->GetHypothesis(k);
-    	}
-    	return NULL;
-    }
+    virtual Hypothesis * LazyKthBest(TargetSpan * stack, int k,
+			ReordererModel & model, const FeatureSet & features,
+			const FeatureSet & non_local_features, const Sentence & sent);
     virtual TargetSpan *ProcessOneSpan(ReordererModel & model,
 			const FeatureSet & features, const FeatureSet & non_local_features,
 			const Sentence & sent, int l, int r, int beam_size = 0);

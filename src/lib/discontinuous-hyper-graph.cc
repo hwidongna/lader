@@ -33,10 +33,13 @@ void DiscontinuousHyperGraph::AddHypotheses(
 	// Find the best hypotheses on the left and right side
 	left_stack = GetStack(left_l, left_m, left_n, left_r);
 	right_stack = GetStack(right_l, right_m, right_n, right_r);
-	if(left_stack == NULL) THROW_ERROR("Null left_trg "
-			"["<<left_l<<", "<<left_m<<", "<<left_n<<", "<<left_r<<"]");
-	if(right_stack == NULL) THROW_ERROR("Null right_trg "
-			"["<<right_l<<", "<<right_m<<", "<<right_n<<", "<<right_r<<"]");
+	// there could be null stack due to the restriction of max_seq
+	if (!left_stack || !right_stack)
+		return;
+//	if(left_stack == NULL) THROW_ERROR("Null left_trg "
+//			"["<<left_l<<", "<<left_m<<", "<<left_n<<", "<<left_r<<"]");
+//	if(right_stack == NULL) THROW_ERROR("Null right_trg "
+//			"["<<right_l<<", "<<right_m<<", "<<right_n<<", "<<right_r<<"]");
 	int l, m, c, n, r;
 	HyperEdge * edge;
     Hypothesis * left, *right;
@@ -110,10 +113,13 @@ void DiscontinuousHyperGraph::AddDiscontinuousHypotheses(
 	// Find the best hypotheses on the left and right side
 	left_stack = GetStack(left_l, left_m, left_n, left_r);
 	right_stack = GetStack(right_l, right_m, right_n, right_r);
-	if(left_stack == NULL) THROW_ERROR("Null left_trg "
-			"["<<left_l<<", "<<left_m<<", "<<left_n<<", "<<left_r<<"]");
-	if(right_stack == NULL) THROW_ERROR("Null right_trg "
-			"["<<right_l<<", "<<right_m<<", "<<right_n<<", "<<right_r<<"]");
+	// there could be null stack due to the restriction of max_seq
+	if (!left_stack || !right_stack)
+		return;
+//	if(left_stack == NULL) THROW_ERROR("Null left_trg "
+//			"["<<left_l<<", "<<left_m<<", "<<left_n<<", "<<left_r<<"]");
+//	if(right_stack == NULL) THROW_ERROR("Null right_trg "
+//			"["<<right_l<<", "<<right_m<<", "<<right_n<<", "<<right_r<<"]");
 	int l, m, n, r, c;
 	HyperEdge * edge;
     Hypothesis * left, *right;
@@ -176,8 +182,8 @@ void DiscontinuousHyperGraph::StartBeamSearch(
         // Pop a hypothesis from the stack and get its target span
         Hypothesis *hyp = q.top(); q.pop();
         // skip unnecessary hypothesis
-        // Insert the hypothesis
-        bool skip = hyp->CanSkip() || !ret->AddUniqueHypothesis(hyp);
+        // Insert the hypothesis if unique
+        bool skip = hyp->CanSkip(max_seq_) || !ret->AddUniqueHypothesis(hyp);
         if (!skip){
         	num_processed++;
 			if(verbose_ > 1){
@@ -311,7 +317,7 @@ TargetSpan * DiscontinuousHyperGraph::ProcessOneSpan(
     	hasPunct |= sent[0]->isPunct(i);
 
 	int N = n_ = sent[0]->GetNumWords();
-	int D = gap_;
+	int D = gap_size_;
 	if (verbose_ > 1)
 		cerr << "Process ["<<l<<", "<<r<<"]" << endl;
 	lm::ngram::Model::State out;
@@ -379,6 +385,26 @@ TargetSpan * DiscontinuousHyperGraph::ProcessOneSpan(
 	return ret;
 }
 
+// For cube growing
+Hypothesis * DiscontinuousHyperGraph::LazyKthBest(TargetSpan * stack, int k,
+		ReordererModel & model, const FeatureSet & features,
+		const FeatureSet & non_local_features, const Sentence & sent){
+	while (stack->size() < k+1 && stack->CandSize() > 0){
+		HypothesisQueue & q = stack->GetCands();
+		Hypothesis * hyp = q.top(); q.pop();
+		// skip unnecessary hypothesis
+		// Insert the hypothesis if unique
+		bool skip = hyp->CanSkip(max_seq_) || !stack->AddUniqueHypothesis(hyp);
+		LazyNext(q, model, features, non_local_features, sent, hyp);
+		if (skip)
+			delete hyp;
+	}
+	if ( k < (int)stack->size()){
+		return stack->GetHypothesis(k);
+	}
+	return NULL;
+}
+
 // Accumulate non-local features under a hypothesis
 void DiscontinuousHyperGraph::AccumulateNonLocalFeatures(std::tr1::unordered_map<int,double> & feat_map,
 										ReordererModel & model,
@@ -436,7 +462,7 @@ void DiscontinuousHyperGraph::AddLoss(LossBase* loss,
     loss->Initialize(ranks, parse);
     // For each span in the hypergraph
     int N = n_;
-    int D = gap_;
+    int D = gap_size_;
     if (verbose_ > 1){
     	cerr << "Rank:";
     	BOOST_FOREACH(int rank, ranks->GetRanks())
@@ -466,6 +492,7 @@ void DiscontinuousHyperGraph::AddLoss(LossBase* loss,
             for (int i = l+1 ; i <= r ; i++){
             	for (int d = 1 ; d <= D ; d++){
             		// Process [0, m, n, N-1] is meaningless
+					// Process [l, m, n, r] s.t. m-l < D or r-n < D    		
 					if ( r+d < N && r+d-l+1 != N && (i-l <= D || r-i+1 <= D)){
 						if (verbose_ > 1)
 							cerr << "AddLoss ["<<l<<", "<<i-1<<", "<<i+d<<", "<<r+d<<"]" << endl;

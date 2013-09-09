@@ -254,7 +254,7 @@ public:
 	}
 
 	virtual Hypothesis *Clone() const;
-	virtual bool CanSkip();
+	virtual bool CanSkip(int max_seq = 0);
 private:
 	void AccumulateFeatures(const EdgeFeatureMap *features,
 			std::tr1::unordered_map<int, double> & feat_map);

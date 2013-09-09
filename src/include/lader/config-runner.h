@@ -30,6 +30,7 @@ public:
         AddConfigEntry("model", "", "A model to be used in reordering");
         AddConfigEntry("beam", "1", "The maximum beam size");
         AddConfigEntry("gap-size", "1", "The gap size for discontinuous hyper graph");
+        AddConfigEntry("max-seq", "2", "The maximum number of sequential discontinuous hypothesis");
         AddConfigEntry("full_fledged", "false", "Enable discontinuous hyper graph full-fledged combinations");
         AddConfigEntry("backward_compatibility", "false", "Support model trained from previous version without non-local feature templates");
         AddConfigEntry("mp", "false", "Monotone at punctuation");

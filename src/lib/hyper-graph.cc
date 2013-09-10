@@ -17,21 +17,63 @@ using namespace boost;
 using namespace lm::ngram;
 
 // Return the edge feature vector
-const FeatureVectorInt * HyperGraph::GetEdgeFeatures(
-                                ReordererModel & model,
-                                const FeatureSet & feature_gen,
-                                const Sentence & sent,
-                                const HyperEdge & edge) {
+const FeatureVectorInt * HyperGraph::GetEdgeFeatures(const HyperEdge & edge) {
     FeatureVectorInt * ret;
-    if(features_ == NULL) features_ = new EdgeFeatureMap;
-    EdgeFeatureMap::const_iterator it = features_->find(&edge);
-    if(it == features_->end()) {
-        ret = feature_gen.MakeEdgeFeatures(sent, edge, model.GetFeatureIds(), model.GetAdd());
-        features_->insert(MakePair(edge.Clone(), ret));
+    if(feature_map_ == NULL)
+		THROW_ERROR("Feature map is not created");
+    EdgeFeatureMap::const_iterator it = feature_map_->find(&edge);
+    if(it == feature_map_->end()) {
+    	const DiscontinuousHyperEdge * dedge =
+    			dynamic_cast<const DiscontinuousHyperEdge*>(&edge);
+    	if (dedge)
+    		THROW_ERROR("Generate features first: " << *dedge)
+    	else
+    		THROW_ERROR("Generate features first: " << edge)
     } else {
         ret = it->second;
     }
     return ret;
+}
+
+void HyperGraph::StoreEdgeFeatures(HyperEdge * edge,
+		ReordererModel & model, const FeatureSet & features,
+		const Sentence & sent) {
+	FeatureVectorInt * fvi = features.MakeEdgeFeatures(sent, *edge, model.GetFeatureIds(), true);
+    feature_map_->insert(MakePair(edge, fvi));
+}
+
+// Generate edge features and store them
+void HyperGraph::GenerateEdgeFeatures(ReordererModel & model,
+                                 const FeatureSet & features,
+                                 const Sentence & sent) {
+    n_ = sent[0]->GetNumWords();
+	if(feature_map_ != NULL)
+		THROW_ERROR("Features are already generated");
+	feature_map_ = new EdgeFeatureMap;
+	FeatureVectorInt * ret;
+	HyperEdge * edge;
+    // Iterate through the left side of the span
+    for(int L = 1; L <= n_; L++) {
+        // Move the span from l to r, building hypotheses from small to large
+        for(int l = 0; l <= n_-L; l++){
+            int r = l+L-1;
+            // If the length is OK, add a terminal
+			if((features.GetMaxTerm() == 0) || (r - l < features.GetMaxTerm())){
+				edge = new HyperEdge(l, -1, r, HyperEdge::EDGE_FOR);
+				StoreEdgeFeatures(edge, model, features, sent);
+				edge = new HyperEdge(l, -1, r, HyperEdge::EDGE_BAC);
+				StoreEdgeFeatures(edge, model, features, sent);
+			}
+		    for(int c = l+1; c <= r; c++) {
+		        edge = new HyperEdge(l, c, r, HyperEdge::EDGE_STR);
+				StoreEdgeFeatures(edge, model, features, sent);
+				edge = new HyperEdge(l, c, r, HyperEdge::EDGE_INV);
+				StoreEdgeFeatures(edge, model, features, sent);
+		    }
+        }
+    }
+    edge = new HyperEdge(0, -1, n_-1, HyperEdge::EDGE_ROOT);
+	StoreEdgeFeatures(edge, model, features, sent);
 }
 
 const FeatureVectorInt *HyperGraph::GetNonLocalFeatures(const HyperEdge * edge,
@@ -101,10 +143,12 @@ const FeatureVectorInt *HyperGraph::GetNonLocalFeatures(const HyperEdge * edge,
 	}
 	else if (edge->GetType() == HyperEdge::EDGE_ROOT)
 		THROW_ERROR("Use RootBigram instead of GetNonLocalFeatures")
-	if (!fvi)
-		fvi = new FeatureVectorInt;
-    if (bigram_ && out)
+
+    if (bigram_ && out){
+    	if (!fvi)
+    		fvi = new FeatureVectorInt;
     	fvi->push_back(bigram);
+    }
     return fvi;
 }
 
@@ -133,12 +177,9 @@ double HyperGraph::Rescore(double loss_multiplier) {
 }
 
 // Get the score for a single edge
-double HyperGraph::GetEdgeScore(ReordererModel & model,
-                                const FeatureSet & feature_gen,
-                                const Sentence & sent,
+double HyperGraph::GetEdgeScore(const ReordererModel & model,
                                 const HyperEdge & edge) {
-    const FeatureVectorInt * vec =
-                GetEdgeFeatures(model, feature_gen, sent, edge);
+    const FeatureVectorInt * vec = GetEdgeFeatures(edge);
     return model.ScoreFeatureVector(SafeReference(vec));
 }
 
@@ -155,6 +196,8 @@ double HyperGraph::GetNonLocalScore(ReordererModel & model,
 	// in order to avoid too much memory usage
     const FeatureVectorInt * fvi = GetNonLocalFeatures(edge, left, right,
     		feature_gen, sent, model, out);
+    if (!fvi)
+    	return 0.0;
     double score = model.ScoreFeatureVector(SafeReference(fvi));
     delete fvi;
     return score;
@@ -171,16 +214,18 @@ void HyperGraph::AccumulateNonLocalFeatures(std::tr1::unordered_map<int,double> 
 	// root has only the bigram feature on the boundaries
 	if (hyp->GetEdgeType() == HyperEdge::EDGE_ROOT){
 		lm::ngram::State out;
-		feat_map[model.GetFeatureIds().GetId("BIGRAM")] += GetRootBigram(sent, hyp, &out);
+		feat_map[model.GetFeatureIds().GetId("BIGRAM"), model.GetAdd()] += GetRootBigram(sent, hyp, &out);
 	}
 	// terminals may have bigram features
 	else{
 		lm::ngram::State out;
 		const FeatureVectorInt * fvi = GetNonLocalFeatures(hyp->GetEdge(), left, right,
 				feature_gen, sent, model, &out);
-        BOOST_FOREACH(FeaturePairInt feat_pair, *fvi)
-            feat_map[feat_pair.first] += feat_pair.second;
-        delete fvi;
+		if (fvi){
+			BOOST_FOREACH(FeaturePairInt feat_pair, *fvi)
+				feat_map[feat_pair.first] += feat_pair.second;
+			delete fvi;
+		}
 	}
 	if (left)
 		AccumulateNonLocalFeatures(feat_map, model, feature_gen, sent, left);
@@ -197,12 +242,12 @@ void HyperGraph::AddTerminals(int l, int r, const FeatureSet & features, Reorder
         // Create a hypothesis with the forward terminal
         Model::State out;
         HyperEdge *edge = new HyperEdge(l, -1, r, HyperEdge::EDGE_FOR);
-        score = GetEdgeScore(model, features, sent, *edge);
+        score = GetEdgeScore(model, *edge);
         non_local_score = GetNonLocalScore(model, features, sent, edge, NULL, NULL, &out);
         q->push(new Hypothesis(score + non_local_score, score, non_local_score, edge, l, r, out));
         if(features.GetUseReverse()){
             edge = new HyperEdge(l, -1, r, HyperEdge::EDGE_BAC);
-            score = GetEdgeScore(model, features, sent, *edge);
+            score = GetEdgeScore(model, *edge);
             non_local_score = GetNonLocalScore(model, features, sent, edge, NULL, NULL, &out);
             q->push(new Hypothesis(score + non_local_score, score, non_local_score, edge, r, l, out));
         }
@@ -356,7 +401,7 @@ TargetSpan * HyperGraph::ProcessOneSpan(ReordererModel & model,
         }
         // Add the straight terminal
         HyperEdge * edge = new HyperEdge(l, c, r, HyperEdge::EDGE_STR);
-        score = GetEdgeScore(model, features, sent, *edge);
+        score = GetEdgeScore(model, *edge);
     	non_local_score = GetNonLocalScore(model, non_local_features, sent, edge, left, right, &out);
     	viterbi_score = score + non_local_score + left->GetScore() + right->GetScore();
     	q->push(new Hypothesis(viterbi_score, score, non_local_score, edge,
@@ -366,7 +411,7 @@ TargetSpan * HyperGraph::ProcessOneSpan(ReordererModel & model,
                          0, 0, left_stack, right_stack));
         // Add the inverted terminal
         edge = new HyperEdge(l, c, r, HyperEdge::EDGE_INV);
-        score = GetEdgeScore(model, features, sent, *edge);
+        score = GetEdgeScore(model, *edge);
     	non_local_score = GetNonLocalScore(model, non_local_features, sent, edge, left, right, &out);
     	viterbi_score = score + non_local_score + left->GetScore() + right->GetScore();
     	q->push(new Hypothesis(viterbi_score, score, non_local_score, edge,

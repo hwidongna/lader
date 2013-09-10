@@ -19,6 +19,7 @@ void ReordererTask::Run() {
     // Save the original string
     vector<string> words = ((FeatureDataSequence*)datas[0])->GetSequence();
     // Build the hypergraph
+    // TODO: this fails when we use multicore
     hyper_graph_->Clear();
     hyper_graph_->BuildHyperGraph(*model_, *features_, *non_local_features_, datas, beam);
     // Reorder

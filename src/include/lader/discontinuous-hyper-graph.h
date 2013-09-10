@@ -21,7 +21,23 @@ public:
 			bool cube_growing = false, bool full_fledged = false,
 			bool mp = false, int verbose = 0) :
 			HyperGraph(cube_growing), gap_size_(gap_size), max_seq_(max_seq), full_fledged_(
-					full_fledged), mp_(mp), verbose_(verbose) {
+					full_fledged), mp_(mp), verbose_(verbose){
+		tadd_hypothesis.tv_nsec = 0;
+		tadd_hypothesis.tv_sec = 0;
+		tcube_pruning.tv_nsec = 0;
+		tcube_pruning.tv_sec =0;
+		tcube_growing.tv_nsec = 0;
+		tcube_growing.tv_sec =0;
+	}
+
+	virtual void Clear(){
+		HyperGraph::Clear();
+		tadd_hypothesis.tv_nsec = 0;
+		tadd_hypothesis.tv_sec = 0;
+		tcube_pruning.tv_nsec = 0;
+		tcube_pruning.tv_sec =0;
+		tcube_growing.tv_nsec = 0;
+		tcube_growing.tv_sec =0;
 	}
     virtual ~DiscontinuousHyperGraph(){
         BOOST_FOREACH(HyperGraph* graph, next_)
@@ -29,10 +45,9 @@ public:
                 delete graph;
     }
 
+    virtual void GenerateEdgeFeatures(ReordererModel & model, const FeatureSet & features, const Sentence & sent);
     virtual void AddLoss(LossBase *loss, const Ranks *ranks, const FeatureDataParse *parse) const;
-    virtual void AccumulateNonLocalFeatures(std::tr1::unordered_map<int,double> & feat_map,
-    		ReordererModel & model, const FeatureSet & feature_gen,
-    		const Sentence & sent, const Hypothesis * hyp);
+    virtual void AccumulateNonLocalFeatures(std::tr1::unordered_map<int,double> & feat_map, ReordererModel & model, const FeatureSet & feature_gen, const Sentence & sent, const Hypothesis *hyp);
     const TargetSpan *GetStack(int l, int m, int n, int r) const
     {
         if(m < 0 && n < 0)
@@ -52,7 +67,7 @@ public:
     {
         if(m < 0 && n < 0)
             return HyperGraph::GetStack(l, r);
-        // not allow to access beyond the maximum gap size
+
         if (m-l+1 > gap_size_ || n-m-1 > gap_size_ || r-n+1 > gap_size_)
         	return NULL;
         int idx = GetTrgSpanID(l, m);
@@ -89,34 +104,26 @@ public:
 
         stacks[idx] = stack;
     }
-    void SetVerbose(int verbose) { verbose_ = verbose; }
+    void SetVerbose(int verbose)
+    {
+        verbose_ = verbose;
+    }
+
+    struct timespec tadd_hypothesis, tcube_pruning, tcube_growing;
 protected:
-    // For cube growing
-    virtual Hypothesis * LazyKthBest(TargetSpan * stack, int k,
-    		ReordererModel & model, const FeatureSet & features,
-			const FeatureSet & non_local_features, const Sentence & sent);
+    virtual Hypothesis *LazyKthBest(TargetSpan *stack, int k, ReordererModel & model, const FeatureSet & features, const FeatureSet & non_local_features, const Sentence & sent);
     TargetSpan *ProcessOneSpan(ReordererModel & model, const FeatureSet & features, const FeatureSet & non_local_features, const Sentence & sent, int l, int r, int beam_size = 0);
     TargetSpan *ProcessOneDiscontinuousSpan(ReordererModel & model, const FeatureSet & features, const FeatureSet & non_local_features, const Sentence & sent, int l, int m, int n, int r, int beam_size = 0);
     void AddHypotheses(ReordererModel & model, const FeatureSet & features, const FeatureSet & non_local_features, const Sentence & sent, HypothesisQueue & q, int left_l, int left_m, int left_n, int left_r, int right_l, int right_m, int right_n, int right_r);
     void AddDiscontinuousHypotheses(ReordererModel & model, const FeatureSet & features, const FeatureSet & non_local_features, const Sentence & sent, HypothesisQueue & q, int left_l, int left_m, int left_n, int left_r, int right_l, int right_m, int right_n, int right_r);
-    void StartBeamSearch(int beam_size, HypothesisQueue & q, ReordererModel & model, const Sentence & sent, const FeatureSet & features, const FeatureSet & non_local_features, TargetSpan * ret, int l, int r);
+    void StartBeamSearch(int beam_size, HypothesisQueue & q, ReordererModel & model, const Sentence & sent, const FeatureSet & features, const FeatureSet & non_local_features, TargetSpan *ret, int l, int r);
+    void StoreEdgeFeatures(HyperEdge * edge, ReordererModel & model, const FeatureSet & features, const Sentence & sent);
 private:
-    // the maximum size of a gap
     int gap_size_;
-    // the maximum number of sequential discontinuous hypothesis
     int max_seq_;
-    // monotone at punctuation
     bool mp_;
-    // verbosity level
     int verbose_;
-    // whether generate all possible permutations or not
-    // if not, some of non-ITG permutations are generated.
-    // i.e. continuous + continuous = discontinuous
-    // it will be faster than the full-fledged version
-    // but miss many non-ITG permutations.
     int full_fledged_;
-    // an additional two-dimensional chart for discontinuous hypothesis
-    // theoretically, it support more than one discontinuity
     std::vector<HyperGraph*> next_;
 };
 

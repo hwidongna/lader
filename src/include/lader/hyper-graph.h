@@ -29,16 +29,16 @@ public:
     friend class TestDiscontinuousHyperGraph;
     friend class Hypothesis;
 
-    HyperGraph(bool cube_growing = false) : features_(0), n_(-1), cube_growing_(cube_growing), bigram_(0){ }
+    HyperGraph(bool cube_growing = false) : feature_map_(0), n_(-1), cube_growing_(cube_growing), bigram_(0){ }
 
-    void Clear()
+    virtual void Clear()
     {
-        if(features_) {
-            BOOST_FOREACH(EdgeFeaturePair efp, *features_){
+        if(feature_map_) {
+            BOOST_FOREACH(EdgeFeaturePair efp, *feature_map_){
             	delete efp.first;
                 delete efp.second;
             }
-            delete features_;
+            delete feature_map_;
             ClearFeatures();
         }
         BOOST_FOREACH(TargetSpan * stack, stacks_)
@@ -52,7 +52,16 @@ public:
         if (bigram_)
         	delete bigram_;
     }
-    void BuildHyperGraph(ReordererModel & model, const FeatureSet & features, const FeatureSet & non_local_features, const Sentence & sent, int beam_size = 0);
+
+    // Generate all edge features and store them
+    virtual void StoreEdgeFeatures(HyperEdge * edge, ReordererModel & model,
+			const FeatureSet & features, const Sentence & sent);
+	virtual void GenerateEdgeFeatures(ReordererModel & model,
+			const FeatureSet & features, const Sentence & sent);
+
+    void BuildHyperGraph(ReordererModel & model, const FeatureSet & features,
+			const FeatureSet & non_local_features, const Sentence & sent,
+			int beam_size = 0);
     const TargetSpan *GetStack(int l, int r) const
     {
         return SafeAccess(stacks_, GetTrgSpanID(l, r));
@@ -94,17 +103,17 @@ public:
     virtual void AddLoss(LossBase *loss, const Ranks *ranks, const FeatureDataParse *parse) const;
     void SetFeatures(EdgeFeatureMap *features)
     {
-        features_ = features;
+        feature_map_ = features;
     }
 
     EdgeFeatureMap *GetFeatures()
     {
-        return features_;
+        return feature_map_;
     }
 
     void ClearFeatures()
     {
-        features_ = NULL;
+        feature_map_ = NULL;
     }
 
     virtual void AccumulateNonLocalFeatures(
@@ -115,7 +124,6 @@ public:
     {
         bigram_ = new lm::ngram::Model(file);
     }
-
 
 protected:
     // For both cube pruning/growing
@@ -136,18 +144,16 @@ protected:
     virtual TargetSpan *ProcessOneSpan(ReordererModel & model,
 			const FeatureSet & features, const FeatureSet & non_local_features,
 			const Sentence & sent, int l, int r, int beam_size = 0);
-	const FeatureVectorInt *GetEdgeFeatures(ReordererModel & model,
-			const FeatureSet & feature_gen, const Sentence & sent,
-			const HyperEdge & edge);
+	const FeatureVectorInt *GetEdgeFeatures(const HyperEdge & edge);
+	// only for testing
     void SetEdgeFeatures(const HyperEdge & edge, FeatureVectorInt *feat)
     {
-        if(!features_)
-            features_ = new EdgeFeatureMap;
+        if(!feature_map_)
+            feature_map_ = new EdgeFeatureMap;
 
-        features_->insert(MakePair(edge.Clone(), feat));
+        feature_map_->insert(MakePair(edge.Clone(), feat));
     }
-    double GetEdgeScore(ReordererModel & model, const FeatureSet & feature_gen,
-			const Sentence & sent, const HyperEdge & edge);
+    double GetEdgeScore(const ReordererModel & model, const HyperEdge & edge);
     const FeatureVectorInt *GetNonLocalFeatures(const HyperEdge * edge,
     		const Hypothesis *left, const Hypothesis *right, const FeatureSet & feature_gen,
     		const Sentence & sent, ReordererModel & model, lm::ngram::State * out);
@@ -179,11 +185,13 @@ protected:
         stacks_[idx] = stack;
     }
 private:
-    EdgeFeatureMap *features_;
     std::vector<TargetSpan*> stacks_;
 
 protected:
-    void AddTerminals(int l, int r, const FeatureSet & features, ReordererModel & model, const Sentence & sent, HypothesisQueue *& q);
+    void AddTerminals(int l, int r, const FeatureSet & features,
+			ReordererModel & model, const Sentence & sent,
+			HypothesisQueue *& q);
+    EdgeFeatureMap *feature_map_;
     int n_;
     bool cube_growing_;
     lm::ngram::Model * bigram_;

@@ -37,7 +37,7 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 		random_shuffle(sent_order.begin(), sent_order.end());
     // Perform an iteration
     cerr << "(\".\" == 100 sentences)" << endl;
-	struct timespec build={0,0}, oracle={0,0}, model={0,0}, adjust={0,0};
+	struct timespec feature={0,0}, build={0,0}, oracle={0,0}, model={0,0}, adjust={0,0};
 	struct timespec tstart={0,0}, tend={0,0};
 	DiscontinuousHyperGraph hyper_graph(gapSize, max_seq, cube_growing, full_fledged, mp, verbose);
 	if (config.GetString("bigram").length())
@@ -60,8 +60,15 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
             hyper_graph.Clear();
             // If we are saving features for efficiency, recover the saved
             // features and replace them in the hypergraph
+            clock_gettime(CLOCK_MONOTONIC, &tstart);
             if(config.GetBool("save_features") && iter != 0)
+            	// TODO: this fails when sample < sent_order.size()
                 hyper_graph.SetFeatures(SafeAccess(saved_feats_, sent));
+            else
+            	hyper_graph.GenerateEdgeFeatures(*model_,*features_,data_[sent]);
+            clock_gettime(CLOCK_MONOTONIC, &tend);
+            feature.tv_sec += tend.tv_sec - tstart.tv_sec;
+            feature.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
             clock_gettime(CLOCK_MONOTONIC, &tstart);
             // TODO: a loss-augmented parsing would result a different forest
             // We want to find a derivation that minimize loss and maximize model score
@@ -74,10 +81,22 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 			clock_gettime(CLOCK_MONOTONIC, &tend);
 			build.tv_sec += tend.tv_sec - tstart.tv_sec;
 			build.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
-			if (verbose > 0)
-				printf("hyper_graph.BuildHyperGraph took about %.5f seconds\n",
+			if (verbose > 0){
+				printf("BuildHyperGraph took about %.5f seconds\n",
 						((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) -
 						((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec));
+				printf("\tAddHypotheses took about %.5f seconds\n",
+						((double)hyper_graph.tadd_hypothesis.tv_sec
+						+ 1.0e-9*hyper_graph.tadd_hypothesis.tv_nsec));
+				if (cube_growing)
+					printf("\tLazyKthBest took about %.5f seconds\n",
+							((double)hyper_graph.tcube_growing.tv_sec
+							+ 1.0e-9*hyper_graph.tcube_growing.tv_nsec));
+				else
+					printf("\tStartBeamSearch took about %.5f seconds\n",
+							((double)hyper_graph.tcube_pruning.tv_sec
+							+ 1.0e-9*hyper_graph.tcube_pruning.tv_nsec));
+			}
 			// Add losses to the hypotheses in the hypergraph
             BOOST_FOREACH(LossBase * loss, losses_)
             	hyper_graph.AddLoss(loss,
@@ -172,7 +191,8 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
         }
         cout << "Finished iteration " << iter << " with loss " << iter_model_loss << " (oracle: " << iter_oracle_loss << ")" << endl;
         cout << "Running time on average: "
-        		<< "build " << ((double)build.tv_sec + 1.0e-9*build.tv_nsec) / (iter+1) << "s"
+        		<< "feature " << ((double)feature.tv_sec + 1.0e-9*feature.tv_nsec) / (iter+1) << "s"
+        		<< ", build " << ((double)build.tv_sec + 1.0e-9*build.tv_nsec) / (iter+1) << "s"
         		<< ", oracle " << ((double)oracle.tv_sec + 1.0e-9*oracle.tv_nsec) / (iter+1) << "s"
         		<< ", model " << ((double)model.tv_sec + 1.0e-9*model.tv_nsec)  / (iter+1) << "s"
         		<< ", adjust " << ((double)adjust.tv_sec + 1.0e-9*adjust.tv_nsec)  / (iter+1) << "s" << endl;

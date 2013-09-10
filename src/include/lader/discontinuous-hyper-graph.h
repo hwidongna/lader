@@ -18,10 +18,10 @@ class DiscontinuousHyperGraph : public HyperGraph{
 	friend class TestDiscontinuousHyperGraph;
 public:
 	DiscontinuousHyperGraph(int gap_size, int max_seq = 1,
-			bool cube_growing = false, bool full_fledged = false,
-			bool mp = false, int verbose = 0) :
-			HyperGraph(cube_growing), gap_size_(gap_size), max_seq_(max_seq), full_fledged_(
-					full_fledged), mp_(mp), verbose_(verbose){
+			bool cube_growing = false,
+			bool full_fledged = false, bool mp = false, int verbose = 0) :
+			HyperGraph(cube_growing), gap_size_(gap_size), max_seq_(max_seq),
+			full_fledged_(full_fledged), mp_(mp), verbose_(verbose) {
 		tadd_hypothesis.tv_nsec = 0;
 		tadd_hypothesis.tv_sec = 0;
 		tcube_pruning.tv_nsec = 0;

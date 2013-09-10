@@ -19,12 +19,11 @@ void ReordererTask::Run() {
     // Save the original string
     vector<string> words = ((FeatureDataSequence*)datas[0])->GetSequence();
     // Build the hypergraph
-    // TODO: this fails when we use multicore
-    hyper_graph_->Clear();
-    hyper_graph_->BuildHyperGraph(*model_, *features_, *non_local_features_, datas, beam);
+    graph_->GenerateEdgeFeatures(*model_, *features_, datas);
+    graph_->BuildHyperGraph(*model_, *features_, *non_local_features_, datas, beam);
     // Reorder
     std::vector<int> reordering;
-    hyper_graph_->GetBest()->GetReordering(reordering);
+    graph_->GetBest()->GetReordering(reordering);
     datas[0]->Reorder(reordering);
     // Print the string
     ostringstream oss;
@@ -33,9 +32,9 @@ void ReordererTask::Run() {
         if(outputs_->at(i) == ReordererRunner::OUTPUT_STRING) {
             oss << datas[0]->ToString();
         } else if(outputs_->at(i) == ReordererRunner::OUTPUT_PARSE) {
-            hyper_graph_->GetBest()->PrintParse(words, oss);
+            graph_->GetBest()->PrintParse(words, oss);
         } else if(outputs_->at(i) == ReordererRunner::OUTPUT_HYPERGRAPH) {
-            hyper_graph_->PrintHyperGraph(words, oss);
+            graph_->PrintHyperGraph(words, oss);
         } else if(outputs_->at(i) == ReordererRunner::OUTPUT_ORDER) {
             for(int j = 0; j < (int)reordering.size(); j++) {
                 if(j != 0) oss << " ";
@@ -50,6 +49,7 @@ void ReordererTask::Run() {
     // Clean up the data
     BOOST_FOREACH(FeatureDataBase* data, datas)
         delete data;
+    delete graph_;
 }
 
 // Run the model
@@ -69,18 +69,17 @@ void ReordererRunner::Run(const ConfigRunner & config) {
     bool mp = config.GetBool("mp");
     bool full_fledged = config.GetBool("full_fledged");
     int verbose = config.GetInt("verbose");
-    HyperGraph * hyper_graph = new DiscontinuousHyperGraph(gapSize, max_seq, cube_growing, full_fledged, mp, verbose);
+    DiscontinuousHyperGraph graph(gapSize, max_seq, cube_growing, full_fledged, mp, verbose) ;
     if (config.GetString("bigram").length())
-		hyper_graph->LoadLM(config.GetString("bigram").c_str());
+		graph.LoadLM(config.GetString("bigram").c_str());
     while(std::getline(in != NULL? in : std::cin, line)) {
     	ReordererTask *task = new ReordererTask(id++, line, model_, features_,
-				non_local_features_, &outputs_, config, hyper_graph,
+				non_local_features_, &outputs_, config, graph.Clone(),
 				&collector);
         pool.Submit(task);
     }
     if (in) in.close();
     pool.Stop(true); 
-    delete hyper_graph;
 }
 
 // Initialize the model

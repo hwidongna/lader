@@ -29,7 +29,8 @@ public:
     friend class TestDiscontinuousHyperGraph;
     friend class Hypothesis;
 
-    HyperGraph(bool cube_growing = false) : feature_map_(0), n_(-1), cube_growing_(cube_growing), bigram_(0){ }
+    HyperGraph(bool cube_growing = false):
+    	feature_map_(0), n_(-1), cube_growing_(cube_growing), cloned_(false), bigram_(0){ }
 
     virtual void Clear()
     {
@@ -49,10 +50,15 @@ public:
     virtual ~HyperGraph()
     {
         Clear();
-        if (bigram_)
+        if (!cloned_ && bigram_)
         	delete bigram_;
     }
 
+    HyperGraph * Clone(){
+    	HyperGraph * cloned = new HyperGraph(this);
+    	cloned->cloned_ = true;
+    	return cloned;
+    }
     // Generate all edge features and store them
     virtual void StoreEdgeFeatures(HyperEdge * edge, ReordererModel & model,
 			const FeatureSet & features, const Sentence & sent);
@@ -193,7 +199,7 @@ protected:
 			HypothesisQueue *& q);
     EdgeFeatureMap *feature_map_;
     int n_;
-    bool cube_growing_;
+    bool cube_growing_, cloned_;
     lm::ngram::Model * bigram_;
 };
 

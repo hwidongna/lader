@@ -62,7 +62,6 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
             // features and replace them in the hypergraph
             clock_gettime(CLOCK_MONOTONIC, &tstart);
             if(config.GetBool("save_features") && iter != 0)
-            	// TODO: this fails when sample < sent_order.size()
                 hyper_graph.SetFeatures(SafeAccess(saved_feats_, sent));
             else
             	hyper_graph.GenerateEdgeFeatures(*model_,*features_,data_[sent]);

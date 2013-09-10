@@ -67,7 +67,7 @@ public:
                   const ConfigRunner& config, HyperGraph * hyper_graph,
                   OutputCollector * collector) :
         id_(id), line_(line), model_(model), features_(features), non_local_features_(non_local_features),
-        outputs_(outputs), collector_(collector), config_(config), hyper_graph_(hyper_graph) { }
+        outputs_(outputs), collector_(collector), config_(config), graph_(hyper_graph) { }
     void Run();
 protected:
     int id_;
@@ -78,7 +78,7 @@ protected:
     std::vector<ReordererRunner::OutputType> * outputs_;
     OutputCollector * collector_;
     const ConfigRunner& config_;
-    HyperGraph * hyper_graph_;
+    HyperGraph * graph_;
 };
 
 }

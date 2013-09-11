@@ -190,7 +190,7 @@ void DiscontinuousHyperGraph::StartBeamSearch(
 				else cerr << *hyp;
 				cerr << endl;
 
-				const FeatureVectorInt *fvi = HyperGraph::GetEdgeFeatures(model, features, sent, *hyp->GetEdge());
+				const FeatureVectorInt *fvi = GetEdgeFeatures(model, features, sent, *hyp->GetEdge(), false);
 				FeatureVectorString *fvs = model.StringifyFeatureVector(*fvi);
 				FeatureVectorString *fws = model.StringifyWeightVector(*fvi);
 				cerr << *fvs << endl << *fws;

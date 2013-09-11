@@ -19,25 +19,18 @@ using namespace boost;
 using namespace lm::ngram;
 
 // Return the edge feature vector
+// this is called only once from HyperGraph::GetEdgeScore
+// therefore, we don't need to find features in EdgeFeatureMap
+// unless we use -save_features option
 const FeatureVectorInt * HyperGraph::GetEdgeFeatures(
                                 ReordererModel & model,
                                 const FeatureSet & feature_gen,
                                 const Sentence & sent,
-                                const HyperEdge & edge) {
+                                const HyperEdge & edge,
+                                bool insert) {
 	FeatureVectorInt * ret;
-    EdgeFeatureMap::const_iterator it;
-    bool insert = false;
-    {
-    	boost::mutex::scoped_lock lock(mutex_);
-    	if(features_ == NULL){
-    		features_ = new EdgeFeatureMap;
-    		insert = true;
-    	}
-    	else{
-    		it = features_->find(&edge);
-    		insert = it == features_->end();
-    	}
-    }
+	if (features_ == NULL)
+		features_ = new EdgeFeatureMap;
     if(insert) {
         ret = feature_gen.MakeEdgeFeatures(sent, edge, model.GetFeatureIds(), model.GetAdd());
         {
@@ -45,6 +38,7 @@ const FeatureVectorInt * HyperGraph::GetEdgeFeatures(
         	features_->insert(MakePair(edge.Clone(), ret));
         }
     } else {
+    	EdgeFeatureMap::const_iterator it = features_->find(&edge);
         ret = it->second;
     }
     return ret;
@@ -154,7 +148,7 @@ double HyperGraph::GetEdgeScore(ReordererModel & model,
                                 const Sentence & sent,
                                 const HyperEdge & edge) {
     const FeatureVectorInt * vec =
-                GetEdgeFeatures(model, feature_gen, sent, edge);
+                GetEdgeFeatures(model, feature_gen, sent, edge, true);
     return model.ScoreFeatureVector(SafeReference(vec));
 }
 
@@ -462,9 +456,6 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
     for(int L = 1; L <= n_; L++) {
         // Move the span from l to r, building hypotheses from small to large
     	// parallelize processing in a row
-		// need to lock GetEdgeScore() -> GetEdgeFeatures() -> model.GetFeatureId().GetId()
-		// need to lock GetNonLocalScore() -> model.GetFeatureId().GetId()
-		// need to lock LazyNext() for cube growing
     	ThreadPool pool(threads_, 1000);
     	for(int l = 0; l <= n_-L; l++){
     		int r = l+L-1;

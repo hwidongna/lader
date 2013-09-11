@@ -150,7 +150,7 @@ public:
         HyperGraph hyper_graph;
         // Generate the features
         const FeatureVectorInt * edge02int = 
-                        hyper_graph.GetEdgeFeatures(mod, set, datas, edge02);
+                        hyper_graph.GetEdgeFeatures(mod, set, datas, edge02, true);
         FeatureVectorString * edge02act =
                         mod.StringifyFeatureVector(*edge02int);
         // Do the parsing and checking
@@ -163,7 +163,7 @@ public:
         ret *= CheckVector(edge02intexp, *edge02int);
         // Generate the features again
         const FeatureVectorInt * edge02int2 = 
-                        hyper_graph.GetEdgeFeatures(mod, set, datas, edge02);
+                        hyper_graph.GetEdgeFeatures(mod, set, datas, edge02, false);
         // Make sure that the pointers are equal
         if(edge02int != edge02int2) {
             cerr << "Edge pointers are not equal." << endl;
@@ -392,13 +392,25 @@ public:
     	set.AddFeatureGenerator(featw);
     	set.SetMaxTerm(0);
     	set.SetUseReverse(false);
-    	graph.SetThreads(4);
         FeatureDataSequence sent;
         sent.FromString("t h i s i s a v e r y v e r y v e r y v e r y l o n g s e n t e n c e .");
         vector<FeatureDataBase*> datas;
         datas.push_back(&sent);
-        int beam_size = 100;
     	struct timespec tstart={0,0}, tend={0,0};
+        int beam_size = 100;
+        ReordererModel model;
+
+    	graph.SetThreads(1);
+        clock_gettime(CLOCK_MONOTONIC, &tstart);
+    	graph.BuildHyperGraph(model, set, non_local_set, datas, beam_size);
+		clock_gettime(CLOCK_MONOTONIC, &tend);
+		double thread1 = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) -
+				((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+
+		// reusing model requires no more model->GetFeatureIds()->GetId(add=true)
+		// therefore, it will be much faster
+    	graph.SetThreads(4);
+    	graph.Clear();
         clock_gettime(CLOCK_MONOTONIC, &tstart);
     	graph.BuildHyperGraph(model, set, non_local_set, datas, beam_size);
 		clock_gettime(CLOCK_MONOTONIC, &tend);
@@ -418,17 +430,10 @@ public:
     		}
     		ret = 0;
     	}
-//    	graph.Clear();
-//    	graph.SetThreads(1);
-//        clock_gettime(CLOCK_MONOTONIC, &tstart);
-//    	graph.BuildHyperGraph(model, set, non_local_set, datas, beam_size);
-//		clock_gettime(CLOCK_MONOTONIC, &tend);
-//		double thread1 = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) -
-//				((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
-//		if(thread4 > thread1){
-//			cerr << "more threads, more time?" << endl;
-//			ret = 0;
-//		}
+		if(thread4 > thread1){
+			cerr << "more threads, more time? " << thread4 << " > " << thread1 << endl;
+			ret = 0;
+		}
     	set.SetUseReverse(true);
     	return ret;
     }

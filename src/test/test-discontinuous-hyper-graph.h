@@ -203,7 +203,7 @@ public:
         DiscontinuousHyperGraph hyper_graph(1);
         // Generate the features
         const FeatureVectorInt * edge02int =
-                        hyper_graph.GetEdgeFeatures(mod, set, datas, edge0_2b);
+                        hyper_graph.GetEdgeFeatures(mod, set, datas, edge0_2b, true);
         FeatureVectorString * edge02act =
                         mod.StringifyFeatureVector(*edge02int);
         // Do the parsing and checking
@@ -215,7 +215,7 @@ public:
         ret *= CheckVector(edge02intexp, *edge02int);
         // Generate the features again
         const FeatureVectorInt * edge02int2 =
-                        hyper_graph.GetEdgeFeatures(mod, set, datas, edge0_2b);
+                        hyper_graph.GetEdgeFeatures(mod, set, datas, edge0_2b, false);
         // Make sure that the pointers are equal
         if(edge02int != edge02int2) {
             cerr << "Edge pointers are not equal." << endl;
@@ -306,9 +306,12 @@ public:
 					hyp->PrintChildren(cerr);
 					ret = 0;
 				}
+				// root has no edge features
+				if (hyp->GetEdgeType() == HyperEdge::EDGE_ROOT)
+					continue;
 				DiscontinuousHypothesis * dhyp =
 						dynamic_cast<DiscontinuousHypothesis*>(hyp);
-				const FeatureVectorInt *fvi = graph.GetEdgeFeatures(model, set, datas, *hyp->GetEdge());
+				const FeatureVectorInt *fvi = graph.GetEdgeFeatures(model, set, datas, *hyp->GetEdge(), false);
 				FeatureVectorString *fvs = model.StringifyFeatureVector(*fvi);
 				bool error = false;
 				BOOST_FOREACH(FeaturePairString feat, *fvs){
@@ -373,17 +376,29 @@ public:
     	DiscontinuousHyperGraph graph(1, 0, true, true);
     	FeatureSet set;
     	FeatureSequence * featw = new FeatureSequence;
-    	featw->ParseConfiguration("SW%LS%RS");
+        featw->ParseConfiguration("SW%LS%RS");
     	set.AddFeatureGenerator(featw);
     	set.SetMaxTerm(0);
     	set.SetUseReverse(false);
-    	graph.SetThreads(4);
-    	FeatureDataSequence sent;
-    	sent.FromString("t h i s i s a v e r y v e r y v e r y v e r y l o n g s e n t e n c e .");
-    	vector<FeatureDataBase*> datas;
-    	datas.push_back(&sent);
-    	int beam_size = 100;
+        FeatureDataSequence sent;
+        sent.FromString("t h i s i s a v e r y v e r y v e r y v e r y l o n g s e n t e n c e .");
+        vector<FeatureDataBase*> datas;
+        datas.push_back(&sent);
     	struct timespec tstart={0,0}, tend={0,0};
+        int beam_size = 100;
+        ReordererModel model;
+
+    	graph.SetThreads(1);
+        clock_gettime(CLOCK_MONOTONIC, &tstart);
+    	graph.BuildHyperGraph(model, set, non_local_set, datas, beam_size);
+		clock_gettime(CLOCK_MONOTONIC, &tend);
+		double thread1 = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) -
+				((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+
+		// reusing model requires no more model->GetFeatureIds()->GetId(add=true)
+		// therefore, it will be much faster
+		graph.SetThreads(4);
+		graph.Clear();
     	clock_gettime(CLOCK_MONOTONIC, &tstart);
     	graph.BuildHyperGraph(model, set, non_local_set, datas, beam_size);
     	clock_gettime(CLOCK_MONOTONIC, &tend);
@@ -403,6 +418,10 @@ public:
     		}
     		ret = 0;
     	}
+		if(thread4 > thread1){
+			cerr << "more threads, more time? " << thread4 << " > " << thread1 << endl;
+			ret = 0;
+		}
     	set.SetUseReverse(true);
     	return ret;
     }

@@ -54,12 +54,11 @@ public:
 
     T GetId(const std::string & sym, bool add = false)
     {
-        boost::mutex::scoped_lock lock(mutex_);
         typename Map::const_iterator it = map_.find(sym);
         if(it != map_.end())
             return it->second;
-
-        else if (add) {
+        if (add) {
+    		boost::mutex::scoped_lock lock(mutex_);
 			T id;
 			if (reuse_.size() != 0) {
 				id = reuse_.back();

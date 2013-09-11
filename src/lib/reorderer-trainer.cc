@@ -43,7 +43,10 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 	DiscontinuousHyperGraph graph(gapSize, max_seq, cube_growing, full_fledged, mp, verbose);
 	if (config.GetString("bigram").length())
 		graph.LoadLM(config.GetString("bigram").c_str());
-	graph.SetThreads(threads);
+	if (config.GetString("model_in").length())
+		graph.SetThreads(threads);
+	else
+		THROW_ERROR("-threads is forbidden without -model_in")
     for(int iter = 0; iter < config.GetInt("iterations"); iter++) {
         double iter_model_loss = 0, iter_oracle_loss = 0;
         int done = 0;

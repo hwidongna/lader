@@ -38,10 +38,6 @@ public:
     				non_local_features_(non_local_features), sent_(sent), l_(l), r_(r), beam_size_(beam_size) {
     	}
     	void Run(){
-//    		{
-//    			boost::mutex::scoped_lock lock(mutex_);
-//    			cerr << "Process [" << l_ << ", " << r_ << "]" << endl;
-//    		}
     		graph_->SetStack(l_, r_,graph_->ProcessOneSpan(model_, features_, non_local_features_,
     						sent_, l_, r_, beam_size_));
     	}
@@ -161,7 +157,8 @@ protected:
 			const Sentence & sent, int l, int r, int beam_size = 0);
 	const FeatureVectorInt *GetEdgeFeatures(ReordererModel & model,
 			const FeatureSet & feature_gen, const Sentence & sent,
-			const HyperEdge & edge);
+			const HyperEdge & edge, bool insert);
+
 	// only for testing
     void SetEdgeFeatures(const HyperEdge & edge, FeatureVectorInt *feat)
     {

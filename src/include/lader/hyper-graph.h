@@ -29,17 +29,16 @@ public:
     friend class TestDiscontinuousHyperGraph;
     friend class Hypothesis;
 
-    HyperGraph(bool cube_growing = false):
-    	feature_map_(0), n_(-1), cube_growing_(cube_growing), cloned_(false), bigram_(0){ }
+    HyperGraph(bool cube_growing = false) : features_(0), n_(-1), cube_growing_(cube_growing), bigram_(0){ }
 
-    virtual void Clear()
+    void Clear()
     {
-        if(feature_map_) {
-            BOOST_FOREACH(EdgeFeaturePair efp, *feature_map_){
+        if(features_) {
+            BOOST_FOREACH(EdgeFeaturePair efp, *features_){
             	delete efp.first;
                 delete efp.second;
             }
-            delete feature_map_;
+            delete features_;
             ClearFeatures();
         }
         BOOST_FOREACH(TargetSpan * stack, stacks_)
@@ -59,15 +58,7 @@ public:
     	cloned->cloned_ = true;
     	return cloned;
     }
-    // Generate all edge features and store them
-    virtual void StoreEdgeFeatures(HyperEdge * edge, ReordererModel & model,
-			const FeatureSet & features, const Sentence & sent);
-	virtual void GenerateEdgeFeatures(ReordererModel & model,
-			const FeatureSet & features, const Sentence & sent);
-
-    void BuildHyperGraph(ReordererModel & model, const FeatureSet & features,
-			const FeatureSet & non_local_features, const Sentence & sent,
-			int beam_size = 0);
+    void BuildHyperGraph(ReordererModel & model, const FeatureSet & features, const FeatureSet & non_local_features, const Sentence & sent, int beam_size = 0);
     const TargetSpan *GetStack(int l, int r) const
     {
         return SafeAccess(stacks_, GetTrgSpanID(l, r));
@@ -109,17 +100,17 @@ public:
     virtual void AddLoss(LossBase *loss, const Ranks *ranks, const FeatureDataParse *parse) const;
     void SetFeatures(EdgeFeatureMap *features)
     {
-        feature_map_ = features;
+        features_ = features;
     }
 
     EdgeFeatureMap *GetFeatures()
     {
-        return feature_map_;
+        return features_;
     }
 
     void ClearFeatures()
     {
-        feature_map_ = NULL;
+        features_ = NULL;
     }
 
     virtual void AccumulateNonLocalFeatures(
@@ -132,6 +123,9 @@ public:
     }
 
 protected:
+    void AddTerminals(int l, int r, const FeatureSet & features,
+			ReordererModel & model, const Sentence & sent,
+			HypothesisQueue *& q);
     // For both cube pruning/growing
     void IncrementLeft(const Hypothesis *old_hyp, const Hypothesis *new_left,
 			ReordererModel & model, const FeatureSet & non_local_features,
@@ -150,16 +144,19 @@ protected:
     virtual TargetSpan *ProcessOneSpan(ReordererModel & model,
 			const FeatureSet & features, const FeatureSet & non_local_features,
 			const Sentence & sent, int l, int r, int beam_size = 0);
-	const FeatureVectorInt *GetEdgeFeatures(const HyperEdge & edge);
+	const FeatureVectorInt *GetEdgeFeatures(ReordererModel & model,
+			const FeatureSet & feature_gen, const Sentence & sent,
+			const HyperEdge & edge);
 	// only for testing
     void SetEdgeFeatures(const HyperEdge & edge, FeatureVectorInt *feat)
     {
-        if(!feature_map_)
-            feature_map_ = new EdgeFeatureMap;
+        if(!features_)
+            features_ = new EdgeFeatureMap;
 
-        feature_map_->insert(MakePair(edge.Clone(), feat));
+        features_->insert(MakePair(edge.Clone(), feat));
     }
-    double GetEdgeScore(const ReordererModel & model, const HyperEdge & edge);
+    double GetEdgeScore(ReordererModel & model, const FeatureSet & feature_gen,
+			const Sentence & sent, const HyperEdge & edge);
     const FeatureVectorInt *GetNonLocalFeatures(const HyperEdge * edge,
     		const Hypothesis *left, const Hypothesis *right, const FeatureSet & feature_gen,
     		const Sentence & sent, ReordererModel & model, lm::ngram::State * out);
@@ -191,13 +188,11 @@ protected:
         stacks_[idx] = stack;
     }
 private:
+    EdgeFeatureMap *features_;
     std::vector<TargetSpan*> stacks_;
 
 protected:
-    void AddTerminals(int l, int r, const FeatureSet & features,
-			ReordererModel & model, const Sentence & sent,
-			HypothesisQueue *& q);
-    EdgeFeatureMap *feature_map_;
+    int threads_;
     int n_;
     bool cube_growing_, cloned_;
     lm::ngram::Model * bigram_;

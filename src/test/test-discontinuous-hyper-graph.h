@@ -200,10 +200,10 @@ public:
         edge02exp.push_back(MakePair(string("SW||he||rice||ID"), 1));
         edge02exp.push_back(MakePair(string("SP||PRP||NN||ID"), 1));
         // Make the hypergraph and get the features
-        DiscontinuousHyperGraph graph(1);
-        graph.GenerateEdgeFeatures(mod, set, datas);
+        DiscontinuousHyperGraph hyper_graph(1);
         // Generate the features
-        const FeatureVectorInt * edge02int = graph.GetEdgeFeatures(edge0_2b);
+        const FeatureVectorInt * edge02int =
+                        hyper_graph.GetEdgeFeatures(mod, set, datas, edge0_2b);
         FeatureVectorString * edge02act =
                         mod.StringifyFeatureVector(*edge02int);
         // Do the parsing and checking
@@ -213,10 +213,19 @@ public:
         edge02intexp.push_back(MakePair(mod.GetFeatureIds().GetId("SW||he||rice||ID"), 1));
         edge02intexp.push_back(MakePair(mod.GetFeatureIds().GetId("SP||PRP||NN||ID"), 1));
         ret *= CheckVector(edge02intexp, *edge02int);
+        // Generate the features again
+        const FeatureVectorInt * edge02int2 =
+                        hyper_graph.GetEdgeFeatures(mod, set, datas, edge0_2b);
+        // Make sure that the pointers are equal
+        if(edge02int != edge02int2) {
+            cerr << "Edge pointers are not equal." << endl;
+            ret = 0;
+        }
         mod.SetWeight("SW||he||rice||ID", 1);
         mod.SetWeight("SP||PRP||NN||ID", 2);
         // Check to make sure that the weights are Ok
-        double weight_act = graph.GetEdgeScore(mod, edge0_2b);
+        double weight_act = hyper_graph.GetEdgeScore(mod, set,
+                                                     datas, edge0_2b);
         if(weight_act != 1+2) {
             cerr << "Weight is not the expected 3: "<<weight_act<<endl;
             ret = 0;
@@ -243,7 +252,6 @@ public:
         graph.HyperGraph::SetStack(3, 3, stack3);
         // Try processing stack01, which lead to set stack0_2
         set.SetMaxTerm(0);
-        graph.GenerateEdgeFeatures(model, set, datas);
         graph.HyperGraph::SetStack(0, 1, graph.ProcessOneSpan(model, set, non_local_set, datas, 0, 1));
         const TargetSpan *stack0_2 = graph.GetStack(0,0, 2,2);
         // The stack should contain two target spans (2,0) and (0,2),
@@ -266,9 +274,7 @@ public:
 
     int TestBuildHyperGraph() {
         DiscontinuousHyperGraph graph(1);
-//        graph.SetVerbose(2);
         set.SetMaxTerm(1);
-        graph.GenerateEdgeFeatures(model, set, datas);
         graph.BuildHyperGraph(model, set, non_local_set, datas, 4*3*2);
         const std::vector<TargetSpan*> & stacks = graph.GetStacks();
         int ret = 1;
@@ -302,7 +308,7 @@ public:
 				}
 				DiscontinuousHypothesis * dhyp =
 						dynamic_cast<DiscontinuousHypothesis*>(hyp);
-				const FeatureVectorInt *fvi = graph.GetEdgeFeatures(*hyp->GetEdge());
+				const FeatureVectorInt *fvi = graph.GetEdgeFeatures(model, set, datas, *hyp->GetEdge());
 				FeatureVectorString *fvs = model.StringifyFeatureVector(*fvi);
 				bool error = false;
 				BOOST_FOREACH(FeaturePairString feat, *fvs){
@@ -328,7 +334,6 @@ public:
     int TestBuildHyperGraphCubeGrowing() {
         DiscontinuousHyperGraph graph(1, 1, true);
         set.SetMaxTerm(1);
-        graph.GenerateEdgeFeatures(model, set, datas);
         graph.BuildHyperGraph(model, set, non_local_set, datas, 4*3*2);
         const std::vector<TargetSpan*> & stacks = graph.GetStacks();
         int ret = 1;
@@ -398,7 +403,6 @@ public:
     	set.SetMaxTerm(1);
     	set.SetUseReverse(false);
     	model.SetWeight("BIGRAM", 1.0);
-        graph.GenerateEdgeFeatures(model, set, datas);
     	graph.BuildHyperGraph(model, set, non_local_set, datas);
     	const std::vector<TargetSpan*> & stacks = graph.GetStacks();
     	int ret = 1;
@@ -432,13 +436,8 @@ public:
     	// use full-fledged version
         DiscontinuousHyperGraph graph(2, 0, true, true);
         set.SetMaxTerm(1);
-        vector<FeatureDataBase*> datas;
-        FeatureDataSequence sent, sent_pos;
         sent.FromString("this sentence has five words");
 		sent_pos.FromString("PRP NNS VB ADJ NNP");
-        datas.push_back(&sent);
-        datas.push_back(&sent_pos);
-        graph.GenerateEdgeFeatures(model, set, datas);
         graph.BuildHyperGraph(model, set, non_local_set, datas, 5*4*3*2);
         const std::vector<TargetSpan*> & stacks = graph.GetStacks();
         int ret = 1;
@@ -463,13 +462,8 @@ public:
     int TestBuildHyperGraphSize1() {
 		DiscontinuousHyperGraph graph(0);
 		set.SetMaxTerm(0);
-        vector<FeatureDataBase*> datas;
-        FeatureDataSequence sent, sent_pos;
-        sent.FromString("one");
+		sent.FromString("one");
 		sent_pos.FromString("NNS");
-        datas.push_back(&sent);
-        datas.push_back(&sent_pos);
-        graph.GenerateEdgeFeatures(model, set, datas);
 		graph.BuildHyperGraph(model, set, non_local_set, datas);
 		const std::vector<TargetSpan*> & stacks = graph.GetStacks();
 		int ret = 1;
@@ -510,7 +504,6 @@ public:
     int TestAddLoss() {
     	DiscontinuousHyperGraph graph(1);
     	set.SetMaxTerm(1);
-        graph.GenerateEdgeFeatures(model, set, datas);
     	graph.BuildHyperGraph(model, set, non_local_set, datas, 4*3*2);
     	LossChunk loss;
     	loss.Initialize(&ranks, NULL);

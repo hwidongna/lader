@@ -146,10 +146,10 @@ public:
         edge02exp.push_back(MakePair(string("SW||he||ate rice"), 1));
         edge02exp.push_back(MakePair(string("SP||PRP||VBD NN"), 1));
         // Make the hypergraph and get the features
-        HyperGraph graph;
-        graph.GenerateEdgeFeatures(mod, set, datas);
+        HyperGraph hyper_graph;
         // Generate the features
-        const FeatureVectorInt * edge02int = graph.GetEdgeFeatures(edge02);
+        const FeatureVectorInt * edge02int = 
+                        hyper_graph.GetEdgeFeatures(mod, set, datas, edge02);
         FeatureVectorString * edge02act =
                         mod.StringifyFeatureVector(*edge02int);
         // Do the parsing and checking
@@ -160,11 +160,19 @@ public:
         edge02intexp.push_back(MakePair(mod.GetFeatureIds().GetId("SW||he||ate rice"), 1));
         edge02intexp.push_back(MakePair(mod.GetFeatureIds().GetId("SP||PRP||VBD NN"), 1));
         ret *= CheckVector(edge02intexp, *edge02int);
-
+        // Generate the features again
+        const FeatureVectorInt * edge02int2 = 
+                        hyper_graph.GetEdgeFeatures(mod, set, datas, edge02);
+        // Make sure that the pointers are equal
+        if(edge02int != edge02int2) {
+            cerr << "Edge pointers are not equal." << endl;
+            ret = 0;
+        }
         mod.SetWeight("SW||he||ate rice", 1);
         mod.SetWeight("SP||PRP||VBD NN", 2);
         // Check to make sure that the weights are Ok
-        double weight_act = graph.GetEdgeScore(mod, edge02);
+        double weight_act = hyper_graph.GetEdgeScore(mod, set,
+                                                     datas, edge02);
         if(weight_act != 1+2) {
             cerr << "Weight is not the expected 3: "<<weight_act<<endl;
             ret = 0;
@@ -177,7 +185,6 @@ public:
         ReordererModel mod;
         // Make the hypergraph and get the features
         HyperGraph graph;
-        graph.GenerateEdgeFeatures(mod, set, datas);
         // Create spans, and generate hypotheses
         TargetSpan *stack00 = new TargetSpan(0,0)
         		, *stack11 = new TargetSpan(1,1);
@@ -268,7 +275,6 @@ public:
         // Try processing 01
         set.SetMaxTerm(0);
     	set.SetUseReverse(true);
-        graph.GenerateEdgeFeatures(model, set, datas);
         TargetSpan *stack01 = graph.ProcessOneSpan(model, set, non_local_set, datas, 0, 1);
         // The stack should contain four hypotheses: S(0,1), I(1,0), F(01), B(10)
         int ret = 1;
@@ -315,7 +321,6 @@ public:
         HyperGraph graph;
         set.SetMaxTerm(0);
         set.SetUseReverse(false);
-        graph.GenerateEdgeFeatures(model, set, datas);
         graph.BuildHyperGraph(model, set, non_local_set, datas);
         const std::vector<TargetSpan*> & stacks = graph.GetStacks();
         int ret = 1;
@@ -356,7 +361,6 @@ public:
         HyperGraph graph(true);
         set.SetMaxTerm(0);
         set.SetUseReverse(false);
-        graph.GenerateEdgeFeatures(model, set, datas);
         graph.BuildHyperGraph(model, set, non_local_set, datas);
         const std::vector<TargetSpan*> & stacks = graph.GetStacks();
         int ret = 1;

@@ -19,33 +19,34 @@ void ReordererTask::Run() {
     // Save the original string
     vector<string> words = ((FeatureDataSequence*)datas[0])->GetSequence();
     // Build the hypergraph
-    graph_->GenerateEdgeFeatures(*model_, *features_, datas);
     graph_->BuildHyperGraph(*model_, *features_, *non_local_features_, datas, beam);
     // Reorder
     std::vector<int> reordering;
     graph_->GetBest()->GetReordering(reordering);
     datas[0]->Reorder(reordering);
     // Print the string
-    ostringstream oss;
+    ostringstream out;
     for(int i = 0; i < (int)outputs_->size(); i++) {
-        if(i != 0) oss << "\t";
+        if(i != 0) out << "\t";
         if(outputs_->at(i) == ReordererRunner::OUTPUT_STRING) {
-            oss << datas[0]->ToString();
+            out << datas[0]->ToString();
         } else if(outputs_->at(i) == ReordererRunner::OUTPUT_PARSE) {
-            graph_->GetBest()->PrintParse(words, oss);
+            graph_->GetBest()->PrintParse(words, out);
         } else if(outputs_->at(i) == ReordererRunner::OUTPUT_HYPERGRAPH) {
-            graph_->PrintHyperGraph(words, oss);
+            graph_->PrintHyperGraph(words, out);
         } else if(outputs_->at(i) == ReordererRunner::OUTPUT_ORDER) {
             for(int j = 0; j < (int)reordering.size(); j++) {
-                if(j != 0) oss << " ";
-                oss << reordering[j];
+                if(j != 0) out << " ";
+                out << reordering[j];
             }
         } else {
             THROW_ERROR("Unimplemented output format");
         }
     }
-    oss << endl;
-    collector_->Write(id_, oss.str(), "");
+    out << endl;
+    ostringstream err;
+    err << "Decoding " << id_+1 << "th sentence" << endl;
+    collector_->Write(id_, out.str(), err.str());
     // Clean up the data
     BOOST_FOREACH(FeatureDataBase* data, datas)
         delete data;

@@ -8,7 +8,8 @@ VERBOSE=$3
 SHUFFLE=$4
 CUBE_GROWING=$5
 FULL_FLEDGED=$6
-BIGRAM=$7
+MAX_SEQ=$7
+BIGRAM=$8
 
 if [ $# -lt 1 ]
 then
@@ -38,6 +39,11 @@ fi
 if [ $# -lt 6 ]
 then
 FULL_FLEDGED=false
+fi
+
+if [ $# -lt 7 ]
+then
+MAX_SEQ=1
 fi
 
 # This bash file provides an example of how to train a model for lader.
@@ -134,19 +140,12 @@ paste data/train.en output/train.en.class data/train.en.pos data/train.en.parse 
 # -save_features ... (default is true which uses more memory but runs slower.
 #                     if you are using large data, this should be set to false)
 
+rm output/train-g$GAP.mod*
 
-if [ $# -lt 7 ]
-then
+echo "../src/bin/train-lader -cost 1e-3 -attach_null right -feature_profile \"seq=dict=output/train.en-ja.pt,LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,O%SL%SR%ET,I%LR%RL%ET,Q%SQE0%ET,Q0%SQ#00%ET,Q1%SQ#01%ET,Q2%SQ#02%ET,CL%CL%ET,B%SB%ET,A%SA%ET,N%SN%ET,BIAS%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|cfg=LP%LP%ET,RP%RP%ET,SP%SP%ET,TP%SP%LP%RP%ET\" -iterations 500 -cube_growing $CUBE_GROWING -full_fledged $FULL_FLEDGED -max-seq $MAX_SEQ -shuffle $SHUFFLE -samples $SAMPLES -verbose $VERBOSE -gap-size $GAP -model_out output/train-g$GAP.mod -source_in output/train.en.annot -align_in data/train.en-ja.align -bigram $BIGRAM''"
+../src/bin/train-lader -cost 1e-3 -attach_null right -feature_profile "seq=dict=output/train.en-ja.pt,LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,O%SL%SR%ET,I%LR%RL%ET,Q%SQE0%ET,Q0%SQ#00%ET,Q1%SQ#01%ET,Q2%SQ#02%ET,CL%CL%ET,B%SB%ET,A%SA%ET,N%SN%ET,BIAS%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|cfg=LP%LP%ET,RP%RP%ET,SP%SP%ET,TP%SP%LP%RP%ET" -iterations 500 -cube_growing $CUBE_GROWING -full_fledged $FULL_FLEDGED -max-seq $MAX_SEQ -shuffle $SHUFFLE -samples $SAMPLES -verbose $VERBOSE -gap-size $GAP -model_out output/train-g$GAP.mod -source_in output/train.en.annot -align_in data/train.en-ja.align -bigram $BIGRAM''
 
-echo "../src/bin/train-lader -cost 1e-3 -attach_null right -feature_profile \"seq=dict=output/train.en-ja.pt,LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,O%SL%SR%ET,I%LR%RL%ET,Q%SQE0%ET,Q0%SQ#00%ET,Q1%SQ#01%ET,Q2%SQ#02%ET,CL%CL%ET,B%SB%ET,A%SA%ET,N%SN%ET,BIAS%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|cfg=LP%LP%ET,RP%RP%ET,SP%SP%ET,TP%SP%LP%RP%ET\" -iterations 500 -cube_growing $CUBE_GROWING -full_fledged $FULL_FLEDGED -shuffle $SHUFFLE -samples $SAMPLES -verbose $VERBOSE -gap-size $GAP -model_out output/train-g$GAP.mod -source_in output/train.en.annot -align_in data/train.en-ja.align"
-../src/bin/train-lader -cost 1e-3 -attach_null right -feature_profile "seq=dict=output/train.en-ja.pt,LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,O%SL%SR%ET,I%LR%RL%ET,Q%SQE0%ET,Q0%SQ#00%ET,Q1%SQ#01%ET,Q2%SQ#02%ET,CL%CL%ET,B%SB%ET,A%SA%ET,N%SN%ET,BIAS%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|cfg=LP%LP%ET,RP%RP%ET,SP%SP%ET,TP%SP%LP%RP%ET" -iterations 500 -cube_growing $CUBE_GROWING -full_fledged $FULL_FLEDGED -shuffle $SHUFFLE -samples $SAMPLES -verbose $VERBOSE -gap-size $GAP -model_out output/train-g$GAP.mod -source_in output/train.en.annot -align_in data/train.en-ja.align
-
-else
-
-echo "../src/bin/train-lader -cost 1e-3 -attach_null right -feature_profile \"seq=dict=output/train.en-ja.pt,LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,O%SL%SR%ET,I%LR%RL%ET,Q%SQE0%ET,Q0%SQ#00%ET,Q1%SQ#01%ET,Q2%SQ#02%ET,CL%CL%ET,B%SB%ET,A%SA%ET,N%SN%ET,BIAS%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|cfg=LP%LP%ET,RP%RP%ET,SP%SP%ET,TP%SP%LP%RP%ET\" -iterations 500 -cube_growing $CUBE_GROWING-full_fledged $FULL_FLEDGED  -shuffle $SHUFFLE -samples $SAMPLES -verbose $VERBOSE -gap-size $GAP -model_out output/train-g$GAP.mod -source_in output/train.en.annot -align_in data/train.en-ja.align -bigram $BIGRAM"
-../src/bin/train-lader -cost 1e-3 -attach_null right -feature_profile "seq=dict=output/train.en-ja.pt,LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,O%SL%SR%ET,I%LR%RL%ET,Q%SQE0%ET,Q0%SQ#00%ET,Q1%SQ#01%ET,Q2%SQ#02%ET,CL%CL%ET,B%SB%ET,A%SA%ET,N%SN%ET,BIAS%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|cfg=LP%LP%ET,RP%RP%ET,SP%SP%ET,TP%SP%LP%RP%ET" -iterations 500 -cube_growing $CUBE_GROWING -full_fledged $FULL_FLEDGED -shuffle $SHUFFLE -samples $SAMPLES -verbose $VERBOSE -gap-size $GAP -model_out output/train-g$GAP.mod -source_in output/train.en.annot -align_in data/train.en-ja.align -bigram $BIGRAM
-
-fi
+#fi
 
 
 # Once training finishes, a reordering model will be placed in output/train.mod.

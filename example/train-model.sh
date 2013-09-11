@@ -2,6 +2,8 @@
 set -e
 export LD_LIBRARY_PATH=$HOME/git/kenlm/lib
 
+THREADS=2
+
 GAP=$1
 SAMPLES=$2
 VERBOSE=$3
@@ -142,8 +144,8 @@ paste data/train.en output/train.en.class data/train.en.pos data/train.en.parse 
 
 rm output/train-g$GAP.mod*
 
-echo "../src/bin/train-lader -cost 1e-3 -attach_null right -feature_profile \"seq=dict=output/train.en-ja.pt,LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,O%SL%SR%ET,I%LR%RL%ET,Q%SQE0%ET,Q0%SQ#00%ET,Q1%SQ#01%ET,Q2%SQ#02%ET,CL%CL%ET,B%SB%ET,A%SA%ET,N%SN%ET,BIAS%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|cfg=LP%LP%ET,RP%RP%ET,SP%SP%ET,TP%SP%LP%RP%ET\" -iterations 500 -cube_growing $CUBE_GROWING -full_fledged $FULL_FLEDGED -max-seq $MAX_SEQ -shuffle $SHUFFLE -samples $SAMPLES -verbose $VERBOSE -gap-size $GAP -model_out output/train-g$GAP.mod -source_in output/train.en.annot -align_in data/train.en-ja.align -bigram $BIGRAM''"
-../src/bin/train-lader -cost 1e-3 -attach_null right -feature_profile "seq=dict=output/train.en-ja.pt,LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,O%SL%SR%ET,I%LR%RL%ET,Q%SQE0%ET,Q0%SQ#00%ET,Q1%SQ#01%ET,Q2%SQ#02%ET,CL%CL%ET,B%SB%ET,A%SA%ET,N%SN%ET,BIAS%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|cfg=LP%LP%ET,RP%RP%ET,SP%SP%ET,TP%SP%LP%RP%ET" -iterations 500 -cube_growing $CUBE_GROWING -full_fledged $FULL_FLEDGED -max-seq $MAX_SEQ -shuffle $SHUFFLE -samples $SAMPLES -verbose $VERBOSE -gap-size $GAP -model_out output/train-g$GAP.mod -source_in output/train.en.annot -align_in data/train.en-ja.align -bigram $BIGRAM''
+echo "../src/bin/train-lader -cost 1e-3 -attach_null right -feature_profile \"seq=dict=output/train.en-ja.pt,LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,O%SL%SR%ET,I%LR%RL%ET,Q%SQE0%ET,Q0%SQ#00%ET,Q1%SQ#01%ET,Q2%SQ#02%ET,CL%CL%ET,B%SB%ET,A%SA%ET,N%SN%ET,BIAS%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|cfg=LP%LP%ET,RP%RP%ET,SP%SP%ET,TP%SP%LP%RP%ET\" -iterations 500 -threads $THREADS -cube_growing $CUBE_GROWING -full_fledged $FULL_FLEDGED -max-seq $MAX_SEQ -shuffle $SHUFFLE -samples $SAMPLES -verbose $VERBOSE -gap-size $GAP -model_out output/train-g$GAP.mod -source_in output/train.en.annot -align_in data/train.en-ja.align -bigram $BIGRAM''"
+../src/bin/train-lader -cost 1e-3 -attach_null right -feature_profile "seq=dict=output/train.en-ja.pt,LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,O%SL%SR%ET,I%LR%RL%ET,Q%SQE0%ET,Q0%SQ#00%ET,Q1%SQ#01%ET,Q2%SQ#02%ET,CL%CL%ET,B%SB%ET,A%SA%ET,N%SN%ET,BIAS%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|cfg=LP%LP%ET,RP%RP%ET,SP%SP%ET,TP%SP%LP%RP%ET" -iterations 500 -threads $THREADS -cube_growing $CUBE_GROWING -full_fledged $FULL_FLEDGED -max-seq $MAX_SEQ -shuffle $SHUFFLE -samples $SAMPLES -verbose $VERBOSE -gap-size $GAP -model_out output/train-g$GAP.mod -source_in output/train.en.annot -align_in data/train.en-ja.align -bigram $BIGRAM''
 
 #fi
 

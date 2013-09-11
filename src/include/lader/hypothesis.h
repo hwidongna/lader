@@ -13,6 +13,10 @@
 #include "lm/model.hh"
 using namespace std;
 
+namespace std {
+inline std::ostream& operator <<(std::ostream& out,
+		const lader::Hypothesis & rhs);
+}
 namespace lader {
 
 typedef std::tr1::unordered_map<const HyperEdge*, FeatureVectorInt*,
@@ -112,12 +116,14 @@ public:
 		|| GetLeft() != rhs.GetLeft() || GetRight() != rhs.GetRight()
 		|| trg_left_ != rhs.trg_left_ || trg_right_ != rhs.trg_right_)
 			return false;
+		// compare the permutation
 		vector<int> this_reorder;
 		vector<int> rhs_reorder;
 		GetReordering(this_reorder);
 		rhs.GetReordering(rhs_reorder);
-		return this_reorder.size() == rhs_reorder.size()
-				&& std::equal(this_reorder.begin(), this_reorder.end(),
+		if (this_reorder.size() != rhs_reorder.size())
+			THROW_ERROR("Difference size of hypothesis" << endl << *this << endl << rhs)
+		return std::equal(this_reorder.begin(), this_reorder.end(),
 						rhs_reorder.begin());
 	}
 

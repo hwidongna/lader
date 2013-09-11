@@ -55,6 +55,7 @@ public:
         AddConfigEntry("shuffle", "true", "Whether to shuffle the input");
         AddConfigEntry("source_in", "", "The input file for the source sentences");
         AddConfigEntry("use_reverse", "false", "Whether to use reverse terminals ");
+        AddConfigEntry("threads", "1", "The number of threads to use");
         AddConfigEntry("verbose", "0", "The level of debugging output to print 1: {model,oracle}{loss,score} 2: detail for building and rescoring");
         AddConfigEntry("write_every_iter", "true", "Write the model out every time during training.");
 

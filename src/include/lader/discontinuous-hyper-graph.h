@@ -75,15 +75,21 @@ public:
 	            THROW_ERROR("Bad SetStack "
 	            		"[l="<<l<<", m="<<m<<", n="<<n<<", r="<<r<<"]"<<std::endl)
         int idx = GetTrgSpanID(l, m);
-        if((int)next_.size() <= idx)
-                next_.resize(idx+1, NULL);
+        {
+        	boost::mutex::scoped_lock lock(mutex_);
+        	if((int)next_.size() <= idx)
+        		next_.resize(idx+1, NULL);
+        }
         if(next_[idx] == NULL)
         	next_[idx] = new HyperGraph;
         HyperGraph *hyper_graph = SafeAccess(next_, idx);
         idx = GetTrgSpanID(n - m - 2, r - m - 2);
         std::vector<TargetSpan*> & stacks = hyper_graph->GetStacks();
-        if((int)stacks.size() <= idx)
-	            stacks.resize(idx+1, NULL);
+        {
+        	boost::mutex::scoped_lock lock(mutex_);
+        	if((int)stacks.size() <= idx)
+        		stacks.resize(idx+1, NULL);
+        }
         if(stacks[idx])
             delete stacks[idx];
 

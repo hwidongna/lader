@@ -36,16 +36,14 @@ void DiscontinuousHyperGraph::AddHypotheses(
 	// there could be null stack due to the restriction of max_seq
 	if (!left_stack || !right_stack)
 		return;
-//	if(left_stack == NULL) THROW_ERROR("Null left_trg "
-//			"["<<left_l<<", "<<left_m<<", "<<left_n<<", "<<left_r<<"]");
-//	if(right_stack == NULL) THROW_ERROR("Null right_trg "
-//			"["<<right_l<<", "<<right_m<<", "<<right_n<<", "<<right_r<<"]");
 	int l, m, c, n, r;
 	HyperEdge * edge;
     Hypothesis * left, *right;
     if (cube_growing_){
-    	left = LazyKthBest(left_stack, 0, model, features, non_local_features, sent);
-    	right = LazyKthBest(right_stack, 0, model, features, non_local_features, sent);
+    	// instead LazyKthBest, access to the best one in HypothesisQueue
+    	// this seems to be risky, but LazyKthBest(0) == HypothesisQueue.top()
+    	left = left_stack->GetCands().top();
+    	right = right_stack->GetCands().top();
     }
     else{
     	left = left_stack->GetHypothesis(0);
@@ -116,16 +114,14 @@ void DiscontinuousHyperGraph::AddDiscontinuousHypotheses(
 	// there could be null stack due to the restriction of max_seq
 	if (!left_stack || !right_stack)
 		return;
-//	if(left_stack == NULL) THROW_ERROR("Null left_trg "
-//			"["<<left_l<<", "<<left_m<<", "<<left_n<<", "<<left_r<<"]");
-//	if(right_stack == NULL) THROW_ERROR("Null right_trg "
-//			"["<<right_l<<", "<<right_m<<", "<<right_n<<", "<<right_r<<"]");
 	int l, m, n, r, c;
 	HyperEdge * edge;
     Hypothesis * left, *right;
     if (cube_growing_){
-    	left = LazyKthBest(left_stack, 0, model, features, non_local_features, sent);
-    	right = LazyKthBest(right_stack, 0, model, features, non_local_features, sent);
+    	// instead LazyKthBest, access to the best one in HypothesisQueue
+    	// this seems to be risky, but LazyKthBest(0) == HypothesisQueue.top()
+    	left = left_stack->GetCands().top();
+    	right = right_stack->GetCands().top();
     }
     else{
     	left = left_stack->GetHypothesis(0);
@@ -208,11 +204,13 @@ void DiscontinuousHyperGraph::StartBeamSearch(
 					lm::ngram::State out;
 					const FeatureVectorInt * fvi = GetNonLocalFeatures(hyp->GetEdge(), left, right,
 							non_local_features, sent, model, &out);
-					fvs = model.StringifyFeatureVector(*fvi);
-					fws = model.StringifyWeightVector(*fvi);
-					cerr << "/********************* non-local features ***********************/" << endl;
-					cerr << *fvs << endl << *fws;
-					delete fvi, fvs, fws;
+					if (fvi){
+						fvs = model.StringifyFeatureVector(*fvi);
+						fws = model.StringifyWeightVector(*fvi);
+						cerr << "/********************* non-local features ***********************/" << endl;
+						cerr << *fvs << endl << *fws;
+						delete fvi, fvs, fws;
+					}
 				}
 				cerr << endl << "/****************************************************************/" << endl;
 			}
@@ -330,8 +328,10 @@ TargetSpan * DiscontinuousHyperGraph::ProcessOneSpan(
 			if(right_stack == NULL) THROW_ERROR("Target c="<<i<<", r="<<r);
 	        Hypothesis * left, *right;
 	        if (cube_growing_){
-	        	left = LazyKthBest(left_stack, 0, model, features, non_local_features, sent);
-	        	right = LazyKthBest(right_stack, 0, model, features, non_local_features, sent);
+	        	// instead LazyKthBest, access to the best one in HypothesisQueue
+	        	// this seems to be risky, but LazyKthBest(0) == HypothesisQueue.top()
+	        	left = left_stack->GetCands().top();
+	        	right = right_stack->GetCands().top();
 	        }
 	        else{
 	        	left = left_stack->GetHypothesis(0);
@@ -392,17 +392,13 @@ Hypothesis * DiscontinuousHyperGraph::LazyKthBest(TargetSpan * stack, int k,
 	while (stack->size() < k+1 && stack->CandSize() > 0){
 		HypothesisQueue & q = stack->GetCands();
 		Hypothesis * hyp = q.top(); q.pop();
+		LazyNext(q, model, features, non_local_features, sent, hyp);
 		// skip unnecessary hypothesis
 		// Insert the hypothesis if unique
-		bool skip = hyp->CanSkip(max_seq_) || !stack->AddUniqueHypothesis(hyp);
-		LazyNext(q, model, features, non_local_features, sent, hyp);
-		if (skip)
+		if (hyp->CanSkip(max_seq_) || !stack->AddUniqueHypothesis(hyp))
 			delete hyp;
 	}
-	if ( k < (int)stack->size()){
-		return stack->GetHypothesis(k);
-	}
-	return NULL;
+	return stack->GetHypothesis(k);
 }
 
 // Accumulate non-local features under a hypothesis
@@ -431,24 +427,26 @@ void DiscontinuousHyperGraph::AccumulateNonLocalFeatures(std::tr1::unordered_map
 		lm::ngram::State out;
 		const FeatureVectorInt * fvi = GetNonLocalFeatures(hyp->GetEdge(), left, right,
 				feature_gen, sent, model, &out);
-		if (verbose_ > 1){
-			const DiscontinuousHypothesis * dhyp =
-					dynamic_cast<const DiscontinuousHypothesis*>(hyp);
-			cerr << "Accumulate non-local feature of hypothesis ";
-			if (dhyp) cerr << *dhyp;
-			else cerr << *hyp;
-			cerr << endl;
-            hyp->PrintChildren(cerr);
-			FeatureVectorString * fvs = model.StringifyFeatureVector(*fvi);
-			FeatureVectorString * fws = model.StringifyWeightVector(*fvi);
-			cerr << "/********************* non-local features ***********************/" << endl;
-			cerr << *fvs << endl << *fws << endl;
-			cerr << "/****************************************************************/" << endl;
-			delete fvs, fws;
+		if (fvi){
+			if (verbose_ > 1){
+				const DiscontinuousHypothesis * dhyp =
+						dynamic_cast<const DiscontinuousHypothesis*>(hyp);
+				cerr << "Accumulate non-local feature of hypothesis ";
+				if (dhyp) cerr << *dhyp;
+				else cerr << *hyp;
+				cerr << endl;
+				hyp->PrintChildren(cerr);
+				FeatureVectorString * fvs = model.StringifyFeatureVector(*fvi);
+				FeatureVectorString * fws = model.StringifyWeightVector(*fvi);
+				cerr << "/********************* non-local features ***********************/" << endl;
+				cerr << *fvs << endl << *fws << endl;
+				cerr << "/****************************************************************/" << endl;
+				delete fvs, fws;
+			}
+			BOOST_FOREACH(FeaturePairInt feat_pair, *fvi)
+			feat_map[feat_pair.first] += feat_pair.second;
+			delete fvi;
 		}
-        BOOST_FOREACH(FeaturePairInt feat_pair, *fvi)
-            feat_map[feat_pair.first] += feat_pair.second;
-        delete fvi;
 	}
 	if (left)
 		AccumulateNonLocalFeatures(feat_map, model, feature_gen, sent, left);

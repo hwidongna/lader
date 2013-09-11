@@ -10,6 +10,8 @@
 #include <boost/algorithm/string.hpp>
 #include <iostream>
 #include "lm/word_index.hh"
+#include <lader/thread-pool.h>
+#include <boost/thread/mutex.hpp>
 
 using namespace lader;
 using namespace std;
@@ -22,12 +24,26 @@ const FeatureVectorInt * HyperGraph::GetEdgeFeatures(
                                 const FeatureSet & feature_gen,
                                 const Sentence & sent,
                                 const HyperEdge & edge) {
-    FeatureVectorInt * ret;
-    if(features_ == NULL) features_ = new EdgeFeatureMap;
-    EdgeFeatureMap::const_iterator it = features_->find(&edge);
-    if(it == features_->end()) {
+	FeatureVectorInt * ret;
+    EdgeFeatureMap::const_iterator it;
+    bool insert = false;
+    {
+    	boost::mutex::scoped_lock lock(mutex_);
+    	if(features_ == NULL){
+    		features_ = new EdgeFeatureMap;
+    		insert = true;
+    	}
+    	else{
+    		it = features_->find(&edge);
+    		insert = it == features_->end();
+    	}
+    }
+    if(insert) {
         ret = feature_gen.MakeEdgeFeatures(sent, edge, model.GetFeatureIds(), model.GetAdd());
-        features_->insert(MakePair(edge.Clone(), ret));
+        {
+        	boost::mutex::scoped_lock lock(mutex_);
+        	features_->insert(MakePair(edge.Clone(), ret));
+        }
     } else {
         ret = it->second;
     }
@@ -65,6 +81,7 @@ const FeatureVectorInt *HyperGraph::GetNonLocalFeatures(const HyperEdge * edge,
 	}
 	else if (edge->GetType() == HyperEdge::EDGE_FOR){
 		if(bigram_){
+			fvi = new FeatureVectorInt;
 			Model::State state = bigram_->NullContextState();
 			for (int i = edge->GetLeft(); i <= edge->GetRight(); i++) {
 				if (i - edge->GetLeft() + 1 < bigram_->Order())
@@ -83,6 +100,7 @@ const FeatureVectorInt *HyperGraph::GetNonLocalFeatures(const HyperEdge * edge,
 	}
 	else if (edge->GetType() == HyperEdge::EDGE_BAC){
 		if(bigram_){
+			fvi = new FeatureVectorInt;
 			Model::State state = bigram_->NullContextState();
 			for (int i = edge->GetRight(); i >= edge->GetLeft(); i--) {
 				if (edge->GetRight() - i + 1 < bigram_->Order())
@@ -101,9 +119,7 @@ const FeatureVectorInt *HyperGraph::GetNonLocalFeatures(const HyperEdge * edge,
 	}
 	else if (edge->GetType() == HyperEdge::EDGE_ROOT)
 		THROW_ERROR("Use RootBigram instead of GetNonLocalFeatures")
-	if (!fvi)
-		fvi = new FeatureVectorInt;
-    if (bigram_ && out)
+    if (fvi && bigram_ && out)
     	fvi->push_back(bigram);
     return fvi;
 }
@@ -155,6 +171,8 @@ double HyperGraph::GetNonLocalScore(ReordererModel & model,
 	// in order to avoid too much memory usage
     const FeatureVectorInt * fvi = GetNonLocalFeatures(edge, left, right,
     		feature_gen, sent, model, out);
+    if (!fvi)
+    	return 0.0;
     double score = model.ScoreFeatureVector(SafeReference(fvi));
     delete fvi;
     return score;
@@ -169,7 +187,7 @@ void HyperGraph::AccumulateNonLocalFeatures(std::tr1::unordered_map<int,double> 
 	Hypothesis * left = hyp->GetLeftHyp();
 	Hypothesis * right = hyp->GetRightHyp();
 	// root has only the bigram feature on the boundaries
-	if (hyp->GetEdgeType() == HyperEdge::EDGE_ROOT){
+	if (hyp->GetEdgeType() == HyperEdge::EDGE_ROOT && bigram_){
 		lm::ngram::State out;
 		feat_map[model.GetFeatureIds().GetId("BIGRAM")] += GetRootBigram(sent, hyp, &out);
 	}
@@ -178,9 +196,11 @@ void HyperGraph::AccumulateNonLocalFeatures(std::tr1::unordered_map<int,double> 
 		lm::ngram::State out;
 		const FeatureVectorInt * fvi = GetNonLocalFeatures(hyp->GetEdge(), left, right,
 				feature_gen, sent, model, &out);
-        BOOST_FOREACH(FeaturePairInt feat_pair, *fvi)
-            feat_map[feat_pair.first] += feat_pair.second;
-        delete fvi;
+		if (fvi){
+			BOOST_FOREACH(FeaturePairInt feat_pair, *fvi)
+            		feat_map[feat_pair.first] += feat_pair.second;
+			delete fvi;
+		}
 	}
 	if (left)
 		AccumulateNonLocalFeatures(feat_map, model, feature_gen, sent, left);
@@ -282,13 +302,13 @@ void HyperGraph::LazyNext(HypothesisQueue & q, ReordererModel & model,
 
 	TargetSpan *left_span = hyp->GetLeftChild();
 	if (left_span)
-		new_left = this->LazyKthBest(left_span, hyp->GetLeftRank() + 1,
+		new_left = LazyKthBest(left_span, hyp->GetLeftRank() + 1,
 				model, features, non_local_features, sent);
     IncrementLeft(hyp, new_left, model, non_local_features, sent, q);
 
 	TargetSpan *right_span = hyp->GetRightChild();
 	if (right_span)
-		new_right = this->LazyKthBest(right_span, hyp->GetRightRank() + 1,
+		new_right = LazyKthBest(right_span, hyp->GetRightRank() + 1,
 				model, features, non_local_features, sent);
     IncrementRight(hyp, new_right, model, non_local_features, sent, q);
 }
@@ -300,17 +320,14 @@ Hypothesis * HyperGraph::LazyKthBest(TargetSpan * stack, int k,
 	while (stack->size() < k+1 && stack->CandSize() > 0){
 		HypothesisQueue & q = stack->GetCands();
 		Hypothesis * hyp = q.top(); q.pop();
+		LazyNext(q, model, features, non_local_features, sent, hyp);
 		// skip unnecessary hypothesis
 		// Insert the hypothesis if unique
-		bool skip = hyp->CanSkip() || !stack->AddUniqueHypothesis(hyp);
-		LazyNext(q, model, features, non_local_features, sent, hyp);
-		if (skip)
+		if (hyp->CanSkip() || !stack->AddUniqueHypothesis(hyp))
 			delete hyp;
 	}
-	if ( k < (int)stack->size()){
-		return stack->GetHypothesis(k);
-	}
-	return NULL;
+	return stack->GetHypothesis(k);
+
 }
 
 // Build a hypergraph using beam search and cube pruning
@@ -347,8 +364,10 @@ TargetSpan * HyperGraph::ProcessOneSpan(ReordererModel & model,
         if(right_stack == NULL) THROW_ERROR("Target c="<<c<<", r="<<r);
         Hypothesis * left, *right;
         if (cube_growing_){
-        	left = LazyKthBest(left_stack, 0, model, features, non_local_features, sent);
-        	right = LazyKthBest(right_stack, 0, model, features, non_local_features, sent);
+        	// instead LazyKthBest, access to the best one in HypothesisQueue
+        	// this seems to be risky, but LazyKthBest(0) == HypothesisQueue.top()
+        	left = left_stack->GetCands().top();
+        	right = right_stack->GetCands().top();
         }
         else{
         	left = left_stack->GetHypothesis(0);
@@ -433,24 +452,27 @@ double HyperGraph::GetRootBigram(const Sentence & sent, const Hypothesis *hyp, l
 
 // Build a hypergraph using beam search and cube pruning
 void HyperGraph::BuildHyperGraph(ReordererModel & model,
-                                 const FeatureSet & features,
-                                 const FeatureSet & non_local_features,
-                                 const Sentence & sent,
-                                 int beam_size) {
+        const FeatureSet & features,
+        const FeatureSet & non_local_features,
+        const Sentence & sent,
+        int beam_size) {
     n_ = sent[0]->GetNumWords();
     stacks_.resize(n_ * (n_+1) / 2 + 1, NULL); // resize stacks in advance
     // Iterate through the left side of the span
     for(int L = 1; L <= n_; L++) {
         // Move the span from l to r, building hypotheses from small to large
-        for(int l = 0; l <= n_-L; l++){
-            int r = l+L-1;
-            // TODO: parallelize processing in a row
-            // need to lock GetEdgeScore() -> GetEdgeFeatures() -> model.GetFeatureId().GetId()
-            // need to lock GetNonLocalScore() -> model.GetFeatureId().GetId()
-            // need to lock LazyNext() for cube growing
-            SetStack(l, r, ProcessOneSpan(model, features, non_local_features, sent,
-                                          l, r, beam_size));
-        }
+    	// parallelize processing in a row
+		// need to lock GetEdgeScore() -> GetEdgeFeatures() -> model.GetFeatureId().GetId()
+		// need to lock GetNonLocalScore() -> model.GetFeatureId().GetId()
+		// need to lock LazyNext() for cube growing
+    	ThreadPool pool(threads_, 1000);
+    	for(int l = 0; l <= n_-L; l++){
+    		int r = l+L-1;
+    		SpanTask * task = new SpanTask(this, model, features,
+					non_local_features, sent, l, r, beam_size);
+    		pool.Submit(task);
+    	}
+    	pool.Stop(true);
     }
     // Build the root node
     TargetSpan * top = GetStack(0,n_-1);

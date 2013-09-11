@@ -369,6 +369,43 @@ public:
         return ret;
     }
 
+    int TestBuildHyperGraphMultiThreads() {
+    	DiscontinuousHyperGraph graph(1, 0, true, true);
+    	FeatureSet set;
+    	FeatureSequence * featw = new FeatureSequence;
+    	featw->ParseConfiguration("SW%LS%RS");
+    	set.AddFeatureGenerator(featw);
+    	set.SetMaxTerm(0);
+    	set.SetUseReverse(false);
+    	graph.SetThreads(4);
+    	FeatureDataSequence sent;
+    	sent.FromString("t h i s i s a v e r y v e r y v e r y v e r y l o n g s e n t e n c e .");
+    	vector<FeatureDataBase*> datas;
+    	datas.push_back(&sent);
+    	int beam_size = 100;
+    	struct timespec tstart={0,0}, tend={0,0};
+    	clock_gettime(CLOCK_MONOTONIC, &tstart);
+    	graph.BuildHyperGraph(model, set, non_local_set, datas, beam_size);
+    	clock_gettime(CLOCK_MONOTONIC, &tend);
+    	double thread4 = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) -
+    			((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+    	const std::vector<TargetSpan*> & stacks = graph.GetStacks();
+    	int ret = 1;
+    	int n = sent.GetNumWords();
+    	// The total number of stacks should be n*(n+1)/2 + 1
+    	if(stacks.size() != n*(n+1)/2 + 1) {
+    		cerr << "stacks.size() != " << n*(n+1)/2 + 1 << ": " << stacks.size() << endl; ret = 0;
+    		// The number of hypothesis should be beam_size
+    	} else if (graph.GetRoot()->size() != beam_size) {
+    		cerr << "root stacks->size() != " << beam_size << ": " <<graph.GetRoot()->size()<< endl;
+    		BOOST_FOREACH(const Hypothesis *hyp, graph.GetRoot()->GetHypotheses()){
+    			cerr << *hyp <<  endl;
+    		}
+    		ret = 0;
+    	}
+    	set.SetUseReverse(true);
+    	return ret;
+    }
     int TestBuildHyperGraphPlusLM() {
     	// Create a reordered ngram and write it to /tmp/ngram.arpa
     	ofstream out("/tmp/ngram.arpa");
@@ -436,8 +473,13 @@ public:
     	// use full-fledged version
         DiscontinuousHyperGraph graph(2, 0, true, true);
         set.SetMaxTerm(1);
+        ReordererModel model;
+        FeatureDataSequence sent, sent_pos;
         sent.FromString("this sentence has five words");
 		sent_pos.FromString("PRP NNS VB ADJ NNP");
+        vector<FeatureDataBase*> datas;
+        datas.push_back(&sent);
+        datas.push_back(&sent_pos);
         graph.BuildHyperGraph(model, set, non_local_set, datas, 5*4*3*2);
         const std::vector<TargetSpan*> & stacks = graph.GetStacks();
         int ret = 1;
@@ -462,8 +504,13 @@ public:
     int TestBuildHyperGraphSize1() {
 		DiscontinuousHyperGraph graph(0);
 		set.SetMaxTerm(0);
+		ReordererModel model;
+		FeatureDataSequence sent, sent_pos;
 		sent.FromString("one");
 		sent_pos.FromString("NNS");
+		vector<FeatureDataBase*> datas;
+		datas.push_back(&sent);
+		datas.push_back(&sent_pos);
 		graph.BuildHyperGraph(model, set, non_local_set, datas);
 		const std::vector<TargetSpan*> & stacks = graph.GetStacks();
 		int ret = 1;
@@ -689,6 +736,7 @@ public:
         done++; cout << "TestProcessOneSpan()" << endl; if(TestProcessOneSpan()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestBuildHyperGraph()" << endl; if(TestBuildHyperGraph()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestBuildHyperGraphCubeGrowing()" << endl; if(TestBuildHyperGraphCubeGrowing()) succeeded++; else cout << "FAILED!!!" << endl;
+        done++; cout << "TestBuildHyperGraphMultiThreads()" << endl; if(TestBuildHyperGraphMultiThreads()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestBuildHyperGraphPlusLM()" << endl; if(TestBuildHyperGraphPlusLM()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestAddLoss()" << endl; if(TestAddLoss()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestAccumulateLoss()" << endl; if(TestAccumulateLoss()) succeeded++; else cout << "FAILED!!!" << endl;

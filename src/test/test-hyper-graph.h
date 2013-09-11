@@ -13,6 +13,7 @@
 #include <lader/ranks.h>
 #include <lader/hyper-graph.h>
 #include <fstream>
+#include <time.h>
 
 namespace lader {
 
@@ -383,6 +384,54 @@ public:
         return ret;
     }
 
+    int TestBuildHyperGraphMultiThreads() {
+    	HyperGraph graph(true);
+    	FeatureSet set;
+    	FeatureSequence * featw = new FeatureSequence;
+        featw->ParseConfiguration("SW%LS%RS");
+    	set.AddFeatureGenerator(featw);
+    	set.SetMaxTerm(0);
+    	set.SetUseReverse(false);
+    	graph.SetThreads(4);
+        FeatureDataSequence sent;
+        sent.FromString("t h i s i s a v e r y v e r y v e r y v e r y l o n g s e n t e n c e .");
+        vector<FeatureDataBase*> datas;
+        datas.push_back(&sent);
+        int beam_size = 100;
+    	struct timespec tstart={0,0}, tend={0,0};
+        clock_gettime(CLOCK_MONOTONIC, &tstart);
+    	graph.BuildHyperGraph(model, set, non_local_set, datas, beam_size);
+		clock_gettime(CLOCK_MONOTONIC, &tend);
+		double thread4 = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) -
+				((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+    	const std::vector<TargetSpan*> & stacks = graph.GetStacks();
+    	int ret = 1;
+    	int n = sent.GetNumWords();
+    	// The total number of stacks should be n*(n+1)/2 + 1
+    	if(stacks.size() != n*(n+1)/2 + 1) {
+    		cerr << "stacks.size() != " << n*(n+1)/2 + 1 << ": " << stacks.size() << endl; ret = 0;
+    		// The number of hypothesis should be beam_size
+    	} else if (graph.GetRoot()->size() != beam_size) {
+    		cerr << "root stacks->size() != " << beam_size << ": " <<graph.GetRoot()->size()<< endl;
+    		BOOST_FOREACH(const Hypothesis *hyp, graph.GetRoot()->GetHypotheses()){
+    			cerr << *hyp <<  endl;
+    		}
+    		ret = 0;
+    	}
+//    	graph.Clear();
+//    	graph.SetThreads(1);
+//        clock_gettime(CLOCK_MONOTONIC, &tstart);
+//    	graph.BuildHyperGraph(model, set, non_local_set, datas, beam_size);
+//		clock_gettime(CLOCK_MONOTONIC, &tend);
+//		double thread1 = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) -
+//				((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+//		if(thread4 > thread1){
+//			cerr << "more threads, more time?" << endl;
+//			ret = 0;
+//		}
+    	set.SetUseReverse(true);
+    	return ret;
+    }
 
     int TestAccumulateLoss() {
         // The value of the loss should be 1+2+5+6 = 14 (3 and 4 are not best)
@@ -565,6 +614,7 @@ public:
         done++; cout << "TestProcessOneSpan()" << endl; if(TestProcessOneSpan()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestBuildHyperGraph()" << endl; if(TestBuildHyperGraph()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestBuildHyperGraphCubeGrowing()" << endl; if(TestBuildHyperGraphCubeGrowing()) succeeded++; else cout << "FAILED!!!" << endl;
+        done++; cout << "TestBuildHyperGraphMultiThreads()" << endl; if(TestBuildHyperGraphMultiThreads()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestAccumulateLoss()" << endl; if(TestAccumulateLoss()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestAccumulateFeatures()" << endl; if(TestAccumulateFeatures()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestRescore()" << endl; if(TestRescore()) succeeded++; else cout << "FAILED!!!" << endl;

@@ -1,6 +1,7 @@
 #include <lader/reorderer-trainer.h>
 #include <boost/algorithm/string.hpp>
 #include <lader/discontinuous-hyper-graph.h>
+#include <lader/feature-data-sequence.h>
 #include <time.h>
 #include <cstdlib>
 using namespace lader;
@@ -46,7 +47,10 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 	if (config.GetString("model_in").length())
 		graph.SetThreads(threads);
 	else if (threads > 1)
-		THROW_ERROR("-threads is forbidden without -model_in")
+		cerr << "-threads is slow without -model_in" << endl;
+	// enable save edge features only if -save_features is given
+	if(config.GetBool("save_features"))
+		graph.SetFeatures(new EdgeFeatureMap);
     for(int iter = 0; iter < config.GetInt("iterations"); iter++) {
         double iter_model_loss = 0, iter_oracle_loss = 0;
         int done = 0;
@@ -92,12 +96,11 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
             clock_gettime(CLOCK_MONOTONIC, &tstart);
             oracle_score = graph.Rescore(-1e6);
 			feat_map.clear();
-			graph.AccumulateNonLocalFeatures(feat_map,
-					*model_,
-					*non_local_features_,
-					data_[sent],
-					graph.GetBest());
-			oracle_features = graph.GetBest()->AccumulateFeatures(feat_map, graph.GetFeatures());
+			graph.AccumulateFeatures(feat_map, *model_,
+							*features_, *non_local_features_, data_[sent], graph.GetBest());
+			oracle_features.clear();
+			BOOST_FOREACH(FeaturePairInt feat_pair, feat_map)
+				oracle_features.push_back(feat_pair);
 			oracle_loss = graph.GetBest()->AccumulateLoss();
 			oracle_score -= oracle_loss * -1e6;
 			clock_gettime(CLOCK_MONOTONIC, &tend);
@@ -110,12 +113,11 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 			model_loss = graph.GetBest()->AccumulateLoss();
 			model_score -= model_loss * 1;
 			feat_map.clear();
-			graph.AccumulateNonLocalFeatures(feat_map,
-							*model_,
-							*non_local_features_,
-							data_[sent],
-							graph.GetBest());
-			model_features = graph.GetBest()->AccumulateFeatures(feat_map, graph.GetFeatures());
+			graph.AccumulateFeatures(feat_map, *model_,
+					*features_, *non_local_features_, data_[sent], graph.GetBest());
+			model_features.clear();
+			BOOST_FOREACH(FeaturePairInt feat_pair, feat_map)
+				model_features.push_back(feat_pair);
 			clock_gettime(CLOCK_MONOTONIC, &tend);
 			model.tv_sec += tend.tv_sec - tstart.tv_sec;
 			model.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
@@ -143,9 +145,13 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 					sent_loss += loss->CalculateSentenceLoss(order,
 									sent < (int)ranks_.size() ? &ranks_[sent] : NULL,
 									sent < (int)parses_.size() ? &parses_[sent] : NULL).first;
-				if(sent_loss != model_loss)
-					THROW_ERROR("sent_loss="<<sent_loss
-							<<", model_loss="<<model_loss);
+				if(sent_loss != model_loss){
+					ostringstream out;
+					vector<string> words = ((FeatureDataSequence*)data_[sent][0])->GetSequence();
+		            graph.GetBest()->PrintParse(words, out);
+					cerr << "sent=" << sent << " sent_loss="<< sent_loss <<" != model_loss="<<model_loss << endl;
+		            cerr << out << endl;
+				}
 				cout << "sent=" << sent << " oracle_score=" << oracle_score << " model_score=" << model_score << endl
 					 << "sent_loss = "<< sent_loss << " oracle_loss=" << oracle_loss << " model_loss=" << model_loss << endl;
 			}
@@ -190,7 +196,7 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
             break;
         }
         // write every iteration to a different file
-        else if(config.GetBool("write_every_iter")){
+        if(config.GetBool("write_every_iter")){
         	stringstream ss;
         	ss << ".it" << iter;
         	WriteModel(config.GetString("model_out") + ss.str());

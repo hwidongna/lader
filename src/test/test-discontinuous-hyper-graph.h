@@ -201,6 +201,7 @@ public:
         edge02exp.push_back(MakePair(string("SP||PRP||NN||ID"), 1));
         // Make the hypergraph and get the features
         DiscontinuousHyperGraph hyper_graph(1);
+        hyper_graph.SetFeatures(new EdgeFeatureMap);
         // Generate the features
         const FeatureVectorInt * edge02int =
                         hyper_graph.GetEdgeFeatures(mod, set, datas, edge0_2b, true);

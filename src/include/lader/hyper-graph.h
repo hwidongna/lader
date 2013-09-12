@@ -122,10 +122,10 @@ public:
 	void ClearFeatures() {
 		features_ = NULL;
 	}
-	virtual void AccumulateNonLocalFeatures(
-			std::tr1::unordered_map<int, double> & feat_map
-			, ReordererModel & model, const FeatureSet & feature_gen
-			, const Sentence & sent, const Hypothesis * hyp);
+	virtual void AccumulateFeatures(std::tr1::unordered_map<int, double> & feat_map,
+			ReordererModel & model, const FeatureSet & features,
+			const FeatureSet & non_local_features, const Sentence & sent,
+			const Hypothesis * hyp);
 	void LoadLM(const char *file) {
 		bigram_ = new lm::ngram::Model(file);
 	}
@@ -202,10 +202,10 @@ protected:
         stacks_[idx] = stack;
     }
 private:
-    EdgeFeatureMap *features_;
     std::vector<TargetSpan*> stacks_;
 
 protected:
+    EdgeFeatureMap *features_;
     boost::mutex mutex_;
     int threads_;
     int n_;

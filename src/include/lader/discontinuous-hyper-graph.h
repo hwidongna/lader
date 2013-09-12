@@ -30,9 +30,10 @@ public:
     }
 
     virtual void AddLoss(LossBase *loss, const Ranks *ranks, const FeatureDataParse *parse) const;
-    virtual void AccumulateNonLocalFeatures(std::tr1::unordered_map<int,double> & feat_map,
-    		ReordererModel & model, const FeatureSet & feature_gen,
-    		const Sentence & sent, const Hypothesis * hyp);
+    virtual void AccumulateFeatures(std::tr1::unordered_map<int, double> & feat_map,
+    			ReordererModel & model, const FeatureSet & features,
+    			const FeatureSet & non_local_features, const Sentence & sent,
+    			const Hypothesis * hyp);
     const TargetSpan *GetStack(int l, int m, int n, int r) const
     {
         if(m < 0 && n < 0)

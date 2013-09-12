@@ -20,7 +20,7 @@ using namespace lm::ngram;
 
 // Return the edge feature vector
 // this is called only once from HyperGraph::GetEdgeScore
-// therefore, we don't need to find features in EdgeFeatureMap
+// therefore, we don't need to insert and find features in EdgeFeatureMap
 // unless we use -save_features option
 const FeatureVectorInt * HyperGraph::GetEdgeFeatures(
                                 ReordererModel & model,
@@ -29,17 +29,18 @@ const FeatureVectorInt * HyperGraph::GetEdgeFeatures(
                                 const HyperEdge & edge,
                                 bool insert) {
 	FeatureVectorInt * ret;
-	if (features_ == NULL)
-		features_ = new EdgeFeatureMap;
-    if(insert) {
+    if(features_ && insert) {
         ret = feature_gen.MakeEdgeFeatures(sent, edge, model.GetFeatureIds(), model.GetAdd());
         {
         	boost::mutex::scoped_lock lock(mutex_);
         	features_->insert(MakePair(edge.Clone(), ret));
         }
-    } else {
+    } else if (features_) {
     	EdgeFeatureMap::const_iterator it = features_->find(&edge);
         ret = it->second;
+    } else {
+    	// no insert, make -threads faster without -save_features
+    	ret = feature_gen.MakeEdgeFeatures(sent, edge, model.GetFeatureIds(), model.GetAdd());
     }
     return ret;
 }
@@ -149,7 +150,11 @@ double HyperGraph::GetEdgeScore(ReordererModel & model,
                                 const HyperEdge & edge) {
     const FeatureVectorInt * vec =
                 GetEdgeFeatures(model, feature_gen, sent, edge, true);
-    return model.ScoreFeatureVector(SafeReference(vec));
+    double score = model.ScoreFeatureVector(SafeReference(vec));
+    // features are not stored, thus delete
+    if (!features_)
+    	delete vec;
+    return score;
 }
 
 // Get the non-local score for a hypothesis to be produced
@@ -172,24 +177,36 @@ double HyperGraph::GetNonLocalScore(ReordererModel & model,
     return score;
 }
 
+// Accumulate edge features under a hyper-edge
 // Accumulate non-local features under a hypothesis
-void HyperGraph::AccumulateNonLocalFeatures(std::tr1::unordered_map<int,double> & feat_map,
+void HyperGraph::AccumulateFeatures(std::tr1::unordered_map<int,double> & feat_map,
 										ReordererModel & model,
-		                                const FeatureSet & feature_gen,
+		                                const FeatureSet & features,
+		                                const FeatureSet & non_local_features,
 		                                const Sentence & sent,
 		                                const Hypothesis * hyp){
 	Hypothesis * left = hyp->GetLeftHyp();
 	Hypothesis * right = hyp->GetRightHyp();
+	// root has no edge feature
 	// root has only the bigram feature on the boundaries
-	if (hyp->GetEdgeType() == HyperEdge::EDGE_ROOT && bigram_){
-		lm::ngram::State out;
-		feat_map[model.GetFeatureIds().GetId("BIGRAM")] += GetRootBigram(sent, hyp, &out);
+	if (hyp->GetEdgeType() == HyperEdge::EDGE_ROOT){
+		if (bigram_){
+			lm::ngram::State out;
+			feat_map[model.GetFeatureIds().GetId("BIGRAM")] += GetRootBigram(sent, hyp, &out);
+		}
 	}
-	// terminals may have bigram features
 	else{
+		// accumulate edge features
+		const FeatureVectorInt * fvi = GetEdgeFeatures(model, features, sent, *hyp->GetEdge(), false);
+		BOOST_FOREACH(FeaturePairInt feat_pair, *fvi)
+			feat_map[feat_pair.first] += feat_pair.second;
+		// if fvi is not stored, delete
+		if (!features_)
+			delete fvi;
+		// accumulate non-local features
 		lm::ngram::State out;
-		const FeatureVectorInt * fvi = GetNonLocalFeatures(hyp->GetEdge(), left, right,
-				feature_gen, sent, model, &out);
+		fvi = GetNonLocalFeatures(hyp->GetEdge(), left, right,
+				non_local_features, sent, model, &out);
 		if (fvi){
 			BOOST_FOREACH(FeaturePairInt feat_pair, *fvi)
             		feat_map[feat_pair.first] += feat_pair.second;
@@ -197,9 +214,9 @@ void HyperGraph::AccumulateNonLocalFeatures(std::tr1::unordered_map<int,double> 
 		}
 	}
 	if (left)
-		AccumulateNonLocalFeatures(feat_map, model, feature_gen, sent, left);
+		AccumulateFeatures(feat_map, model, features, non_local_features, sent, left);
 	if (right)
-		AccumulateNonLocalFeatures(feat_map, model, feature_gen, sent, right);
+		AccumulateFeatures(feat_map, model, features, non_local_features, sent, right);
 }
 
 // If the length is OK, add a terminal
@@ -509,6 +526,7 @@ void HyperGraph::AddLoss(LossBase* loss,
         }
     }
 }
+
 
 template <class T>
 inline string GetNodeString(char type, const T * hyp) {

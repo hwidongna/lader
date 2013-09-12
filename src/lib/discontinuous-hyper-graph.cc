@@ -195,8 +195,11 @@ void DiscontinuousHyperGraph::StartBeamSearch(
 				FeatureVectorString *fws = model.StringifyWeightVector(*fvi);
 				cerr << *fvs << endl << *fws;
 				hyp->PrintChildren(cerr);
-				// do not delete fvi for edge, will be deleted later
+				// otherwise, do not delete fvi for edge, will be deleted later
 				delete fvs, fws;
+				// if fvi is not stored, delete
+				if (!features_)
+					delete fvi;
 				Hypothesis * left =hyp->GetLeftHyp();
 				Hypothesis * right =hyp->GetRightHyp();
 				// termininals may have bigram features
@@ -401,41 +404,61 @@ Hypothesis * DiscontinuousHyperGraph::LazyKthBest(TargetSpan * stack, int k,
 	return stack->GetHypothesis(k);
 }
 
+// Accumulate edge features under a hyper-edge
 // Accumulate non-local features under a hypothesis
-void DiscontinuousHyperGraph::AccumulateNonLocalFeatures(std::tr1::unordered_map<int,double> & feat_map,
+void DiscontinuousHyperGraph::AccumulateFeatures(std::tr1::unordered_map<int,double> & feat_map,
 										ReordererModel & model,
-		                                const FeatureSet & feature_gen,
+		                                const FeatureSet & features,
+		                                const FeatureSet & non_local_features,
 		                                const Sentence & sent,
 		                                const Hypothesis * hyp){
+	if (verbose_ > 1){
+		const DiscontinuousHypothesis * dhyp =
+				dynamic_cast<const DiscontinuousHypothesis*>(hyp);
+		cerr << "Accumulate non-local feature of hypothesis ";
+		if (dhyp) cerr << *dhyp;
+		else cerr << *hyp;
+		cerr << endl;
+        hyp->PrintChildren(cerr);
+	}
 	Hypothesis * left = hyp->GetLeftHyp();
 	Hypothesis * right = hyp->GetRightHyp();
+	// root has no edge feature
 	// root has only the bigram feature on the boundaries
 	if (hyp->GetEdgeType() == HyperEdge::EDGE_ROOT){
-		lm::ngram::State out;
-		double rootBigram = GetRootBigram(sent, hyp, &out);
-		feat_map[model.GetFeatureIds().GetId("BIGRAM")] += rootBigram;
-		if (verbose_ > 1){
-			cerr << "Accumulate non-local feature of hypothesis " << *hyp << endl;
-            hyp->PrintChildren(cerr);
-            cerr << "/********************* non-local features ***********************/" << endl;
-			cerr << "BIGRAM:" << rootBigram << endl << "BIGRAM:" << model.GetWeight("BIGRAM") << endl;
-			cerr << "/****************************************************************/" << endl;
+		if (bigram_){
+			lm::ngram::State out;
+			double rootBigram = GetRootBigram(sent, hyp, &out);
+			feat_map[model.GetFeatureIds().GetId("BIGRAM")] += rootBigram;
+			if (verbose_ > 1){
+	            cerr << "/********************* non-local features ***********************/" << endl;
+				cerr << "BIGRAM:" << rootBigram << endl << "BIGRAM:" << model.GetWeight("BIGRAM") << endl;
+				cerr << "/****************************************************************/" << endl;
+			}
 		}
 	}
-	// terminals may have bigram features
 	else{
+		// accumulate edge features
+		const FeatureVectorInt * fvi = GetEdgeFeatures(model, features, sent, *hyp->GetEdge(), false);
+		BOOST_FOREACH(FeaturePairInt feat_pair, *fvi)
+			feat_map[feat_pair.first] += feat_pair.second;
+		if (verbose_ > 1){
+			FeatureVectorString *fvs = model.StringifyFeatureVector(*fvi);
+			FeatureVectorString *fws = model.StringifyWeightVector(*fvi);
+			cerr << *fvs << endl << *fws;
+			hyp->PrintChildren(cerr);
+			// do not delete fvi for edge, will be deleted later
+			delete fvs, fws;
+		}
+		// if fvi is not stored, delete
+		if (!features_)
+			delete fvi;
+		// accumulate non-local features
 		lm::ngram::State out;
-		const FeatureVectorInt * fvi = GetNonLocalFeatures(hyp->GetEdge(), left, right,
-				feature_gen, sent, model, &out);
+		fvi = GetNonLocalFeatures(hyp->GetEdge(), left, right,
+				non_local_features, sent, model, &out);
 		if (fvi){
 			if (verbose_ > 1){
-				const DiscontinuousHypothesis * dhyp =
-						dynamic_cast<const DiscontinuousHypothesis*>(hyp);
-				cerr << "Accumulate non-local feature of hypothesis ";
-				if (dhyp) cerr << *dhyp;
-				else cerr << *hyp;
-				cerr << endl;
-				hyp->PrintChildren(cerr);
 				FeatureVectorString * fvs = model.StringifyFeatureVector(*fvi);
 				FeatureVectorString * fws = model.StringifyWeightVector(*fvi);
 				cerr << "/********************* non-local features ***********************/" << endl;
@@ -444,14 +467,14 @@ void DiscontinuousHyperGraph::AccumulateNonLocalFeatures(std::tr1::unordered_map
 				delete fvs, fws;
 			}
 			BOOST_FOREACH(FeaturePairInt feat_pair, *fvi)
-			feat_map[feat_pair.first] += feat_pair.second;
+            		feat_map[feat_pair.first] += feat_pair.second;
 			delete fvi;
 		}
 	}
 	if (left)
-		AccumulateNonLocalFeatures(feat_map, model, feature_gen, sent, left);
+		AccumulateFeatures(feat_map, model, features, non_local_features, sent, left);
 	if (right)
-		AccumulateNonLocalFeatures(feat_map, model, feature_gen, sent, right);
+		AccumulateFeatures(feat_map, model, features, non_local_features, sent, right);
 }
 
 void DiscontinuousHyperGraph::AddLoss(LossBase* loss,

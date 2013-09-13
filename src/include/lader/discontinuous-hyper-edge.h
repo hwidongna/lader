@@ -68,7 +68,8 @@ inline std::ostream& operator << ( std::ostream& out,
 {
     out << "l=" << rhs.GetLeft() << ", m=" << rhs.GetM()
     		<< ", c=" << rhs.GetCenter() << ", n=" << rhs.GetN()
-			<< ", r=" << rhs.GetRight();
+			<< ", r=" << rhs.GetRight()
+			<< " : " << (char)rhs.GetType() << rhs.GetClass();;
     return out;
 }
 }

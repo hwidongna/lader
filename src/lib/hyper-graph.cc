@@ -20,24 +20,37 @@ using namespace lm::ngram;
 
 // Return the edge feature vector
 // this is called only once from HyperGraph::GetEdgeScore
-// therefore, we don't need to insert and find features in EdgeFeatureMap
+// therefore, we don't need to insert and find features in stack
 // unless we use -save_features option
 const FeatureVectorInt * HyperGraph::GetEdgeFeatures(
                                 ReordererModel & model,
                                 const FeatureSet & feature_gen,
                                 const Sentence & sent,
-                                const HyperEdge & edge,
-                                bool insert) {
+                                const HyperEdge & edge) {
 	FeatureVectorInt * ret;
-    if(features_ && insert) {
-        ret = feature_gen.MakeEdgeFeatures(sent, edge, model.GetFeatureIds(), model.GetAdd());
-        {
-        	boost::mutex::scoped_lock lock(mutex_);
-        	features_->insert(MakePair(edge.Clone(), ret));
-        }
-    } else if (features_) {
-    	EdgeFeatureMap::const_iterator it = features_->find(&edge);
-        ret = it->second;
+    if (save_features_) {
+    	TargetSpan * stack = GetStack(edge.GetLeft(), edge.GetRight());
+    	switch (edge.GetType()){
+    	case HyperEdge::EDGE_FOR:
+    	case HyperEdge::EDGE_STR:
+    		ret = stack->GetStraightFeautures(edge.GetCenter() - edge.GetLeft());
+    		if (ret == NULL){
+    			ret = feature_gen.MakeEdgeFeatures(sent, edge, model.GetFeatureIds(), model.GetAdd());
+    			stack->SaveStraightFeautures(edge.GetCenter() - edge.GetLeft(), ret);
+    		}
+    		break;
+    	case HyperEdge::EDGE_BAC:
+    	case HyperEdge::EDGE_INV:
+    		ret = stack->GetInvertedFeautures(edge.GetCenter() - edge.GetLeft());
+    		if (ret == NULL){
+    			ret = feature_gen.MakeEdgeFeatures(sent, edge, model.GetFeatureIds(), model.GetAdd());
+    			stack->SaveInvertedFeautures(edge.GetCenter() - edge.GetLeft(), ret);
+    		}
+    		break;
+    	case HyperEdge::EDGE_ROOT:
+    	default:
+    		THROW_ERROR("Invalid hyper edge for GetEdgeFeatures: " << edge);
+    	}
     } else {
     	// no insert, make -threads faster without -save_features
     	ret = feature_gen.MakeEdgeFeatures(sent, edge, model.GetFeatureIds(), model.GetAdd());
@@ -147,12 +160,13 @@ double HyperGraph::Rescore(double loss_multiplier) {
 double HyperGraph::GetEdgeScore(ReordererModel & model,
                                 const FeatureSet & feature_gen,
                                 const Sentence & sent,
-                                const HyperEdge & edge) {
+                                const HyperEdge & edge,
+                                TargetSpan * stack) {
     const FeatureVectorInt * vec =
-                GetEdgeFeatures(model, feature_gen, sent, edge, true);
+                GetEdgeFeatures(model, feature_gen, sent, edge);
     double score = model.ScoreFeatureVector(SafeReference(vec));
     // features are not stored, thus delete
-    if (!features_)
+    if (!save_features_)
     	delete vec;
     return score;
 }
@@ -197,11 +211,11 @@ void HyperGraph::AccumulateFeatures(std::tr1::unordered_map<int,double> & feat_m
 	}
 	else{
 		// accumulate edge features
-		const FeatureVectorInt * fvi = GetEdgeFeatures(model, features, sent, *hyp->GetEdge(), false);
+		const FeatureVectorInt * fvi = GetEdgeFeatures(model, features, sent, *hyp->GetEdge());
 		BOOST_FOREACH(FeaturePairInt feat_pair, *fvi)
 			feat_map[feat_pair.first] += feat_pair.second;
 		// if fvi is not stored, delete
-		if (!features_)
+		if (!save_features_)
 			delete fvi;
 		// accumulate non-local features
 		lm::ngram::State out;
@@ -342,17 +356,20 @@ Hypothesis * HyperGraph::LazyKthBest(TargetSpan * stack, int k,
 }
 
 // Build a hypergraph using beam search and cube pruning
-TargetSpan * HyperGraph::ProcessOneSpan(ReordererModel & model,
+void HyperGraph::ProcessOneSpan(ReordererModel & model,
                                        const FeatureSet & features,
                                        const FeatureSet & non_local_features,
                                        const Sentence & sent,
                                        int l, int r,
                                        int beam_size) {
     // Get a map to store identical target spans
-    TargetSpan * ret = new TargetSpan(l, r);
+    TargetSpan * stack = GetStack(l, r);// new TargetSpan(l, r);
+    if (!stack)
+    	THROW_ERROR("SetStack is required: [" << l << ", " << r << "]")
+	stack->ClearHypotheses();
     HypothesisQueue * q;
 	if (cube_growing_)
-		q = &ret->GetCands();
+		q = &stack->GetCands();
 
     else
         // Create the temporary data members for this span
@@ -408,7 +425,7 @@ TargetSpan * HyperGraph::ProcessOneSpan(ReordererModel & model,
     }
     // For cube growing, search is lazy
     if (cube_growing_)
-    	return ret;
+    	return;
 
     // Start beam search
     int num_processed = 0;
@@ -416,7 +433,7 @@ TargetSpan * HyperGraph::ProcessOneSpan(ReordererModel & model,
         // Pop a hypothesis from the stack and get its target span
         Hypothesis * hyp = q->top(); q->pop();
         // Insert the hypothesis if unique
-        bool skip = !ret->AddUniqueHypothesis(hyp);
+        bool skip = !stack->AddUniqueHypothesis(hyp);
         if (!skip)
         	num_processed++;
         // Skip terminals
@@ -440,9 +457,8 @@ TargetSpan * HyperGraph::ProcessOneSpan(ReordererModel & model,
     	delete q->top();
     	q->pop();
     }
-    sort(ret->GetHypotheses().begin(), ret->GetHypotheses().end(), DescendingScore<Hypothesis>());
+    sort(stack->GetHypotheses().begin(), stack->GetHypotheses().end(), DescendingScore<Hypothesis>());
     delete q;
-    return ret;
 }
 
 double HyperGraph::GetRootBigram(const Sentence & sent, const Hypothesis *hyp, lm::ngram::Model::State * out)
@@ -476,7 +492,7 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
     	ThreadPool pool(threads_, 1000);
     	for(int l = 0; l <= n_-L; l++){
     		int r = l+L-1;
-    		SpanTask * task = new SpanTask(this, model, features,
+    		Task * task = NewSpanTask(this, model, features,
 					non_local_features, sent, l, r, beam_size);
     		pool.Submit(task);
     	}
@@ -484,7 +500,10 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
     }
     // Build the root node
     TargetSpan * top = GetStack(0,n_-1);
-    TargetSpan * root_stack = new TargetSpan(0,n_);
+    TargetSpan * root_stack = GetStack(0, n_);
+    if (!root_stack)
+    	root_stack = new TargetSpan(0,n_);
+    root_stack->ClearHypotheses();
     for(int i = 0; !beam_size || i < beam_size; i++){
     	Hypothesis * hyp = NULL;
     	if (cube_growing_)
@@ -496,7 +515,9 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
 			break;
 
 		lm::ngram::State out;
-    	double non_local_score = GetRootBigram(sent, hyp, &out) * model.GetWeight("BIGRAM");
+    	double non_local_score = 0.0;
+    	if (bigram_)
+    		non_local_score = GetRootBigram(sent, hyp, &out) * model.GetWeight("BIGRAM");
         root_stack->AddHypothesis(new Hypothesis(
         		hyp->GetScore() + non_local_score, 0, non_local_score,
         		new HyperEdge(0, -1, n_-1, HyperEdge::EDGE_ROOT),

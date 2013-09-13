@@ -19,16 +19,41 @@ class HyperGraph;
 
 class TargetSpan {
 public:
-    TargetSpan(int left, int right, int trg_left=-1, int trg_right=-1)
-                    : left_(left), right_(right),
-                      id_(-1) { }
-    virtual ~TargetSpan() {
+    TargetSpan(int left, int right) :
+			left_(left), right_(right), id_(-1) {
+		// resize the feature list in advance
+    	// list[0] is the terminal node (forward/backward)
+    	// list[1:] are the non-terminal nodes (straight/inverted)
+    	if (right - left == 0){
+    		straight.resize(1, NULL);
+    		inverted.resize(1, NULL);
+    	}
+    	else{
+    		straight.resize(right - left + 2, NULL);
+    		inverted.resize(right - left + 2, NULL);
+    	}
+	}
+
+    void ClearHypotheses()
+    {
         BOOST_FOREACH(Hypothesis * hyp, hyps_)
             delete hyp;
-        while(cands_.size()) {
-        	delete cands_.top();
-        	cands_.pop();
+        hyps_.clear();
+        while(cands_.size()){
+            delete cands_.top();
+            cands_.pop();
         }
+    }
+
+    virtual ~TargetSpan()
+    {
+        ClearHypotheses();
+        BOOST_FOREACH(FeatureVectorInt* fvi, straight)
+        if (fvi)
+        	delete fvi;
+        BOOST_FOREACH(FeatureVectorInt* fvi, inverted)
+        if (fvi)
+        	delete fvi;
     }
 
     void LabelWithIds(int & curr_id){
@@ -73,11 +98,46 @@ public:
     void ResetId() { id_ = -1; has_types_.clear(); }
     void SetId(int id) { id_ = id; }
     void SetHasType(char c) { has_types_.insert(c); }
-    
+    virtual void SaveStraightFeautures(int c, FeatureVectorInt * fvi) {
+    	if (straight[c < 0? 0 : c])
+    		THROW_ERROR("Features are already saved")
+		if (c < 0)
+			straight[0] = fvi;
+		else
+			straight[c] = fvi;
+	}
+	virtual void SaveInvertedFeautures(int c, FeatureVectorInt * fvi) {
+		if (inverted[c < 0? 0 : c])
+			THROW_ERROR("Features are already saved")
+		if (c < 0)
+			inverted[0] = fvi;
+		else
+			inverted[c] = fvi;
+	}
+	virtual FeatureVectorInt * GetStraightFeautures(int c) {
+		if (c < 0)
+			return straight[0];
+		else
+			return straight[c];
+	}
+	virtual FeatureVectorInt * GetInvertedFeautures(int c) {
+		if (c < 0)
+			return inverted[0];
+		else
+			return inverted[c];
+	}
 protected:
     std::vector<Hypothesis*> hyps_;
     // For cube growing
     HypothesisQueue cands_;
+    // Store edge features
+    // There are two possible orientations
+    // Each list of FeatureVectorInts contains
+    // list[0] = the terminal node (forward/backward)
+    // list[1:] = non-terminal nodes
+    // It is possible to have NULL elements
+    std::vector<FeatureVectorInt*> straight;
+    std::vector<FeatureVectorInt*> inverted;
 
 private:
     int left_, right_;

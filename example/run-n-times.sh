@@ -1,39 +1,45 @@
+set -x
+
 N=$1
 D=$2
-SHUFFLE=$3
+SAMPLES=$3
+VERBOSE=$4
+SHUFFLE=$5
+MAX_SEQ=$6
+
+ITERATION=10
+BEAM=100
 
 for d in $(seq 0 1 $D)
 do
-    date > train.$d 
-    date > test.$d
-    for i in $(seq 1 1 $N)
-    do
-        ./train-model.sh $d 5 0 $SHUFFLE false 2> /dev/null | tail -n2 >> train.$d
-        ./test-model.sh $d 10 0 false 2> /dev/null | tail -n1 >> test.$d
-    done
+#	echo "" > train-model.$d
+#	echo "" > test-model.$d
+#    for i in $(seq 1 1 $N)
+#    do
+#        ./train-model.sh $d $SAMPLES $VERBOSE $SHUFFLE false false $MAX_SEQ $ITERATION > train-model.$d.out 2> train-model.$d.log
+#        tail -n2 train-model.$d.out > train-model.$d
+#        ./test-model.sh $d $BEAM $VERBOSE false false $MAX_SEQ > test-model.$d.out 2> test-model.$d.log
+#        tail -n1 test-model.$d.out > test-model.$d
+#    done
         
-    date > train-cube-growing.$d
-    date > test-cube-growing.$d
+	echo "" > train-model-cube-growing.$d
+	echo "" > test-model-cube-growing.$d
     for i in $(seq 1 1 $N)
     do
-        ./train-model.sh $d 5 0 $SHUFFLE true 2> /dev/null | tail -n2 >> train-cube-growing.$d
-        ./test-model.sh $d 10 0 true 2> /dev/null | tail -n1 >> test-cube-growing.$d
+        ./train-model.sh $d $SAMPLES $VERBOSE $SHUFFLE true false $MAX_SEQ $ITERATION > train-model-cube-growing.$d.out 2> train-model-cube-growing.$d.log
+        tail -n2 train-model-cube-growing.$d.out > train-model-cube-growing.$d
+        ./test-model.sh $d $BEAM $VERBOSE false false $MAX_SEQ > test-model-cube-growing.$d.out 2> test-model-cube-growing.$d.log
+        tail -n1 test-model-cube-growing.$d.out > test-model-cube-growing.$d
     done
     
-    date > train-plus-bigram.$d
-    date > test-plus-bigram.$d
+    echo "" > train-model-full-fledged.$d
+	echo "" > test-model-full-fledged.$d
     for i in $(seq 1 1 $N)
     do
-        ./train-model.sh $d 5 0 $SHUFFLE true data/train.en.lm 2> /dev/null | tail -n2 >> train-plus-bigram.$d
-        ./test-model.sh $d 10 0 true data/train.en.lm 2> /dev/null | tail -n1 >> test-plus-bigram.$d
-    done
-    
-	date > train-non-local.$d
-	date > test-non-local.$d
-    for i in $(seq 1 1 $N)
-    do
-        ./train-model-non-local.sh $d 5 0 $SHUFFLE true 2> /dev/null | tail -n2 >> train-non-local.$d
-        ./test-model.sh $d 10 0 true 2> /dev/null | tail -n1 >> test-non-local.$d
+        ./train-model.sh $d $SAMPLES $VERBOSE $SHUFFLE true true $MAX_SEQ $ITERATION > train-model-full-fledged.$d.out 2> train-model-full-fledged.$d.log
+        tail -n2 train-model-full-fledged.$d.out > train-model-full-fledged.$d
+        ./test-model.sh $d $BEAM $VERBOSE false false $MAX_SEQ > test-model-full-fledged.$d.out 2> test-model-full-fledged.$d.log
+        tail -n1 test-model-full-fledged.$d.out > test-model-full-fledged.$d
     done
     
 done

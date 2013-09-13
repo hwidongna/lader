@@ -119,36 +119,36 @@ double Hypothesis::AccumulateLoss() {
     return score;
 }
 
-FeatureVectorInt Hypothesis::AccumulateFeatures(
-		const EdgeFeatureMap * features) {
-	std::tr1::unordered_map<int,double> feat_map;
-	return AccumulateFeatures(feat_map, features);
-}
-
-FeatureVectorInt Hypothesis::AccumulateFeatures(
-		std::tr1::unordered_map<int,double> & feat_map,
-		const EdgeFeatureMap * features) {
-    AccumulateFeatures(features, feat_map);
-    FeatureVectorInt ret;
-    BOOST_FOREACH(FeaturePairInt feat_pair, feat_map)
-        ret.push_back(feat_pair);
-    return ret;
-}
-
-void Hypothesis::AccumulateFeatures(const EdgeFeatureMap * features,
-                        std::tr1::unordered_map<int,double> & feat_map) {
-    // Find the features
-    if(GetEdgeType() != HyperEdge::EDGE_ROOT) {
-        EdgeFeatureMap::const_iterator fit =
-                                    features->find(GetEdge());
-        if(fit == features->end())
-            THROW_ERROR("No features found in Accumulate for " << *GetEdge());
-        BOOST_FOREACH(FeaturePairInt feat_pair, *(fit->second))
-            feat_map[feat_pair.first] += feat_pair.second;
-    }
-    if(GetLeftHyp()) GetLeftHyp()->AccumulateFeatures(features, feat_map);
-    if(GetRightHyp())GetRightHyp()->AccumulateFeatures(features,feat_map);
-}
+//FeatureVectorInt Hypothesis::AccumulateFeatures(
+//		const EdgeFeatureMap * features) {
+//	std::tr1::unordered_map<int,double> feat_map;
+//	return AccumulateFeatures(feat_map, features);
+//}
+//
+//FeatureVectorInt Hypothesis::AccumulateFeatures(
+//		std::tr1::unordered_map<int,double> & feat_map,
+//		const EdgeFeatureMap * features) {
+//    AccumulateFeatures(features, feat_map);
+//    FeatureVectorInt ret;
+//    BOOST_FOREACH(FeaturePairInt feat_pair, feat_map)
+//        ret.push_back(feat_pair);
+//    return ret;
+//}
+//
+//void Hypothesis::AccumulateFeatures(const EdgeFeatureMap * features,
+//                        std::tr1::unordered_map<int,double> & feat_map) {
+//    // Find the features
+//    if(GetEdgeType() != HyperEdge::EDGE_ROOT) {
+//        EdgeFeatureMap::const_iterator fit =
+//                                    features->find(GetEdge());
+//        if(fit == features->end())
+//            THROW_ERROR("No features found in Accumulate for " << *GetEdge());
+//        BOOST_FOREACH(FeaturePairInt feat_pair, *(fit->second))
+//            feat_map[feat_pair.first] += feat_pair.second;
+//    }
+//    if(GetLeftHyp()) GetLeftHyp()->AccumulateFeatures(features, feat_map);
+//    if(GetRightHyp())GetRightHyp()->AccumulateFeatures(features,feat_map);
+//}
 
 // Clone a hypothesis with a hyper edge, which could be discontinuous
 Hypothesis *Hypothesis::Clone() const

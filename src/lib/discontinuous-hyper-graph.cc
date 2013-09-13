@@ -8,7 +8,6 @@
 #include <lader/discontinuous-hyper-graph.h>
 #include <lader/discontinuous-hypothesis.h>
 #include <lader/discontinuous-hyper-edge.h>
-#include <lader/discontinuous-target-span.h>
 #include <lader/hypothesis-queue.h>
 #include <lader/reorderer-model.h>
 #include <lader/feature-vector.h>
@@ -20,6 +19,58 @@
 using namespace lader;
 using namespace std;
 using namespace boost;
+
+// Return the edge feature vector
+// this is called only once from HyperGraph::GetEdgeScore
+// therefore, we don't need to insert and find features in stack
+// unless we use -save_features option
+const FeatureVectorInt * DiscontinuousHyperGraph::GetEdgeFeatures(
+                                ReordererModel & model,
+                                const FeatureSet & feature_gen,
+                                const Sentence & sent,
+                                const HyperEdge & edge) {
+	FeatureVectorInt * ret;
+	const DiscontinuousHyperEdge * dedge =
+			dynamic_cast<const DiscontinuousHyperEdge *>(&edge);
+    if (save_features_) {
+    	TargetSpan * stack;
+		if (dedge){
+			stack = GetStack(edge.GetLeft(), dedge->GetM(), dedge->GetN(), dedge->GetRight());
+			if (!stack)
+				THROW_ERROR("SetStack first: " << *dedge << endl)
+		}
+		else{
+			stack = HyperGraph::GetStack(edge.GetLeft(), edge.GetRight());
+			if (!stack)
+				THROW_ERROR("SetStack first: " << edge << endl)
+		}
+    	switch (edge.GetType()){
+    	case HyperEdge::EDGE_FOR:
+    	case HyperEdge::EDGE_STR:
+			ret = stack->GetStraightFeautures(edge.GetCenter() - edge.GetLeft());
+			if (ret == NULL){
+				ret = feature_gen.MakeEdgeFeatures(sent, edge, model.GetFeatureIds(), model.GetAdd());
+				stack->SaveStraightFeautures(edge.GetCenter() - edge.GetLeft(), ret);
+			}
+			break;
+    	case HyperEdge::EDGE_BAC:
+    	case HyperEdge::EDGE_INV:
+    		ret = stack->GetInvertedFeautures(edge.GetCenter() - edge.GetLeft());
+    		if (ret == NULL){
+    			ret = feature_gen.MakeEdgeFeatures(sent, edge, model.GetFeatureIds(), model.GetAdd());
+    			stack->SaveInvertedFeautures(edge.GetCenter() - edge.GetLeft(), ret);
+    		}
+    		break;
+    	case HyperEdge::EDGE_ROOT:
+    	default:
+    		THROW_ERROR("Invalid hyper edge for GetEdgeFeatures: " << edge);
+    	}
+    } else {
+    	// no insert, make -threads faster without -save_features
+    	ret = feature_gen.MakeEdgeFeatures(sent, edge, model.GetFeatureIds(), model.GetAdd());
+    }
+    return ret;
+}
 
 void DiscontinuousHyperGraph::AddHypotheses(
 		ReordererModel & model,
@@ -33,9 +84,6 @@ void DiscontinuousHyperGraph::AddHypotheses(
 	// Find the best hypotheses on the left and right side
 	left_stack = GetStack(left_l, left_m, left_n, left_r);
 	right_stack = GetStack(right_l, right_m, right_n, right_r);
-	// there could be null stack due to the restriction of max_seq
-	if (!left_stack || !right_stack)
-		return;
 	int l, m, c, n, r;
 	HyperEdge * edge;
     Hypothesis * left, *right;
@@ -111,9 +159,6 @@ void DiscontinuousHyperGraph::AddDiscontinuousHypotheses(
 	// Find the best hypotheses on the left and right side
 	left_stack = GetStack(left_l, left_m, left_n, left_r);
 	right_stack = GetStack(right_l, right_m, right_n, right_r);
-	// there could be null stack due to the restriction of max_seq
-	if (!left_stack || !right_stack)
-		return;
 	int l, m, n, r, c;
 	HyperEdge * edge;
     Hypothesis * left, *right;
@@ -190,7 +235,7 @@ void DiscontinuousHyperGraph::StartBeamSearch(
 				else cerr << *hyp;
 				cerr << endl;
 
-				const FeatureVectorInt *fvi = GetEdgeFeatures(model, features, sent, *hyp->GetEdge(), false);
+				const FeatureVectorInt *fvi = GetEdgeFeatures(model, features, sent, *hyp->GetEdge());
 				FeatureVectorString *fvs = model.StringifyFeatureVector(*fvi);
 				FeatureVectorString *fws = model.StringifyWeightVector(*fvi);
 				cerr << *fvs << endl << *fws;
@@ -198,7 +243,7 @@ void DiscontinuousHyperGraph::StartBeamSearch(
 				// otherwise, do not delete fvi for edge, will be deleted later
 				delete fvs, fws;
 				// if fvi is not stored, delete
-				if (!features_)
+				if (!save_features_)
 					delete fvi;
 				Hypothesis * left =hyp->GetLeftHyp();
 				Hypothesis * right =hyp->GetRightHyp();
@@ -207,7 +252,7 @@ void DiscontinuousHyperGraph::StartBeamSearch(
 					lm::ngram::State out;
 					const FeatureVectorInt * fvi = GetNonLocalFeatures(hyp->GetEdge(), left, right,
 							non_local_features, sent, model, &out);
-					if (fvi){
+					if (fvi && fvi->size()){
 						fvs = model.StringifyFeatureVector(*fvi);
 						fws = model.StringifyWeightVector(*fvi);
 						cerr << "/********************* non-local features ***********************/" << endl;
@@ -244,7 +289,7 @@ void DiscontinuousHyperGraph::StartBeamSearch(
 }
 
 // Build a hypergraph using beam search and cube pruning
-TargetSpan *DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
+void DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
 		ReordererModel & model,
 		const FeatureSet & features,
 		const FeatureSet & non_local_features,
@@ -252,10 +297,14 @@ TargetSpan *DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
 		int l, int m, int n, int r,
 		int beam_size){
     // Get a map to store identical target spans
-	TargetSpan * ret = new DiscontinuousTargetSpan(l, m, n, r);
-    HypothesisQueue * q;
+	TargetSpan * stack = GetStack(l, m, n, r);// new DiscontinuousTargetSpan(l, m, n, r);
+	if (!stack)
+		THROW_ERROR("SetStack is required: [" << l << ", " << m << ", " << n << ", " << r << "]")
+	// This is required when -save_features=true
+	stack->ClearHypotheses();
+	HypothesisQueue * q;
 	if (cube_growing_)
-		q = &ret->GetCands();
+		q = &stack->GetCands();
     // Create the temporary data members for this span
 	else
 		q = new HypothesisQueue;
@@ -285,16 +334,15 @@ TargetSpan *DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
 
     // For cube growing, search is lazy
     if (cube_growing_)
-    	return ret;
+    	return;
 
-    StartBeamSearch(beam_size, *q, model, sent, features, non_local_features, ret, l, r);
+    StartBeamSearch(beam_size, *q, model, sent, features, non_local_features, stack, l, r);
     delete q;
-    return ret;
 }
 
 // Build a discontinuous hypergraph using beam search and cube pruning
 // Override HyperGraph::ProcessOneSpan
-TargetSpan * DiscontinuousHyperGraph::ProcessOneSpan(
+void DiscontinuousHyperGraph::ProcessOneSpan(
 		ReordererModel & model,
 		const FeatureSet & features,
 		const FeatureSet & non_local_features,
@@ -302,10 +350,14 @@ TargetSpan * DiscontinuousHyperGraph::ProcessOneSpan(
 		int l, int r,
 		int beam_size) {
     // Get a map to store identical target spans
-	TargetSpan * ret = new TargetSpan(l, r);
+    TargetSpan * stack = HyperGraph::GetStack(l, r);// new TargetSpan(l, r);
+    if (!stack)
+    	THROW_ERROR("SetStack is required: [" << l << ", " << r << "]")
+    // This is required when -save_features=true
+    stack->ClearHypotheses();
     HypothesisQueue * q;
 	if (cube_growing_)
-		q = &ret->GetCands();
+		q = &stack->GetCands();
     // Create the temporary data members for this span
 	else
 		q = new HypothesisQueue;
@@ -322,13 +374,13 @@ TargetSpan * DiscontinuousHyperGraph::ProcessOneSpan(
 	if (verbose_ > 1)
 		cerr << "Process ["<<l<<", "<<r<<"]" << endl;
 	lm::ngram::Model::State out;
-	for (int i = l+1 ; i <= r ; i++){
+	for (int c = l+1 ; c <= r ; c++){
 		if (hasPunct && mp_){ // monotone at punctuation
 			TargetSpan *left_stack, *right_stack;
-			left_stack = HyperGraph::GetStack(l, i-1);
-			right_stack = HyperGraph::GetStack(i, r);
-			if(left_stack == NULL) THROW_ERROR("Target l="<<l<<", c-1="<<i-1);
-			if(right_stack == NULL) THROW_ERROR("Target c="<<i<<", r="<<r);
+			left_stack = HyperGraph::GetStack(l, c-1);
+			right_stack = HyperGraph::GetStack(c, r);
+			if(left_stack == NULL) THROW_ERROR("Target l="<<l<<", c-1="<<c-1);
+			if(right_stack == NULL) THROW_ERROR("Target c="<<c<<", r="<<r);
 	        Hypothesis * left, *right;
 	        if (cube_growing_){
 	        	// instead LazyKthBest, access to the best one in HypothesisQueue
@@ -341,7 +393,7 @@ TargetSpan * DiscontinuousHyperGraph::ProcessOneSpan(
 	        	right = right_stack->GetHypothesis(0);
 	        }
 			// Add the straight non-terminal
-			HyperEdge * edge = new HyperEdge(l, i, r, HyperEdge::EDGE_STR);
+			HyperEdge * edge = new HyperEdge(l, c, r, HyperEdge::EDGE_STR);
 			score = GetEdgeScore(model, features, sent, *edge);
 			double 	non_local_score = GetNonLocalScore(model, non_local_features, sent,
 					edge, left, right, &out);
@@ -357,37 +409,45 @@ TargetSpan * DiscontinuousHyperGraph::ProcessOneSpan(
 		// continuous + continuous = continuous
 		//cerr << "continuous + continuous = continuous" << endl;
 		AddHypotheses(model, features, non_local_features, sent, *q,
-				l, -1, -1, i-1,
-				i, -1, -1, r);
+				l, -1, -1, c-1,
+				c, -1, -1, r);
 		for (int d = 1 ; d <= D ; d++){
 			// discontinuous + discontinuous = continuous
 			//cerr << "discontinuous + discontinuous = continuous" << endl;
-			for (int j = i+d+1 ; j <= r && j - (i + d) <= D ; j++){
+			for (int n = c+d+1 ; n <= r && n - (c + d) <= D ; n++){
 				AddHypotheses(model, features, non_local_features, sent, *q,
-						l, i-1, i+d, j-1,
-						i, i-1+d, j, r);
+						l, c-1, c+d, n-1,
+						c, c-1+d, n, r);
 			}
-			// Process [0, m, n, N-1] is meaningless
-			// Process [l, m, n, r] s.t. m-l < D or r-n < D
-			if ( r+d < N && r+d-l+1 != N && (i-l <= D || r-i+1 <= D)){
-				SetStack(l, i-1, i+d, r+d,
-						ProcessOneDiscontinuousSpan(
-								model, features, non_local_features, sent,
-								l, i-1, i+d, r+d,
-								beam_size));
+			if ( IsMeaningful(l, c-1, c+d, r+d, D, N) ){
+				ProcessOneDiscontinuousSpan(
+						model, features, non_local_features, sent,
+						l, c-1, c+d, r+d,
+						beam_size);
 			}
 		}
 	}
 
     // For cube growing, search is lazy
     if (cube_growing_)
-    	return ret;
+    	return;
 
-    StartBeamSearch(beam_size, *q, model, sent, features, non_local_features, ret, l, r);
+    StartBeamSearch(beam_size, *q, model, sent, features, non_local_features, stack, l, r);
     delete q;
-	return ret;
 }
 
+// Build a hypergraph using beam search and cube pruning
+void DiscontinuousHyperGraph::BuildHyperGraph(ReordererModel & model,
+        const FeatureSet & features,
+        const FeatureSet & non_local_features,
+        const Sentence & sent,
+        int beam_size){
+	n_ = sent[0]->GetNumWords();
+	next_.resize(n_ * (n_+1) / 2 + 1, NULL); // resize next hyper-graph in advance
+	if (verbose_ > 1)
+		cerr << "BuildHyperGraph with " << threads_ << " threads for the same-sized stack" << endl;
+	HyperGraph::BuildHyperGraph(model, features, non_local_features, sent, beam_size);
+}
 // For cube growing
 Hypothesis * DiscontinuousHyperGraph::LazyKthBest(TargetSpan * stack, int k,
 		ReordererModel & model, const FeatureSet & features,
@@ -415,11 +475,10 @@ void DiscontinuousHyperGraph::AccumulateFeatures(std::tr1::unordered_map<int,dou
 	if (verbose_ > 1){
 		const DiscontinuousHypothesis * dhyp =
 				dynamic_cast<const DiscontinuousHypothesis*>(hyp);
-		cerr << "Accumulate non-local feature of hypothesis ";
+		cerr << "Accumulate feature of hypothesis ";
 		if (dhyp) cerr << *dhyp;
 		else cerr << *hyp;
 		cerr << endl;
-        hyp->PrintChildren(cerr);
 	}
 	Hypothesis * left = hyp->GetLeftHyp();
 	Hypothesis * right = hyp->GetRightHyp();
@@ -439,37 +498,38 @@ void DiscontinuousHyperGraph::AccumulateFeatures(std::tr1::unordered_map<int,dou
 	}
 	else{
 		// accumulate edge features
-		const FeatureVectorInt * fvi = GetEdgeFeatures(model, features, sent, *hyp->GetEdge(), false);
+		const FeatureVectorInt * fvi = GetEdgeFeatures(model, features, sent, *hyp->GetEdge());
 		BOOST_FOREACH(FeaturePairInt feat_pair, *fvi)
 			feat_map[feat_pair.first] += feat_pair.second;
 		if (verbose_ > 1){
+			cerr << "/****************************************************************/" << endl;
 			FeatureVectorString *fvs = model.StringifyFeatureVector(*fvi);
 			FeatureVectorString *fws = model.StringifyWeightVector(*fvi);
-			cerr << *fvs << endl << *fws;
-			hyp->PrintChildren(cerr);
+			cerr << *fvs << endl << *fws << endl;
 			// do not delete fvi for edge, will be deleted later
 			delete fvs, fws;
 		}
 		// if fvi is not stored, delete
-		if (!features_)
+		if (!save_features_)
 			delete fvi;
 		// accumulate non-local features
 		lm::ngram::State out;
 		fvi = GetNonLocalFeatures(hyp->GetEdge(), left, right,
 				non_local_features, sent, model, &out);
 		if (fvi){
-			if (verbose_ > 1){
+			if (verbose_ > 1 && fvi->size()){
 				FeatureVectorString * fvs = model.StringifyFeatureVector(*fvi);
 				FeatureVectorString * fws = model.StringifyWeightVector(*fvi);
 				cerr << "/********************* non-local features ***********************/" << endl;
 				cerr << *fvs << endl << *fws << endl;
-				cerr << "/****************************************************************/" << endl;
 				delete fvs, fws;
 			}
 			BOOST_FOREACH(FeaturePairInt feat_pair, *fvi)
             		feat_map[feat_pair.first] += feat_pair.second;
 			delete fvi;
 		}
+		if (verbose_ > 1)
+			cerr << "/****************************************************************/" << endl;
 	}
 	if (left)
 		AccumulateFeatures(feat_map, model, features, non_local_features, sent, left);
@@ -510,14 +570,12 @@ void DiscontinuousHyperGraph::AddLoss(LossBase* loss,
             }
             if (l < 0)
             	continue;
-            for (int i = l+1 ; i <= r ; i++){
+            for (int c = l+1 ; c <= r ; c++){
             	for (int d = 1 ; d <= D ; d++){
-            		// Process [0, m, n, N-1] is meaningless
-					// Process [l, m, n, r] s.t. m-l < D or r-n < D    		
-					if ( r+d < N && r+d-l+1 != N && (i-l <= D || r-i+1 <= D)){
+            		if ( IsMeaningful(l, c-1, c+d, r+d, D, N) ){
 						if (verbose_ > 1)
-							cerr << "AddLoss ["<<l<<", "<<i-1<<", "<<i+d<<", "<<r+d<<"]" << endl;
-						BOOST_FOREACH(Hypothesis* hyp, GetStack(l,i-1,i+d,r+d)->GetHypotheses()) {
+							cerr << "AddLoss ["<<l<<", "<<c-1<<", "<<c+d<<", "<<r+d<<"]" << endl;
+						BOOST_FOREACH(Hypothesis* hyp, GetStack(l,c-1,c+d,r+d)->GetHypotheses()) {
 							// DEBUG
 							hyp->SetLoss(hyp->GetLoss() +
 									loss->AddLossToProduction(hyp, ranks, parse));

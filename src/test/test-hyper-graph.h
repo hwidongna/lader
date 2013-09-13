@@ -56,14 +56,6 @@ public:
         // Set up the feature set
         set.AddFeatureGenerator(featw);
         set.AddFeatureGenerator(featp);
-        // Set up the feature generators
-        non_local_featw = new FeatureNonLocal;
-        non_local_featp = new FeatureNonLocal;
-        non_local_featw->ParseConfiguration("TO%SL%SR");
-        non_local_featp->ParseConfiguration("TI%LR%RL");
-        // Set up the feature set
-        non_local_set.AddFeatureGenerator(non_local_featw);
-        non_local_set.AddFeatureGenerator(non_local_featp);
         // Set up the data
         datas.push_back(&sent);
         datas.push_back(&sent_pos);
@@ -95,11 +87,18 @@ public:
         fv01f->push_back(MakePair(10,1));
         fv01s->push_back(MakePair(10,1));
         fv01b->push_back(MakePair(10,1));
-        my_hg.SetEdgeFeatures(HyperEdge(0,-1,0,HyperEdge::EDGE_FOR), fv00);
-        my_hg.SetEdgeFeatures(HyperEdge(1,-1,1,HyperEdge::EDGE_FOR), fv11);
-        my_hg.SetEdgeFeatures(HyperEdge(0,-1,1,HyperEdge::EDGE_FOR), fv01f);
-        my_hg.SetEdgeFeatures(HyperEdge(0,1,1,HyperEdge::EDGE_STR), fv01s);
-        my_hg.SetEdgeFeatures(HyperEdge(0,1,1,HyperEdge::EDGE_INV), fv01b);
+        ts00->SaveStraightFeautures(-1, fv00);
+        ts11->SaveStraightFeautures(-1, fv11);
+        ts01->SaveStraightFeautures(-1, fv01f);
+        ts01->SaveStraightFeautures(1, fv01s);
+        ts01->SaveInvertedFeautures(1, fv01b);
+        // features are saved in stack
+        my_hg.SaveFeatures(true);
+//        my_hg.SetEdgeFeatures(HyperEdge(0,-1,0,HyperEdge::EDGE_FOR), fv00);
+//        my_hg.SetEdgeFeatures(HyperEdge(1,-1,1,HyperEdge::EDGE_FOR), fv11);
+//        my_hg.SetEdgeFeatures(HyperEdge(0,-1,1,HyperEdge::EDGE_FOR), fv01f);
+//        my_hg.SetEdgeFeatures(HyperEdge(0,1,1,HyperEdge::EDGE_STR), fv01s);
+//        my_hg.SetEdgeFeatures(HyperEdge(0,1,1,HyperEdge::EDGE_INV), fv01b);
         // Set the stacks
         my_hg.SetStack(0,0,ts00);
         my_hg.SetStack(0,1,ts01);
@@ -148,10 +147,14 @@ public:
         edge02exp.push_back(MakePair(string("SP||PRP||VBD NN"), 1));
         // Make the hypergraph and get the features
         HyperGraph hyper_graph;
-        hyper_graph.SetFeatures(new EdgeFeatureMap);
+        // -save_features
+        hyper_graph.SaveFeatures(true);
+        // for Save{Striaght,Inverted}Features
+        TargetSpan * span02 = new TargetSpan(0, 2);
+        hyper_graph.SetStack(0, 2, span02);
         // Generate the features
         const FeatureVectorInt * edge02int = 
-                        hyper_graph.GetEdgeFeatures(mod, set, datas, edge02, true);
+                        hyper_graph.GetEdgeFeatures(mod, set, datas, edge02);
         FeatureVectorString * edge02act =
                         mod.StringifyFeatureVector(*edge02int);
         // Do the parsing and checking
@@ -164,7 +167,7 @@ public:
         ret *= CheckVector(edge02intexp, *edge02int);
         // Generate the features again
         const FeatureVectorInt * edge02int2 = 
-                        hyper_graph.GetEdgeFeatures(mod, set, datas, edge02, false);
+                        hyper_graph.GetEdgeFeatures(mod, set, datas, edge02);
         // Make sure that the pointers are equal
         if(edge02int != edge02int2) {
             cerr << "Edge pointers are not equal." << endl;
@@ -185,6 +188,16 @@ public:
     int TestGetNonLocalFeaturesAndWeights() {
         // Make a reorderer model
         ReordererModel mod;
+        FeatureNonLocal *non_local_featw, *non_local_featp;
+        // Set up the feature generators
+        non_local_featw = new FeatureNonLocal;
+        non_local_featp = new FeatureNonLocal;
+        non_local_featw->ParseConfiguration("TO%SL%SR");
+        non_local_featp->ParseConfiguration("TI%LR%RL");
+        // Set up the feature set
+        FeatureSet non_local_set;
+        non_local_set.AddFeatureGenerator(non_local_featw);
+        non_local_set.AddFeatureGenerator(non_local_featp);
         // Make the hypergraph and get the features
         HyperGraph graph;
         // Create spans, and generate hypotheses
@@ -203,7 +216,9 @@ public:
 		stack12->AddHypothesis(new Hypothesis(5,4,1, 1,2,2,1, HyperEdge::EDGE_BAC));
 		graph.SetStack(1, 2, stack12); // just for testing
         set.SetMaxTerm(1);
-		TargetSpan *stack02 = graph.ProcessOneSpan(mod, set, non_local_set, datas, 0, 2);
+		TargetSpan *stack02 = new TargetSpan(0,2);
+		graph.SetStack(0, 2, stack02);
+		graph.ProcessOneSpan(mod, set, non_local_set, datas, 0, 2);
         // The stack should contain four hypotheses: S(0,21), I(21,0), S(01,2), I(2,01)
         int ret = 1;
         if(stack02->size() != 4) {
@@ -239,13 +254,14 @@ public:
         }
 
         stack11->AddHypothesis(new Hypothesis(1,1,0, 1,1,1,1, HyperEdge::EDGE_FOR));
-        TargetSpan *stack01processed = graph.ProcessOneSpan(mod, set, non_local_set, datas, 0, 1);
+        stack01->ClearHypotheses();
+        graph.ProcessOneSpan(mod, set, non_local_set, datas, 0, 1);
         // The stack should contain two hypotheses: S(0,1), I(1,0)
-        if(stack01processed->size() != 2) {
-        	cerr << "stack01processed->size() != 2: " << stack01processed->size() << endl; ret = 0;
+        if(stack01->size() != 2) {
+        	cerr << "stack01->size() != 2: " << stack01->size() << endl; ret = 0;
         }
 //        Hypothesis *hyp01 = stack01processed->GetHypothesis(0);
-        Hypothesis *hyp10 = stack01processed->GetHypothesis(1);
+        Hypothesis *hyp10 = stack01->GetHypothesis(1);
         if (hyp10->GetEdgeType() != HyperEdge::EDGE_INV){
         	cerr << "hyp10->GetEdgeType() != HyperEdge::EDGE_INV" << endl; ret = 0;
         }
@@ -277,7 +293,9 @@ public:
         // Try processing 01
         set.SetMaxTerm(0);
     	set.SetUseReverse(true);
-        TargetSpan *stack01 = graph.ProcessOneSpan(model, set, non_local_set, datas, 0, 1);
+    	TargetSpan *stack01 = new TargetSpan(0, 1);
+    	graph.SetStack(0, 1, stack01);
+        graph.ProcessOneSpan(model, set, non_local_set, datas, 0, 1);
         // The stack should contain four hypotheses: S(0,1), I(1,0), F(01), B(10)
         int ret = 1;
         if(stack01->size() != 4) {
@@ -292,28 +310,36 @@ public:
         score_act[2] = stack01->GetHypothesis(2)->GetScore();
         score_act[3] = stack01->GetHypothesis(3)->GetScore();
         ret = CheckVector(score_exp, score_act);
-        // Check to make sure that pruning works
-        TargetSpan *stack01pruned = graph.ProcessOneSpan(model, set, non_local_set, datas, 0, 1, 3);
-        if(stack01pruned->size() != 3) {
-        	cerr << "stack01->size() != 3: " << stack01pruned->size() << endl; ret = 0;
-        }
+
+		// Check to make sure that pruning works
+		stack01->ClearHypotheses();
+		graph.ProcessOneSpan(model, set, non_local_set, datas, 0, 1, 3);
+		if(stack01->size() != 3) {
+			cerr << "stack01->size() != 3: " << stack01->size() << endl; ret = 0;
+		}
 
         TargetSpan *stack22 = new TargetSpan(2,2);
 		stack22->AddHypothesis(new Hypothesis(3,3,0, 2,2,2,2, HyperEdge::EDGE_FOR));
 		graph.SetStack(2, 2, stack22);
-		graph.SetStack(0, 1, stack01);
+//		graph.SetStack(0, 1, stack01);
 		TargetSpan *stack12 = new TargetSpan(1,2);
 		stack12->AddHypothesis(new Hypothesis(4,4,0, 1,2,2,1, HyperEdge::EDGE_BAC));
 		graph.SetStack(1, 2, stack12); // just for testing
-		TargetSpan *stack02 = graph.ProcessOneSpan(model, set, non_local_set, datas, 0, 2);
+		TargetSpan *stack02 = new TargetSpan(0, 2);
+		graph.SetStack(0, 2, stack02);
+		graph.ProcessOneSpan(model, set, non_local_set, datas, 0, 2);
         // The number of hypothesis should be 3! + 1
 		if(stack02->size() != 3*2 + 1) {
 			cerr << "stack02->size() != 7: " << stack02->size() << endl; ret = 0;
 			BOOST_FOREACH(const Hypothesis *hyp, stack02->GetHypotheses()){
 				cerr << *hyp;
-				hyp->PrintChildren(cerr);
+				if (!hyp->IsTerminal())
+					hyp->PrintChildren(cerr);
+				else
+					cerr << endl;
 			}
 		}
+
         // delete stack00; delete stack01;
         // delete stack11; delete stack01pruned;
         return ret;
@@ -323,6 +349,7 @@ public:
         HyperGraph graph;
         set.SetMaxTerm(0);
         set.SetUseReverse(false);
+        ReordererModel model;
         graph.BuildHyperGraph(model, set, non_local_set, datas);
         const std::vector<TargetSpan*> & stacks = graph.GetStacks();
         int ret = 1;
@@ -363,6 +390,7 @@ public:
         HyperGraph graph(true);
         set.SetMaxTerm(0);
         set.SetUseReverse(false);
+        ReordererModel model;
         graph.BuildHyperGraph(model, set, non_local_set, datas);
         const std::vector<TargetSpan*> & stacks = graph.GetStacks();
         int ret = 1;
@@ -411,7 +439,7 @@ public:
 		// reusing model requires no more model->GetFeatureIds()->GetId(add=true)
 		// therefore, it will be much faster
     	graph.SetThreads(4);
-    	graph.Clear();
+    	graph.ClearStacks();
         clock_gettime(CLOCK_MONOTONIC, &tstart);
     	graph.BuildHyperGraph(model, set, non_local_set, datas, beam_size);
 		clock_gettime(CLOCK_MONOTONIC, &tend);
@@ -439,6 +467,59 @@ public:
     	return ret;
     }
 
+    int TestBuildHyperGraphSaveFeatures() {
+    	HyperGraph graph(true);
+    	FeatureSet set;
+    	FeatureSequence * featw = new FeatureSequence;
+    	featw->ParseConfiguration("SW%LS%RS");
+    	set.AddFeatureGenerator(featw);
+    	set.SetMaxTerm(0);
+    	set.SetUseReverse(false);
+    	FeatureDataSequence sent;
+    	sent.FromString("t h i s i s a v e r y v e r y v e r y v e r y l o n g s e n t e n c e .");
+    	vector<FeatureDataBase*> datas;
+    	datas.push_back(&sent);
+    	struct timespec tstart={0,0}, tend={0,0};
+    	int beam_size = 100;
+    	ReordererModel model;
+
+    	graph.SaveFeatures(true);
+    	clock_gettime(CLOCK_MONOTONIC, &tstart);
+    	graph.BuildHyperGraph(model, set, non_local_set, datas, beam_size);
+    	clock_gettime(CLOCK_MONOTONIC, &tend);
+    	double before_save = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) -
+    			((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+
+    	// reusing saved features does not access to model->GetFeatureIds() anymore
+    	// therefore, it will be much faster
+    	ReordererModel empty_model; // use empty model
+    	empty_model.SetAdd(false); // do not allow adding feature ids anymore
+    	clock_gettime(CLOCK_MONOTONIC, &tstart);
+    	graph.BuildHyperGraph(empty_model, set, non_local_set, datas, beam_size);
+    	clock_gettime(CLOCK_MONOTONIC, &tend);
+    	double after_save = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) -
+    			((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+    	const std::vector<TargetSpan*> & stacks = graph.GetStacks();
+    	int ret = 1;
+    	int n = sent.GetNumWords();
+    	// The total number of stacks should be n*(n+1)/2 + 1
+    	if(stacks.size() != n*(n+1)/2 + 1) {
+    		cerr << "stacks.size() != " << n*(n+1)/2 + 1 << ": " << stacks.size() << endl; ret = 0;
+    		// The number of hypothesis should be beam_size
+    	} else if (graph.GetRoot()->size() != beam_size) {
+    		cerr << "root stacks->size() != " << beam_size << ": " <<graph.GetRoot()->size()<< endl;
+    		BOOST_FOREACH(const Hypothesis *hyp, graph.GetRoot()->GetHypotheses()){
+    			cerr << *hyp <<  endl;
+    		}
+    		ret = 0;
+    	}
+    	if(after_save > before_save){
+    		cerr << "save features, more time? " << after_save << " > " << before_save << endl;
+    		ret = 0;
+    	}
+    	set.SetUseReverse(true);
+    	return ret;
+    }
     int TestAccumulateLoss() {
         // The value of the loss should be 1+2+5+6 = 14 (3 and 4 are not best)
         double val = tsr->GetHypothesis(0)->AccumulateLoss();
@@ -452,7 +533,10 @@ public:
 
     int TestAccumulateFeatures() {
         // The value of the loss should be 1:1, 2:1, 5:1, 10:4
-        FeatureVectorInt act = my_hg.GetBest()->AccumulateFeatures(my_hg.GetFeatures());
+        FeatureVectorInt act;
+        std::tr1::unordered_map<int, double> feat_map;
+        my_hg.AccumulateFeatures(feat_map, model, set, non_local_set, datas, my_hg.GetBest());
+        ClearAndSet(act, feat_map);
         FeatureVectorInt exp;
         exp.push_back(MakePair(1,1));
         exp.push_back(MakePair(2,1));
@@ -621,6 +705,7 @@ public:
         done++; cout << "TestBuildHyperGraph()" << endl; if(TestBuildHyperGraph()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestBuildHyperGraphCubeGrowing()" << endl; if(TestBuildHyperGraphCubeGrowing()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestBuildHyperGraphMultiThreads()" << endl; if(TestBuildHyperGraphMultiThreads()) succeeded++; else cout << "FAILED!!!" << endl;
+        done++; cout << "TestBuildHyperGraphSaveFeatures()" << endl; if(TestBuildHyperGraphSaveFeatures()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestAccumulateLoss()" << endl; if(TestAccumulateLoss()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestAccumulateFeatures()" << endl; if(TestAccumulateFeatures()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestRescore()" << endl; if(TestRescore()) succeeded++; else cout << "FAILED!!!" << endl;
@@ -640,7 +725,6 @@ private:
     FeatureSet set, non_local_set;
     vector<FeatureDataBase*> datas;
     FeatureSequence *featw, *featp;
-    FeatureNonLocal *non_local_featw, *non_local_featp;
     TargetSpan *ts00, *ts01, *ts11, *tsr;
     HyperGraph my_hg;
 

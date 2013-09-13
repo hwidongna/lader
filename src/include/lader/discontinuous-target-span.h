@@ -11,7 +11,12 @@ namespace lader {
 class DiscontinuousTargetSpan : public TargetSpan{
 public:
     DiscontinuousTargetSpan(int left, int m, int n, int right)
-                    : TargetSpan(left, right), m_(m), n_(n) { }
+                    : TargetSpan(left, right), m_(m), n_(n) {
+    	// resize the feature list in advance
+    	// list[0] is continuous + continuous = discontinuous
+    	// list[1:] are continuous + discontinuous = discontinuous
+    	// or discontinuous + continuous = discontinuous
+    }
 
     int GetM() const { return m_; }
     int GetN() const { return n_; }

@@ -29,17 +29,19 @@ public:
     friend class TestHyperGraph;
     friend class TestDiscontinuousHyperGraph;
     friend class Hypothesis;
-    class SpanTask : public Task {
+    class TargetSpanTask : public Task {
     public:
-    	SpanTask(HyperGraph * graph, ReordererModel & model,
+    	TargetSpanTask(HyperGraph * graph, ReordererModel & model,
     			const FeatureSet & features, const FeatureSet & non_local_features,
     			const Sentence & sent, int l, int r, int beam_size) :
     				graph_(graph), model_(model), features_(features),
-    				non_local_features_(non_local_features), sent_(sent), l_(l), r_(r), beam_size_(beam_size) {
-    	}
+    				non_local_features_(non_local_features), sent_(sent), l_(l), r_(r), beam_size_(beam_size) { }
     	void Run(){
-    		graph_->SetStack(l_, r_,graph_->ProcessOneSpan(model_, features_, non_local_features_,
-    						sent_, l_, r_, beam_size_));
+    		// if -save_features, stack exist
+    		if (!graph_->GetStack(l_, r_))
+    			graph_->SetStack(l_, r_, new TargetSpan(l_, r_));
+    		graph_->ProcessOneSpan(model_, features_, non_local_features_,
+    		    						sent_, l_, r_, beam_size_);
     	}
     private:
     	HyperGraph * graph_;
@@ -50,39 +52,38 @@ public:
     	int l_, r_, beam_size_;
     };
 
-    HyperGraph(bool cube_growing = false) :
-			features_(0), n_(-1), threads_(1), cube_growing_(cube_growing), cloned_(false), bigram_(0) { }
-
-    void Clear()
-    {
-        if(features_) {
-            BOOST_FOREACH(EdgeFeaturePair efp, *features_){
-            	delete efp.first;
-                delete efp.second;
-            }
-            delete features_;
-            ClearFeatures();
-        }
-        BOOST_FOREACH(TargetSpan * stack, stacks_)
-            delete stack;
-        stacks_.clear();
+    virtual Task * NewSpanTask(HyperGraph * graph, ReordererModel & model,
+			const FeatureSet & features, const FeatureSet & non_local_features,
+			const Sentence & sent, int l, int r, int beam_size){
+    	return new TargetSpanTask(this, model, features,
+				non_local_features, sent, l, r, beam_size);
     }
+    HyperGraph(bool cube_growing = false) :
+			save_features_(false), n_(-1), threads_(1), cube_growing_(cube_growing), cloned_(false), bigram_(0) { }
+
+    void ClearStacks() {
+		BOOST_FOREACH(TargetSpan * stack, stacks_)
+			delete stack;
+		stacks_.clear();
+	}
 
     virtual ~HyperGraph()
     {
-        Clear();
+        ClearStacks();
         if (!cloned_ && bigram_)
         	delete bigram_;
     }
 
-    HyperGraph * Clone(){
-    	HyperGraph * cloned = new HyperGraph(this);
-    	cloned->cloned_ = true;
+    virtual HyperGraph * Clone(){
+    	HyperGraph * cloned = new HyperGraph(cube_growing_);
+    	cloned->MarkCloned();
+    	cloned->SetLM(bigram_);
     	return cloned;
     }
-    void BuildHyperGraph(ReordererModel & model, const FeatureSet & features,
-			const FeatureSet & non_local_features, const Sentence & sent,
-			int beam_size = 0);
+
+    virtual void BuildHyperGraph(ReordererModel & model,
+			const FeatureSet & features, const FeatureSet & non_local_features,
+			const Sentence & sent, int beam_size = 0);
 	const TargetSpan *GetStack(int l, int r) const {
 		return SafeAccess(stacks_, GetTrgSpanID(l, r));
 	}
@@ -113,15 +114,9 @@ public:
 		return SafeAccess(stacks_, stacks_.size() - 1)->GetHypothesis(0);
 	}
     virtual void AddLoss(LossBase *loss, const Ranks *ranks, const FeatureDataParse *parse) const;
-    void SetFeatures(EdgeFeatureMap *features) {
-		features_ = features;
-	}
-	EdgeFeatureMap *GetFeatures() {
-		return features_;
-	}
-	void ClearFeatures() {
-		features_ = NULL;
-	}
+    void SaveFeatures(bool save_features) {
+    	save_features_ = save_features;
+    }
 	virtual void AccumulateFeatures(std::tr1::unordered_map<int, double> & feat_map,
 			ReordererModel & model, const FeatureSet & features,
 			const FeatureSet & non_local_features, const Sentence & sent,
@@ -132,6 +127,9 @@ public:
 	void SetThreads(int threads) {
 		threads_ = threads;
 	}
+
+    void MarkCloned(){ cloned_ = true; }
+    void SetLM(lm::ngram::Model * bigram) { bigram_ = bigram; }
 
 protected:
     void AddTerminals(int l, int r, const FeatureSet & features,
@@ -152,23 +150,15 @@ protected:
     virtual Hypothesis * LazyKthBest(TargetSpan * stack, int k,
 			ReordererModel & model, const FeatureSet & features,
 			const FeatureSet & non_local_features, const Sentence & sent);
-    virtual TargetSpan *ProcessOneSpan(ReordererModel & model,
+    virtual void ProcessOneSpan(ReordererModel & model,
 			const FeatureSet & features, const FeatureSet & non_local_features,
 			const Sentence & sent, int l, int r, int beam_size = 0);
-	const FeatureVectorInt *GetEdgeFeatures(ReordererModel & model,
+	virtual const FeatureVectorInt *GetEdgeFeatures(ReordererModel & model,
 			const FeatureSet & feature_gen, const Sentence & sent,
-			const HyperEdge & edge, bool insert);
+			const HyperEdge & edge);
 
-	// only for testing
-    void SetEdgeFeatures(const HyperEdge & edge, FeatureVectorInt *feat)
-    {
-        if(!features_)
-            features_ = new EdgeFeatureMap;
-
-        features_->insert(MakePair(edge.Clone(), feat));
-    }
     double GetEdgeScore(ReordererModel & model, const FeatureSet & feature_gen,
-			const Sentence & sent, const HyperEdge & edge);
+			const Sentence & sent, const HyperEdge & edge, TargetSpan * stack = NULL);
     const FeatureVectorInt *GetNonLocalFeatures(const HyperEdge * edge,
     		const Hypothesis *left, const Hypothesis *right, const FeatureSet & feature_gen,
     		const Sentence & sent, ReordererModel & model, lm::ngram::State * out);
@@ -186,27 +176,25 @@ protected:
 
         return r * (r + 1) / 2 + l;
     }
-    virtual void SetStack(int l, int r, TargetSpan *stack)
+    void SetStack(int l, int r, TargetSpan *stack)
     {
         if(l < 0 || r < 0)
-            THROW_ERROR("Bad SetStack (l="<<l<<", r="<<r<<")"<<std::endl)
+            THROW_ERROR("Bad SetStack [l="<<l<<", r="<<r<<"]"<<std::endl)
         int idx = GetTrgSpanID(l, r);
-        {
-        	boost::mutex::scoped_lock lock(mutex_);
-        	if((int)stacks_.size() <= idx)
-        		stacks_.resize(idx+1, NULL);
-        }
+		if((int)stacks_.size() <= idx)
+			stacks_.resize(idx+1, NULL);
         if(stacks_[idx])
-            delete stacks_[idx];
+        	THROW_ERROR("Stack exist [l="<<l<<", r="<<r<<"]"<<std::endl)
+//            delete stacks_[idx];
 
         stacks_[idx] = stack;
     }
+
 private:
     std::vector<TargetSpan*> stacks_;
 
 protected:
-    EdgeFeatureMap *features_;
-    boost::mutex mutex_;
+    bool save_features_;
     int threads_;
     int n_;
     bool cube_growing_, cloned_;

@@ -95,7 +95,8 @@ namespace std {
 inline std::ostream& operator << ( std::ostream& out,
                                    const lader::HyperEdge & rhs )
 {
-    out << "l=" << rhs.GetLeft() << ", c=" << rhs.GetCenter() << ", r=" << rhs.GetRight();
+    out << " l=" << rhs.GetLeft() << ", c=" << rhs.GetCenter() << ", r=" << rhs.GetRight()
+    	<< " : " << (char)rhs.GetType() << rhs.GetClass();
     return out;
 }
 }

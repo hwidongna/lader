@@ -37,20 +37,18 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
     // Shuffle the whole orders for the first time
 	if(config.GetBool("shuffle"))
 		random_shuffle(sent_order.begin(), sent_order.end());
-    // Perform an iteration
     cerr << "(\".\" == 100 sentences)" << endl;
 	struct timespec build={0,0}, oracle={0,0}, model={0,0}, adjust={0,0};
 	struct timespec tstart={0,0}, tend={0,0};
 	DiscontinuousHyperGraph graph(gapSize, max_seq, cube_growing, full_fledged, mp, verbose);
 	if (config.GetString("bigram").length())
 		graph.LoadLM(config.GetString("bigram").c_str());
-	if (config.GetString("model_in").length())
-		graph.SetThreads(threads);
-	else if (threads > 1)
+	graph.SetThreads(threads);
+	if (!config.GetString("model_in").length() && threads > 1)
 		cerr << "-threads is slow without -model_in" << endl;
-	// enable save edge features only if -save_features is given
-	if(config.GetBool("save_features"))
-		graph.SetFeatures(new EdgeFeatureMap);
+	graph.SaveFeatures(config.GetBool("save_features"));
+	HyperGraph * ptr_graph = &graph;
+    // Perform an iteration
     for(int iter = 0; iter < config.GetInt("iterations"); iter++) {
         double iter_model_loss = 0, iter_oracle_loss = 0;
         int done = 0;
@@ -65,17 +63,22 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
         	if (verbose > 1)
         		cerr << "Sentence " << sent << endl;
             if(done % 100 == 0) cerr << ".";
-            if(done % (100*80) == 0) cerr << endl;
-            graph.Clear();
+            if(done % (100*10) == 0) cerr << done << endl;
             // If we are saving features for efficiency, recover the saved
             // features and replace them in the hypergraph
-            if(config.GetBool("save_features") && iter != 0)
-                graph.SetFeatures(SafeAccess(saved_feats_, sent));
+            if(config.GetBool("save_features"))
+            	if (iter == 0)
+            		ptr_graph = graph.Clone();
+            	else
+            		ptr_graph = saved_graphs_[sent];
+            else
+            	ptr_graph->ClearStacks();
+
             clock_gettime(CLOCK_MONOTONIC, &tstart);
             // TODO: a loss-augmented parsing would result a different forest
             // We want to find a derivation that minimize loss and maximize model score
             // Make the hypergraph using cube pruning/growing
-			graph.BuildHyperGraph(*model_,
+			ptr_graph->BuildHyperGraph(*model_,
                                         *features_,
                                         *non_local_features_,
                                         data_[sent],
@@ -85,39 +88,38 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 			build.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
 			if (verbose > 0)
 				printf("hyper_graph.BuildHyperGraph took about %.5f seconds\n",
-						((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) -
-						((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec));
+						((double)(tend.tv_sec) + 1.0e-9 * tend.tv_nsec) - ((double)(tstart.tv_sec) + 1.0e-9 * tstart.tv_nsec));
+
 			// Add losses to the hypotheses in the hypergraph
-            BOOST_FOREACH(LossBase * loss, losses_)
-            	graph.AddLoss(loss,
-					sent < (int)ranks_.size() ? &ranks_[sent] : NULL,
-					sent < (int)parses_.size() ? &parses_[sent] : NULL);
-            // Parse the hypergraph, penalizing loss heavily (oracle)
-            clock_gettime(CLOCK_MONOTONIC, &tstart);
-            oracle_score = graph.Rescore(-1e6);
+			BOOST_FOREACH(LossBase * loss, losses_)
+						ptr_graph->AddLoss(loss,
+							sent < (int)ranks_.size() ? &ranks_[sent] : NULL,
+							sent < (int)parses_.size() ? &parses_[sent] : NULL);
+			// Parse the hypergraph, penalizing loss heavily (oracle)
+			clock_gettime(CLOCK_MONOTONIC, &tstart);
+			oracle_score = ptr_graph->Rescore(-1e6);
 			feat_map.clear();
-			graph.AccumulateFeatures(feat_map, *model_,
-							*features_, *non_local_features_, data_[sent], graph.GetBest());
+			ptr_graph->AccumulateFeatures(feat_map, *model_, *features_,
+							*non_local_features_, data_[sent],
+							ptr_graph->GetBest());
 			oracle_features.clear();
-			BOOST_FOREACH(FeaturePairInt feat_pair, feat_map)
-				oracle_features.push_back(feat_pair);
-			oracle_loss = graph.GetBest()->AccumulateLoss();
+			ClearAndSet(oracle_features, feat_map);
+			oracle_loss = ptr_graph->GetBest()->AccumulateLoss();
 			oracle_score -= oracle_loss * -1e6;
 			clock_gettime(CLOCK_MONOTONIC, &tend);
 			oracle.tv_sec += tend.tv_sec - tstart.tv_sec;
 			oracle.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
 			// Parse the hypergraph, slightly boosting loss by 1.0 if we are
 			// using loss-augmented inference
-            clock_gettime(CLOCK_MONOTONIC, &tstart);
-			model_score = graph.Rescore(loss_aug ? 1.0 : 0.0);
-			model_loss = graph.GetBest()->AccumulateLoss();
+			clock_gettime(CLOCK_MONOTONIC, &tstart);
+			model_score = ptr_graph->Rescore(loss_aug ? 1.0 : 0.0);
+			model_loss = ptr_graph->GetBest()->AccumulateLoss();
 			model_score -= model_loss * 1;
 			feat_map.clear();
-			graph.AccumulateFeatures(feat_map, *model_,
-					*features_, *non_local_features_, data_[sent], graph.GetBest());
-			model_features.clear();
-			BOOST_FOREACH(FeaturePairInt feat_pair, feat_map)
-				model_features.push_back(feat_pair);
+			ptr_graph->AccumulateFeatures(feat_map, *model_, *features_,
+							*non_local_features_, data_[sent],
+							ptr_graph->GetBest());
+			ClearAndSet(model_features, feat_map);
 			clock_gettime(CLOCK_MONOTONIC, &tend);
 			model.tv_sec += tend.tv_sec - tstart.tv_sec;
 			model.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
@@ -126,7 +128,7 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 			iter_oracle_loss += oracle_loss;
 			if (verbose > 0){
 				vector<int> order;
-				graph.GetBest()->GetReordering(order, verbose > 1);
+				ptr_graph->GetBest()->GetReordering(order, verbose > 1);
 				for(int i = 0; i < (int)order.size(); i++) {
 					if(i != 0) cout << " "; cout << order[i];
 				}
@@ -150,38 +152,41 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 					vector<string> words = ((FeatureDataSequence*)data_[sent][0])->GetSequence();
 		            graph.GetBest()->PrintParse(words, out);
 					cerr << "sent=" << sent << " sent_loss="<< sent_loss <<" != model_loss="<<model_loss << endl;
-		            cerr << out << endl;
+		            cerr << out.str() << endl;
 				}
 				cout << "sent=" << sent << " oracle_score=" << oracle_score << " model_score=" << model_score << endl
 					 << "sent_loss = "<< sent_loss << " oracle_loss=" << oracle_loss << " model_loss=" << model_loss << endl;
 			}
 			// Add the difference between the vectors if there is at least
 			//  some loss
-            clock_gettime(CLOCK_MONOTONIC, &tstart);
-            if(config.GetString("learner") == "pegasos") {
-                model_->AdjustWeightsPegasos(
-                    model_loss == oracle_loss ?
-                    FeatureVectorInt() :
-                    VectorSubtract(oracle_features, model_features));
-            } else if(config.GetString("learner") == "perceptron") {
-                if(model_loss != oracle_loss)
-                	model_->AdjustWeightsPerceptron(
-                        VectorSubtract(oracle_features, model_features));
-            } else {
-                THROW_ERROR("Bad learner: " << config.GetString("learner"));
-            }
-			// If we are saving features
-			if(config.GetBool("save_features")){
-				if((int)((saved_feats_.size())) <= sent)
-                    saved_feats_.resize(sent+1);
-                saved_feats_[sent] = graph.GetFeatures();
-                graph.ClearFeatures();
-            }
+			clock_gettime(CLOCK_MONOTONIC, &tstart);
+			if(config.GetString("learner") == "pegasos") {
+				model_->AdjustWeightsPegasos(
+						model_loss == oracle_loss ?
+								FeatureVectorInt() :
+								VectorSubtract(oracle_features, model_features));
+			} else if(config.GetString("learner") == "perceptron") {
+				if(model_loss != oracle_loss)
+					model_->AdjustWeightsPerceptron(
+							VectorSubtract(oracle_features, model_features));
+			} else {
+				THROW_ERROR("Bad learner: " << config.GetString("learner"));
+			}
+
 			clock_gettime(CLOCK_MONOTONIC, &tend);
 			adjust.tv_sec += tend.tv_sec - tstart.tv_sec;
 			adjust.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
+			// If we are saving features
+			if(config.GetBool("save_features")){
+			//				if((int)((saved_feats_.size())) <= sent)
+			//                    saved_feats_.resize(sent+1);
+			//                saved_feats_[sent] = ptr_graph->GetFeatures();
+			//                ptr_graph->ClearFeatures();
+				if((int)(((saved_graphs_.size()))) <= sent)
+					saved_graphs_.resize(sent+1);
+				saved_graphs_[sent] = ptr_graph;
+			}
         }
-        cerr << endl;
         cout << "Finished iteration " << iter << " with loss " << iter_model_loss << " (oracle: " << iter_oracle_loss << ")" << endl;
         cout << "Running time on average: "
         		<< "build " << ((double)build.tv_sec + 1.0e-9*build.tv_nsec) / (iter+1) << "s"
@@ -191,15 +196,15 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
         cout.flush();
         bool last_iter = (iter_model_loss == iter_oracle_loss ||
                           iter == config.GetInt("iterations") - 1);
-        if(last_iter) {
-            WriteModel(config.GetString("model_out"));
-            break;
-        }
         // write every iteration to a different file
         if(config.GetBool("write_every_iter")){
         	stringstream ss;
         	ss << ".it" << iter;
         	WriteModel(config.GetString("model_out") + ss.str());
+        }
+        if(last_iter) {
+            WriteModel(config.GetString("model_out"));
+            break;
         }
     }
 }
@@ -211,7 +216,7 @@ void ReordererTrainer::InitializeModel(const ConfigTrainer & config) {
         std::ifstream in(config.GetString("model_in").c_str());
         if(!in) THROW_ERROR("Couldn't read model from file (-model_in '"
                             << config.GetString("model_in") << "')");
-        cerr << "Load the exising model";
+        cerr << "Load the existing model" << endl;
         features_ = FeatureSet::FromStream(in);
         if (!config.GetBool("backward_compatibility"))
         	non_local_features_ = FeatureSet::FromStream(in);

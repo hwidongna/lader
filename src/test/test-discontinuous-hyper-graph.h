@@ -29,11 +29,12 @@ public:
             edge11(1, -1, 1, HyperEdge::EDGE_FOR), 
             edge22(2, -1, 2, HyperEdge::EDGE_FOR),
             edge33(3, -1, 3, HyperEdge::EDGE_FOR),
-            edge0_2b(0,0, -1, 2,2, HyperEdge::EDGE_INV),
-            edge1_3b(1,1, -1, 3,3, HyperEdge::EDGE_INV),
+            edge0_2(0,0, -1, 2,2, HyperEdge::EDGE_INV),
+            edge1_3(1,1, -1, 3,3, HyperEdge::EDGE_INV),
             edge01(0, -1, 1, HyperEdge::EDGE_FOR),
             edge23(2, -1, 3, HyperEdge::EDGE_FOR),
-            edge03f(0, 2, 3, HyperEdge::EDGE_STR)
+            edge03sd(0,1, 2, 3,3, HyperEdge::EDGE_STR),
+            edge03sc(0, 2, 3, HyperEdge::EDGE_STR)
             {
         // Create a combined Inside-Out alignment
         //  .x..
@@ -90,19 +91,20 @@ public:
         ts01 = new TargetSpan(0,1);
         ts23 = new TargetSpan(2,3);
         ts03 = new TargetSpan(0,3);
+        ts03d = new DiscontinuousTargetSpan(0,1,3,3); // only for saving feature
         tsRoot = new TargetSpan(0,3);
         // Add the hypotheses
         ts00->AddHypothesis(new Hypothesis(1,-1, 0, edge00.Clone(), 0,0));
         ts11->AddHypothesis(new Hypothesis(2,-1, 0, edge11.Clone(), 1,1));
         ts22->AddHypothesis(new Hypothesis(3,-1, 0, edge22.Clone(), 2,2));
         ts33->AddHypothesis(new Hypothesis(4,-1, 0, edge33.Clone(), 3,3));
-        ts0_2->AddHypothesis(new DiscontinuousHypothesis(1+3+5,-1, 0, edge0_2b.Clone(), 2,0, 0,0, ts00,ts22));
-        ts1_3->AddHypothesis(new DiscontinuousHypothesis(2+4+6,-1, 0, edge1_3b.Clone(), 3,1, 0,0, ts11,ts33));
+        ts0_2->AddHypothesis(new DiscontinuousHypothesis(1+3+5,-1, 0, edge0_2.Clone(), 2,0, 0,0, ts00,ts22));
+        ts1_3->AddHypothesis(new DiscontinuousHypothesis(2+4+6,-1, 0, edge1_3.Clone(), 3,1, 0,0, ts11,ts33));
         ts01->AddHypothesis(new DiscontinuousHypothesis(1,-1, 0, edge01.Clone(), 0,1));
         ts23->AddHypothesis(new DiscontinuousHypothesis(2,-1, 0, edge23.Clone(), 2,3));
         // the viterbi score of combining ts0_2b and ts1_3b is greater than that of ts01 and ts23
-        ts03->AddHypothesis(new Hypothesis(1+3+5+2+4+6+7,-1, 0, edge03f.Clone(), 0,3, 0,0, ts0_2, ts1_3));
-        ts03->AddHypothesis(new Hypothesis(1+2+7,-1, 0, edge03f.Clone(), 0,3, 0,0, ts01, ts23));
+        ts03->AddHypothesis(new Hypothesis(1+3+5+2+4+6+7,-1, 0, edge03sd.Clone(), 0,3, 0,0, ts0_2, ts1_3));
+        ts03->AddHypothesis(new Hypothesis(1+2+7,-1, 0, edge03sc.Clone(), 0,3, 0,0, ts01, ts23));
         tsRoot->AddHypothesis(new Hypothesis(1+3+5+2+4+6+7, 0, 0, 0,3, 0,3,  HyperEdge::EDGE_ROOT,-1, 0,-1,ts03));
         tsRoot->AddHypothesis(new Hypothesis(1+2+7, 0, 0, 0,3, 0,3,  HyperEdge::EDGE_ROOT,-1, 1,-1,ts03));
         // Add the features
@@ -115,7 +117,8 @@ public:
             *fv1_3b = new FeatureVectorInt(1,MakePair(6,1)),
             *fv01 = new FeatureVectorInt(1,MakePair(5,1)),
         	*fv23 = new FeatureVectorInt(1,MakePair(6,1)),
-        	*fv03f = new FeatureVectorInt(1,MakePair(7,1));
+        	*fv03sc = new FeatureVectorInt(1,MakePair(7,1)),
+        	*fv03sd = new FeatureVectorInt(1,MakePair(8,1));
         fv00->push_back(MakePair(10,1));
         fv11->push_back(MakePair(10,1));
         fv22->push_back(MakePair(10,1));
@@ -124,16 +127,27 @@ public:
         fv1_3b->push_back(MakePair(10,1));
         fv01->push_back(MakePair(10,1));
         fv23->push_back(MakePair(10,1));
-        fv03f->push_back(MakePair(10,1));
-        my_hg->SetEdgeFeatures(HyperEdge(0,-1,0,HyperEdge::EDGE_FOR), fv00);
-        my_hg->SetEdgeFeatures(HyperEdge(1,-1,1,HyperEdge::EDGE_FOR), fv11);
-        my_hg->SetEdgeFeatures(HyperEdge(2,-1,2,HyperEdge::EDGE_FOR), fv22);
-        my_hg->SetEdgeFeatures(HyperEdge(3,-1,3,HyperEdge::EDGE_FOR), fv33);
-        my_hg->SetEdgeFeatures(edge0_2b, fv0_2b);
-        my_hg->SetEdgeFeatures(edge1_3b, fv1_3b);
-        my_hg->SetEdgeFeatures(edge01, fv01);
-        my_hg->SetEdgeFeatures(edge23, fv23);
-        my_hg->SetEdgeFeatures(edge03f, fv03f);
+        fv03sc->push_back(MakePair(10,1));
+        fv03sd->push_back(MakePair(10,1));
+        ts00->SaveStraightFeautures(-1, fv00);
+		ts11->SaveStraightFeautures(-1, fv11);
+		ts22->SaveStraightFeautures(-1, fv22);
+		ts33->SaveStraightFeautures(-1, fv33);
+		ts0_2->SaveInvertedFeautures(-1, fv0_2b);
+		ts1_3->SaveInvertedFeautures(-1, fv1_3b);
+		ts01->SaveStraightFeautures(-1, fv01);
+		ts23->SaveStraightFeautures(-1, fv23);
+		ts03->SaveStraightFeautures(2, fv03sc);
+		ts03d->SaveStraightFeautures(2, fv03sd); // only for saving feature
+//        my_hg->SetEdgeFeatures(HyperEdge(0,-1,0,HyperEdge::EDGE_FOR), fv00);
+//        my_hg->SetEdgeFeatures(HyperEdge(1,-1,1,HyperEdge::EDGE_FOR), fv11);
+//        my_hg->SetEdgeFeatures(HyperEdge(2,-1,2,HyperEdge::EDGE_FOR), fv22);
+//        my_hg->SetEdgeFeatures(HyperEdge(3,-1,3,HyperEdge::EDGE_FOR), fv33);
+//        my_hg->SetEdgeFeatures(edge0_2b, fv0_2b);
+//        my_hg->SetEdgeFeatures(edge1_3b, fv1_3b);
+//        my_hg->SetEdgeFeatures(edge01, fv01);
+//        my_hg->SetEdgeFeatures(edge23, fv23);
+//        my_hg->SetEdgeFeatures(edge03sc, fv03sc);
         // Set the stacks
         my_hg->HyperGraph::SetStack(0,0,ts00);
         my_hg->HyperGraph::SetStack(0,1,ts01);
@@ -147,7 +161,9 @@ public:
         my_hg->HyperGraph::SetStack(3,3,ts33);
         my_hg->SetStack(0,0, 2,2, ts0_2);
         my_hg->SetStack(1,1, 3,3, ts1_3);
+        my_hg->SetStack(0,1, 3,3, ts03d); // only for saving feature
         my_hg->HyperGraph::SetStack(0,4,tsRoot);
+        my_hg->SaveFeatures(true);
 //        BOOST_FOREACH(SpanStack * stack, my_hg->GetStacks())
 //			BOOST_FOREACH(TargetSpan * trg, stack->GetSpans()){
 //        		cerr << "Target span " << *trg << endl;
@@ -201,10 +217,13 @@ public:
         edge02exp.push_back(MakePair(string("SP||PRP||NN||ID"), 1));
         // Make the hypergraph and get the features
         DiscontinuousHyperGraph hyper_graph(1);
-        hyper_graph.SetFeatures(new EdgeFeatureMap);
+        hyper_graph.SaveFeatures(new EdgeFeatureMap);
+        // for Save{Striaght,Inverted}Features
+        TargetSpan * span0_2 = new DiscontinuousTargetSpan(0,0, 2,2);
+        hyper_graph.SetStack(0,0, 2,2, span0_2);
         // Generate the features
         const FeatureVectorInt * edge02int =
-                        hyper_graph.GetEdgeFeatures(mod, set, datas, edge0_2b, true);
+                        hyper_graph.GetEdgeFeatures(mod, set, datas, edge0_2);
         FeatureVectorString * edge02act =
                         mod.StringifyFeatureVector(*edge02int);
         // Do the parsing and checking
@@ -216,7 +235,7 @@ public:
         ret *= CheckVector(edge02intexp, *edge02int);
         // Generate the features again
         const FeatureVectorInt * edge02int2 =
-                        hyper_graph.GetEdgeFeatures(mod, set, datas, edge0_2b, false);
+                        hyper_graph.GetEdgeFeatures(mod, set, datas, edge0_2);
         // Make sure that the pointers are equal
         if(edge02int != edge02int2) {
             cerr << "Edge pointers are not equal." << endl;
@@ -226,7 +245,7 @@ public:
         mod.SetWeight("SP||PRP||NN||ID", 2);
         // Check to make sure that the weights are Ok
         double weight_act = hyper_graph.GetEdgeScore(mod, set,
-                                                     datas, edge0_2b);
+                                                     datas, edge0_2);
         if(weight_act != 1+2) {
             cerr << "Weight is not the expected 3: "<<weight_act<<endl;
             ret = 0;
@@ -253,8 +272,11 @@ public:
         graph.HyperGraph::SetStack(3, 3, stack3);
         // Try processing stack01, which lead to set stack0_2
         set.SetMaxTerm(0);
-        graph.HyperGraph::SetStack(0, 1, graph.ProcessOneSpan(model, set, non_local_set, datas, 0, 1));
-        const TargetSpan *stack0_2 = graph.GetStack(0,0, 2,2);
+        TargetSpan *stack01 = new TargetSpan(0,1);
+        graph.HyperGraph::SetStack(0, 1, stack01);
+        TargetSpan *stack0_2 = new DiscontinuousTargetSpan(0,0, 2,2);
+        graph.SetStack(0,0, 2,2, stack0_2);
+        graph.ProcessOneSpan(model, set, non_local_set, datas, 0, 1);
         // The stack should contain two target spans (2,0) and (0,2),
         // each with one hypothesis
         int ret = 1;
@@ -312,7 +334,7 @@ public:
 					continue;
 				DiscontinuousHypothesis * dhyp =
 						dynamic_cast<DiscontinuousHypothesis*>(hyp);
-				const FeatureVectorInt *fvi = graph.GetEdgeFeatures(model, set, datas, *hyp->GetEdge(), false);
+				const FeatureVectorInt *fvi = graph.GetEdgeFeatures(model, set, datas, *hyp->GetEdge());
 				FeatureVectorString *fvs = model.StringifyFeatureVector(*fvi);
 				bool error = false;
 				BOOST_FOREACH(FeaturePairString feat, *fvs){
@@ -374,7 +396,7 @@ public:
     }
 
     int TestBuildHyperGraphMultiThreads() {
-    	DiscontinuousHyperGraph graph(1, 0, true, true);
+    	DiscontinuousHyperGraph graph(1, 1, true, true);
     	FeatureSet set;
     	FeatureSequence * featw = new FeatureSequence;
         featw->ParseConfiguration("SW%LS%RS");
@@ -399,7 +421,7 @@ public:
 		// reusing model requires no more model->GetFeatureIds()->GetId(add=true)
 		// therefore, it will be much faster
 		graph.SetThreads(4);
-		graph.Clear();
+		graph.ClearStacks();
     	clock_gettime(CLOCK_MONOTONIC, &tstart);
     	graph.BuildHyperGraph(model, set, non_local_set, datas, beam_size);
     	clock_gettime(CLOCK_MONOTONIC, &tend);
@@ -554,7 +576,10 @@ public:
     }
 
     int TestAccumulateFeatures() {
-    	FeatureVectorInt act = my_hg->GetBest()->AccumulateFeatures(my_hg->GetFeatures());
+    	FeatureVectorInt act;
+    	std::tr1::unordered_map<int, double> feat_map;
+    	my_hg->AccumulateFeatures(feat_map, model, set, non_local_set, datas, my_hg->GetBest());
+    	ClearAndSet(act, feat_map);
         FeatureVectorInt exp;
         exp.push_back(MakePair(1,1));
         exp.push_back(MakePair(2,1));
@@ -562,7 +587,7 @@ public:
         exp.push_back(MakePair(4,1));
         exp.push_back(MakePair(5,1));
         exp.push_back(MakePair(6,1));
-        exp.push_back(MakePair(7,1));
+        exp.push_back(MakePair(8,1));
         exp.push_back(MakePair(10,1*7));
         // Test the rescoring
         return CheckVector(exp, act);
@@ -751,28 +776,28 @@ public:
 
     bool RunTest() {
         int done = 0, succeeded = 0;
-        done++; cout << "TestGetTrgSpanID()" << endl; if(TestGetTrgSpanID()) succeeded++; else cout << "FAILED!!!" << endl;
-        done++; cout << "TestGetEdgeFeaturesAndWeights()" << endl; if(TestGetEdgeFeaturesAndWeights()) succeeded++; else cout << "FAILED!!!" << endl;
-        done++; cout << "TestProcessOneSpan()" << endl; if(TestProcessOneSpan()) succeeded++; else cout << "FAILED!!!" << endl;
-        done++; cout << "TestBuildHyperGraph()" << endl; if(TestBuildHyperGraph()) succeeded++; else cout << "FAILED!!!" << endl;
-        done++; cout << "TestBuildHyperGraphCubeGrowing()" << endl; if(TestBuildHyperGraphCubeGrowing()) succeeded++; else cout << "FAILED!!!" << endl;
-        done++; cout << "TestBuildHyperGraphMultiThreads()" << endl; if(TestBuildHyperGraphMultiThreads()) succeeded++; else cout << "FAILED!!!" << endl;
-        done++; cout << "TestBuildHyperGraphPlusLM()" << endl; if(TestBuildHyperGraphPlusLM()) succeeded++; else cout << "FAILED!!!" << endl;
-        done++; cout << "TestAddLoss()" << endl; if(TestAddLoss()) succeeded++; else cout << "FAILED!!!" << endl;
-        done++; cout << "TestAccumulateLoss()" << endl; if(TestAccumulateLoss()) succeeded++; else cout << "FAILED!!!" << endl;
-        done++; cout << "TestAccumulateFeatures()" << endl; if(TestAccumulateFeatures()) succeeded++; else cout << "FAILED!!!" << endl;
-        done++; cout << "TestRescore()" << endl; if(TestRescore()) succeeded++; else cout << "FAILED!!!" << endl;
-        done++; cout << "TestReorderingAndPrint()" << endl; if(TestReorderingAndPrint()) succeeded++; else cout << "FAILED!!!" << endl;
-        done++; cout << "TestPrintHyperGraph()" << endl; if(TestPrintHyperGraph()) succeeded++; else cout << "FAILED!!!" << endl;
-        done++; cout << "TestBuildHyperGraphGap2()" << endl; if(TestBuildHyperGraphGap2()) succeeded++; else cout << "FAILED!!!" << endl;
-        done++; cout << "TestBuildHyperGraphSize1()" << endl; if(TestBuildHyperGraphSize1()) succeeded++; else cout << "FAILED!!!" << endl;
+        done++; cout << "TestGetTrgSpanID()"; if(TestGetTrgSpanID()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
+        done++; cout << "TestGetEdgeFeaturesAndWeights()"; if(TestGetEdgeFeaturesAndWeights()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
+        done++; cout << "TestProcessOneSpan()"; if(TestProcessOneSpan()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
+        done++; cout << "TestBuildHyperGraph()"; if(TestBuildHyperGraph()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
+        done++; cout << "TestBuildHyperGraphCubeGrowing()"; if(TestBuildHyperGraphCubeGrowing()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
+        done++; cout << "TestBuildHyperGraphMultiThreads()"; if(TestBuildHyperGraphMultiThreads()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
+        done++; cout << "TestBuildHyperGraphPlusLM()"; if(TestBuildHyperGraphPlusLM()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
+        done++; cout << "TestAddLoss()"; if(TestAddLoss()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
+        done++; cout << "TestAccumulateLoss()"; if(TestAccumulateLoss()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
+        done++; cout << "TestAccumulateFeatures()"; if(TestAccumulateFeatures()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
+        done++; cout << "TestRescore()"; if(TestRescore()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
+        done++; cout << "TestReorderingAndPrint()"; if(TestReorderingAndPrint()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
+        done++; cout << "TestPrintHyperGraph()"; if(TestPrintHyperGraph()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
+        done++; cout << "TestBuildHyperGraphGap2()"; if(TestBuildHyperGraphGap2()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
+        done++; cout << "TestBuildHyperGraphSize1()"; if(TestBuildHyperGraphSize1()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
         cout << "#### TestDiscontinuousHyperGraph Finished with "<<succeeded<<"/"<<done<<" tests succeeding ####"<<endl;
         return done == succeeded;
     }
 
 private:
-    HyperEdge edge00, edge11, edge22, edge33, edge01, edge23, edge03f;
-    DiscontinuousHyperEdge edge0_2b, edge1_3b;
+    HyperEdge edge00, edge11, edge22, edge33, edge01, edge23, edge03sc;
+    DiscontinuousHyperEdge edge0_2, edge1_3, edge03sd;
     CombinedAlign cal;
     Ranks ranks;
     FeatureDataSequence sent, sent_pos;
@@ -782,7 +807,7 @@ private:
     vector<FeatureDataBase*> datas;
     FeatureSequence *featw, *featp;
     TargetSpan *ts00, *ts11, *ts22, *ts33, *ts03, *ts01, *ts23, *tsRoot;
-    DiscontinuousTargetSpan *ts1_3, *ts0_2;
+    DiscontinuousTargetSpan *ts1_3, *ts0_2, *ts03d;
     DiscontinuousHyperGraph *my_hg;
 
 

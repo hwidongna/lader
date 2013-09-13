@@ -250,10 +250,10 @@ public:
 	virtual void PrintChildren(std::ostream & out) const;
 	void PrintParse(const vector<string> & strs, ostream & out) const;
 	double AccumulateLoss();
-	FeatureVectorInt AccumulateFeatures(const EdgeFeatureMap *features);
-	FeatureVectorInt AccumulateFeatures(
-			std::tr1::unordered_map<int, double> & feat_map
-			, const EdgeFeatureMap *features);
+//	FeatureVectorInt AccumulateFeatures(const EdgeFeatureMap *features);
+//	FeatureVectorInt AccumulateFeatures(
+//			std::tr1::unordered_map<int, double> & feat_map
+//			, const EdgeFeatureMap *features);
 	bool IsTerminal() const {
 		return GetEdgeType() == HyperEdge::EDGE_FOR
 				|| GetEdgeType() == HyperEdge::EDGE_BAC;
@@ -262,8 +262,8 @@ public:
 	virtual Hypothesis *Clone() const;
 	virtual bool CanSkip(int max_seq = 0);
 private:
-	void AccumulateFeatures(const EdgeFeatureMap *features,
-			std::tr1::unordered_map<int, double> & feat_map);
+//	void AccumulateFeatures(const EdgeFeatureMap *features,
+//			std::tr1::unordered_map<int, double> & feat_map);
 	double viterbi_score_;
 	double single_score_;
 	double non_local_score_;

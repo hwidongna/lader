@@ -72,7 +72,7 @@ protected:
 	            			   left_rank, right_rank,
 	            			   left_child, right_child) { SetSeq(); }
 public:
-	DiscontinuousHypothesis(const Hypothesis & hyp) : Hypothesis(hyp) {	}
+//	DiscontinuousHypothesis(const Hypothesis & hyp) : Hypothesis(hyp) {	}
 	int GetM() const{
 		DiscontinuousHyperEdge * dedge =
 				dynamic_cast<DiscontinuousHyperEdge*>(this->GetEdge());

@@ -427,11 +427,12 @@ public:
         datas.push_back(&sent);
     	struct timespec tstart={0,0}, tend={0,0};
         int beam_size = 100;
+        graph.SetBeamSize(beam_size);
         ReordererModel model;
 
     	graph.SetThreads(1);
         clock_gettime(CLOCK_MONOTONIC, &tstart);
-    	graph.BuildHyperGraph(model, set, non_local_set, datas, beam_size);
+    	graph.BuildHyperGraph(model, set, non_local_set, datas);
 		clock_gettime(CLOCK_MONOTONIC, &tend);
 		double thread1 = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) -
 				((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
@@ -441,7 +442,7 @@ public:
     	graph.SetThreads(4);
     	graph.ClearStacks();
         clock_gettime(CLOCK_MONOTONIC, &tstart);
-    	graph.BuildHyperGraph(model, set, non_local_set, datas, beam_size);
+    	graph.BuildHyperGraph(model, set, non_local_set, datas);
 		clock_gettime(CLOCK_MONOTONIC, &tend);
 		double thread4 = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) -
 				((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
@@ -481,11 +482,12 @@ public:
     	datas.push_back(&sent);
     	struct timespec tstart={0,0}, tend={0,0};
     	int beam_size = 100;
+        graph.SetBeamSize(beam_size);
     	ReordererModel model;
 
     	graph.SaveFeatures(true);
     	clock_gettime(CLOCK_MONOTONIC, &tstart);
-    	graph.BuildHyperGraph(model, set, non_local_set, datas, beam_size);
+    	graph.BuildHyperGraph(model, set, non_local_set, datas);
     	clock_gettime(CLOCK_MONOTONIC, &tend);
     	double before_save = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) -
     			((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
@@ -495,7 +497,7 @@ public:
     	ReordererModel empty_model; // use empty model
     	empty_model.SetAdd(false); // do not allow adding feature ids anymore
     	clock_gettime(CLOCK_MONOTONIC, &tstart);
-    	graph.BuildHyperGraph(empty_model, set, non_local_set, datas, beam_size);
+    	graph.BuildHyperGraph(empty_model, set, non_local_set, datas);
     	clock_gettime(CLOCK_MONOTONIC, &tend);
     	double after_save = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) -
     			((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);

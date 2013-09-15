@@ -281,7 +281,7 @@ void DiscontinuousHyperGraph::StartBeamSearch(
     		delete hyp;
     }
 
-    while(q.size()){
+    while(!q.empty()){
         delete q.top();
         q.pop();
     }
@@ -320,16 +320,16 @@ void DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
 	if (full_fledged_){
 		// continuous + discontinuous = discontinuous
 		//cerr << "continuous + discontinuous = discontinuous" << endl;
-		for (int i = l+1 ; i <= m ; i++)
+		for (int c = l+1 ; c <= m ; c++)
 			AddDiscontinuousHypotheses(model, features, non_local_features, sent, *q,
-					l, -1, -1, i-1,
-					i, m, n, r);
+					l, -1, -1, c-1,
+					c, m, n, r);
 		// discontinuous + continuous = discontinuous
 		//cerr << "discontinuous + continuous = discontinuous" << endl;
-		for (int i = n+1 ; i <= r ; i++)
+		for (int c = n+1 ; c <= r ; c++)
 			AddDiscontinuousHypotheses(model, features, non_local_features, sent, *q,
-					l, m, n, i-1,
-					i, -1, -1, r);
+					l, m, n, c-1,
+					c, -1, -1, r);
 	}
 
     // For cube growing, search is lazy
@@ -440,19 +440,43 @@ void DiscontinuousHyperGraph::ProcessOneSpan(
 void DiscontinuousHyperGraph::BuildHyperGraph(ReordererModel & model,
         const FeatureSet & features,
         const FeatureSet & non_local_features,
-        const Sentence & sent,
-        int beam_size){
+        const Sentence & sent){
 	n_ = sent[0]->GetNumWords();
 	next_.resize(n_ * (n_+1) / 2 + 1, NULL); // resize next hyper-graph in advance
 	if (verbose_ > 1)
 		cerr << "BuildHyperGraph with " << threads_ << " threads for the same-sized stack" << endl;
-	HyperGraph::BuildHyperGraph(model, features, non_local_features, sent, beam_size);
+	HyperGraph::BuildHyperGraph(model, features, non_local_features, sent);
+}
+
+// For cube growing
+void DiscontinuousHyperGraph::LazyNext(HypothesisQueue & q, ReordererModel & model,
+		const FeatureSet & features, const FeatureSet & non_local_features,
+		const Sentence & sent, const Hypothesis * hyp){
+	Hypothesis * new_left = NULL, *new_right = NULL;
+
+	TargetSpan *left_span = hyp->GetLeftChild();
+	if (left_span)
+		new_left = LazyKthBest(left_span, hyp->GetLeftRank() + 1,
+				model, features, non_local_features, sent);
+    if (new_left != NULL && new_left->CanSkip(max_seq_))
+        delete new_left;
+    else
+        IncrementLeft(hyp, new_left, model, non_local_features, sent, q);
+
+	TargetSpan *right_span = hyp->GetRightChild();
+	if (right_span)
+		new_right = LazyKthBest(right_span, hyp->GetRightRank() + 1,
+				model, features, non_local_features, sent);
+    if (new_right != NULL && new_right->CanSkip(max_seq_))
+        delete new_right;
+    else
+        IncrementRight(hyp, new_right, model, non_local_features, sent, q);
 }
 // For cube growing
 Hypothesis * DiscontinuousHyperGraph::LazyKthBest(TargetSpan * stack, int k,
 		ReordererModel & model, const FeatureSet & features,
 		const FeatureSet & non_local_features, const Sentence & sent){
-	while (stack->size() < k+1 && stack->CandSize() > 0){
+	while (((!beam_size_ && stack->size() < k+1 ) || stack->size() < std::min(k+1,beam_size_)) && stack->CandSize() > 0){
 		HypothesisQueue & q = stack->GetCands();
 		Hypothesis * hyp = q.top(); q.pop();
 		LazyNext(q, model, features, non_local_features, sent, hyp);

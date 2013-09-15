@@ -17,6 +17,7 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
         ReadParses(config.GetString("parse_in"));
     int verbose = config.GetInt("verbose");
     int threads = config.GetInt("threads");
+    int beam_size = config.GetInt("beam");
     int gapSize = config.GetInt("gap-size");
     int max_seq = config.GetInt("max-seq");
     bool full_fledged = config.GetBool("full_fledged");
@@ -34,6 +35,8 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 
     cerr << "Total " << sent_order.size() << " sentences, "
     		<< "Sample " << samples << " sentences" << endl;
+	if (config.GetBool("save_features"))
+        saved_graphs_.resize((int)sent_order.size());
     // Shuffle the whole orders for the first time
 	if(config.GetBool("shuffle"))
 		random_shuffle(sent_order.begin(), sent_order.end());
@@ -44,8 +47,9 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 	if (config.GetString("bigram").length())
 		graph.LoadLM(config.GetString("bigram").c_str());
 	graph.SetThreads(threads);
+	graph.SetBeamSize(beam_size);
 	if (!config.GetString("model_in").length() && threads > 1)
-		cerr << "-threads is slow without -model_in" << endl;
+		cerr << "-threads > 1 will be faster with -model_in" << endl;
 	graph.SaveFeatures(config.GetBool("save_features"));
 	HyperGraph * ptr_graph = &graph;
     // Perform an iteration
@@ -71,6 +75,7 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
             		ptr_graph = graph.Clone();
             	else
             		ptr_graph = saved_graphs_[sent];
+            // because features are stored in stack, clear stack if -save_features=false
             else
             	ptr_graph->ClearStacks();
 
@@ -81,8 +86,7 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 			ptr_graph->BuildHyperGraph(*model_,
                                         *features_,
                                         *non_local_features_,
-                                        data_[sent],
-                                        config.GetInt("beam"));
+                                        data_[sent]);
 			clock_gettime(CLOCK_MONOTONIC, &tend);
 			build.tv_sec += tend.tv_sec - tstart.tv_sec;
 			build.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
@@ -177,13 +181,9 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 			adjust.tv_sec += tend.tv_sec - tstart.tv_sec;
 			adjust.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
 			// If we are saving features
-			if(config.GetBool("save_features")){
-			//				if((int)((saved_feats_.size())) <= sent)
-			//                    saved_feats_.resize(sent+1);
-			//                saved_feats_[sent] = ptr_graph->GetFeatures();
-			//                ptr_graph->ClearFeatures();
-				if((int)(((saved_graphs_.size()))) <= sent)
-					saved_graphs_.resize(sent+1);
+			if(config.GetBool("save_features") && iter == 0){
+                if (saved_graphs_[sent])
+                    THROW_ERROR("Graph is already stored")
 				saved_graphs_[sent] = ptr_graph;
 			}
         }

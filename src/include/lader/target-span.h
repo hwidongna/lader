@@ -22,8 +22,6 @@ public:
     TargetSpan(int left, int right) :
 			left_(left), right_(right), id_(-1) {
 		// resize the feature list in advance
-    	// list[0] is the terminal node (forward/backward)
-    	// list[1:] are the non-terminal nodes (straight/inverted)
     	if (right - left == 0){
     		straight.resize(1, NULL);
     		inverted.resize(1, NULL);
@@ -39,7 +37,7 @@ public:
         BOOST_FOREACH(Hypothesis * hyp, hyps_)
             delete hyp;
         hyps_.clear();
-        while(cands_.size()){
+        while(!cands_.empty()){
             delete cands_.top();
             cands_.pop();
         }
@@ -98,7 +96,7 @@ public:
     void ResetId() { id_ = -1; has_types_.clear(); }
     void SetId(int id) { id_ = id; }
     void SetHasType(char c) { has_types_.insert(c); }
-    virtual void SaveStraightFeautures(int c, FeatureVectorInt * fvi) {
+    void SaveStraightFeautures(int c, FeatureVectorInt * fvi) {
     	if (straight[c < 0? 0 : c])
     		THROW_ERROR("Features are already saved")
 		if (c < 0)
@@ -106,7 +104,7 @@ public:
 		else
 			straight[c] = fvi;
 	}
-	virtual void SaveInvertedFeautures(int c, FeatureVectorInt * fvi) {
+	void SaveInvertedFeautures(int c, FeatureVectorInt * fvi) {
 		if (inverted[c < 0? 0 : c])
 			THROW_ERROR("Features are already saved")
 		if (c < 0)
@@ -114,13 +112,13 @@ public:
 		else
 			inverted[c] = fvi;
 	}
-	virtual FeatureVectorInt * GetStraightFeautures(int c) {
+	FeatureVectorInt * GetStraightFeautures(int c) {
 		if (c < 0)
 			return straight[0];
 		else
 			return straight[c];
 	}
-	virtual FeatureVectorInt * GetInvertedFeautures(int c) {
+	FeatureVectorInt * GetInvertedFeautures(int c) {
 		if (c < 0)
 			return inverted[0];
 		else
@@ -133,8 +131,8 @@ protected:
     // Store edge features
     // There are two possible orientations
     // Each list of FeatureVectorInts contains
-    // list[0] = the terminal node (forward/backward)
-    // list[1:] = non-terminal nodes
+	// list[0] is the terminal node (forward/backward)
+	// list[1:] are the non-terminal nodes (straight/inverted)
     // It is possible to have NULL elements
     std::vector<FeatureVectorInt*> straight;
     std::vector<FeatureVectorInt*> inverted;

@@ -85,6 +85,7 @@ public:
     	HyperGraph * cloned = new DiscontinuousHyperGraph(gap_size_, max_seq_,
 				cube_growing_, full_fledged_, mp_, verbose_);
     	cloned->SetThreads(threads_);
+        cloned->SetBeamSize(beam_size_);
     	cloned->SaveFeatures(save_features_);
     	cloned->MarkCloned();
     	cloned->SetLM(bigram_);
@@ -93,8 +94,7 @@ public:
 
     // Build a hypergraph using beam search and cube pruning
     virtual void BuildHyperGraph(ReordererModel & model, const FeatureSet & features,
-			const FeatureSet & non_local_features, const Sentence & sent,
-			int beam_size = 0);
+			const FeatureSet & non_local_features, const Sentence & sent);
     virtual void AddLoss(LossBase *loss, const Ranks *ranks, const FeatureDataParse *parse) const;
     virtual void AccumulateFeatures(std::tr1::unordered_map<int, double> & feat_map,
     			ReordererModel & model, const FeatureSet & features,
@@ -163,6 +163,9 @@ protected:
     			const FeatureSet & feature_gen, const Sentence & sent,
     			const HyperEdge & edge);
     // For cube growing
+	virtual void LazyNext(HypothesisQueue & q, ReordererModel & model,
+			const FeatureSet & features, const FeatureSet & non_local_features,
+			const Sentence & sent, const Hypothesis * hyp);
     virtual Hypothesis * LazyKthBest(TargetSpan * stack, int k,
     		ReordererModel & model, const FeatureSet & features,
 			const FeatureSet & non_local_features, const Sentence & sent);

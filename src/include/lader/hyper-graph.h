@@ -83,7 +83,7 @@ public:
 
     virtual void BuildHyperGraph(ReordererModel & model,
 			const FeatureSet & features, const FeatureSet & non_local_features,
-			const Sentence & sent, int beam_size = 0);
+			const Sentence & sent);
 	const TargetSpan *GetStack(int l, int r) const {
 		return SafeAccess(stacks_, GetTrgSpanID(l, r));
 	}
@@ -127,6 +127,9 @@ public:
 	void SetThreads(int threads) {
 		threads_ = threads;
 	}
+    void SetBeamSize(int beam_size) {
+        beam_size_ = beam_size;
+    }
 
     void MarkCloned(){ cloned_ = true; }
     void SetLM(lm::ngram::Model * bigram) { bigram_ = bigram; }
@@ -144,7 +147,7 @@ protected:
 			const Sentence & sent, HypothesisQueue & q);
 
 	// For cube growing
-	void LazyNext(HypothesisQueue & q, ReordererModel & model,
+	virtual void LazyNext(HypothesisQueue & q, ReordererModel & model,
 			const FeatureSet & features, const FeatureSet & non_local_features,
 			const Sentence & sent, const Hypothesis * hyp);
     virtual Hypothesis * LazyKthBest(TargetSpan * stack, int k,
@@ -194,6 +197,8 @@ private:
     std::vector<TargetSpan*> stacks_;
 
 protected:
+    // the beam size used for cube pruning/growing
+    int beam_size_;
     bool save_features_;
     int threads_;
     int n_;

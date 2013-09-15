@@ -329,13 +329,19 @@ void HyperGraph::LazyNext(HypothesisQueue & q, ReordererModel & model,
 	if (left_span)
 		new_left = LazyKthBest(left_span, hyp->GetLeftRank() + 1,
 				model, features, non_local_features, sent);
-    IncrementLeft(hyp, new_left, model, non_local_features, sent, q);
+    if (new_left != NULL && new_left->CanSkip())
+        delete new_left;
+    else
+        IncrementLeft(hyp, new_left, model, non_local_features, sent, q);
 
 	TargetSpan *right_span = hyp->GetRightChild();
 	if (right_span)
 		new_right = LazyKthBest(right_span, hyp->GetRightRank() + 1,
 				model, features, non_local_features, sent);
-    IncrementRight(hyp, new_right, model, non_local_features, sent, q);
+    if (new_right != NULL && new_right->CanSkip())
+        delete new_right;
+    else
+        IncrementRight(hyp, new_right, model, non_local_features, sent, q);
 }
 
 // For cube growing
@@ -453,9 +459,9 @@ void HyperGraph::ProcessOneSpan(ReordererModel & model,
         if (skip)
         	delete hyp;
     }
-    while(q->size()) {
-    	delete q->top();
-    	q->pop();
+    while(!q->empty()){
+        delete q->top();
+        q->pop();
     }
     sort(stack->GetHypotheses().begin(), stack->GetHypotheses().end(), DescendingScore<Hypothesis>());
     delete q;
@@ -481,8 +487,7 @@ double HyperGraph::GetRootBigram(const Sentence & sent, const Hypothesis *hyp, l
 void HyperGraph::BuildHyperGraph(ReordererModel & model,
         const FeatureSet & features,
         const FeatureSet & non_local_features,
-        const Sentence & sent,
-        int beam_size) {
+        const Sentence & sent) {
     n_ = sent[0]->GetNumWords();
     stacks_.resize(n_ * (n_+1) / 2 + 1, NULL); // resize stacks in advance
     // Iterate through the left side of the span
@@ -493,7 +498,7 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
     	for(int l = 0; l <= n_-L; l++){
     		int r = l+L-1;
     		Task * task = NewSpanTask(this, model, features,
-					non_local_features, sent, l, r, beam_size);
+					non_local_features, sent, l, r, beam_size_);
     		pool.Submit(task);
     	}
     	pool.Stop(true);
@@ -504,7 +509,7 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
     if (!root_stack)
     	root_stack = new TargetSpan(0,n_);
     root_stack->ClearHypotheses();
-    for(int i = 0; !beam_size || i < beam_size; i++){
+    for(int i = 0; !beam_size_ || i < beam_size_; i++){
     	Hypothesis * hyp = NULL;
     	if (cube_growing_)
     		hyp = LazyKthBest(top, i, model, features, non_local_features, sent);

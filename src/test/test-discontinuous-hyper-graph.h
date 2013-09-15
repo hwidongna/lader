@@ -298,7 +298,8 @@ public:
     int TestBuildHyperGraph() {
         DiscontinuousHyperGraph graph(1);
         set.SetMaxTerm(1);
-        graph.BuildHyperGraph(model, set, non_local_set, datas, 4*3*2);
+        graph.SetBeamSize(4*3*2);
+        graph.BuildHyperGraph(model, set, non_local_set, datas);
         const std::vector<TargetSpan*> & stacks = graph.GetStacks();
         int ret = 1;
         TargetSpan * stack03 = graph.HyperGraph::GetStack(0, 3);
@@ -360,7 +361,8 @@ public:
     int TestBuildHyperGraphCubeGrowing() {
         DiscontinuousHyperGraph graph(1, 1, true);
         set.SetMaxTerm(1);
-        graph.BuildHyperGraph(model, set, non_local_set, datas, 4*3*2);
+        graph.SetBeamSize(4*3*2);
+        graph.BuildHyperGraph(model, set, non_local_set, datas);
         const std::vector<TargetSpan*> & stacks = graph.GetStacks();
         int ret = 1;
         TargetSpan * stack03 = graph.HyperGraph::GetStack(0, 3);
@@ -409,11 +411,12 @@ public:
         datas.push_back(&sent);
     	struct timespec tstart={0,0}, tend={0,0};
         int beam_size = 100;
+        graph.SetBeamSize(beam_size);
         ReordererModel model;
 
     	graph.SetThreads(1);
         clock_gettime(CLOCK_MONOTONIC, &tstart);
-    	graph.BuildHyperGraph(model, set, non_local_set, datas, beam_size);
+        graph.BuildHyperGraph(model, set, non_local_set, datas);
 		clock_gettime(CLOCK_MONOTONIC, &tend);
 		double thread1 = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) -
 				((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
@@ -423,7 +426,7 @@ public:
 		graph.SetThreads(4);
 		graph.ClearStacks();
     	clock_gettime(CLOCK_MONOTONIC, &tstart);
-    	graph.BuildHyperGraph(model, set, non_local_set, datas, beam_size);
+    	graph.BuildHyperGraph(model, set, non_local_set, datas);
     	clock_gettime(CLOCK_MONOTONIC, &tend);
     	double thread4 = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) -
     			((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
@@ -448,6 +451,62 @@ public:
     	set.SetUseReverse(true);
     	return ret;
     }
+
+    int TestBuildHyperGraphSaveFeatures() {
+    	DiscontinuousHyperGraph graph(3, 1, true, true);
+    	FeatureSet set;
+    	FeatureSequence * featw = new FeatureSequence;
+    	featw->ParseConfiguration("SW%LS%RS");
+    	set.AddFeatureGenerator(featw);
+    	set.SetMaxTerm(0);
+    	set.SetUseReverse(false);
+    	FeatureDataSequence sent;
+    	sent.FromString("t h i s i s a v e r y v e r y v e r y v e r y l o n g s e n t e n c e .");
+    	vector<FeatureDataBase*> datas;
+    	datas.push_back(&sent);
+    	struct timespec tstart={0,0}, tend={0,0};
+    	int beam_size = 100;
+        graph.SetBeamSize(beam_size);
+    	ReordererModel model;
+
+    	graph.SaveFeatures(true);
+    	clock_gettime(CLOCK_MONOTONIC, &tstart);
+    	graph.BuildHyperGraph(model, set, non_local_set, datas);
+    	clock_gettime(CLOCK_MONOTONIC, &tend);
+    	double before_save = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) -
+    			((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+
+    	// reusing saved features does not access to model->GetFeatureIds() anymore
+    	// therefore, it will be much faster
+    	ReordererModel empty_model; // use empty model
+    	empty_model.SetAdd(false); // do not allow adding feature ids anymore
+    	clock_gettime(CLOCK_MONOTONIC, &tstart);
+    	graph.BuildHyperGraph(empty_model, set, non_local_set, datas);
+    	clock_gettime(CLOCK_MONOTONIC, &tend);
+    	double after_save = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) -
+    			((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+    	const std::vector<TargetSpan*> & stacks = graph.GetStacks();
+    	int ret = 1;
+    	int n = sent.GetNumWords();
+    	// The total number of stacks should be n*(n+1)/2 + 1
+    	if(stacks.size() != n*(n+1)/2 + 1) {
+    		cerr << "stacks.size() != " << n*(n+1)/2 + 1 << ": " << stacks.size() << endl; ret = 0;
+    		// The number of hypothesis should be beam_size
+    	} else if (graph.GetRoot()->size() != beam_size) {
+    		cerr << "root stacks->size() != " << beam_size << ": " <<graph.GetRoot()->size()<< endl;
+    		BOOST_FOREACH(const Hypothesis *hyp, graph.GetRoot()->GetHypotheses()){
+    			cerr << *hyp <<  endl;
+    		}
+    		ret = 0;
+    	}
+    	if(after_save > before_save){
+    		cerr << "save features, more time? " << after_save << " > " << before_save << endl;
+    		ret = 0;
+    	}
+    	set.SetUseReverse(true);
+    	return ret;
+    }
+
     int TestBuildHyperGraphPlusLM() {
     	// Create a reordered ngram and write it to /tmp/ngram.arpa
     	ofstream out("/tmp/ngram.arpa");
@@ -522,7 +581,8 @@ public:
         vector<FeatureDataBase*> datas;
         datas.push_back(&sent);
         datas.push_back(&sent_pos);
-        graph.BuildHyperGraph(model, set, non_local_set, datas, 5*4*3*2);
+        graph.SetBeamSize(5*4*3*2);
+        graph.BuildHyperGraph(model, set, non_local_set, datas);
         const std::vector<TargetSpan*> & stacks = graph.GetStacks();
         int ret = 1;
         TargetSpan * stack04 = graph.HyperGraph::GetStack(0, 4);
@@ -596,7 +656,8 @@ public:
     int TestAddLoss() {
     	DiscontinuousHyperGraph graph(1);
     	set.SetMaxTerm(1);
-    	graph.BuildHyperGraph(model, set, non_local_set, datas, 4*3*2);
+        graph.SetBeamSize(4*3*2);
+    	graph.BuildHyperGraph(model, set, non_local_set, datas);
     	LossChunk loss;
     	loss.Initialize(&ranks, NULL);
     	graph.AddLoss(&loss, &ranks, NULL);
@@ -782,6 +843,7 @@ public:
         done++; cout << "TestBuildHyperGraph()"; if(TestBuildHyperGraph()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
         done++; cout << "TestBuildHyperGraphCubeGrowing()"; if(TestBuildHyperGraphCubeGrowing()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
         done++; cout << "TestBuildHyperGraphMultiThreads()"; if(TestBuildHyperGraphMultiThreads()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
+        done++; cout << "TestBuildHyperGraphSaveFeatures()" << endl; if(TestBuildHyperGraphSaveFeatures()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
         done++; cout << "TestBuildHyperGraphPlusLM()"; if(TestBuildHyperGraphPlusLM()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
         done++; cout << "TestAddLoss()"; if(TestAddLoss()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
         done++; cout << "TestAccumulateLoss()"; if(TestAccumulateLoss()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;

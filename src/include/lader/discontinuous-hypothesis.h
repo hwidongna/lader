@@ -109,10 +109,12 @@ public:
     				dynamic_cast<DiscontinuousHypothesis*>(GetRightHyp());
     		// continuous + discotinuous = discontinuous
     		// discontinuous + cotinuous = discontinuous
+            if (max_seq > 0 && seq_ > max_seq)
+                return false;
     		return (left && GetEdgeType() == left->GetEdgeType())
     				|| (right && GetEdgeType() == right->GetEdgeType());
     	}
-    	return max_seq > 0 && seq_ > max_seq;
+    	return false;
     }
 private:
 	// the number of sequenctial discontinuous derivations

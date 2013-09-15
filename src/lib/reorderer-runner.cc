@@ -10,7 +10,6 @@ using namespace std;
 using namespace boost;
 
 void ReordererTask::Run() {
-    int beam = config_.GetInt("beam");
     int verbose = config_.GetInt("verbose");
     // Load the data
 	if (verbose > 1)
@@ -19,7 +18,7 @@ void ReordererTask::Run() {
     // Save the original string
     vector<string> words = ((FeatureDataSequence*)datas[0])->GetSequence();
     // Build the hypergraph
-    graph_->BuildHyperGraph(*model_, *features_, *non_local_features_, datas, beam);
+    graph_->BuildHyperGraph(*model_, *features_, *non_local_features_, datas);
     // Reorder
     std::vector<int> reordering;
     graph_->GetBest()->GetReordering(reordering);
@@ -65,12 +64,14 @@ void ReordererRunner::Run(const ConfigRunner & config) {
     std::ifstream in(source_in.c_str());
     int id = 0;
     int gapSize = config.GetInt("gap-size");
+    int beam = config.GetInt("beam");
     int max_seq = config.GetInt("max-seq");
     bool cube_growing = config.GetBool("cube_growing");
     bool mp = config.GetBool("mp");
     bool full_fledged = config.GetBool("full_fledged");
     int verbose = config.GetInt("verbose");
     DiscontinuousHyperGraph graph(gapSize, max_seq, cube_growing, full_fledged, mp, verbose) ;
+    graph.SetBeamSize(beam);
     if (config.GetString("bigram").length())
 		graph.LoadLM(config.GetString("bigram").c_str());
     while(std::getline(in != NULL? in : std::cin, line)) {

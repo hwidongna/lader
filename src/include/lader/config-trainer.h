@@ -31,6 +31,7 @@ public:
         AddConfigEntry("align_in", "", "The input file for the alignments");
         AddConfigEntry("attach_null", "right", "Whether to attach null alignments to the left or right");
         AddConfigEntry("beam", "100", "The maximum beam size");
+        AddConfigEntry("pop_limit", "10000", "The maximum pop count (for cube growing)");
         AddConfigEntry("gap-size", "1", "The gap size for discontinuous hyper graph");
         AddConfigEntry("max-seq", "1", "The maximum number of sequential discontinuous hypothesis");
         AddConfigEntry("full_fledged", "false", "Enable discontinuous hyper graph full-fledged combinations");

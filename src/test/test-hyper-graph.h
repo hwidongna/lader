@@ -218,7 +218,7 @@ public:
         set.SetMaxTerm(1);
 		TargetSpan *stack02 = new TargetSpan(0,2);
 		graph.SetStack(0, 2, stack02);
-		graph.ProcessOneSpan(mod, set, non_local_set, datas, 0, 2);
+		graph.ProcessOneSpan(mod, set, non_local_set, datas, 0, 2, 100);
         // The stack should contain four hypotheses: S(0,21), I(21,0), S(01,2), I(2,01)
         int ret = 1;
         if(stack02->size() != 4) {
@@ -255,7 +255,7 @@ public:
 
         stack11->AddHypothesis(new Hypothesis(1,1,0, 1,1,1,1, HyperEdge::EDGE_FOR));
         stack01->ClearHypotheses();
-        graph.ProcessOneSpan(mod, set, non_local_set, datas, 0, 1);
+        graph.ProcessOneSpan(mod, set, non_local_set, datas, 0, 1, 100);
         // The stack should contain two hypotheses: S(0,1), I(1,0)
         if(stack01->size() != 2) {
         	cerr << "stack01->size() != 2: " << stack01->size() << endl; ret = 0;
@@ -295,7 +295,7 @@ public:
     	set.SetUseReverse(true);
     	TargetSpan *stack01 = new TargetSpan(0, 1);
     	graph.SetStack(0, 1, stack01);
-        graph.ProcessOneSpan(model, set, non_local_set, datas, 0, 1);
+        graph.ProcessOneSpan(model, set, non_local_set, datas, 0, 1, 100);
         // The stack should contain four hypotheses: S(0,1), I(1,0), F(01), B(10)
         int ret = 1;
         if(stack01->size() != 4) {
@@ -327,7 +327,7 @@ public:
 		graph.SetStack(1, 2, stack12); // just for testing
 		TargetSpan *stack02 = new TargetSpan(0, 2);
 		graph.SetStack(0, 2, stack02);
-		graph.ProcessOneSpan(model, set, non_local_set, datas, 0, 2);
+		graph.ProcessOneSpan(model, set, non_local_set, datas, 0, 2, 100);
         // The number of hypothesis should be 3! + 1
 		if(stack02->size() != 3*2 + 1) {
 			cerr << "stack02->size() != 7: " << stack02->size() << endl; ret = 0;

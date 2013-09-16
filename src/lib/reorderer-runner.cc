@@ -65,6 +65,7 @@ void ReordererRunner::Run(const ConfigRunner & config) {
     int id = 0;
     int gapSize = config.GetInt("gap-size");
     int beam = config.GetInt("beam");
+    int pop_limit = config.GetInt("pop_limit");
     int max_seq = config.GetInt("max-seq");
     bool cube_growing = config.GetBool("cube_growing");
     bool mp = config.GetBool("mp");
@@ -72,6 +73,7 @@ void ReordererRunner::Run(const ConfigRunner & config) {
     int verbose = config.GetInt("verbose");
     DiscontinuousHyperGraph graph(gapSize, max_seq, cube_growing, full_fledged, mp, verbose) ;
     graph.SetBeamSize(beam);
+	graph.SetPopLimit(pop_limit);
     if (config.GetString("bigram").length())
 		graph.LoadLM(config.GetString("bigram").c_str());
     while(std::getline(in != NULL? in : std::cin, line)) {

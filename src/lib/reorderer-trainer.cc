@@ -18,6 +18,7 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
     int verbose = config.GetInt("verbose");
     int threads = config.GetInt("threads");
     int beam_size = config.GetInt("beam");
+    int pop_limit = config.GetInt("pop_limit");
     int gapSize = config.GetInt("gap-size");
     int max_seq = config.GetInt("max-seq");
     bool full_fledged = config.GetBool("full_fledged");
@@ -48,6 +49,7 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 		graph.LoadLM(config.GetString("bigram").c_str());
 	graph.SetThreads(threads);
 	graph.SetBeamSize(beam_size);
+	graph.SetPopLimit(pop_limit);
 	if (!config.GetString("model_in").length() && threads > 1)
 		cerr << "-threads > 1 will be faster with -model_in" << endl;
 	graph.SaveFeatures(config.GetBool("save_features"));
@@ -93,7 +95,10 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 			if (verbose > 0)
 				printf("hyper_graph.BuildHyperGraph took about %.5f seconds\n",
 						((double)(tend.tv_sec) + 1.0e-9 * tend.tv_nsec) - ((double)(tstart.tv_sec) + 1.0e-9 * tstart.tv_nsec));
-
+			if (!ptr_graph->GetBest()){
+				cerr << "Fail to produce a tree for sentence " << sent << endl;
+				continue;
+			}
 			// Add losses to the hypotheses in the hypergraph
 			BOOST_FOREACH(LossBase * loss, losses_)
 						ptr_graph->AddLoss(loss,
@@ -154,7 +159,7 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 				if(sent_loss != model_loss){
 					ostringstream out;
 					vector<string> words = ((FeatureDataSequence*)data_[sent][0])->GetSequence();
-		            graph.GetBest()->PrintParse(words, out);
+		            ptr_graph->GetBest()->PrintParse(words, out);
 					cerr << "sent=" << sent << " sent_loss="<< sent_loss <<" != model_loss="<<model_loss << endl;
 		            cerr << out.str() << endl;
 				}

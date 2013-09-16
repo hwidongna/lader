@@ -261,11 +261,21 @@ void HyperGraph::AddTerminals(int l, int r, const FeatureSet & features, Reorder
 void HyperGraph::IncrementLeft(const Hypothesis *old_hyp,
 		const Hypothesis *new_left, ReordererModel & model,
 		const FeatureSet & non_local_features, const Sentence & sent,
-		HypothesisQueue & q)
+		HypothesisQueue & q, int & pop_count)
 {
    if (new_left != NULL){
-		Hypothesis * old_left= old_hyp->GetLeftHyp();
-		Hypothesis * old_right = old_hyp->GetRightHyp();
+	   Hypothesis * old_left;
+	   Hypothesis * old_right;
+	   if (cube_growing_){
+		   old_left = LazyKthBest(old_hyp->GetLeftChild(), old_hyp->GetLeftRank(),
+				   model, non_local_features, sent, pop_count);
+		   old_right = LazyKthBest(old_hyp->GetRightChild(), old_hyp->GetRightRank(),
+				   model, non_local_features, sent, pop_count);
+	   }
+	   else{
+		   old_left = old_hyp->GetLeftHyp();
+		   old_right = old_hyp->GetRightHyp();
+	   }
         // Clone this hypothesis
 		Hypothesis * new_hyp = old_hyp->Clone();
         // Recompute non-local score
@@ -292,11 +302,21 @@ void HyperGraph::IncrementLeft(const Hypothesis *old_hyp,
 void HyperGraph::IncrementRight(const Hypothesis *old_hyp,
 		const Hypothesis *new_right, ReordererModel & model,
 		const FeatureSet & non_local_features, const Sentence & sent,
-		HypothesisQueue & q)
+		HypothesisQueue & q, int & pop_count)
 {
     if (new_right != NULL){
-    	Hypothesis * old_left = old_hyp->GetLeftHyp();
-    	Hypothesis * old_right = old_hyp->GetRightHyp();
+    	Hypothesis * old_left;
+    	Hypothesis * old_right;
+    	if (cube_growing_){
+    		old_left = LazyKthBest(old_hyp->GetLeftChild(), old_hyp->GetLeftRank(),
+    				model, non_local_features, sent, pop_count);
+    		old_right = LazyKthBest(old_hyp->GetRightChild(), old_hyp->GetRightRank(),
+    				model, non_local_features, sent, pop_count);
+    	}
+    	else{
+    		old_left = old_hyp->GetLeftHyp();
+    		old_right = old_hyp->GetRightHyp();
+    	}
         // Clone this hypothesis
         Hypothesis * new_hyp = old_hyp->Clone();
         // Recompute non-local score
@@ -321,41 +341,45 @@ void HyperGraph::IncrementRight(const Hypothesis *old_hyp,
 
 // For cube growing
 void HyperGraph::LazyNext(HypothesisQueue & q, ReordererModel & model,
-		const FeatureSet & features, const FeatureSet & non_local_features,
-		const Sentence & sent, const Hypothesis * hyp){
+		const FeatureSet & non_local_features, const Sentence & sent,
+		const Hypothesis * hyp, int & pop_count) {
 	Hypothesis * new_left = NULL, *new_right = NULL;
 
 	TargetSpan *left_span = hyp->GetLeftChild();
 	if (left_span)
 		new_left = LazyKthBest(left_span, hyp->GetLeftRank() + 1,
-				model, features, non_local_features, sent);
+				model, non_local_features, sent, pop_count);
     if (new_left != NULL && new_left->CanSkip())
         delete new_left;
     else
-        IncrementLeft(hyp, new_left, model, non_local_features, sent, q);
+        IncrementLeft(hyp, new_left, model, non_local_features, sent, q, pop_count);
 
 	TargetSpan *right_span = hyp->GetRightChild();
 	if (right_span)
 		new_right = LazyKthBest(right_span, hyp->GetRightRank() + 1,
-				model, features, non_local_features, sent);
+				model, non_local_features, sent, pop_count);
     if (new_right != NULL && new_right->CanSkip())
         delete new_right;
     else
-        IncrementRight(hyp, new_right, model, non_local_features, sent, q);
+        IncrementRight(hyp, new_right, model, non_local_features, sent, q, pop_count);
 }
 
 // For cube growing
 Hypothesis * HyperGraph::LazyKthBest(TargetSpan * stack, int k,
-		ReordererModel & model, const FeatureSet & features,
-		const FeatureSet & non_local_features, const Sentence & sent){
-	while (stack->size() < k+1 && stack->CandSize() > 0){
+		ReordererModel & model, const FeatureSet & non_local_features,
+		const Sentence & sent, int & pop_count) {
+	while (((!beam_size_ && stack->size() < k + 1)
+			|| stack->size() < std::min(k + 1, beam_size_))
+			&& stack->CandSize() > 0) {
 		HypothesisQueue & q = stack->GetCands();
 		Hypothesis * hyp = q.top(); q.pop();
-		LazyNext(q, model, features, non_local_features, sent, hyp);
+		LazyNext(q, model, non_local_features, sent, hyp, pop_count);
 		// skip unnecessary hypothesis
 		// Insert the hypothesis if unique
 		if (hyp->CanSkip() || !stack->AddUniqueHypothesis(hyp))
 			delete hyp;
+		if (pop_limit_ && ++pop_count > pop_limit_)
+			break;
 	}
 	return stack->GetHypothesis(k);
 
@@ -435,6 +459,7 @@ void HyperGraph::ProcessOneSpan(ReordererModel & model,
 
     // Start beam search
     int num_processed = 0;
+    int pop_count = 0;
     while((!beam_size || num_processed < beam_size) && q->size()) {
         // Pop a hypothesis from the stack and get its target span
         Hypothesis * hyp = q->top(); q->pop();
@@ -450,12 +475,12 @@ void HyperGraph::ProcessOneSpan(ReordererModel & model,
     	TargetSpan *left_span = hyp->GetLeftChild();
     	if (left_span)
     		new_left = left_span->GetHypothesis(hyp->GetLeftRank()+1);
-    	IncrementLeft(hyp, new_left, model, non_local_features, sent, *q);
+    	IncrementLeft(hyp, new_left, model, non_local_features, sent, *q, pop_count);
 
     	TargetSpan *right_span = hyp->GetRightChild();
     	if (right_span)
     		new_right = right_span->GetHypothesis(hyp->GetRightRank()+1);
-    	IncrementRight(hyp, new_right, model, non_local_features, sent, *q);
+    	IncrementRight(hyp, new_right, model, non_local_features, sent, *q, pop_count);
         if (skip)
         	delete hyp;
     }
@@ -511,8 +536,10 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
     root_stack->ClearHypotheses();
     for(int i = 0; !beam_size_ || i < beam_size_; i++){
     	Hypothesis * hyp = NULL;
-    	if (cube_growing_)
-    		hyp = LazyKthBest(top, i, model, features, non_local_features, sent);
+    	if (cube_growing_){
+    		int pop_count = 0;
+    		hyp = LazyKthBest(top, i, model, non_local_features, sent, pop_count);
+    	}
     	else if (i < (int)(top->size()))
             hyp = (*top)[i];
 

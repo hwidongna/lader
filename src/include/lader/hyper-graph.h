@@ -59,7 +59,8 @@ public:
 				non_local_features, sent, l, r, beam_size);
     }
     HyperGraph(bool cube_growing = false) :
-			save_features_(false), n_(-1), threads_(1), cube_growing_(cube_growing), cloned_(false), bigram_(0) { }
+			save_features_(false), n_(-1), threads_(1), cube_growing_(cube_growing),
+			cloned_(false), bigram_(0), beam_size_(0), pop_limit_(0) { }
 
     void ClearStacks() {
 		BOOST_FOREACH(TargetSpan * stack, stacks_)
@@ -76,6 +77,10 @@ public:
 
     virtual HyperGraph * Clone(){
     	HyperGraph * cloned = new HyperGraph(cube_growing_);
+    	cloned->SetThreads(threads_);
+    	cloned->SetBeamSize(beam_size_);
+    	cloned->SetPopLimit(pop_limit_);
+    	cloned->SaveFeatures(save_features_);
     	cloned->MarkCloned();
     	cloned->SetLM(bigram_);
     	return cloned;
@@ -130,6 +135,9 @@ public:
     void SetBeamSize(int beam_size) {
         beam_size_ = beam_size;
     }
+    void SetPopLimit(int pop_limit) {
+    	pop_limit_ = pop_limit;
+    }
 
     void MarkCloned(){ cloned_ = true; }
     void SetLM(lm::ngram::Model * bigram) { bigram_ = bigram; }
@@ -141,37 +149,26 @@ protected:
     // For both cube pruning/growing
     void IncrementLeft(const Hypothesis *old_hyp, const Hypothesis *new_left,
 			ReordererModel & model, const FeatureSet & non_local_features,
-			const Sentence & sent, HypothesisQueue & q);
+			const Sentence & sent, HypothesisQueue & q, int & pop_count);
 	void IncrementRight(const Hypothesis *old_hyp, const Hypothesis *new_right,
 			ReordererModel & model, const FeatureSet & non_local_features,
-			const Sentence & sent, HypothesisQueue & q);
+			const Sentence & sent, HypothesisQueue & q, int & pop_count);
 
 	// For cube growing
 	virtual void LazyNext(HypothesisQueue & q, ReordererModel & model,
-			const FeatureSet & features, const FeatureSet & non_local_features,
-			const Sentence & sent, const Hypothesis * hyp);
+			const FeatureSet & non_local_features, const Sentence & sent,
+			const Hypothesis * hyp, int & pop_count);
     virtual Hypothesis * LazyKthBest(TargetSpan * stack, int k,
-			ReordererModel & model, const FeatureSet & features,
-			const FeatureSet & non_local_features, const Sentence & sent);
+			ReordererModel & model, const FeatureSet & non_local_features,
+			const Sentence & sent, int & pop_count);
     virtual void ProcessOneSpan(ReordererModel & model,
-			const FeatureSet & features, const FeatureSet & non_local_features,
-			const Sentence & sent, int l, int r, int beam_size = 0);
-	virtual const FeatureVectorInt *GetEdgeFeatures(ReordererModel & model,
-			const FeatureSet & feature_gen, const Sentence & sent,
-			const HyperEdge & edge);
-
-    double GetEdgeScore(ReordererModel & model, const FeatureSet & feature_gen,
-			const Sentence & sent, const HyperEdge & edge, TargetSpan * stack = NULL);
-    const FeatureVectorInt *GetNonLocalFeatures(const HyperEdge * edge,
-    		const Hypothesis *left, const Hypothesis *right, const FeatureSet & feature_gen,
-    		const Sentence & sent, ReordererModel & model, lm::ngram::State * out);
-    double GetNonLocalScore(ReordererModel & model,
-			const FeatureSet & feature_gen, const Sentence & sent,
-			const HyperEdge *edge, const Hypothesis *left,	const Hypothesis *right,
-			lm::ngram::State *out = NULL);
-    double GetRootBigram(const Sentence & sent, const Hypothesis *hyp,
-			lm::ngram::Model::State * out);
-
+    		const FeatureSet & features, const FeatureSet & non_local_features,
+			const Sentence & sent, int l, int r, int beam_size);
+    const virtual FeatureVectorInt *GetEdgeFeatures(ReordererModel & model, const FeatureSet & feature_gen, const Sentence & sent, const HyperEdge & edge);
+    double GetEdgeScore(ReordererModel & model, const FeatureSet & feature_gen, const Sentence & sent, const HyperEdge & edge, TargetSpan *stack = NULL);
+    const FeatureVectorInt *GetNonLocalFeatures(const HyperEdge *edge, const Hypothesis *left, const Hypothesis *right, const FeatureSet & feature_gen, const Sentence & sent, ReordererModel & model, lm::ngram::State *out);
+    double GetNonLocalScore(ReordererModel & model, const FeatureSet & feature_gen, const Sentence & sent, const HyperEdge *edge, const Hypothesis *left, const Hypothesis *right, lm::ngram::State *out = NULL);
+    double GetRootBigram(const Sentence & sent, const Hypothesis *hyp, lm::ngram::Model::State *out);
     inline int GetTrgSpanID(int l, int r) const
     {
         if(l == -1)
@@ -184,12 +181,11 @@ protected:
         if(l < 0 || r < 0)
             THROW_ERROR("Bad SetStack [l="<<l<<", r="<<r<<"]"<<std::endl)
         int idx = GetTrgSpanID(l, r);
-		if((int)stacks_.size() <= idx)
+        if((int)stacks_.size() <= idx)
 			stacks_.resize(idx+1, NULL);
         if(stacks_[idx])
         	THROW_ERROR("Stack exist [l="<<l<<", r="<<r<<"]"<<std::endl)
-//            delete stacks_[idx];
-
+        //            delete stacks_[idx];
         stacks_[idx] = stack;
     }
 
@@ -197,6 +193,7 @@ private:
     std::vector<TargetSpan*> stacks_;
 
 protected:
+    int pop_limit_;
     // the beam size used for cube pruning/growing
     int beam_size_;
     bool save_features_;

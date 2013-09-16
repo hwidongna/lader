@@ -86,6 +86,7 @@ public:
 				cube_growing_, full_fledged_, mp_, verbose_);
     	cloned->SetThreads(threads_);
         cloned->SetBeamSize(beam_size_);
+        cloned->SetPopLimit(pop_limit_);
     	cloned->SaveFeatures(save_features_);
     	cloned->MarkCloned();
     	cloned->SetLM(bigram_);
@@ -164,11 +165,11 @@ protected:
     			const HyperEdge & edge);
     // For cube growing
 	virtual void LazyNext(HypothesisQueue & q, ReordererModel & model,
-			const FeatureSet & features, const FeatureSet & non_local_features,
-			const Sentence & sent, const Hypothesis * hyp);
+			const FeatureSet & non_local_features, const Sentence & sent,
+			const Hypothesis * hyp, int pop_count);
     virtual Hypothesis * LazyKthBest(TargetSpan * stack, int k,
-    		ReordererModel & model, const FeatureSet & features,
-			const FeatureSet & non_local_features, const Sentence & sent);
+			ReordererModel & model, const FeatureSet & non_local_features,
+			const Sentence & sent, int pop_count = 0);
     void ProcessOneSpan(ReordererModel & model, const FeatureSet & features, const FeatureSet & non_local_features, const Sentence & sent, int l, int r, int beam_size = 0);
     void ProcessOneDiscontinuousSpan(ReordererModel & model, const FeatureSet & features, const FeatureSet & non_local_features, const Sentence & sent, int l, int m, int n, int r, int beam_size = 0);
     void AddHypotheses(ReordererModel & model, const FeatureSet & features, const FeatureSet & non_local_features, const Sentence & sent, HypothesisQueue & q, int left_l, int left_m, int left_n, int left_r, int right_l, int right_m, int right_n, int right_r);

@@ -42,6 +42,14 @@ public:
     			graph_->SetStack(l_, r_, new TargetSpan(l_, r_));
     		graph_->ProcessOneSpan(model_, features_, non_local_features_,
     		    						sent_, l_, r_, beam_size_);
+    		// for cube growing, trigger the best hypothesis
+    		if (graph_->cube_growing_){
+    			int pop_count = 0;
+    			Hypothesis * best = graph_->LazyKthBest(graph_->GetStack(l_, r_), 0,
+    					model_, non_local_features_, sent_, pop_count);
+    			if (!best)
+    				THROW_ERROR("Fail to produce hypotheses " << *graph_->GetStack(l_, r_) << endl);
+    		}
     	}
     private:
     	HyperGraph * graph_;
@@ -116,6 +124,8 @@ public:
 		return SafeAccess(stacks_, stacks_.size() - 1);
 	}
 	Hypothesis *GetBest() {
+		if (stacks_.empty())
+			return NULL;
 		return SafeAccess(stacks_, stacks_.size() - 1)->GetHypothesis(0);
 	}
     virtual void AddLoss(LossBase *loss, const Ranks *ranks, const FeatureDataParse *parse) const;

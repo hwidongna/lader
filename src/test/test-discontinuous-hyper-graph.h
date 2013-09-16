@@ -323,7 +323,7 @@ public:
 				Hypothesis * lhyp = hyp->GetLeftHyp();
 				Hypothesis * rhyp = hyp->GetRightHyp();
 				if (hyp->GetScore() !=
-						hyp->GetSingleScore()
+						hyp->GetSingleScore() + hyp->GetNonLocalScore()
 						+ (lhyp ? lhyp->GetScore() : 0)
 						+ (rhyp ? rhyp->GetScore() : 0) ){
 					cerr << "Incorrect viterbi score " << *hyp << endl;
@@ -381,19 +381,44 @@ public:
                  << " and root spans " << stack03->size() << " don't match." << endl; ret = 0;
         }
 
-        BOOST_FOREACH(TargetSpan * stack, stacks)
-			BOOST_FOREACH(Hypothesis * hyp, stack->GetHypotheses()){
-				Hypothesis * lhyp = hyp->GetLeftHyp();
-				Hypothesis * rhyp = hyp->GetRightHyp();
-				if (hyp->GetScore() !=
-						hyp->GetSingleScore()
-						+ (lhyp ? lhyp->GetScore() : 0)
-						+ (rhyp ? rhyp->GetScore() : 0) ){
-					cerr << "Incorrect viterbi score " << *hyp << endl;
-					hyp->PrintChildren(cerr);
-					ret = 0;
-				}
-			}
+        for(int i = 0; i < 4*3*2; i++){
+        	int pop_count = 0;
+        	Hypothesis * hyp = graph.LazyKthBest(stackRoot, i, model, non_local_set, datas, pop_count);
+        	Hypothesis * lhyp = hyp->GetLeftHyp();
+        	Hypothesis * rhyp = hyp->GetRightHyp();
+        	if (hyp->GetScore() !=
+        			hyp->GetSingleScore() + hyp->GetNonLocalScore()
+        			+ (lhyp ? lhyp->GetScore() : 0)
+        			+ (rhyp ? rhyp->GetScore() : 0) ){
+        		cerr << "Incorrect viterbi score " << *hyp << endl;
+        		hyp->PrintChildren(cerr);
+        		ret = 0;
+        	}
+        	// root has no edge features
+        	if (hyp->GetEdgeType() == HyperEdge::EDGE_ROOT)
+        		continue;
+        	DiscontinuousHypothesis * dhyp =
+        			dynamic_cast<DiscontinuousHypothesis*>(hyp);
+        	const FeatureVectorInt *fvi = graph.GetEdgeFeatures(model, set, datas, *hyp->GetEdge());
+        	FeatureVectorString *fvs = model.StringifyFeatureVector(*fvi);
+        	bool error = false;
+        	BOOST_FOREACH(FeaturePairString feat, *fvs){
+        		string edgetype = feat.first.substr(feat.first.size()-2);
+        		if (edgetype[0] != hyp->GetEdgeType()){
+        			cerr << "Incorrect edge type ";
+        			error = true;
+        		}
+        		if (edgetype[1] != hyp->GetEdge()->GetClass()){
+        			cerr << "Incorrect edge class ";
+        			error = true;
+        		}
+        	}
+        	if (error){
+        		cerr << (dhyp ? *dhyp : *hyp) << endl << *fvs << endl;
+        		ret = 0;
+        	}
+        	delete fvs;
+        }
         return ret;
     }
 

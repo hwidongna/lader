@@ -51,6 +51,29 @@ public:
 				}
 			graph_->ProcessOneSpan(model_, features_, non_local_features_,
 					sent_, l_, r_, beam_size_);
+			// for cube growing, trigger the best hypothesis
+			if (graph_->cube_growing_){
+				if (graph_->verbose_ > 1)
+					cerr << "Trigger the best hypothesis " << *graph_->HyperGraph::GetStack(l_, r_) << endl;
+				int pop_count = 0;
+				Hypothesis * best = graph_->LazyKthBest(graph_->HyperGraph::GetStack(l_, r_), 0,
+						model_, non_local_features_, sent_, pop_count);
+				if (!best)
+					THROW_ERROR("Fail to produce hypotheses " << *graph_->HyperGraph::GetStack(l_, r_) << endl)
+				for (int c = l_+1 ; c <= r_ ; c++)
+					for (int d = 1 ; d <= D ; d++)
+						if ( IsMeaningful(l_, c-1, c+d, r_+d, D, N) ){
+							if (graph_->verbose_ > 1)
+								cerr << "Trigger the best hypothesis "
+									<< *(DiscontinuousTargetSpan*)graph_->GetStack(l_, c-1, c+d, r_+d) << endl;
+							pop_count = 0;
+							best = graph_->LazyKthBest(graph_->GetStack(l_, c-1, c+d, r_+d), 0,
+									model_, non_local_features_, sent_, pop_count);
+							if (!best)
+								THROW_ERROR("Fail to produce hypotheses "
+										<< *(DiscontinuousTargetSpan*)graph_->GetStack(l_, c-1, c+d, r_+d) << endl)
+						}
+			}
 		}
 	private:
 		DiscontinuousHyperGraph * graph_;

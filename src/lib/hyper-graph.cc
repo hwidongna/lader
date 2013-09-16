@@ -264,18 +264,10 @@ void HyperGraph::IncrementLeft(const Hypothesis *old_hyp,
 		HypothesisQueue & q, int & pop_count)
 {
    if (new_left != NULL){
-	   Hypothesis * old_left;
-	   Hypothesis * old_right;
-	   if (cube_growing_){
-		   old_left = LazyKthBest(old_hyp->GetLeftChild(), old_hyp->GetLeftRank(),
-				   model, non_local_features, sent, pop_count);
-		   old_right = LazyKthBest(old_hyp->GetRightChild(), old_hyp->GetRightRank(),
-				   model, non_local_features, sent, pop_count);
-	   }
-	   else{
-		   old_left = old_hyp->GetLeftHyp();
-		   old_right = old_hyp->GetRightHyp();
-	   }
+	   Hypothesis * old_left  = old_hyp->GetLeftHyp();
+	   Hypothesis * old_right = old_hyp->GetRightHyp();
+	   if (!old_left || !old_right)
+		   THROW_ERROR("Fail to IncrementLeft for " << *old_hyp << endl)
         // Clone this hypothesis
 		Hypothesis * new_hyp = old_hyp->Clone();
         // Recompute non-local score
@@ -305,18 +297,10 @@ void HyperGraph::IncrementRight(const Hypothesis *old_hyp,
 		HypothesisQueue & q, int & pop_count)
 {
     if (new_right != NULL){
-    	Hypothesis * old_left;
-    	Hypothesis * old_right;
-    	if (cube_growing_){
-    		old_left = LazyKthBest(old_hyp->GetLeftChild(), old_hyp->GetLeftRank(),
-    				model, non_local_features, sent, pop_count);
-    		old_right = LazyKthBest(old_hyp->GetRightChild(), old_hyp->GetRightRank(),
-    				model, non_local_features, sent, pop_count);
-    	}
-    	else{
-    		old_left = old_hyp->GetLeftHyp();
-    		old_right = old_hyp->GetRightHyp();
-    	}
+    	Hypothesis * old_left  = old_hyp->GetLeftHyp();
+    	Hypothesis * old_right = old_hyp->GetRightHyp();
+    	if (!old_left || !old_right)
+    		THROW_ERROR("Fail to IncrementRight for " << *old_hyp << endl)
         // Clone this hypothesis
         Hypothesis * new_hyp = old_hyp->Clone();
         // Recompute non-local score
@@ -424,6 +408,9 @@ void HyperGraph::ProcessOneSpan(ReordererModel & model,
         if (cube_growing_){
         	// instead LazyKthBest, access to the best one in HypothesisQueue
         	// this seems to be risky, but LazyKthBest(0) == HypothesisQueue.top()
+        	// this is indeed risky, because GetLeftHyp and GetRightHyp return NULL
+        	// therefore, we need to trigger the best hypothesis for each stack
+        	// after ProcessOneSpan, which takes a long time
         	left = left_stack->GetCands().top();
         	right = right_stack->GetCands().top();
         }

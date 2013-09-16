@@ -90,6 +90,9 @@ void DiscontinuousHyperGraph::AddHypotheses(
     if (cube_growing_){
     	// instead LazyKthBest, access to the best one in HypothesisQueue
     	// this seems to be risky, but LazyKthBest(0) == HypothesisQueue.top()
+    	// this is indeed risky, because GetLeftHyp and GetRightHyp return NULL
+    	// therefore, we need to trigger the best hypothesis for each stack
+    	// after ProcessOneSpan, which takes a long time
     	left = left_stack->GetCands().top();
     	right = right_stack->GetCands().top();
     }
@@ -165,6 +168,9 @@ void DiscontinuousHyperGraph::AddDiscontinuousHypotheses(
     if (cube_growing_){
     	// instead LazyKthBest, access to the best one in HypothesisQueue
     	// this seems to be risky, but LazyKthBest(0) == HypothesisQueue.top()
+    	// this is indeed risky, because GetLeftHyp and GetRightHyp return NULL
+    	// therefore, we need to trigger the best hypothesis for each stack
+    	// after ProcessOneDiscontinuousSpan, which takes a long time
     	left = left_stack->GetCands().top();
     	right = right_stack->GetCands().top();
     }
@@ -487,6 +493,14 @@ Hypothesis * DiscontinuousHyperGraph::LazyKthBest(TargetSpan * stack, int k,
 		// Insert the hypothesis if unique
 		if (hyp->CanSkip(max_seq_) || !stack->AddUniqueHypothesis(hyp))
 			delete hyp;
+		else if(verbose_ > 1){
+			DiscontinuousHypothesis * dhyp =
+					dynamic_cast<DiscontinuousHypothesis*>(hyp);
+			cerr << "Insert " << k << "th hypothesis ";
+			if (dhyp) cerr << *dhyp;
+			else cerr << *hyp;
+			cerr << endl;
+		}
 		if (pop_limit_ && ++pop_count > pop_limit_)
 			break;
 	}

@@ -11,6 +11,7 @@
 #include <lader/hypothesis-queue.h>
 #include <lader/feature-set.h>
 #include <lader/discontinuous-target-span.h>
+#include <boost/thread/mutex.hpp>
 using namespace lader;
 
 namespace lader{
@@ -53,6 +54,8 @@ public:
 					sent_, l_, r_, beam_size_);
 			// for cube growing, trigger the best hypothesis
 			if (graph_->cube_growing_){
+				// we need to lock LazyKthBest
+				boost::mutex::scoped_lock lock(graph_->mutex_);
 				if (graph_->verbose_ > 1)
 					cerr << "Trigger the best hypothesis " << *graph_->HyperGraph::GetStack(l_, r_) << endl;
 				int pop_count = 0;
@@ -216,6 +219,7 @@ private:
     // an additional two-dimensional chart for discontinuous hypothesis
     // theoretically, it support more than one discontinuity
     std::vector<HyperGraph*> next_;
+    boost::mutex mutex_;
 };
 
 }

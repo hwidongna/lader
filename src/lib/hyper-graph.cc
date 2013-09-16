@@ -333,18 +333,18 @@ void HyperGraph::LazyNext(HypothesisQueue & q, ReordererModel & model,
 	if (left_span)
 		new_left = LazyKthBest(left_span, hyp->GetLeftRank() + 1,
 				model, non_local_features, sent, pop_count);
-    if (new_left != NULL && new_left->CanSkip())
-        delete new_left;
-    else
+//    if (new_left != NULL && new_left->CanSkip())
+//        delete new_left;
+//    else
         IncrementLeft(hyp, new_left, model, non_local_features, sent, q, pop_count);
 
 	TargetSpan *right_span = hyp->GetRightChild();
 	if (right_span)
 		new_right = LazyKthBest(right_span, hyp->GetRightRank() + 1,
 				model, non_local_features, sent, pop_count);
-    if (new_right != NULL && new_right->CanSkip())
-        delete new_right;
-    else
+//    if (new_right != NULL && new_right->CanSkip())
+//        delete new_right;
+//    else
         IncrementRight(hyp, new_right, model, non_local_features, sent, q, pop_count);
 }
 
@@ -451,7 +451,7 @@ void HyperGraph::ProcessOneSpan(ReordererModel & model,
         // Pop a hypothesis from the stack and get its target span
         Hypothesis * hyp = q->top(); q->pop();
         // Insert the hypothesis if unique
-        bool skip = !stack->AddUniqueHypothesis(hyp);
+        bool skip = hyp->CanSkip() || !stack->AddUniqueHypothesis(hyp);
         if (!skip)
         	num_processed++;
         // Skip terminals

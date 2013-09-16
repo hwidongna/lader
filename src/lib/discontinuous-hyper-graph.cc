@@ -235,6 +235,7 @@ void DiscontinuousHyperGraph::StartBeamSearch(
         if (!skip){
         	num_processed++;
 			if(verbose_ > 1){
+				boost::mutex::scoped_lock lock(mutex_);
 				DiscontinuousHypothesis * dhyp =
 						dynamic_cast<DiscontinuousHypothesis*>(hyp);
 				cerr << "Insert " << num_processed << "th hypothesis ";
@@ -317,8 +318,10 @@ void DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
 		q = new HypothesisQueue;
 
 	double score, viterbi_score;
-	if (verbose_ > 1)
+	if (verbose_ > 1){
+		boost::mutex::scoped_lock lock(mutex_);
 		cerr << "Process ["<<l<<", "<<m<<", "<<n<<", "<<r<<"]" << endl;
+	}
 	// continuous + continuous = discontinuous
 	//cerr << "continuous + continuous = discontinuous" << endl;
 	AddDiscontinuousHypotheses(model, features, non_local_features, sent, *q,
@@ -378,8 +381,10 @@ void DiscontinuousHyperGraph::ProcessOneSpan(
 
 	int N = n_ = sent[0]->GetNumWords();
 	int D = gap_size_;
-	if (verbose_ > 1)
+	if (verbose_ > 1){
+		boost::mutex::scoped_lock lock(mutex_);
 		cerr << "Process ["<<l<<", "<<r<<"]" << endl;
+	}
 	lm::ngram::Model::State out;
 	for (int c = l+1 ; c <= r ; c++){
 		if (hasPunct && mp_){ // monotone at punctuation
@@ -465,18 +470,18 @@ void DiscontinuousHyperGraph::LazyNext(HypothesisQueue & q,
 	if (left_span)
 		new_left = LazyKthBest(left_span, hyp->GetLeftRank() + 1,
 				model, non_local_features, sent, pop_count);
-    if (new_left != NULL && new_left->CanSkip(max_seq_))
-        delete new_left;
-    else
+//    if (new_left != NULL && new_left->CanSkip(max_seq_))
+//        delete new_left;
+//    else
         IncrementLeft(hyp, new_left, model, non_local_features, sent, q, pop_count);
 
 	TargetSpan *right_span = hyp->GetRightChild();
 	if (right_span)
 		new_right = LazyKthBest(right_span, hyp->GetRightRank() + 1,
 				model, non_local_features, sent, pop_count);
-    if (new_right != NULL && new_right->CanSkip(max_seq_))
-        delete new_right;
-    else
+//    if (new_right != NULL && new_right->CanSkip(max_seq_))
+//        delete new_right;
+//    else
         IncrementRight(hyp, new_right, model, non_local_features, sent, q, pop_count);
 }
 // For cube growing

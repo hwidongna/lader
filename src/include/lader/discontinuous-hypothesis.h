@@ -20,8 +20,9 @@ namespace lader {
 class DiscontinuousHypothesis : public Hypothesis{
 
 public:
-    void SetSeq() {
-		seq_ = 1;
+    int NumSeq() {
+    	if (seq_ > 0)
+    		return seq_;
 		DiscontinuousHypothesis *left =
 				dynamic_cast<DiscontinuousHypothesis*>(GetLeftHyp());
 		DiscontinuousHypothesis *right =
@@ -30,9 +31,10 @@ public:
 			THROW_ERROR("Both children are discontinuous" << endl
 					<< *left << endl << *right << endl);
 		if (left)
-			seq_ += left->seq_;
+			seq_ += left->NumSeq();
 		else if (right)
-			seq_ += right->seq_;
+			seq_ += right->NumSeq();
+		return ++seq_;
 	}
 
 	DiscontinuousHypothesis(double viterbi_score, double single_score, double non_local_score,
@@ -42,7 +44,7 @@ public:
 				Hypothesis(viterbi_score, single_score, non_local_score,
 					edge, trg_left, trg_right, state,
 					left_rank, right_rank,
-					left_child, right_child) { SetSeq(); }
+					left_child, right_child), seq_(0) { }
 protected:
 	friend class TestDiscontinuousHyperGraph;
 	// just for testing
@@ -58,7 +60,7 @@ protected:
 	            			   trg_left, trg_right,
 	            			   lm::ngram::State(),
 	            			   left_rank, right_rank,
-	            			   left_child, right_child) { SetSeq(); }
+	            			   left_child, right_child), seq_(0) { }
 	// just for testing
 	DiscontinuousHypothesis(double viterbi_score, double single_score, double non_local_score,
 	               HyperEdge * edge,
@@ -70,7 +72,7 @@ protected:
 	            			   trg_left, trg_right,
 	            			   lm::ngram::State(),
 	            			   left_rank, right_rank,
-	            			   left_child, right_child) { SetSeq(); }
+	            			   left_child, right_child), seq_(0) { }
 public:
 //	DiscontinuousHypothesis(const Hypothesis & hyp) : Hypothesis(hyp) {	}
 	int GetM() const{
@@ -100,21 +102,16 @@ public:
 
     // We can skip this hypothesis in search
     // if this hypothesis produce an ITG permutation from discontinuous children
-    // we also skip a series of discontinuous hypotheses using max_seq
-    virtual bool CanSkip(int max_seq) {
-    	if (!IsTerminal()){
-    		DiscontinuousHypothesis * left =
-    				dynamic_cast<DiscontinuousHypothesis*>(GetLeftHyp());
-    		DiscontinuousHypothesis * right =
-    				dynamic_cast<DiscontinuousHypothesis*>(GetRightHyp());
-    		// continuous + discotinuous = discontinuous
-    		// discontinuous + cotinuous = discontinuous
-            if (max_seq > 0 && seq_ > max_seq)
-                return false;
-    		return (left && GetEdgeType() == left->GetEdgeType())
-    				|| (right && GetEdgeType() == right->GetEdgeType());
-    	}
-    	return false;
+    static bool CanSkip(const HyperEdge * edge,
+    		const Hypothesis * left, const Hypothesis * right) {
+    	const DiscontinuousHypothesis * dleft =
+    			dynamic_cast<const DiscontinuousHypothesis*>(left);
+    	const DiscontinuousHypothesis * dright =
+    			dynamic_cast<const DiscontinuousHypothesis*>(right);
+    	// continuous + discotinuous = discontinuous
+    	// discontinuous + cotinuous = discontinuous
+    	return (dleft && edge->GetType() == dleft->GetEdgeType())
+    			|| (dright && edge->GetType() == dright->GetEdgeType());
     }
 private:
 	// the number of sequenctial discontinuous derivations

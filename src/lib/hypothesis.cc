@@ -30,8 +30,6 @@ inline string GetTokenWord(const string & str) {
 }
 
 void Hypothesis::PrintChildren( std::ostream& out ) const{
-	if (left_child_ == NULL && right_child_ == NULL)
-		return;
 	if (left_child_ && left_rank_ < left_child_->GetHypotheses().size()){
 		out << endl << "\t" << left_rank_ << "th LChild ";
 		DiscontinuousHypothesis * left =
@@ -51,6 +49,24 @@ void Hypothesis::PrintChildren( std::ostream& out ) const{
 			out << *right_child_->GetHypothesis(right_rank_);
 	}
 	out << endl;
+}
+
+void Hypothesis::PrintParse(ostream & out) const {
+    HyperEdge::Type type = GetEdgeType();
+    if(IsTerminal()) {
+        out << "(" << (char)type;
+        for(int i = GetLeft(); i <= GetRight(); i++)
+            out << " ("<<(char)type<< "W " << i <<")";
+        out << ")";
+    } else if(type == HyperEdge::EDGE_ROOT) {
+        GetLeftHyp()->PrintParse(out);
+    } else {
+        out << "("<<(char)type<<" ";
+        GetLeftHyp()->PrintParse(out);
+        out << " ";
+        GetRightHyp()->PrintParse(out);
+        out << ")";
+    }
 }
 
 void Hypothesis::PrintParse(const vector<string> & strs, ostream & out) const {
@@ -141,17 +157,14 @@ Hypothesis *Hypothesis::Clone() const
 
 // We can skip this hypothesis in search
 // if this hypothesis produce an ITG permutation from discontinuous children
-// max_seq is unused here
-bool Hypothesis::CanSkip(int max_seq) {
-	if (!IsTerminal()) {
-		DiscontinuousHypothesis * left =
-				dynamic_cast<DiscontinuousHypothesis*>(GetLeftHyp());
-		DiscontinuousHypothesis * right =
-				dynamic_cast<DiscontinuousHypothesis*>(GetRightHyp());
-		// discontinuous + discotinuous = continuous
-		return left && right
-				&& (GetEdgeType() == left->GetEdgeType()
-				|| GetEdgeType() == right->GetEdgeType());
-	}
-	return false;
+bool Hypothesis::CanSkip(const HyperEdge * edge,
+		const Hypothesis * left, const Hypothesis * right) {
+	const DiscontinuousHypothesis * dleft =
+			dynamic_cast<const DiscontinuousHypothesis*>(left);
+	const DiscontinuousHypothesis * dright =
+			dynamic_cast<const DiscontinuousHypothesis*>(right);
+	// discontinuous + discotinuous = continuous
+	return dleft && dright
+			&& (edge->GetType() == dleft->GetEdgeType()
+			|| edge->GetType() == dright->GetEdgeType());
 }

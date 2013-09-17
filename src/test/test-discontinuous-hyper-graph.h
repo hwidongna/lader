@@ -310,8 +310,11 @@ public:
         // The number of target spans should be 4*3*2: including non-ITGs
         } else if (stack03->size() != 4*3*2) {
             cerr << "Root node stack03->size() != 4*3*2: " << stack03->size()<< endl;
-            BOOST_FOREACH(const Hypothesis *hyp, stack03->GetHypotheses())
-            	cerr << " " << hyp->GetTrgLeft() << "-" <<hyp->GetTrgRight() << endl;
+            BOOST_FOREACH(Hypothesis *hyp, stack03->GetHypotheses()){
+            	DiscontinuousHypothesis * dhyp =
+            							dynamic_cast<DiscontinuousHypothesis*>(hyp);
+            	cerr << (dhyp ? *dhyp : *hyp) << endl;
+            }
             ret = 0;
         } else if (stackRoot->size() != stack03->size()) {
             cerr << "Root hypotheses " << stackRoot->size()
@@ -326,7 +329,13 @@ public:
 						hyp->GetSingleScore() + hyp->GetNonLocalScore()
 						+ (lhyp ? lhyp->GetScore() : 0)
 						+ (rhyp ? rhyp->GetScore() : 0) ){
-					cerr << "Incorrect viterbi score " << *hyp << endl;
+					cerr << "Incorrect viterbi score " << *hyp;
+					hyp->PrintChildren(cerr);
+					ret = 0;
+				}
+				if (hyp->GetTrgLeft() < hyp->GetLeft()
+					|| hyp->GetRight() < hyp->GetTrgRight()){
+					cerr << "Malformed hypothesis "<< *hyp;
 					hyp->PrintChildren(cerr);
 					ret = 0;
 				}
@@ -394,6 +403,12 @@ public:
         		hyp->PrintChildren(cerr);
         		ret = 0;
         	}
+			if (hyp->GetTrgLeft() < hyp->GetLeft()
+				|| hyp->GetRight() < hyp->GetTrgRight()){
+				cerr << "Malformed hypothesis "<< *hyp;
+				hyp->PrintChildren(cerr);
+				ret = 0;
+			}
         	// root has no edge features
         	if (hyp->GetEdgeType() == HyperEdge::EDGE_ROOT)
         		continue;
@@ -472,6 +487,50 @@ public:
 		if(thread4 > thread1){
 			cerr << "more threads, more time? " << thread4 << " > " << thread1 << endl;
 			ret = 0;
+		}
+		for(int i = 0; i < beam_size; i++){
+			int pop_count = 0;
+			Hypothesis * hyp = graph.LazyKthBest(graph.GetRoot(), i, model, non_local_set, datas, pop_count);
+			Hypothesis * lhyp = hyp->GetLeftHyp();
+			Hypothesis * rhyp = hyp->GetRightHyp();
+			if (hyp->GetScore() !=
+					hyp->GetSingleScore() + hyp->GetNonLocalScore()
+					+ (lhyp ? lhyp->GetScore() : 0)
+					+ (rhyp ? rhyp->GetScore() : 0) ){
+				cerr << "Incorrect viterbi score " << *hyp << endl;
+				hyp->PrintChildren(cerr);
+				ret = 0;
+			}
+			if (hyp->GetTrgLeft() < hyp->GetLeft()
+			|| hyp->GetRight() < hyp->GetTrgRight()){
+				cerr << "Malformed hypothesis "<< *hyp;
+				hyp->PrintChildren(cerr);
+				ret = 0;
+			}
+			// root has no edge features
+			if (hyp->GetEdgeType() == HyperEdge::EDGE_ROOT)
+				continue;
+			DiscontinuousHypothesis * dhyp =
+					dynamic_cast<DiscontinuousHypothesis*>(hyp);
+			const FeatureVectorInt *fvi = graph.GetEdgeFeatures(model, set, datas, *hyp->GetEdge());
+			FeatureVectorString *fvs = model.StringifyFeatureVector(*fvi);
+			bool error = false;
+			BOOST_FOREACH(FeaturePairString feat, *fvs){
+				string edgetype = feat.first.substr(feat.first.size()-2);
+				if (edgetype[0] != hyp->GetEdgeType()){
+					cerr << "Incorrect edge type ";
+					error = true;
+				}
+				if (edgetype[1] != hyp->GetEdge()->GetClass()){
+					cerr << "Incorrect edge class ";
+					error = true;
+				}
+			}
+			if (error){
+				cerr << (dhyp ? *dhyp : *hyp) << endl << *fvs << endl;
+				ret = 0;
+			}
+			delete fvs;
 		}
     	set.SetUseReverse(true);
     	return ret;

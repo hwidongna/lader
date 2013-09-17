@@ -33,8 +33,8 @@ namespace std {
 inline std::ostream& operator << ( std::ostream& out,
                                    const lader::DiscontinuousTargetSpan & rhs )
 {
-    out << "<" << rhs.GetLeft() << ", " << rhs.GetM() << ", "
-		<< rhs.GetN() << ", " << rhs.GetRight() << ">";
+    out << "[" << rhs.GetLeft() << ", " << rhs.GetM() << ", "
+		<< rhs.GetN() << ", " << rhs.GetRight() << "]";
     return out;
 }
 }

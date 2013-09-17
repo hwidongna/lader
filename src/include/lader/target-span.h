@@ -150,7 +150,7 @@ namespace std {
 inline std::ostream& operator << ( std::ostream& out,
                                    const lader::TargetSpan & rhs )
 {
-    out << "<" << rhs.GetLeft() << ", " << rhs.GetRight() << ">";
+    out << "[" << rhs.GetLeft() << ", " << rhs.GetRight() << "]";
     return out;
 }
 }

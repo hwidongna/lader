@@ -31,7 +31,7 @@ public:
         AddConfigEntry("beam", "1", "The maximum beam size");
         AddConfigEntry("pop_limit", "10000", "The maximum pop count (for cube growing)");
         AddConfigEntry("gap-size", "1", "The gap size for discontinuous hyper graph");
-        AddConfigEntry("max-seq", "2", "The maximum number of sequential discontinuous hypothesis");
+        AddConfigEntry("max-seq", "1", "The maximum number of sequential discontinuous hypothesis");
         AddConfigEntry("full_fledged", "false", "Enable discontinuous hyper graph full-fledged combinations");
         AddConfigEntry("backward_compatibility", "false", "Support model trained from previous version without non-local feature templates");
         AddConfigEntry("mp", "false", "Monotone at punctuation");

@@ -62,8 +62,6 @@ const FeatureVectorInt *HyperGraph::GetNonLocalFeatures(const HyperEdge * edge,
 		const Hypothesis *left, const Hypothesis *right, const FeatureSet & feature_gen,
 		const Sentence & sent, ReordererModel & model, lm::ngram::State * out)
 {
-	if (left && right && left->GetLeft() > right->GetLeft())
-		THROW_ERROR("Invalid argument for GetNonLocalFeatures" << endl << *left << endl << *right)
     FeatureVectorInt *fvi = NULL;
     SymbolSet<int> & feat_ids = model.GetFeatureIds();
     bool add = model.GetAdd();
@@ -286,6 +284,15 @@ void HyperGraph::IncrementLeft(const Hypothesis *old_hyp,
 			new_hyp->SetTrgLeft(new_left->GetTrgLeft());
 		else
 			new_hyp->SetTrgRight(new_left->GetTrgRight());
+		if (new_hyp->GetTrgLeft() < new_hyp->GetLeft()
+		|| new_hyp->GetTrgRight() < new_hyp->GetLeft()
+		|| new_hyp->GetRight() < new_hyp->GetTrgLeft()
+		|| new_hyp->GetRight() < new_hyp->GetTrgRight()) {
+			new_hyp->PrintParse(cerr);
+			DiscontinuousHypothesis * dhyp =
+					dynamic_cast<DiscontinuousHypothesis*>(new_hyp);
+			THROW_ERROR("Malformed hypothesis in IncrementLeft " << (dhyp? *dhyp : *new_hyp) << endl)
+		}
 		q.push(new_hyp);
 	}
 }
@@ -319,6 +326,15 @@ void HyperGraph::IncrementRight(const Hypothesis *old_hyp,
 			new_hyp->SetTrgRight(new_right->GetTrgRight());
 		else
 			new_hyp->SetTrgLeft(new_right->GetTrgLeft());
+		if (new_hyp->GetTrgLeft() < new_hyp->GetLeft()
+		|| new_hyp->GetTrgRight() < new_hyp->GetLeft()
+		|| new_hyp->GetRight() < new_hyp->GetTrgLeft()
+		|| new_hyp->GetRight() < new_hyp->GetTrgRight()) {
+			new_hyp->PrintParse(cerr);
+			DiscontinuousHypothesis * dhyp =
+					dynamic_cast<DiscontinuousHypothesis*>(new_hyp);
+			THROW_ERROR("Malformed hypothesis in IncrementRight " << (dhyp? *dhyp : *new_hyp) << endl)
+		}
 		q.push(new_hyp);
 	}
 }
@@ -333,19 +349,13 @@ void HyperGraph::LazyNext(HypothesisQueue & q, ReordererModel & model,
 	if (left_span)
 		new_left = LazyKthBest(left_span, hyp->GetLeftRank() + 1,
 				model, non_local_features, sent, pop_count);
-//    if (new_left != NULL && new_left->CanSkip())
-//        delete new_left;
-//    else
-        IncrementLeft(hyp, new_left, model, non_local_features, sent, q, pop_count);
+	IncrementLeft(hyp, new_left, model, non_local_features, sent, q, pop_count);
 
 	TargetSpan *right_span = hyp->GetRightChild();
 	if (right_span)
 		new_right = LazyKthBest(right_span, hyp->GetRightRank() + 1,
 				model, non_local_features, sent, pop_count);
-//    if (new_right != NULL && new_right->CanSkip())
-//        delete new_right;
-//    else
-        IncrementRight(hyp, new_right, model, non_local_features, sent, q, pop_count);
+	IncrementRight(hyp, new_right, model, non_local_features, sent, q, pop_count);
 }
 
 // For cube growing
@@ -357,10 +367,10 @@ Hypothesis * HyperGraph::LazyKthBest(TargetSpan * stack, int k,
 			&& stack->CandSize() > 0) {
 		HypothesisQueue & q = stack->GetCands();
 		Hypothesis * hyp = q.top(); q.pop();
-		LazyNext(q, model, non_local_features, sent, hyp, pop_count);
-		// skip unnecessary hypothesis
 		// Insert the hypothesis if unique
-		if (hyp->CanSkip() || !stack->AddUniqueHypothesis(hyp))
+		bool skip = !stack->AddUniqueHypothesis(hyp);
+		LazyNext(q, model, non_local_features, sent, hyp, pop_count);
+		if (skip)
 			delete hyp;
 		if (pop_limit_ && ++pop_count > pop_limit_)
 			break;
@@ -406,13 +416,11 @@ void HyperGraph::ProcessOneSpan(ReordererModel & model,
         if(right_stack == NULL) THROW_ERROR("Target c="<<c<<", r="<<r);
         Hypothesis * left, *right;
         if (cube_growing_){
-        	// instead LazyKthBest, access to the best one in HypothesisQueue
-        	// this seems to be risky, but LazyKthBest(0) == HypothesisQueue.top()
-        	// this is indeed risky, because GetLeftHyp and GetRightHyp return NULL
-        	// therefore, we need to trigger the best hypothesis for each stack
-        	// after ProcessOneSpan, which takes a long time
-        	left = left_stack->GetCands().top();
-        	right = right_stack->GetCands().top();
+        	boost::mutex::scoped_lock lock(mutex_);
+			int pop_count = 0;
+			left = LazyKthBest(left_stack, 0, model, non_local_features, sent, pop_count);
+			pop_count = 0;
+			right = LazyKthBest(right_stack, 0, model, non_local_features, sent, pop_count);
         }
         else{
         	left = left_stack->GetHypothesis(0);
@@ -451,7 +459,7 @@ void HyperGraph::ProcessOneSpan(ReordererModel & model,
         // Pop a hypothesis from the stack and get its target span
         Hypothesis * hyp = q->top(); q->pop();
         // Insert the hypothesis if unique
-        bool skip = hyp->CanSkip() || !stack->AddUniqueHypothesis(hyp);
+        bool skip = !stack->AddUniqueHypothesis(hyp);
         if (!skip)
         	num_processed++;
         // Skip terminals
@@ -505,6 +513,8 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
     // Iterate through the left side of the span
     for(int L = 1; L <= n_; L++) {
         // Move the span from l to r, building hypotheses from small to large
+    	for(int l = 0; l <= n_-L; l++)
+    		SetStacks(l, l+L-1);
     	// parallelize processing in a row
     	ThreadPool pool(threads_, 1000);
     	for(int l = 0; l <= n_-L; l++){
@@ -515,6 +525,7 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
     	}
     	pool.Stop(true);
     }
+
     // Build the root node
     TargetSpan * top = GetStack(0,n_-1);
     TargetSpan * root_stack = GetStack(0, n_);

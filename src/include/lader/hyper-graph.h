@@ -37,19 +37,8 @@ public:
     				graph_(graph), model_(model), features_(features),
     				non_local_features_(non_local_features), sent_(sent), l_(l), r_(r), beam_size_(beam_size) { }
     	void Run(){
-    		// if -save_features, stack exist
-    		if (!graph_->GetStack(l_, r_))
-    			graph_->SetStack(l_, r_, new TargetSpan(l_, r_));
     		graph_->ProcessOneSpan(model_, features_, non_local_features_,
     		    						sent_, l_, r_, beam_size_);
-    		// for cube growing, trigger the best hypothesis
-    		if (graph_->cube_growing_){
-    			int pop_count = 0;
-    			Hypothesis * best = graph_->LazyKthBest(graph_->GetStack(l_, r_), 0,
-    					model_, non_local_features_, sent_, pop_count);
-    			if (!best)
-    				THROW_ERROR("Fail to produce hypotheses " << *graph_->GetStack(l_, r_) << endl);
-    		}
     	}
     private:
     	HyperGraph * graph_;
@@ -164,6 +153,13 @@ protected:
 			ReordererModel & model, const FeatureSet & non_local_features,
 			const Sentence & sent, HypothesisQueue & q, int & pop_count);
 
+	// For cube pruning/growing with threads > 1, we need to set same-sized stacks
+	// in advance to ProcessOneSpan
+	virtual void SetStacks(int l, int r) {
+		// if -save_features, stack exist
+		if (!GetStack(l, r))
+			SetStack(l, r, new TargetSpan(l, r));
+	}
 	// For cube growing
 	virtual void LazyNext(HypothesisQueue & q, ReordererModel & model,
 			const FeatureSet & non_local_features, const Sentence & sent,
@@ -195,7 +191,6 @@ protected:
 			stacks_.resize(idx+1, NULL);
         if(stacks_[idx])
         	THROW_ERROR("Stack exist [l="<<l<<", r="<<r<<"]"<<std::endl)
-        //            delete stacks_[idx];
         stacks_[idx] = stack;
     }
 
@@ -211,6 +206,7 @@ protected:
     int n_;
     bool cube_growing_, cloned_;
     lm::ngram::Model * bigram_;
+    boost::mutex mutex_;
 };
 
 }

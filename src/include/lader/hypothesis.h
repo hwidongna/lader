@@ -248,6 +248,7 @@ public:
 	}
 
 	virtual void PrintChildren(std::ostream & out) const;
+	void PrintParse(ostream & out) const;
 	void PrintParse(const vector<string> & strs, ostream & out) const;
 	double AccumulateLoss();
 	bool IsTerminal() const {
@@ -256,7 +257,8 @@ public:
 	}
 
 	virtual Hypothesis *Clone() const;
-	virtual bool CanSkip(int max_seq = 0);
+	static bool CanSkip(const HyperEdge * edge,
+			const Hypothesis * left, const Hypothesis * right);
 private:
 	double viterbi_score_;
 	double single_score_;

@@ -85,9 +85,9 @@ void DiscontinuousHyperGraph::AddHypotheses(
 	left_stack = GetStack(left_l, left_m, left_n, left_r);
 	right_stack = GetStack(right_l, right_m, right_n, right_r);
 	if (!left_stack)
-		THROW_ERROR("SetStack first [" << left_l << ", " << left_m << ", " << left_n << ", " << left_r)
+		THROW_ERROR("SetStack first [" << left_l << ", " << left_m << ", " << left_n << ", " << left_r << "]" << endl)
 	if (!right_stack)
-		THROW_ERROR("SetStack first [" << right_l << ", " << right_m << ", " << right_n << ", " << right_r)
+		THROW_ERROR("SetStack first [" << right_l << ", " << right_m << ", " << right_n << ", " << right_r << "]" << endl)
 	int l, m, c, n, r;
 	HyperEdge * edge;
     Hypothesis * left, *right;
@@ -97,6 +97,11 @@ void DiscontinuousHyperGraph::AddHypotheses(
 		left = LazyKthBest(left_stack, 0, model, non_local_features, sent, pop_count);
 		pop_count = 0;
 		right = LazyKthBest(right_stack, 0, model, non_local_features, sent, pop_count);
+		if (!left || !right)
+			return;
+//			THROW_ERROR("Fail to AddHypothesis ["
+//					 << left_l << ", " << left_m << ", " << left_n << ", " << left_r << "] + ["
+//					 << right_l << ", " << right_m << ", " << right_n << ", " << right_r << "]" << endl)
     }
     else{
     	left = left_stack->GetHypothesis(0);
@@ -178,6 +183,11 @@ void DiscontinuousHyperGraph::AddDiscontinuousHypotheses(
     	left = LazyKthBest(left_stack, 0, model, non_local_features, sent, pop_count);
     	pop_count = 0;
     	right = LazyKthBest(right_stack, 0, model, non_local_features, sent, pop_count);
+    	if (!left || !right)
+    		return;
+//			THROW_ERROR("Fail to AddDiscontinuousHypothesis ["
+//					 << left_l << ", " << left_m << ", " << left_n << ", " << left_r << "] + ["
+//					 << right_l << ", " << right_m << ", " << right_n << ", " << right_r << "]" << endl)
     }
     else{
     	left = left_stack->GetHypothesis(0);
@@ -347,6 +357,10 @@ void DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
 					c, -1, -1, r);
 	}
 
+	if (verbose_ > 1){
+		boost::mutex::scoped_lock lock(mutex_);
+		cerr << "Ready for search in ["<<l<<", "<<m<<", "<<n<<", "<<r<<"]: " << q->size() << " hypotheses" << endl;
+	}
     // For cube growing, search is lazy
     if (cube_growing_)
     	return;
@@ -391,13 +405,13 @@ void DiscontinuousHyperGraph::ProcessOneSpan(
 		cerr << "Process ["<<l<<", "<<r<<"]" << endl;
 	}
 	lm::ngram::Model::State out;
-	for (int c = l+1 ; c <= r ; c++){
+	for (int m = l+1 ; m <= r ; m++){
 		if (hasPunct && mp_){ // monotone at punctuation
 			TargetSpan *left_stack, *right_stack;
-			left_stack = HyperGraph::GetStack(l, c-1);
-			right_stack = HyperGraph::GetStack(c, r);
-			if(left_stack == NULL) THROW_ERROR("Target l="<<l<<", c-1="<<c-1);
-			if(right_stack == NULL) THROW_ERROR("Target c="<<c<<", r="<<r);
+			left_stack = HyperGraph::GetStack(l, m-1);
+			right_stack = HyperGraph::GetStack(m, r);
+			if(left_stack == NULL) THROW_ERROR("Target l="<<l<<", c-1="<<m-1);
+			if(right_stack == NULL) THROW_ERROR("Target c="<<m<<", r="<<r);
 	        Hypothesis * left, *right;
 	        if (cube_growing_){
 	        	boost::mutex::scoped_lock lock(mutex_);
@@ -411,7 +425,7 @@ void DiscontinuousHyperGraph::ProcessOneSpan(
 	        	right = right_stack->GetHypothesis(0);
 	        }
 			// Add the straight non-terminal
-			HyperEdge * edge = new HyperEdge(l, c, r, HyperEdge::EDGE_STR);
+			HyperEdge * edge = new HyperEdge(l, m, r, HyperEdge::EDGE_STR);
 			score = GetEdgeScore(model, features, sent, *edge);
 			double 	non_local_score = GetNonLocalScore(model, non_local_features, sent,
 					edge, left, right, &out);
@@ -427,23 +441,27 @@ void DiscontinuousHyperGraph::ProcessOneSpan(
 		// continuous + continuous = continuous
 		//cerr << "continuous + continuous = continuous" << endl;
 		AddHypotheses(model, features, non_local_features, sent, *q,
-				l, -1, -1, c-1,
-				c, -1, -1, r);
-		for (int d = 1 ; d <= D ; d++){
-			// discontinuous + discontinuous = continuous
-			//cerr << "discontinuous + discontinuous = continuous" << endl;
-			for (int n = c+d+1 ; n <= r && n - (c + d) <= D ; n++){
+				l, -1, -1, m-1,
+				m, -1, -1, r);
+		// discontinuous + discontinuous = continuous
+		//cerr << "discontinuous + discontinuous = continuous" << endl;
+		for (int c = m+1; c-m <= D; c++)
+			for(int n = c+1; n-c <= D && n <= r;n++)
 				AddHypotheses(model, features, non_local_features, sent, *q,
-						l, c-1, c+d, n-1,
-						c, c-1+d, n, r);
-			}
-			if ( IsMeaningful(l, c-1, c+d, r+d, D, N) ){
+										l, m-1, c, n-1,
+										m, c-1, n, r);
+		// x + x = discontinuous
+		for (int d = 1 ; d <= D ; d++)
+			if ( IsXXD(l, m-1, m+d, r+d, D, N) )
 				ProcessOneDiscontinuousSpan(
 						model, features, non_local_features, sent,
-						l, c-1, c+d, r+d,
+						l, m-1, m+d, r+d,
 						beam_size);
-			}
-		}
+	}
+
+	if (verbose_ > 1){
+		boost::mutex::scoped_lock lock(mutex_);
+		cerr << "Ready for search in ["<<l<<", "<<r<<"]: " << q->size() << " hypotheses" << endl;
 	}
     // For cube growing, search is lazy
     if (cube_growing_)
@@ -458,8 +476,6 @@ void DiscontinuousHyperGraph::BuildHyperGraph(ReordererModel & model,
         const FeatureSet & features,
         const FeatureSet & non_local_features,
         const Sentence & sent){
-	n_ = sent[0]->GetNumWords();
-	next_.resize(n_ * (n_+1) / 2 + 1, NULL); // resize next hyper-graph in advance
 	if (verbose_ > 1)
 		cerr << "BuildHyperGraph with " << threads_ << " threads for the same-sized stack" << endl;
 	HyperGraph::BuildHyperGraph(model, features, non_local_features, sent);
@@ -509,8 +525,8 @@ bool DiscontinuousHyperGraph::CanSkip(Hypothesis * hyp)
 Hypothesis * DiscontinuousHyperGraph::LazyKthBest(TargetSpan * stack, int k,
 		ReordererModel & model, const FeatureSet & non_local_features,
 		const Sentence & sent, int pop_count) {
-	while (((!beam_size_ && stack->size() < k + 1)
-			|| stack->size() < std::min(k + 1, beam_size_))
+	while (((!beam_size_ && stack->HypSize() < k + 1)
+			|| stack->HypSize() < std::min(k + 1, beam_size_))
 			&& stack->CandSize() > 0) {
 		HypothesisQueue & q = stack->GetCands();
 		Hypothesis * hyp = q.top(); q.pop();
@@ -530,7 +546,7 @@ Hypothesis * DiscontinuousHyperGraph::LazyKthBest(TargetSpan * stack, int k,
 	    bool skip = CanSkip(hyp) || !stack->AddUniqueHypothesis(hyp);
 	    LazyNext(q, model, non_local_features, sent, hyp, pop_count);
 		if (skip){
-			if(verbose_ > 1){
+			if(verbose_ > 2){
 				DiscontinuousHypothesis * dhyp =
 						dynamic_cast<DiscontinuousHypothesis*>(hyp);
 				cerr << "Prune ";
@@ -540,7 +556,7 @@ Hypothesis * DiscontinuousHyperGraph::LazyKthBest(TargetSpan * stack, int k,
 			}
 			delete hyp;
 		}
-		else if(verbose_ > 1){
+		else if(verbose_ > 2){
 			DiscontinuousHypothesis * dhyp =
 					dynamic_cast<DiscontinuousHypothesis*>(hyp);
 			cerr << "Insert " << k << "th hypothesis ";
@@ -669,7 +685,7 @@ void DiscontinuousHyperGraph::AddLoss(LossBase* loss,
             	continue;
             for (int c = l+1 ; c <= r ; c++){
             	for (int d = 1 ; d <= D ; d++){
-            		if ( IsMeaningful(l, c-1, c+d, r+d, D, N) ){
+            		if ( IsXXD(l, c-1, c+d, r+d, D, N) ){
 						if (verbose_ > 1)
 							cerr << "AddLoss ["<<l<<", "<<c-1<<", "<<c+d<<", "<<r+d<<"]" << endl;
 						BOOST_FOREACH(Hypothesis* hyp, GetStack(l,c-1,c+d,r+d)->GetHypotheses()) {

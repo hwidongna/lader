@@ -93,7 +93,7 @@ public:
         ts01->SaveStraightFeautures(1, fv01s);
         ts01->SaveInvertedFeautures(1, fv01b);
         // features are saved in stack
-        my_hg.SaveFeatures(true);
+        my_hg.SetSaveFeatures(true);
 //        my_hg.SetEdgeFeatures(HyperEdge(0,-1,0,HyperEdge::EDGE_FOR), fv00);
 //        my_hg.SetEdgeFeatures(HyperEdge(1,-1,1,HyperEdge::EDGE_FOR), fv11);
 //        my_hg.SetEdgeFeatures(HyperEdge(0,-1,1,HyperEdge::EDGE_FOR), fv01f);
@@ -148,7 +148,7 @@ public:
         // Make the hypergraph and get the features
         HyperGraph hyper_graph;
         // -save_features
-        hyper_graph.SaveFeatures(true);
+        hyper_graph.SetSaveFeatures(true);
         // for Save{Striaght,Inverted}Features
         TargetSpan * span02 = new TargetSpan(0, 2);
         hyper_graph.SetStack(0, 2, span02);
@@ -221,8 +221,8 @@ public:
 		graph.ProcessOneSpan(mod, set, non_local_set, datas, 0, 2, 100);
         // The stack should contain four hypotheses: S(0,21), I(21,0), S(01,2), I(2,01)
         int ret = 1;
-        if(stack02->size() != 4) {
-            cerr << "stack02->size() != 4: " << stack02->size() << endl; ret = 0;
+        if(stack02->HypSize() != 4) {
+            cerr << "stack02->size() != 4: " << stack02->HypSize() << endl; ret = 0;
         }
         if(!ret) return 0;
         Hypothesis *hyp021 = stack02->GetHypothesis(0);
@@ -257,8 +257,8 @@ public:
         stack01->ClearHypotheses();
         graph.ProcessOneSpan(mod, set, non_local_set, datas, 0, 1, 100);
         // The stack should contain two hypotheses: S(0,1), I(1,0)
-        if(stack01->size() != 2) {
-        	cerr << "stack01->size() != 2: " << stack01->size() << endl; ret = 0;
+        if(stack01->HypSize() != 2) {
+        	cerr << "stack01->size() != 2: " << stack01->HypSize() << endl; ret = 0;
         }
 //        Hypothesis *hyp01 = stack01processed->GetHypothesis(0);
         Hypothesis *hyp10 = stack01->GetHypothesis(1);
@@ -298,8 +298,8 @@ public:
         graph.ProcessOneSpan(model, set, non_local_set, datas, 0, 1, 100);
         // The stack should contain four hypotheses: S(0,1), I(1,0), F(01), B(10)
         int ret = 1;
-        if(stack01->size() != 4) {
-            cerr << "stack01->size() != 4: " << stack01->size() << endl; ret = 0;
+        if(stack01->HypSize() != 4) {
+            cerr << "stack01->size() != 4: " << stack01->HypSize() << endl; ret = 0;
         }
         if(!ret) return 0;
         // Check to make sure that the scores are in order
@@ -314,8 +314,8 @@ public:
 		// Check to make sure that pruning works
 		stack01->ClearHypotheses();
 		graph.ProcessOneSpan(model, set, non_local_set, datas, 0, 1, 3);
-		if(stack01->size() != 3) {
-			cerr << "stack01->size() != 3: " << stack01->size() << endl; ret = 0;
+		if(stack01->HypSize() != 3) {
+			cerr << "stack01->size() != 3: " << stack01->HypSize() << endl; ret = 0;
 		}
 
         TargetSpan *stack22 = new TargetSpan(2,2);
@@ -329,8 +329,8 @@ public:
 		graph.SetStack(0, 2, stack02);
 		graph.ProcessOneSpan(model, set, non_local_set, datas, 0, 2, 100);
         // The number of hypothesis should be 3! + 1
-		if(stack02->size() != 3*2 + 1) {
-			cerr << "stack02->size() != 7: " << stack02->size() << endl; ret = 0;
+		if(stack02->HypSize() != 3*2 + 1) {
+			cerr << "stack02->size() != 7: " << stack02->HypSize() << endl; ret = 0;
 			BOOST_FOREACH(const Hypothesis *hyp, stack02->GetHypotheses()){
 				cerr << *hyp;
 				if (!hyp->IsTerminal())
@@ -357,29 +357,29 @@ public:
         if(stacks.size() != 7) {
             cerr << "stacks.size() != 7: " << stacks.size() << endl; ret = 0;
             // The number of hypothesis should be 2! + 1
-        } else if (graph.GetStack(0,1)->size() != 2 + 1) {
-        	cerr << "stacks[0,1]->size() != 3: " <<graph.GetStack(0,1)->size()<< endl;
+        } else if (graph.GetStack(0,1)->HypSize() != 2 + 1) {
+        	cerr << "stacks[0,1]->size() != 3: " <<graph.GetStack(0,1)->HypSize()<< endl;
         	BOOST_FOREACH(const Hypothesis *hyp, graph.GetStack(0,1)->GetHypotheses()){
         		cerr << *hyp <<  endl;
         	}
         	ret = 0;
             // The number of hypothesis should be 2! + 1
-        } else if (graph.GetStack(1,2)->size() != 2 + 1) {
-        	cerr << "stacks[1,2]->size() != 3: " <<graph.GetStack(1,2)->size()<< endl;
+        } else if (graph.GetStack(1,2)->HypSize() != 2 + 1) {
+        	cerr << "stacks[1,2]->size() != 3: " <<graph.GetStack(1,2)->HypSize()<< endl;
         	BOOST_FOREACH(const Hypothesis *hyp, graph.GetStack(1,2)->GetHypotheses()){
         		cerr << *hyp <<  endl;
         	}
         	ret = 0;
         	// The number of hypothesis should be 3! + 1
-        } else if (stacks[3]->size() != 3*2 + 1) {
-        	cerr << "Root node stacks[3]->size() != 7: " <<stacks[3]->size()<< endl;
+        } else if (stacks[3]->HypSize() != 3*2 + 1) {
+        	cerr << "Root node stacks[3]->size() != 7: " <<stacks[3]->HypSize()<< endl;
         	BOOST_FOREACH(const Hypothesis *hyp, stacks[3]->GetHypotheses()){
         		cerr << *hyp <<  endl;
         	}
         	ret = 0;
-        } else if (stacks[6]->size() != stacks[3]->size()) {
-            cerr << "Root hypotheses " << stacks[6]->size()
-                 << " and root spans " << stacks[3]->size() << " don't match." <<
+        } else if (stacks[6]->HypSize() != stacks[3]->HypSize()) {
+            cerr << "Root hypotheses " << stacks[6]->HypSize()
+                 << " and root spans " << stacks[3]->HypSize() << " don't match." <<
                  endl; ret = 0;
         }
         set.SetUseReverse(true);
@@ -398,15 +398,15 @@ public:
         if(stacks.size() != 7) {
             cerr << "stacks.size() != 7: " << stacks.size() << endl; ret = 0;
 		// The number of hypothesis should be 3! + 1
-        } else if (stacks[3]->size() != 3*2 + 1) {
-            cerr << "Root node stacks[3]->size() != 7: " <<stacks[3]->size()<< endl;
+        } else if (stacks[3]->HypSize() != 3*2 + 1) {
+            cerr << "Root node stacks[3]->size() != 7: " <<stacks[3]->HypSize()<< endl;
             BOOST_FOREACH(const Hypothesis *hyp, stacks[3]->GetHypotheses()){
                 cerr << *hyp <<  endl;
             }
             ret = 0;
-        } else if (stacks[6]->size() != stacks[3]->size()) {
-            cerr << "Root hypotheses " << stacks[6]->size()
-                 << " and root spans " << stacks[3]->size() << " don't match." <<
+        } else if (stacks[6]->HypSize() != stacks[3]->HypSize()) {
+            cerr << "Root hypotheses " << stacks[6]->HypSize()
+                 << " and root spans " << stacks[3]->HypSize() << " don't match." <<
                  endl; ret = 0;
         }
         set.SetUseReverse(true);
@@ -422,7 +422,7 @@ public:
     	set.SetMaxTerm(0);
     	set.SetUseReverse(false);
         FeatureDataSequence sent;
-        sent.FromString("t h i s i s a v e r y v e r y v e r y v e r y l o n g s e n t e n c e .");
+        sent.FromString("t h i s i s a v e r y l o n g s e n t e n c e .");
         vector<FeatureDataBase*> datas;
         datas.push_back(&sent);
     	struct timespec tstart={0,0}, tend={0,0};
@@ -453,8 +453,8 @@ public:
     	if(stacks.size() != n*(n+1)/2 + 1) {
     		cerr << "stacks.size() != " << n*(n+1)/2 + 1 << ": " << stacks.size() << endl; ret = 0;
     		// The number of hypothesis should be beam_size
-    	} else if (graph.GetRoot()->size() != beam_size) {
-    		cerr << "root stacks->size() != " << beam_size << ": " <<graph.GetRoot()->size()<< endl;
+    	} else if (graph.GetRoot()->HypSize() != beam_size) {
+    		cerr << "root stacks->size() != " << beam_size << ": " <<graph.GetRoot()->HypSize()<< endl;
     		BOOST_FOREACH(const Hypothesis *hyp, graph.GetRoot()->GetHypotheses()){
     			cerr << *hyp <<  endl;
     		}
@@ -477,15 +477,17 @@ public:
     	set.SetMaxTerm(0);
     	set.SetUseReverse(false);
     	FeatureDataSequence sent;
-    	sent.FromString("t h i s i s a v e r y v e r y v e r y v e r y l o n g s e n t e n c e .");
+    	sent.FromString("t h i s i s a v e r y l o n g s e n t e n c e .");
     	vector<FeatureDataBase*> datas;
     	datas.push_back(&sent);
     	struct timespec tstart={0,0}, tend={0,0};
     	int beam_size = 100;
         graph.SetBeamSize(beam_size);
+    	graph.SetNumWords(sent.GetNumWords());
+    	graph.InitStacks();
     	ReordererModel model;
 
-    	graph.SaveFeatures(true);
+    	graph.SetSaveFeatures(true);
     	clock_gettime(CLOCK_MONOTONIC, &tstart);
     	graph.BuildHyperGraph(model, set, non_local_set, datas);
     	clock_gettime(CLOCK_MONOTONIC, &tend);
@@ -508,8 +510,8 @@ public:
     	if(stacks.size() != n*(n+1)/2 + 1) {
     		cerr << "stacks.size() != " << n*(n+1)/2 + 1 << ": " << stacks.size() << endl; ret = 0;
     		// The number of hypothesis should be beam_size
-    	} else if (graph.GetRoot()->size() != beam_size) {
-    		cerr << "root stacks->size() != " << beam_size << ": " <<graph.GetRoot()->size()<< endl;
+    	} else if (graph.GetRoot()->HypSize() != beam_size) {
+    		cerr << "root stacks->size() != " << beam_size << ": " <<graph.GetRoot()->HypSize()<< endl;
     		BOOST_FOREACH(const Hypothesis *hyp, graph.GetRoot()->GetHypotheses()){
     			cerr << *hyp <<  endl;
     		}
@@ -518,6 +520,59 @@ public:
     	if(after_save > before_save){
     		cerr << "save features, more time? " << after_save << " > " << before_save << endl;
     		ret = 0;
+    	}
+    	set.SetUseReverse(true);
+    	return ret;
+    }
+
+    int TestBuildHyperGraphSerialize() {
+    	FeatureSet set;
+    	FeatureSequence * featw = new FeatureSequence;
+    	featw->ParseConfiguration("SW%LS%RS");
+    	set.AddFeatureGenerator(featw);
+    	set.SetMaxTerm(0);
+    	set.SetUseReverse(false);
+    	FeatureDataSequence sent;
+    	sent.FromString("t h i s i s a v e r y l o n g s e n t e n c e .");
+    	vector<FeatureDataBase*> datas;
+    	datas.push_back(&sent);
+
+    	int beam_size = 100;
+    	HyperGraph graph1(true);
+    	graph1.SetSaveFeatures(true);
+    	graph1.SetBeamSize(beam_size);
+    	graph1.SetNumWords(sent.GetNumWords());
+    	graph1.InitStacks();
+    	ReordererModel model;
+
+    	graph1.BuildHyperGraph(model, set, non_local_set, datas);
+    	ofstream out("/tmp/feature"); // store the features to a file
+    	graph1.FeaturesToStream(out);
+    	out.close();
+
+    	HyperGraph graph2(true);
+    	graph2.SetSaveFeatures(true);
+    	graph2.SetBeamSize(beam_size);
+    	graph2.SetNumWords(sent.GetNumWords());
+    	graph2.InitStacks();
+    	ReordererModel empty_model; // use empty model
+    	empty_model.SetAdd(false); // do not allow adding feature ids anymore
+
+    	ifstream in("/tmp/feature"); // restore the feature from the file
+    	graph2.FeaturesFromStream(in);
+    	in.close();
+
+    	graph2.BuildHyperGraph(empty_model, set, non_local_set, datas);
+    	const std::vector<TargetSpan*> & stacks = graph2.GetStacks();
+    	int ret = 1;
+
+    	int N = sent.GetNumWords();
+    	for(int L = 1; L <= N; L++) {
+    		// Move the span from l to r, building hypotheses from small to large
+    		for(int l = 0; l <= N-L; l++){
+    			int r = l+L-1;
+    			ret = CheckStackEqual(graph1.HyperGraph::GetStack(l, r), graph2.HyperGraph::GetStack(l, r));
+    		}
     	}
     	set.SetUseReverse(true);
     	return ret;
@@ -708,6 +763,7 @@ public:
         done++; cout << "TestBuildHyperGraphCubeGrowing()" << endl; if(TestBuildHyperGraphCubeGrowing()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestBuildHyperGraphMultiThreads()" << endl; if(TestBuildHyperGraphMultiThreads()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestBuildHyperGraphSaveFeatures()" << endl; if(TestBuildHyperGraphSaveFeatures()) succeeded++; else cout << "FAILED!!!" << endl;
+        done++; cout << "TestBuildHyperGraphSerialize()" << endl; if(TestBuildHyperGraphSerialize()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestAccumulateLoss()" << endl; if(TestAccumulateLoss()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestAccumulateFeatures()" << endl; if(TestAccumulateFeatures()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestRescore()" << endl; if(TestRescore()) succeeded++; else cout << "FAILED!!!" << endl;

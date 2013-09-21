@@ -2,6 +2,7 @@
 #include <boost/algorithm/string.hpp>
 #include <lader/discontinuous-hyper-graph.h>
 #include <lader/feature-data-sequence.h>
+#include <boost/filesystem.hpp>
 #include <time.h>
 #include <cstdlib>
 using namespace lader;
@@ -45,14 +46,14 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 	struct timespec build={0,0}, oracle={0,0}, model={0,0}, adjust={0,0};
 	struct timespec tstart={0,0}, tend={0,0};
 	DiscontinuousHyperGraph graph(gapSize, max_seq, cube_growing, full_fledged, mp, verbose);
-	if (config.GetString("bigram").length())
+	if (!config.GetString("bigram").empty())
 		graph.LoadLM(config.GetString("bigram").c_str());
 	graph.SetThreads(threads);
 	graph.SetBeamSize(beam_size);
 	graph.SetPopLimit(pop_limit);
-	if (!config.GetString("model_in").length() && threads > 1)
+	if (config.GetString("model_in").empty() && threads > 1)
 		cerr << "-threads > 1 will be faster with -model_in" << endl;
-	graph.SaveFeatures(config.GetBool("save_features"));
+	graph.SetSaveFeatures(config.GetBool("save_features"));
 	HyperGraph * ptr_graph = &graph;
     // Perform an iteration
     for(int iter = 0; iter < config.GetInt("iterations"); iter++) {
@@ -72,11 +73,34 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
             if(done % (100*10) == 0) cerr << done << endl;
             // If we are saving features for efficiency, recover the saved
             // features and replace them in the hypergraph
-            if(config.GetBool("save_features"))
-            	if (iter == 0)
+            if(config.GetBool("save_features")){
+            	if (iter == 0){
             		ptr_graph = graph.Clone();
-            	else
+            		ptr_graph->SetNumWords(data_[sent][0]->GetNumWords());
+            		ptr_graph->InitStacks();
+            	}
+            	else{
             		ptr_graph = saved_graphs_[sent];
+            		// Load the stored features in the file
+            		if(!config.GetString("features_dir").empty()){
+            			clock_gettime(CLOCK_MONOTONIC, &tstart);
+            			ptr_graph->SetNumWords(data_[sent][0]->GetNumWords());
+            			ptr_graph->InitStacks();
+            			filesystem::path dir (config.GetString("features_dir"));
+            			filesystem::path file (to_string(sent));
+            			filesystem::path full_path = dir / file;
+            			ifstream in(full_path.c_str());
+            			ptr_graph->FeaturesFromStream(in);
+            			in.close();
+            			clock_gettime(CLOCK_MONOTONIC, &tend);
+            			build.tv_sec += tend.tv_sec - tstart.tv_sec;
+            			build.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
+            			if (verbose > 0)
+            				printf("FeaturesFromStream took about %.5f seconds\n",
+            						((double)(tend.tv_sec) + 1.0e-9 * tend.tv_nsec) - ((double)(tstart.tv_sec) + 1.0e-9 * tstart.tv_nsec));
+            		}
+            	}
+            }
             // because features are stored in stack, clear stack if -save_features=false
             else
             	ptr_graph->ClearStacks();
@@ -93,7 +117,7 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 			build.tv_sec += tend.tv_sec - tstart.tv_sec;
 			build.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
 			if (verbose > 0)
-				printf("hyper_graph.BuildHyperGraph took about %.5f seconds\n",
+				printf("BuildHyperGraph took about %.5f seconds\n",
 						((double)(tend.tv_sec) + 1.0e-9 * tend.tv_nsec) - ((double)(tstart.tv_sec) + 1.0e-9 * tstart.tv_nsec));
 			if (!ptr_graph->GetBest()){
 				cerr << "Fail to produce a tree for sentence " << sent << endl;
@@ -190,6 +214,18 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
                 if (saved_graphs_[sent])
                     THROW_ERROR("Graph is already stored")
 				saved_graphs_[sent] = ptr_graph;
+			}
+			if(!config.GetString("features_dir").empty()){
+				if (iter == 0){
+					filesystem::path dir (config.GetString("features_dir"));
+					filesystem::path file (to_string(sent));
+					filesystem::path full_path = dir / file;
+					ofstream out(full_path.c_str());
+					ptr_graph->FeaturesToStream(out);
+					out.close();
+				}
+				// clear stack every iteration
+            	ptr_graph->ClearStacks();
 			}
         }
         cout << "Finished iteration " << iter << " with loss " << iter_model_loss << " (oracle: " << iter_oracle_loss << ")" << endl;

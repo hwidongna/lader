@@ -1,3 +1,4 @@
+
 #                                               -*- Autoconf -*-
 # Process this file with autoconf to produce a configure script.
 
@@ -23,7 +24,7 @@ AC_PROG_CXX
 AC_PROG_CC
 
 AC_LANG_CPLUSPLUS
-LIBS="-lpthread -lrt -lkenlm"
+LIBS="-lpthread -lrt -lkenlm -lboost_filesystem -lboost_system"
 CPPFLAGS="-DKENLM_MAX_ORDER=6"
 LDFLAGS="-L/home/leona/git/kenlm/lib"
 

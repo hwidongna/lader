@@ -16,10 +16,24 @@ using namespace lader;
 
 namespace lader{
 
-// Process [0, m, n, N] is meaningless
-// Process [l, m, n, r] s.t. m-l < D && l > 0 or r-n < D && r < N-1
-inline bool IsMeaningful(int l, int m, int n, int r, int D, int N){
-	return r < N && r-l+1 < N && ((m-l < D && l > 0) || (r-n < D && r < N-1));
+// x + x = discontinuous
+// [0, m, n, N] is meaningless since it cannot be combined
+// [l, m, n, r] s.t. m-l < D && l > 0 or r-n < D && r < N-1
+inline bool IsXXD(int l, int m, int n, int r, int D, int N){
+	// boundary and size check
+	if (r >= N || r-l >= N)
+		return false;
+	return (m-l < D && l > 0) || (r-n < D && r < N-1);
+}
+
+// discontinuous + discontinuous = continuous
+// [l, m, n, r] s.t.
+inline bool IsOnlyDDC(int l, int m, int n, int r, int D, int N){
+	// boundary check
+	if (r >= N)
+		false;
+    return (m-l >= D && r-n >= D) || (n-m > D+1 && n-m <= 2*D) || (l == 0 && r == N-1)
+    		|| (r == N-1 && m-l >= D && r-n < D) || (l == 0 && m-l < D && r-n >= D);
 }
 
 class DiscontinuousHyperGraph : public HyperGraph{
@@ -68,7 +82,8 @@ public:
         cloned->SetThreads(threads_);
         cloned->SetBeamSize(beam_size_);
         cloned->SetPopLimit(pop_limit_);
-        cloned->SaveFeatures(save_features_);
+        cloned->SetSaveFeatures(save_features_);
+        cloned->SetNumWords(n_);
         cloned->MarkCloned();
         cloned->SetLM(bigram_);
         return cloned;
@@ -85,12 +100,12 @@ public:
         int idx = GetTrgSpanID(l, m);
         if (mp_ && next_.size() <= idx)
 			return NULL;
-        HyperGraph *hyper_graph = SafeAccess(next_, idx);
-        if (hyper_graph == NULL)
+        HyperGraph * graph = SafeAccess(next_, idx);
+        if ( graph == NULL)
 			return NULL;
-        if (mp_ && hyper_graph->GetStacks().size() <= GetTrgSpanID(n - m - 2, r - m - 2))
+        if (mp_ &&  graph->GetStacks().size() <= GetTrgSpanID(n - m - 2, r - m - 2))
 			return NULL;
-        return SafeAccess(hyper_graph->GetStacks(), GetTrgSpanID(n - m - 2, r - m - 2));
+        return SafeAccess( graph->GetStacks(), GetTrgSpanID(n - m - 2, r - m - 2));
     }
     TargetSpan *GetStack(int l, int m, int n, int r)
     {
@@ -103,16 +118,60 @@ public:
         int idx = GetTrgSpanID(l, m);
         if (next_.size() <= idx)
 			return NULL;
-        HyperGraph *hyper_graph = SafeAccess(next_, idx);
-        if (hyper_graph == NULL)
+        HyperGraph * graph = SafeAccess(next_, idx);
+        if (graph == NULL)
 			return NULL;
-        if (hyper_graph->GetStacks().size() <= GetTrgSpanID(n - m - 2, r - m - 2))
+        if (graph->GetStacks().size() <= GetTrgSpanID(n - m - 2, r - m - 2))
 			return NULL;
-        return SafeAccess(hyper_graph->GetStacks(), GetTrgSpanID(n - m - 2, r - m - 2));
+        return SafeAccess(graph->GetStacks(), GetTrgSpanID(n - m - 2, r - m - 2));
     }
     void SetVerbose(int verbose)
     {
         verbose_ = verbose;
+    }
+    // IO Functions for stored features
+    virtual void FeaturesToStream(std::ostream & out){
+    	int N = n_;
+    	int D = gap_size_;
+    	for(int L = 1; L <= N; L++)
+    		for(int l = 0; l <= N-L; l++){
+    			int r = l+L-1;
+    			HyperGraph::GetStack(l, r)->FeaturesToStream(out);
+    			for(int m = l + 1;m <= r;m++){
+    				for(int d = 1;d <= 2*D && m+d+1 <= r;d++)
+    					if(save_features_ && IsOnlyDDC(l, m, m+d+1, r, D, N))
+    						GetStack(l, m, m+d+1, r)->FeaturesToStream(out);
+					for(int d = 1;d <= D;d++)
+						if (IsXXD(l, m-1, m+d, r+d, D, N))
+							GetStack(l, m-1, m+d, r+d)->FeaturesToStream(out);
+    			}
+    		}
+    }
+
+    virtual void FeaturesFromStream(std::istream & in)
+    {
+        int N = n_;
+        int D = gap_size_;
+        for(int L = 1;L <= N;L++)
+            for(int l = 0;l <= N - L;l++){
+                int r = l + L - 1;
+                HyperGraph::GetStack(l, r)->FeaturesFromStream(in);
+                for(int m = l + 1;m <= r;m++){
+                	for(int d = 1;d <= 2*D && m+d+1 <= r;d++)
+                		if(save_features_ && IsOnlyDDC(l, m, m+d+1, r, D, N))
+                			GetStack(l, m, m+d+1, r)->FeaturesFromStream(in);
+                	for(int d = 1;d <= D;d++)
+                		if (IsXXD(l, m-1, m+d, r+d, D, N))
+                			GetStack(l, m-1, m+d, r+d)->FeaturesFromStream(in);
+                }
+    		}
+    }
+
+    virtual void ClearStacks() {
+    	HyperGraph::ClearStacks();
+    	BOOST_FOREACH(HyperGraph * graph, next_)
+    		if (graph)
+    			graph->ClearStacks();
     }
 
 protected:
@@ -130,36 +189,44 @@ protected:
 			next_.resize(idx + 1, NULL);
         if (next_[idx] == NULL)
 			next_[idx] = new HyperGraph;
-        HyperGraph *hyper_graph = SafeAccess(next_, idx);
-        idx = GetTrgSpanID(n - m - 2, r - m - 2);
-        std::vector<TargetSpan*> & stacks = hyper_graph->GetStacks();
+        HyperGraph * graph = SafeAccess(next_, idx);
+        idx =  GetTrgSpanID(n - m - 2, r - m - 2);
+        std::vector<TargetSpan*> & stacks =  graph->GetStacks();
         if ((int) stacks.size() <= idx)
 			stacks.resize(idx + 1, NULL);
         if (stacks[idx])
 			THROW_ERROR("Stack exist "
 					<< "[l="<<l<<", m="<<m<<", n="<<n<<", r="<<r<<"]"<<std::endl)
-        ;
         stacks[idx] = stack;
     }
 
-    const virtual FeatureVectorInt *GetEdgeFeatures(ReordererModel & model, const FeatureSet & feature_gen, const Sentence & sent, const HyperEdge & edge);
-    virtual void SetStacks(int l, int r) {
+    const virtual FeatureVectorInt *GetEdgeFeatures(ReordererModel & model,
+			const FeatureSet & feature_gen, const Sentence & sent,
+			const HyperEdge & edge);
+	// For cube pruning/growing with threads > 1, we need to set same-sized stacks
+	// in advance to ProcessOneSpan
+    virtual void SetStacks(int l, int r, bool init = false) {
+    	HyperGraph::SetStacks(l, r, init);
     	int N = n_;
     	int D = gap_size_;
-    	if(!HyperGraph::GetStack(l, r))
-    		HyperGraph::SetStack(l, r, new TargetSpan(l, r));
-
-    	for(int c = l + 1;c <= r;c++)
-    		for(int d = 1;d <= D;d++){
-    			for(int n = c + d + 1;n <= r && n - (c + d) <= D;n++)
-    				if(save_features_ && !GetStack(l, c, n, r))
-    					SetStack(l, c, n, r, new DiscontinuousTargetSpan(l, c, n, r));
-
-
-    			if(IsMeaningful(l, c - 1, c + d, r + d, D, N))
-    				if(!GetStack(l, c - 1, c + d, r + d))
-    					SetStack(l, c - 1, c + d, r + d, new DiscontinuousTargetSpan(l, c - 1, c + d, r + d));
-    		}
+    	for(int m = l + 1;m <= r;m++){
+    		for(int d = 1;d <= 2*D && m+d+1 <= r;d++)
+    			if(save_features_ && IsOnlyDDC(l, m, m+d+1, r, D, N))
+    				// if -save_features, stack exist
+    				if (init || !GetStack(l, m, m+d+1, r) ){
+    					if (verbose_ > 1)
+    						cerr << "SetStack DDC [" << l << ", " << m << ", " << m+d+1 << ", " << r << "]" << endl;
+    					SetStack(l, m, m+d+1, r, new DiscontinuousTargetSpan(l, m, m+d+1, r));
+    				}
+    		for(int d = 1;d <= D;d++)
+    			if (IsXXD(l, m-1, m+d, r+d, D, N))
+    				// if -save_features, stack exist
+    				if(init || !GetStack(l, m-1, m+d, r+d)){
+    					if (verbose_ > 1)
+    						cerr << "SetStack XXD [" << l << ", " << m-1 << ", " << m+d << ", " << r+d << "]" << endl;
+    					SetStack(l, m-1, m+d, r+d, new DiscontinuousTargetSpan(l, m-1, m+d, r+d));
+    				}
+    	}
     }
     virtual void LazyNext(HypothesisQueue & q, ReordererModel & model, const FeatureSet & non_local_features, const Sentence & sent, const Hypothesis *hyp, int & pop_count);
     virtual Hypothesis *LazyKthBest(TargetSpan *stack, int k, ReordererModel & model, const FeatureSet & non_local_features, const Sentence & sent, int pop_count = 0);

@@ -59,7 +59,7 @@ public:
 			save_features_(false), n_(-1), threads_(1), cube_growing_(cube_growing),
 			cloned_(false), bigram_(0), beam_size_(0), pop_limit_(0) { }
 
-    void ClearStacks() {
+    virtual void ClearStacks() {
 		BOOST_FOREACH(TargetSpan * stack, stacks_)
 			delete stack;
 		stacks_.clear();
@@ -77,7 +77,8 @@ public:
     	cloned->SetThreads(threads_);
     	cloned->SetBeamSize(beam_size_);
     	cloned->SetPopLimit(pop_limit_);
-    	cloned->SaveFeatures(save_features_);
+    	cloned->SetSaveFeatures(save_features_);
+    	cloned->SetNumWords(n_);
     	cloned->MarkCloned();
     	cloned->SetLM(bigram_);
     	return cloned;
@@ -118,7 +119,7 @@ public:
 		return SafeAccess(stacks_, stacks_.size() - 1)->GetHypothesis(0);
 	}
     virtual void AddLoss(LossBase *loss, const Ranks *ranks, const FeatureDataParse *parse) const;
-    void SaveFeatures(bool save_features) {
+    void SetSaveFeatures(bool save_features) {
     	save_features_ = save_features;
     }
 	virtual void AccumulateFeatures(std::tr1::unordered_map<int, double> & feat_map,
@@ -140,7 +141,26 @@ public:
 
     void MarkCloned(){ cloned_ = true; }
     void SetLM(lm::ngram::Model * bigram) { bigram_ = bigram; }
+    void SetNumWords(int n){ n_ = n;}
+	// IO Functions for stored features
+	virtual void FeaturesToStream(std::ostream & out){
+		BOOST_FOREACH(TargetSpan * stack, stacks_)
+			stack->FeaturesToStream(out);
+	}
+	virtual void FeaturesFromStream(std::istream & in){
+		BOOST_FOREACH(TargetSpan * stack, stacks_)
+			stack->FeaturesFromStream(in);
+	}
 
+	void InitStacks(){
+		stacks_.resize(n_ * (n_+1) / 2 + 1, NULL); // resize stacks in advance
+		for(int L = 1; L <= n_; L++)
+			for(int l = 0; l <= n_-L; l++)
+				SetStacks(l, l+L-1, true);
+		// Set root stack at the end of the list
+		TargetSpan * root_stack = new TargetSpan(0,n_);
+		stacks_[n_ * (n_+1) / 2] = root_stack;
+	}
 protected:
     void AddTerminals(int l, int r, const FeatureSet & features,
 			ReordererModel & model, const Sentence & sent,
@@ -155,9 +175,9 @@ protected:
 
 	// For cube pruning/growing with threads > 1, we need to set same-sized stacks
 	// in advance to ProcessOneSpan
-	virtual void SetStacks(int l, int r) {
+	virtual void SetStacks(int l, int r, bool init = false) {
 		// if -save_features, stack exist
-		if (!GetStack(l, r))
+		if (init || !GetStack(l, r))
 			SetStack(l, r, new TargetSpan(l, r));
 	}
 	// For cube growing

@@ -5,6 +5,7 @@
 #include <lader/feature-set.h>
 #include <lader/reorderer-model.h>
 #include <lader/target-span.h>
+#include <lader/discontinuous-hypothesis.h>
 #include <lader/util.h>
 #include <tr1/unordered_map>
 #include <boost/algorithm/string.hpp>
@@ -362,8 +363,8 @@ void HyperGraph::LazyNext(HypothesisQueue & q, ReordererModel & model,
 Hypothesis * HyperGraph::LazyKthBest(TargetSpan * stack, int k,
 		ReordererModel & model, const FeatureSet & non_local_features,
 		const Sentence & sent, int & pop_count) {
-	while (((!beam_size_ && stack->size() < k + 1)
-			|| stack->size() < std::min(k + 1, beam_size_))
+	while (((!beam_size_ && stack->HypSize() < k + 1)
+			|| stack->HypSize() < std::min(k + 1, beam_size_))
 			&& stack->CandSize() > 0) {
 		HypothesisQueue & q = stack->GetCands();
 		Hypothesis * hyp = q.top(); q.pop();
@@ -508,13 +509,13 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
         const FeatureSet & features,
         const FeatureSet & non_local_features,
         const Sentence & sent) {
-    n_ = sent[0]->GetNumWords();
-    stacks_.resize(n_ * (n_+1) / 2 + 1, NULL); // resize stacks in advance
+    SetNumWords(sent[0]->GetNumWords());
+    // if -save_features=true, reuse the stacks storing edge features
+    if (!save_features_)
+    	InitStacks();
     // Iterate through the left side of the span
     for(int L = 1; L <= n_; L++) {
         // Move the span from l to r, building hypotheses from small to large
-    	for(int l = 0; l <= n_-L; l++)
-    		SetStacks(l, l+L-1);
     	// parallelize processing in a row
     	ThreadPool pool(threads_, 1000);
     	for(int l = 0; l <= n_-L; l++){
@@ -530,7 +531,7 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
     TargetSpan * top = GetStack(0,n_-1);
     TargetSpan * root_stack = GetStack(0, n_);
     if (!root_stack)
-    	root_stack = new TargetSpan(0,n_);
+    	THROW_ERROR("Either -save_features=false or InitStacks first")
     root_stack->ClearHypotheses();
     for(int i = 0; !beam_size_ || i < beam_size_; i++){
     	Hypothesis * hyp = NULL;
@@ -538,7 +539,7 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
     		int pop_count = 0;
     		hyp = LazyKthBest(top, i, model, non_local_features, sent, pop_count);
     	}
-    	else if (i < (int)(top->size()))
+    	else if (i < (int)(top->HypSize()))
             hyp = (*top)[i];
 
 		if(!hyp)
@@ -556,7 +557,6 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
                 i, -1,
                 top, NULL));
     }
-    stacks_[n_ * (n_+1) / 2] = root_stack;
 }
 
 void HyperGraph::AddLoss(LossBase* loss,

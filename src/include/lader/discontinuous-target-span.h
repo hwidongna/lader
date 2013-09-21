@@ -16,6 +16,21 @@ public:
 
     int GetM() const { return m_; }
     int GetN() const { return n_; }
+
+    // IO Functions for stored features
+    void FeaturesToStream(std::ostream & out){
+    	out << "[" << left_ << ", " << m_ << ", "
+    			<< n_ << ", " << right_ << "]" << endl;
+        WriteFeatures(out);
+    }
+    void FeaturesFromStream(std::istream & in){
+    	std::string line;
+    	std::stringstream header;
+    	header << "[" << left_ << ", " << m_ << ", "
+    	    	<< n_ << ", " << right_ << "]";
+    	GetlineEquals(in, header.str());
+        ReadFeatures(in);
+    }
 private:
 	// list[0] is continuous + continuous = discontinuous
 	// list[1:] are discontinuous + discontinuous = continuous

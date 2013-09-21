@@ -3,7 +3,6 @@
 
 #include <boost/foreach.hpp>
 #include <lader/hypothesis.h>
-#include <lader/discontinuous-hypothesis.h>
 #include <lader/symbol-set.h>
 #include <lader/util.h>
 #include <vector>
@@ -13,6 +12,7 @@
 #include <iostream>
 
 using namespace std;
+
 namespace lader {
 
 class HyperGraph;
@@ -89,7 +89,7 @@ public:
         	return hyps_[i];
     }
     HypothesisQueue & GetCands() { return cands_; }
-    size_t size() const { return hyps_.size(); }
+    size_t HypSize() const { return hyps_.size(); }
     size_t CandSize() const { return cands_.size(); }
     const Hypothesis* operator[] (size_t val) const { return hyps_[val]; }
     Hypothesis* operator[] (size_t val) { return hyps_[val]; }
@@ -124,6 +124,94 @@ public:
 		else
 			return inverted[c];
 	}
+    void WriteFeatures(std::ostream & out)
+    {
+        int n = left_ == right_ ? 1 : right_ - left_ + 2;
+        for (int c = 0 ; c < n ; c++){
+			int i = 0;
+			if (straight[c])
+				BOOST_FOREACH(FeaturePairInt & feat, *(straight[c])){
+					if (i++ != 0) out << " ";
+					out << feat.first << ":" << feat.second;
+				}
+			out << endl;
+		}
+        for (int c = 0 ; c < n ; c++){
+			int i = 0;
+			if (inverted[c])
+				BOOST_FOREACH(FeaturePairInt & feat, *(inverted[c])){
+					if (i++ != 0) out << " ";
+					out << feat.first << ":" << feat.second;
+				}
+			out << endl;
+		}
+    }
+
+	void ReadFeatures(std::istream & in)
+    {
+        int n = left_ == right_ ? 1 : right_ - left_ + 2;
+        for (int c = 0 ; c < n ; c++){
+			std::string line;
+			std::getline(in, line);
+			if (line.empty()){
+				SaveStraightFeautures(c, NULL);
+				continue;
+			}
+			FeatureVectorInt * fvi = new FeatureVectorInt;
+			int id;
+			float value;
+			const char * data = line.c_str();
+			while(sscanf(data, "%d:%f", &id, &value) == 2){
+				fvi->push_back(MakePair(id, value));
+				while(!(*data == ' ' || *data == '\0'))
+					data++;
+				if (*data == ' ')
+					data++;
+				else
+					break;
+			}
+			SaveStraightFeautures(c, fvi);
+		}
+        for (int c = 0 ; c < n ; c++){
+			std::string line;
+			std::getline(in, line);
+			if (line.empty()){
+				SaveInvertedFeautures(c, NULL);
+				continue;
+			}
+			FeatureVectorInt * fvi = new FeatureVectorInt;
+			int id;
+			float value;
+			const char * data = line.c_str();
+			while(sscanf(data, "%d:%f", &id, &value) == 2){
+				fvi->push_back(MakePair(id, value));
+				while(!(*data == ' ' || *data == '\0'))
+					data++;
+				if (*data == ' ')
+					data++;
+				else
+					break;
+			}
+			SaveInvertedFeautures(c, fvi);
+		}
+    }
+
+
+    // IO Functions for stored features
+    virtual void FeaturesToStream(std::ostream & out)
+    {
+        out << "[" << left_ << ", " << right_ << "]" << endl;
+        WriteFeatures(out);
+	}
+
+    virtual void FeaturesFromStream(std::istream & in)
+    {
+        std::string line;
+        std::stringstream header;
+        header << "[" << left_ << ", " << right_ << "]";
+        GetlineEquals(in, header.str());
+        ReadFeatures(in);
+	}
 protected:
     std::vector<Hypothesis*> hyps_;
     // For cube growing
@@ -136,9 +224,9 @@ protected:
     // It is possible to have NULL elements
     std::vector<FeatureVectorInt*> straight;
     std::vector<FeatureVectorInt*> inverted;
+    int left_, right_;
 
 private:
-    int left_, right_;
     int id_;
     std::set<char> has_types_;
 };

@@ -3,6 +3,7 @@
 
 #include "test-base.h"
 #include <climits>
+#include <lader/hypothesis.h>
 #include <lader/hyper-graph.h>
 #include <lader/discontinuous-hyper-edge.h>
 #include <lader/discontinuous-target-span.h>
@@ -15,6 +16,7 @@
 #include <lader/feature-base.h>
 #include <lader/discontinuous-hyper-graph.h>
 #include <lader/discontinuous-hypothesis.h>
+#include "test-hyper-graph.h"
 
 using namespace std;
 
@@ -163,7 +165,7 @@ public:
         my_hg->SetStack(1,1, 3,3, ts1_3);
         my_hg->SetStack(0,1, 3,3, ts03d); // only for saving feature
         my_hg->HyperGraph::SetStack(0,4,tsRoot);
-        my_hg->SaveFeatures(true);
+        my_hg->SetSaveFeatures(true);
 //        BOOST_FOREACH(SpanStack * stack, my_hg->GetStacks())
 //			BOOST_FOREACH(TargetSpan * trg, stack->GetSpans()){
 //        		cerr << "Target span " << *trg << endl;
@@ -217,7 +219,7 @@ public:
         edge02exp.push_back(MakePair(string("SP||PRP||NN||ID"), 1));
         // Make the hypergraph and get the features
         DiscontinuousHyperGraph hyper_graph(1);
-        hyper_graph.SaveFeatures(new EdgeFeatureMap);
+        hyper_graph.SetSaveFeatures(new EdgeFeatureMap);
         // for Save{Striaght,Inverted}Features
         TargetSpan * span0_2 = new DiscontinuousTargetSpan(0,0, 2,2);
         hyper_graph.SetStack(0,0, 2,2, span0_2);
@@ -280,8 +282,8 @@ public:
         // The stack should contain two target spans (2,0) and (0,2),
         // each with one hypothesis
         int ret = 1;
-        if(stack0_2->size() != 2) {
-            cerr << "stack0_2->size() != 2: " << stack0_2->size() << endl; ret = 0;
+        if(stack0_2->HypSize() != 2) {
+            cerr << "stack0_2->size() != 2: " << stack0_2->HypSize() << endl; ret = 0;
         }
         if(!ret) return 0;
         // Check to make sure that the scores are in order
@@ -308,17 +310,17 @@ public:
         if(stacks.size() != 11) {
             cerr << "stacks.size() != 11: " << stacks.size() << endl; ret = 0;
         // The number of target spans should be 4*3*2: including non-ITGs
-        } else if (stack03->size() != 4*3*2) {
-            cerr << "Root node stack03->size() != 4*3*2: " << stack03->size()<< endl;
+        } else if (stack03->HypSize() != 4*3*2) {
+            cerr << "Root node stack03->size() != 4*3*2: " << stack03->HypSize()<< endl;
             BOOST_FOREACH(Hypothesis *hyp, stack03->GetHypotheses()){
             	DiscontinuousHypothesis * dhyp =
             							dynamic_cast<DiscontinuousHypothesis*>(hyp);
             	cerr << (dhyp ? *dhyp : *hyp) << endl;
             }
             ret = 0;
-        } else if (stackRoot->size() != stack03->size()) {
-            cerr << "Root hypotheses " << stackRoot->size()
-                 << " and root spans " << stack03->size() << " don't match." << endl; ret = 0;
+        } else if (stackRoot->HypSize() != stack03->HypSize()) {
+            cerr << "Root hypotheses " << stackRoot->HypSize()
+                 << " and root spans " << stack03->HypSize() << " don't match." << endl; ret = 0;
         }
 
         BOOST_FOREACH(TargetSpan * stack, stacks)
@@ -380,14 +382,14 @@ public:
         if(stacks.size() != 11) {
             cerr << "stacks.size() != 11: " << stacks.size() << endl; ret = 0;
         // The number of target spans should be 4*3*2: including non-ITGs
-        } else if (stack03->size() != 4*3*2) {
-            cerr << "Root node stack03->size() != 4*3*2: " << stack03->size()<< endl;
+        } else if (stack03->HypSize() != 4*3*2) {
+            cerr << "Root node stack03->size() != 4*3*2: " << stack03->HypSize()<< endl;
             BOOST_FOREACH(const Hypothesis *hyp, stack03->GetHypotheses())
             	cerr << " " << hyp->GetTrgLeft() << "-" <<hyp->GetTrgRight() << endl;
             ret = 0;
-        } else if (stackRoot->size() != stack03->size()) {
-            cerr << "Root hypotheses " << stackRoot->size()
-                 << " and root spans " << stack03->size() << " don't match." << endl; ret = 0;
+        } else if (stackRoot->HypSize() != stack03->HypSize()) {
+            cerr << "Root hypotheses " << stackRoot->HypSize()
+                 << " and root spans " << stack03->HypSize() << " don't match." << endl; ret = 0;
         }
 
         for(int i = 0; i < 4*3*2; i++){
@@ -438,7 +440,6 @@ public:
     }
 
     int TestBuildHyperGraphMultiThreads() {
-    	DiscontinuousHyperGraph graph(1, 1, true, true);
     	FeatureSet set;
     	FeatureSequence * featw = new FeatureSequence;
         featw->ParseConfiguration("SW%LS%RS");
@@ -446,15 +447,18 @@ public:
     	set.SetMaxTerm(0);
     	set.SetUseReverse(false);
         FeatureDataSequence sent;
-        sent.FromString("t h i s i s a v e r y v e r y v e r y v e r y l o n g s e n t e n c e .");
+        sent.FromString("t h i s i s a v e r y l o n g s e n t e n c e .");
         vector<FeatureDataBase*> datas;
         datas.push_back(&sent);
     	struct timespec tstart={0,0}, tend={0,0};
-        int beam_size = 100;
-        graph.SetBeamSize(beam_size);
         ReordererModel model;
 
+    	DiscontinuousHyperGraph graph(2, 1, true, true);
+        int beam_size = 100;
+        graph.SetBeamSize(beam_size);
     	graph.SetThreads(1);
+//    	graph.SetVerbose(2);
+
         clock_gettime(CLOCK_MONOTONIC, &tstart);
         graph.BuildHyperGraph(model, set, non_local_set, datas);
 		clock_gettime(CLOCK_MONOTONIC, &tend);
@@ -477,8 +481,8 @@ public:
     	if(stacks.size() != n*(n+1)/2 + 1) {
     		cerr << "stacks.size() != " << n*(n+1)/2 + 1 << ": " << stacks.size() << endl; ret = 0;
     		// The number of hypothesis should be beam_size
-    	} else if (graph.GetRoot()->size() != beam_size) {
-    		cerr << "root stacks->size() != " << beam_size << ": " <<graph.GetRoot()->size()<< endl;
+    	} else if (graph.GetRoot()->HypSize() != beam_size) {
+    		cerr << "root stacks->size() != " << beam_size << ": " <<graph.GetRoot()->HypSize()<< endl;
     		BOOST_FOREACH(const Hypothesis *hyp, graph.GetRoot()->GetHypotheses()){
     			cerr << *hyp <<  endl;
     		}
@@ -537,7 +541,6 @@ public:
     }
 
     int TestBuildHyperGraphSaveFeatures() {
-    	DiscontinuousHyperGraph graph(3, 1, true, true);
     	FeatureSet set;
     	FeatureSequence * featw = new FeatureSequence;
     	featw->ParseConfiguration("SW%LS%RS");
@@ -545,15 +548,19 @@ public:
     	set.SetMaxTerm(0);
     	set.SetUseReverse(false);
     	FeatureDataSequence sent;
-    	sent.FromString("t h i s i s a v e r y v e r y v e r y v e r y l o n g s e n t e n c e .");
+    	sent.FromString("t h i s i s a v e r y l o n g s e n t e n c e .");
     	vector<FeatureDataBase*> datas;
     	datas.push_back(&sent);
     	struct timespec tstart={0,0}, tend={0,0};
+
+    	DiscontinuousHyperGraph graph(3, 1, true, true);
     	int beam_size = 100;
+    	graph.SetSaveFeatures(true);
         graph.SetBeamSize(beam_size);
+        graph.SetNumWords(sent.GetNumWords());
+        graph.InitStacks();
     	ReordererModel model;
 
-    	graph.SaveFeatures(true);
     	clock_gettime(CLOCK_MONOTONIC, &tstart);
     	graph.BuildHyperGraph(model, set, non_local_set, datas);
     	clock_gettime(CLOCK_MONOTONIC, &tend);
@@ -576,8 +583,8 @@ public:
     	if(stacks.size() != n*(n+1)/2 + 1) {
     		cerr << "stacks.size() != " << n*(n+1)/2 + 1 << ": " << stacks.size() << endl; ret = 0;
     		// The number of hypothesis should be beam_size
-    	} else if (graph.GetRoot()->size() != beam_size) {
-    		cerr << "root stacks->size() != " << beam_size << ": " <<graph.GetRoot()->size()<< endl;
+    	} else if (graph.GetRoot()->HypSize() != beam_size) {
+    		cerr << "root stacks->size() != " << beam_size << ": " <<graph.GetRoot()->HypSize()<< endl;
     		BOOST_FOREACH(const Hypothesis *hyp, graph.GetRoot()->GetHypotheses()){
     			cerr << *hyp <<  endl;
     		}
@@ -654,6 +661,73 @@ public:
     	return ret;
     }
 
+    int TestBuildHyperGraphSerialize() {
+    	DiscontinuousHyperGraph graph1(3, 1, true, true);
+    	FeatureSet set;
+    	FeatureSequence * featw = new FeatureSequence;
+    	featw->ParseConfiguration("SW%LS%RS");
+    	set.AddFeatureGenerator(featw);
+    	set.SetMaxTerm(0);
+    	set.SetUseReverse(false);
+    	FeatureDataSequence sent;
+    	sent.FromString("t h i s i s a v e r y l o n g s e n t e n c e .");
+    	vector<FeatureDataBase*> datas;
+    	datas.push_back(&sent);
+    	int beam_size = 100;
+    	graph1.SetBeamSize(beam_size);
+    	ReordererModel model;
+    	graph1.SetSaveFeatures(true);
+    	graph1.SetNumWords(sent.GetNumWords());
+    	graph1.InitStacks();
+    	graph1.SetThreads(4);
+    	graph1.BuildHyperGraph(model, set, non_local_set, datas);
+
+    	ofstream out("/tmp/feature.discontinuous");
+    	graph1.FeaturesToStream(out);
+    	out.close();
+
+    	DiscontinuousHyperGraph graph2(3, 1, true, true);
+    	graph2.SetBeamSize(beam_size);
+    	graph2.SetSaveFeatures(true); // use saved feature
+    	ReordererModel empty_model; // use empty model
+    	empty_model.SetAdd(false); // do not allow adding feature ids anymore
+    	int N = sent.GetNumWords();
+    	graph2.SetNumWords(N);
+    	graph2.InitStacks();
+    	ifstream in("/tmp/feature.discontinuous");
+    	graph2.FeaturesFromStream(in);
+    	in.close();
+    	graph2.SetThreads(4);
+    	graph2.BuildHyperGraph(empty_model, set, non_local_set, datas);
+    	const std::vector<TargetSpan*> & stacks = graph2.GetStacks();
+    	int ret = 1;
+
+    	FeatureVectorInt * fvi1, *fvi2;
+    	int D = graph2.gap_size_;
+    	for(int L = 1; L <= N; L++) {
+    		for(int l = 0; l <= N-L; l++){
+    			int r = l+L-1;
+//    			cout << "Check " << *graph1.HyperGraph::GetStack(l, r) << endl;
+    			ret = CheckStackEqual(graph1.HyperGraph::GetStack(l, r), graph2.HyperGraph::GetStack(l, r));
+    			for(int m = l + 1;m <= r;m++){
+    				for(int d = 1;d <= D;d++){
+//    					for(int n = m + d + 1; n <= r && n - (m + d) <= D; n++){
+////    						cout << "Check " << *(DiscontinuousTargetSpan*)graph1.GetStack(l, m, n, r) << endl;
+//    						ret = CheckStackEqual(graph1.GetStack(l, m, n, r), graph2.GetStack(l, m, n, r));
+//    					}
+    					if(IsXXD(l, m - 1, m + d, r + d, D, N)){
+//    						cout << "Check " << *(DiscontinuousTargetSpan*)graph1.GetStack(l, m - 1, m + d, r + d) << endl;
+    						ret = CheckStackEqual(graph1.GetStack(l, m - 1, m + d, r + d),
+    											graph2.GetStack(l, m - 1, m + d, r + d));
+    					}
+    				}
+    			}
+    		}
+    	}
+    	set.SetUseReverse(true);
+    	return ret;
+    }
+
     int TestBuildHyperGraphGap2() {
     	// use full-fledged version
         DiscontinuousHyperGraph graph(2, 0, true, true);
@@ -675,14 +749,14 @@ public:
         if(stacks.size() != 16) {
             cerr << "stacks.size() != 16: " << stacks.size() << endl; ret = 0;
         // The number of target spans should be 5*4*3*2 =720:
-        } else if (stack04->size() != 5*4*3*2) {
-            cerr << "Root node stack04->size() != 720: " << stack04->size()<< endl;
+        } else if (stack04->HypSize() != 5*4*3*2) {
+            cerr << "Root node stack04->size() != 720: " << stack04->HypSize()<< endl;
             BOOST_FOREACH(const Hypothesis *hyp, stack04->GetHypotheses())
             	cerr << " " << hyp->GetTrgLeft() << "-" <<hyp->GetTrgRight() << endl;
             ret = 0;
-        } else if (stackRoot->size() != stack04->size()) {
-            cerr << "Root hypotheses " << stackRoot->size()
-                 << " and root spans " << stack04->size() << " don't match." << endl; ret = 0;
+        } else if (stackRoot->HypSize() != stack04->HypSize()) {
+            cerr << "Root hypotheses " << stackRoot->HypSize()
+                 << " and root spans " << stack04->HypSize() << " don't match." << endl; ret = 0;
         }
         return ret;
     }
@@ -929,6 +1003,7 @@ public:
         done++; cout << "TestBuildHyperGraphMultiThreads()"; if(TestBuildHyperGraphMultiThreads()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
         done++; cout << "TestBuildHyperGraphSaveFeatures()" << endl; if(TestBuildHyperGraphSaveFeatures()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
         done++; cout << "TestBuildHyperGraphPlusLM()"; if(TestBuildHyperGraphPlusLM()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
+        done++; cout << "TestBuildHyperGraphSerialize()" << endl; if(TestBuildHyperGraphSerialize()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestAddLoss()"; if(TestAddLoss()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
         done++; cout << "TestAccumulateLoss()"; if(TestAccumulateLoss()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
         done++; cout << "TestAccumulateFeatures()"; if(TestAccumulateFeatures()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;

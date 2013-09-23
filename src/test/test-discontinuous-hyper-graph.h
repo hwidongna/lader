@@ -558,7 +558,7 @@ public:
     	graph.SetSaveFeatures(true);
         graph.SetBeamSize(beam_size);
         graph.SetNumWords(sent.GetNumWords());
-        graph.InitStacks();
+        graph.SetAllStacks();
     	ReordererModel model;
 
     	clock_gettime(CLOCK_MONOTONIC, &tstart);
@@ -678,7 +678,7 @@ public:
     	ReordererModel model;
     	graph1.SetSaveFeatures(true);
     	graph1.SetNumWords(sent.GetNumWords());
-    	graph1.InitStacks();
+    	graph1.SetAllStacks();
     	graph1.SetThreads(4);
     	graph1.BuildHyperGraph(model, set, non_local_set, datas);
 
@@ -693,8 +693,76 @@ public:
     	empty_model.SetAdd(false); // do not allow adding feature ids anymore
     	int N = sent.GetNumWords();
     	graph2.SetNumWords(N);
-    	graph2.InitStacks();
+    	graph2.SetAllStacks();
     	ifstream in("/tmp/feature.discontinuous");
+    	graph2.FeaturesFromStream(in);
+    	in.close();
+    	graph2.SetThreads(4);
+    	graph2.BuildHyperGraph(empty_model, set, non_local_set, datas);
+    	const std::vector<TargetSpan*> & stacks = graph2.GetStacks();
+    	int ret = 1;
+
+    	FeatureVectorInt * fvi1, *fvi2;
+    	int D = graph2.gap_size_;
+    	for(int L = 1; L <= N; L++) {
+			for(int l = 0; l <= N-L; l++){
+				int r = l+L-1;
+//    			cout << "Check " << *graph1.HyperGraph::GetStack(l, r) << endl;
+				ret = CheckStackEqual(graph1.HyperGraph::GetStack(l, r), graph2.HyperGraph::GetStack(l, r));
+				for(int m = l + 1;m <= r;m++){
+					for (int c = m+1; c-m <= D; c++)
+						for(int n = c+1; n-c <= D && n <= r;n++){
+//    						cout << "Check " << *(DiscontinuousTargetSpan*)graph1.GetStack(l, m, n, r) << endl;
+							ret = CheckStackEqual(graph1.GetStack(l, m, n, r),
+									graph2.GetStack(l, m, n, r));
+						}
+					for(int d = 1;d <= D;d++){
+						if(IsXXD(l, m - 1, m + d, r + d, D, N)){
+//    						cout << "Check " << *(DiscontinuousTargetSpan*)graph1.GetStack(l, m - 1, m + d, r + d) << endl;
+							ret = CheckStackEqual(graph1.GetStack(l, m - 1, m + d, r + d),
+									graph2.GetStack(l, m - 1, m + d, r + d));
+						}
+					}
+				}
+			}
+		}
+    	set.SetUseReverse(true);
+    	return ret;
+    }
+
+    int TestBuildHyperGraphSaveAllFeatures() {
+    	DiscontinuousHyperGraph graph1(3, 1, true, true);
+    	FeatureSet set;
+    	FeatureSequence * featw = new FeatureSequence;
+    	featw->ParseConfiguration("SW%LS%RS");
+    	set.AddFeatureGenerator(featw);
+    	set.SetMaxTerm(0);
+    	set.SetUseReverse(false);
+    	FeatureDataSequence sent;
+    	sent.FromString("t h i s i s a v e r y l o n g s e n t e n c e .");
+    	vector<FeatureDataBase*> datas;
+    	datas.push_back(&sent);
+    	int beam_size = 100;
+    	graph1.SetBeamSize(beam_size);
+    	ReordererModel model;
+    	graph1.SetSaveFeatures(true);
+    	graph1.SetNumWords(sent.GetNumWords());
+    	graph1.SetAllStacks();
+    	graph1.SaveAllEdgeFeatures(model, set, datas);
+
+    	ofstream out("/tmp/feature.discontinuous.saveall");
+    	graph1.FeaturesToStream(out);
+    	out.close();
+
+    	DiscontinuousHyperGraph graph2(3, 1, true, true);
+    	graph2.SetBeamSize(beam_size);
+    	graph2.SetSaveFeatures(true); // use saved feature
+    	ReordererModel empty_model; // use empty model
+    	empty_model.SetAdd(false); // do not allow adding feature ids anymore
+    	int N = sent.GetNumWords();
+    	graph2.SetNumWords(N);
+    	graph2.SetAllStacks();
+    	ifstream in("/tmp/feature.discontinuous.saveall");
     	graph2.FeaturesFromStream(in);
     	in.close();
     	graph2.SetThreads(4);
@@ -710,15 +778,17 @@ public:
 //    			cout << "Check " << *graph1.HyperGraph::GetStack(l, r) << endl;
     			ret = CheckStackEqual(graph1.HyperGraph::GetStack(l, r), graph2.HyperGraph::GetStack(l, r));
     			for(int m = l + 1;m <= r;m++){
+    				for (int c = m+1; c-m <= D; c++)
+    					for(int n = c+1; n-c <= D && n <= r;n++){
+//    						cout << "Check " << *(DiscontinuousTargetSpan*)graph1.GetStack(l, m, n, r) << endl;
+    						ret = CheckStackEqual(graph1.GetStack(l, m, n, r),
+    								graph2.GetStack(l, m, n, r));
+    					}
     				for(int d = 1;d <= D;d++){
-//    					for(int n = m + d + 1; n <= r && n - (m + d) <= D; n++){
-////    						cout << "Check " << *(DiscontinuousTargetSpan*)graph1.GetStack(l, m, n, r) << endl;
-//    						ret = CheckStackEqual(graph1.GetStack(l, m, n, r), graph2.GetStack(l, m, n, r));
-//    					}
     					if(IsXXD(l, m - 1, m + d, r + d, D, N)){
 //    						cout << "Check " << *(DiscontinuousTargetSpan*)graph1.GetStack(l, m - 1, m + d, r + d) << endl;
     						ret = CheckStackEqual(graph1.GetStack(l, m - 1, m + d, r + d),
-    											graph2.GetStack(l, m - 1, m + d, r + d));
+    								graph2.GetStack(l, m - 1, m + d, r + d));
     					}
     				}
     			}
@@ -727,7 +797,6 @@ public:
     	set.SetUseReverse(true);
     	return ret;
     }
-
     int TestBuildHyperGraphGap2() {
     	// use full-fledged version
         DiscontinuousHyperGraph graph(2, 0, true, true);
@@ -1004,6 +1073,7 @@ public:
         done++; cout << "TestBuildHyperGraphSaveFeatures()" << endl; if(TestBuildHyperGraphSaveFeatures()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
         done++; cout << "TestBuildHyperGraphPlusLM()"; if(TestBuildHyperGraphPlusLM()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
         done++; cout << "TestBuildHyperGraphSerialize()" << endl; if(TestBuildHyperGraphSerialize()) succeeded++; else cout << "FAILED!!!" << endl;
+        done++; cout << "TestBuildHyperGraphSaveAllFeatures()" << endl; if(TestBuildHyperGraphSaveAllFeatures()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestAddLoss()"; if(TestAddLoss()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
         done++; cout << "TestAccumulateLoss()"; if(TestAccumulateLoss()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
         done++; cout << "TestAccumulateFeatures()"; if(TestAccumulateFeatures()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;

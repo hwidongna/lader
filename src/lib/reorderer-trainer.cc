@@ -5,6 +5,7 @@
 #include <boost/filesystem.hpp>
 #include <time.h>
 #include <cstdlib>
+#include <lader/thread-pool.h>
 using namespace lader;
 using namespace boost;
 using namespace std;
@@ -19,6 +20,35 @@ inline filesystem::path GetFeaturePath(const ConfigTrainer & config, int sent)
     fs::path full_path = dir / file;
     return full_path;
 }
+
+
+class SaveFeaturesTask : public Task {
+    public:
+    	SaveFeaturesTask(HyperGraph * graph, ReordererModel & model,
+			const FeatureSet & features, const Sentence & datas, const int sent,
+			const ConfigTrainer & config) :
+    				graph_(graph), model_(model), features_(features),
+    				datas_(datas), sent_(sent), config_(config) { }
+    	void Run(){
+			graph_->SetNumWords(datas_[0]->GetNumWords());
+			graph_->SetAllStacks();
+			// this is a lighter job than BuildHyperGraph
+			graph_->SaveAllEdgeFeatures(model_, features_, datas_);
+			if (!config_.GetString("features_dir").empty()){
+				ofstream out(GetFeaturePath(config_, sent_).c_str());
+				graph_->FeaturesToStream(out);
+				out.close();
+				graph_->ClearStacks();
+			}
+    	}
+    private:
+    	HyperGraph * graph_;
+    	ReordererModel & model_;
+    	const FeatureSet & features_;
+    	const Sentence & datas_;
+    	const int sent_;
+    	const ConfigTrainer & config_;
+};
 
 void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
     InitializeModel(config);
@@ -47,6 +77,7 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 
     // This is useful when you run trainer again with different parameters
     // for the same -source_in and -parse_in
+    // matching -model_in is required because feature files only store the id and values
     if (config.GetBool("reuse_features")){
         fs::directory_iterator it(config.GetString("features_dir"));
         fs::directory_iterator endit;
@@ -76,25 +107,49 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
     cerr << "Total " << sent_order.size() << " sentences, "
     		<< "Sample " << samples << " sentences" << endl;
 
-    // TODO: parallize the feature extraction at sentence level
 	if (config.GetBool("save_features"))
         saved_graphs_.resize((int)sent_order.size(), NULL);
     // Shuffle the whole orders for the first time
 	if(config.GetBool("shuffle"))
 		random_shuffle(sent_order.begin(), sent_order.end());
     cerr << "(\".\" == 100 sentences)" << endl;
-	struct timespec build={0,0}, oracle={0,0}, model={0,0}, adjust={0,0};
+	struct timespec save={0.0}, build={0,0}, oracle={0,0}, model={0,0}, adjust={0,0};
 	struct timespec tstart={0,0}, tend={0,0};
 	DiscontinuousHyperGraph graph(gapSize, max_seq, cube_growing, full_fledged, mp, verbose);
 	if (!config.GetString("bigram").empty())
 		graph.LoadLM(config.GetString("bigram").c_str());
+
 	graph.SetThreads(threads);
 	graph.SetBeamSize(beam_size);
 	graph.SetPopLimit(pop_limit);
-	if (config.GetString("model_in").empty() && threads > 1)
-		cerr << "-threads > 1 will be faster with -model_in" << endl;
+
 	graph.SetSaveFeatures(config.GetBool("save_features"));
 	HyperGraph * ptr_graph = &graph;
+    // parallize the feature generation at sentence level
+	if(config.GetBool("save_features")){
+		int done = 0;
+		ThreadPool pool(threads, 1000);
+		BOOST_FOREACH(int sent, sent_order) {
+			if (done++ >= samples)
+				break;
+            if(done % 100 == 0) cerr << ".";
+            if(done % (100*10) == 0) cerr << done << endl;
+			saved_graphs_[sent] = graph.Clone();
+			// do not generate features if -reuse_features
+        	if (config.GetBool("reuse_features"))
+        		continue;
+			clock_gettime(CLOCK_MONOTONIC, &tstart);
+			Task * task = new SaveFeaturesTask(saved_graphs_[sent], *model_,
+							*features_, data_[sent], sent, config);
+			pool.Submit(task);
+			clock_gettime(CLOCK_MONOTONIC, &tend);
+			save.tv_sec += tend.tv_sec - tstart.tv_sec;
+			save.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
+		}
+		pool.Stop(true);
+        cerr << "save " << ((double)save.tv_sec + 1.0e-9*save.tv_nsec) << "s" << endl;
+	}
+
     // Perform an iteration
     for(int iter = 0; iter < config.GetInt("iterations"); iter++) {
         double iter_model_loss = 0, iter_oracle_loss = 0;
@@ -114,19 +169,12 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
             // If we are saving features for efficiency, recover the saved
             // features and replace them in the hypergraph
             if(config.GetBool("save_features")){
-            	if (iter == 0) // nothing to recover for the first time
-            		ptr_graph = graph.Clone();
-            	else // reuse the saved graph
-            		ptr_graph = saved_graphs_[sent];
-
-            	if (iter == 0 || !config.GetString("features_dir").empty()){
+            	// reuse the saved graph
+				ptr_graph = saved_graphs_[sent];
+				// stack was cleared if the features are stored in a file
+            	if (!config.GetString("features_dir").empty()){
             		ptr_graph->SetNumWords(data_[sent][0]->GetNumWords());
-            		ptr_graph->InitStacks();
-            	}
-            	// Load the saved features in the file
-            	// Reuse the saved features in the file from the first iteration
-            	if((iter != 0 || config.GetBool("reuse_features"))
-            	&& !config.GetString("features_dir").empty()){
+            		ptr_graph->SetAllStacks();
             		clock_gettime(CLOCK_MONOTONIC, &tstart);
             		ifstream in(GetFeaturePath(config, sent).c_str());
             		ptr_graph->FeaturesFromStream(in);
@@ -247,23 +295,9 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 			clock_gettime(CLOCK_MONOTONIC, &tend);
 			adjust.tv_sec += tend.tv_sec - tstart.tv_sec;
 			adjust.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
-			// If we are saving features
-			if(config.GetBool("save_features") && iter == 0){
-                if (saved_graphs_[sent])
-                    THROW_ERROR("Graph is already stored for sentence " << sent)
-				saved_graphs_[sent] = ptr_graph;
-			}
 			// because features are stored in stack, clear stack if not saved in memory
-			if(!config.GetBool("save_features") || !config.GetString("features_dir").empty()){
-				// if -reuse_features, do not rewrite the features
-				if (iter == 0 && !config.GetBool("reuse_features")){
-					ofstream out(GetFeaturePath(config, sent).c_str());
-					ptr_graph->FeaturesToStream(out);
-					out.close();
-				}
-				// clear stack every iteration
+			if(!config.GetBool("save_features") || !config.GetString("features_dir").empty())
             	ptr_graph->ClearStacks();
-			}
         }
         cerr << "Finished iteration " << iter << endl;
         cout << "Finished iteration " << iter << " with loss " << iter_model_loss << " (oracle: " << iter_oracle_loss << ")" << endl;

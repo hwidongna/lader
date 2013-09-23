@@ -152,7 +152,7 @@ public:
 			stack->FeaturesFromStream(in);
 	}
 
-	void InitStacks(){
+	void SetAllStacks(){
 		stacks_.resize(n_ * (n_+1) / 2 + 1, NULL); // resize stacks in advance
 		for(int L = 1; L <= n_; L++)
 			for(int l = 0; l <= n_-L; l++)
@@ -160,6 +160,13 @@ public:
 		// Set root stack at the end of the list
 		TargetSpan * root_stack = new TargetSpan(0,n_);
 		stacks_[n_ * (n_+1) / 2] = root_stack;
+	}
+
+	void SaveAllEdgeFeatures(ReordererModel & model, const FeatureSet & features,
+			const Sentence & sent) {
+		for(int L = 1; L <= n_; L++)
+			for(int l = 0; l <= n_-L; l++)
+				SaveEdgeFeatures(l, l+L-1, model, features, sent);
 	}
 protected:
     void AddTerminals(int l, int r, const FeatureSet & features,
@@ -173,6 +180,15 @@ protected:
 			ReordererModel & model, const FeatureSet & non_local_features,
 			const Sentence & sent, HypothesisQueue & q, int & pop_count);
 
+	virtual void SaveEdgeFeatures(int l, int r, ReordererModel & model,
+			const FeatureSet & features, const Sentence & sent) {
+		for(int c = l+1; c <= r; c++) {
+			GetEdgeFeatures(model, features, sent,
+					HyperEdge(l, c, r, HyperEdge::EDGE_STR));
+			GetEdgeFeatures(model, features, sent,
+					HyperEdge(l, c, r, HyperEdge::EDGE_INV));
+		}
+	}
 	// For cube pruning/growing with threads > 1, we need to set same-sized stacks
 	// in advance to ProcessOneSpan
 	virtual void SetStacks(int l, int r, bool init = false) {

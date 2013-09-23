@@ -65,7 +65,7 @@ public:
 private:
     std::vector<Ranks> ranks_; // The alignments to use in training
     std::vector<FeatureDataParse> parses_; // The parses to use in training
-    std::vector<std::vector<FeatureDataBase*> > data_; // The data
+    std::vector<Sentence> data_; // The data
     ReordererModel * model_; // The model
     FeatureSet * features_;  // The mapping on feature ids and which to use
     FeatureSet * non_local_features_;  // The mapping on feature ids and which to use

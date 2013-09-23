@@ -203,6 +203,51 @@ protected:
     const virtual FeatureVectorInt *GetEdgeFeatures(ReordererModel & model,
 			const FeatureSet & feature_gen, const Sentence & sent,
 			const HyperEdge & edge);
+
+	virtual void SaveEdgeFeatures(int l, int r, ReordererModel & model,
+			const FeatureSet & features, const Sentence & sent) {
+		HyperGraph::SaveEdgeFeatures(l, r, model, features, sent);
+		int N = n_;
+		int D = gap_size_;
+		for(int m = l + 1;m <= r;m++){
+			// continuous + continuous = continuous
+			GetEdgeFeatures(model, features, sent,
+					HyperEdge(l, m, r, HyperEdge::EDGE_STR));
+			GetEdgeFeatures(model, features, sent,
+					HyperEdge(l, m, r, HyperEdge::EDGE_INV));
+			// discontinuous + discontinuous = continuous
+			for (int c = m+1; c-m <= D; c++){
+				for(int n = c+1; n-c <= D && n <= r;n++){
+					GetEdgeFeatures(model, features, sent,
+							DiscontinuousHyperEdge(l, m, c, n, r, HyperEdge::EDGE_STR));
+					GetEdgeFeatures(model, features, sent,
+							DiscontinuousHyperEdge(l, m, c, n, r, HyperEdge::EDGE_INV));
+				}
+				// x + x = discontinuous
+				for (int d = 1 ; d <= D ; d++)
+					if ( IsXXD(l, m-1, m+d, r+d, D, N) ){
+						GetEdgeFeatures(model, features, sent,
+								DiscontinuousHyperEdge(l, m-1, -1, m+d, r+d, HyperEdge::EDGE_STR));
+						GetEdgeFeatures(model, features, sent,
+								DiscontinuousHyperEdge(l, m-1, -1, m+d, r+d, HyperEdge::EDGE_INV));
+						if (full_fledged_){
+							for (int c = l+1 ; c <= m ; c++){
+								GetEdgeFeatures(model, features, sent,
+										DiscontinuousHyperEdge(l, m-1, c, m+d, r+d, HyperEdge::EDGE_STR));
+								GetEdgeFeatures(model, features, sent,
+										DiscontinuousHyperEdge(l, m-1, c, m+d, r+d, HyperEdge::EDGE_INV));
+							}
+							for (int c = m+d+1 ; c <= r ; c++){
+								GetEdgeFeatures(model, features, sent,
+										DiscontinuousHyperEdge(l, m-1, c, m+d, r+d, HyperEdge::EDGE_STR));
+								GetEdgeFeatures(model, features, sent,
+										DiscontinuousHyperEdge(l, m-1, c, m+d, r+d, HyperEdge::EDGE_INV));
+							}
+						}
+					}
+			}
+		}
+	}
 	// For cube pruning/growing with threads > 1, we need to set same-sized stacks
 	// in advance to ProcessOneSpan
     virtual void SetStacks(int l, int r, bool init = false) {

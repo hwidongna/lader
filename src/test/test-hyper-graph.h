@@ -484,7 +484,7 @@ public:
     	int beam_size = 100;
         graph.SetBeamSize(beam_size);
     	graph.SetNumWords(sent.GetNumWords());
-    	graph.InitStacks();
+    	graph.SetAllStacks();
     	ReordererModel model;
 
     	graph.SetSaveFeatures(true);
@@ -542,7 +542,7 @@ public:
     	graph1.SetSaveFeatures(true);
     	graph1.SetBeamSize(beam_size);
     	graph1.SetNumWords(sent.GetNumWords());
-    	graph1.InitStacks();
+    	graph1.SetAllStacks();
     	ReordererModel model;
 
     	graph1.BuildHyperGraph(model, set, non_local_set, datas);
@@ -554,11 +554,64 @@ public:
     	graph2.SetSaveFeatures(true);
     	graph2.SetBeamSize(beam_size);
     	graph2.SetNumWords(sent.GetNumWords());
-    	graph2.InitStacks();
+    	graph2.SetAllStacks();
     	ReordererModel empty_model; // use empty model
     	empty_model.SetAdd(false); // do not allow adding feature ids anymore
 
     	ifstream in("/tmp/feature"); // restore the feature from the file
+    	graph2.FeaturesFromStream(in);
+    	in.close();
+
+    	graph2.BuildHyperGraph(empty_model, set, non_local_set, datas);
+    	const std::vector<TargetSpan*> & stacks = graph2.GetStacks();
+    	int ret = 1;
+
+    	int N = sent.GetNumWords();
+    	for(int L = 1; L <= N; L++) {
+    		// Move the span from l to r, building hypotheses from small to large
+    		for(int l = 0; l <= N-L; l++){
+    			int r = l+L-1;
+    			ret = CheckStackEqual(graph1.HyperGraph::GetStack(l, r), graph2.HyperGraph::GetStack(l, r));
+    		}
+    	}
+    	set.SetUseReverse(true);
+    	return ret;
+    }
+
+    int TestBuildHyperGraphSaveAllFeatures() {
+    	FeatureSet set;
+    	FeatureSequence * featw = new FeatureSequence;
+    	featw->ParseConfiguration("SW%LS%RS");
+    	set.AddFeatureGenerator(featw);
+    	set.SetMaxTerm(0);
+    	set.SetUseReverse(false);
+    	FeatureDataSequence sent;
+    	sent.FromString("t h i s i s a v e r y l o n g s e n t e n c e .");
+    	vector<FeatureDataBase*> datas;
+    	datas.push_back(&sent);
+
+    	int beam_size = 100;
+    	HyperGraph graph1(true);
+    	graph1.SetSaveFeatures(true);
+    	graph1.SetBeamSize(beam_size);
+    	graph1.SetNumWords(sent.GetNumWords());
+    	graph1.SetAllStacks();
+
+    	ReordererModel model;
+    	graph1.SaveAllEdgeFeatures(model, set, datas);
+    	ofstream out("/tmp/feature.saveall"); // store the features to a file
+    	graph1.FeaturesToStream(out);
+    	out.close();
+
+    	HyperGraph graph2(true);
+    	graph2.SetSaveFeatures(true);
+    	graph2.SetBeamSize(beam_size);
+    	graph2.SetNumWords(sent.GetNumWords());
+    	graph2.SetAllStacks();
+    	ReordererModel empty_model; // use empty model
+    	empty_model.SetAdd(false); // do not allow adding feature ids anymore
+
+    	ifstream in("/tmp/feature.saveall"); // restore the feature from the file
     	graph2.FeaturesFromStream(in);
     	in.close();
 
@@ -764,6 +817,7 @@ public:
         done++; cout << "TestBuildHyperGraphMultiThreads()" << endl; if(TestBuildHyperGraphMultiThreads()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestBuildHyperGraphSaveFeatures()" << endl; if(TestBuildHyperGraphSaveFeatures()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestBuildHyperGraphSerialize()" << endl; if(TestBuildHyperGraphSerialize()) succeeded++; else cout << "FAILED!!!" << endl;
+        done++; cout << "TestBuildHyperGraphSaveAllFeatures()" << endl; if(TestBuildHyperGraphSaveAllFeatures()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestAccumulateLoss()" << endl; if(TestAccumulateLoss()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestAccumulateFeatures()" << endl; if(TestAccumulateFeatures()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestRescore()" << endl; if(TestRescore()) succeeded++; else cout << "FAILED!!!" << endl;

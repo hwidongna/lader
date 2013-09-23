@@ -20,9 +20,8 @@ using namespace boost;
 using namespace lm::ngram;
 
 // Return the edge feature vector
-// this is called only once from HyperGraph::GetEdgeScore
-// therefore, we don't need to insert and find features in stack
-// unless we use -save_features option
+// if -save_features, edge features are stored in a stack.
+// thus, this is thread safe without lock.
 const FeatureVectorInt * HyperGraph::GetEdgeFeatures(
                                 ReordererModel & model,
                                 const FeatureSet & feature_gen,
@@ -53,7 +52,6 @@ const FeatureVectorInt * HyperGraph::GetEdgeFeatures(
     		THROW_ERROR("Invalid hyper edge for GetEdgeFeatures: " << edge);
     	}
     } else {
-    	// no insert, make -threads faster without -save_features
     	ret = feature_gen.MakeEdgeFeatures(sent, edge, model.GetFeatureIds(), model.GetAdd());
     }
     return ret;
@@ -512,7 +510,7 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
     SetNumWords(sent[0]->GetNumWords());
     // if -save_features=true, reuse the stacks storing edge features
     if (!save_features_)
-    	InitStacks();
+    	SetAllStacks();
     // Iterate through the left side of the span
     for(int L = 1; L <= n_; L++) {
         // Move the span from l to r, building hypotheses from small to large

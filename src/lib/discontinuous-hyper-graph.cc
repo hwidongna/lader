@@ -21,9 +21,8 @@ using namespace std;
 using namespace boost;
 
 // Return the edge feature vector
-// this is called only once from HyperGraph::GetEdgeScore
-// therefore, we don't need to insert and find features in stack
-// unless we use -save_features option
+// if -save_features, edge features are stored in a stack.
+// thus, this is thread safe without lock.
 const FeatureVectorInt * DiscontinuousHyperGraph::GetEdgeFeatures(
                                 ReordererModel & model,
                                 const FeatureSet & feature_gen,
@@ -66,7 +65,6 @@ const FeatureVectorInt * DiscontinuousHyperGraph::GetEdgeFeatures(
     		THROW_ERROR("Invalid hyper edge for GetEdgeFeatures: " << edge);
     	}
     } else {
-    	// no insert, make -threads faster without -save_features
     	ret = feature_gen.MakeEdgeFeatures(sent, edge, model.GetFeatureIds(), model.GetAdd());
     }
     return ret;

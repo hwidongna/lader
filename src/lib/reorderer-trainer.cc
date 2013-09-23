@@ -9,6 +9,15 @@ using namespace lader;
 using namespace boost;
 using namespace std;
 
+inline filesystem::path GetFeaturePath(const ConfigTrainer & config, int sent)
+{
+    filesystem::path dir(config.GetString("features_dir"));
+    filesystem::path prefix(config.GetString("source_in"));
+    filesystem::path file(prefix.filename().string() + "." + to_string(sent));
+    filesystem::path full_path = dir / file;
+    return full_path;
+}
+
 void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
     InitializeModel(config);
     ReadData(config.GetString("source_in"));
@@ -31,6 +40,8 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
     double model_score = 0, model_loss = 0, oracle_score = 0, oracle_loss = 0;
     FeatureVectorInt model_features, oracle_features;
     std::tr1::unordered_map<int,double> feat_map;
+
+    // TODO: Load the sentence order stored
     vector<int> sent_order(data_.size());
     for(int i = 0 ; i < (int)(sent_order.size());i++)
         sent_order[i] = i;
@@ -74,30 +85,28 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
             // If we are saving features for efficiency, recover the saved
             // features and replace them in the hypergraph
             if(config.GetBool("save_features")){
-            	if (iter == 0){
+            	if (iter == 0){ // nothing to recover for the first time
             		ptr_graph = graph.Clone();
             		ptr_graph->SetNumWords(data_[sent][0]->GetNumWords());
             		ptr_graph->InitStacks();
             	}
-            	else{
+            	else{ // reuse the saved features
             		ptr_graph = saved_graphs_[sent];
             		// Load the stored features in the file
             		if(!config.GetString("features_dir").empty()){
             			clock_gettime(CLOCK_MONOTONIC, &tstart);
             			ptr_graph->SetNumWords(data_[sent][0]->GetNumWords());
             			ptr_graph->InitStacks();
-            			filesystem::path dir (config.GetString("features_dir"));
-            			filesystem::path file (to_string(sent));
-            			filesystem::path full_path = dir / file;
-            			ifstream in(full_path.c_str());
+            			ifstream in(GetFeaturePath(config, sent).c_str());
             			ptr_graph->FeaturesFromStream(in);
             			in.close();
             			clock_gettime(CLOCK_MONOTONIC, &tend);
             			build.tv_sec += tend.tv_sec - tstart.tv_sec;
             			build.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
-            			if (verbose > 0)
+            			if(verbose > 0)
             				printf("FeaturesFromStream took about %.5f seconds\n",
-            						((double)(tend.tv_sec) + 1.0e-9 * tend.tv_nsec) - ((double)(tstart.tv_sec) + 1.0e-9 * tstart.tv_nsec));
+									((double) ((tend.tv_sec))+ 1.0e-9 * tend.tv_nsec)
+									- ((double) ((tstart.tv_sec)) + 1.0e-9 * tstart.tv_nsec));
             		}
             	}
             }
@@ -107,6 +116,7 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 
             clock_gettime(CLOCK_MONOTONIC, &tstart);
             // TODO: a loss-augmented parsing would result a different forest
+            // (but it is impossible in decoding time)
             // We want to find a derivation that minimize loss and maximize model score
             // Make the hypergraph using cube pruning/growing
 			ptr_graph->BuildHyperGraph(*model_,
@@ -117,8 +127,9 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 			build.tv_sec += tend.tv_sec - tstart.tv_sec;
 			build.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
 			if (verbose > 0)
-				printf("BuildHyperGraph took about %.5f seconds\n",
-						((double)(tend.tv_sec) + 1.0e-9 * tend.tv_nsec) - ((double)(tstart.tv_sec) + 1.0e-9 * tstart.tv_nsec));
+				printf(	"BuildHyperGraph took about %.5f seconds\n",
+						((double) (tend.tv_sec) + 1.0e-9 * tend.tv_nsec)
+						- ((double) (tstart.tv_sec)+ 1.0e-9 * tstart.tv_nsec));
 			if (!ptr_graph->GetBest()){
 				cerr << "Fail to produce a tree for sentence " << sent << endl;
 				continue;
@@ -217,10 +228,7 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 			}
 			if(!config.GetString("features_dir").empty()){
 				if (iter == 0){
-					filesystem::path dir (config.GetString("features_dir"));
-					filesystem::path file (to_string(sent));
-					filesystem::path full_path = dir / file;
-					ofstream out(full_path.c_str());
+					ofstream out(GetFeaturePath(config, sent).c_str());
 					ptr_graph->FeaturesToStream(out);
 					out.close();
 				}
@@ -228,6 +236,7 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
             	ptr_graph->ClearStacks();
 			}
         }
+        cerr << "Finished iteration " << iter << endl;
         cout << "Finished iteration " << iter << " with loss " << iter_model_loss << " (oracle: " << iter_oracle_loss << ")" << endl;
         cout << "Running time on average: "
         		<< "build " << ((double)build.tv_sec + 1.0e-9*build.tv_nsec) / (iter+1) << "s"

@@ -166,5 +166,6 @@ bool Hypothesis::CanSkip(const HyperEdge * edge,
 	// discontinuous + discotinuous = continuous
 	return dleft && dright
 			&& (edge->GetType() == dleft->GetEdgeType()
-			|| edge->GetType() == dright->GetEdgeType());
+			|| edge->GetType() == dright->GetEdgeType()
+			|| dleft->GetEdgeType() != dright->GetEdgeType());
 }

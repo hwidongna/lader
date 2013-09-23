@@ -416,17 +416,8 @@ void HyperGraph::ProcessOneSpan(ReordererModel & model,
         if(left_stack == NULL) THROW_ERROR("Target l="<<l<<", c-1="<<c-1);
         if(right_stack == NULL) THROW_ERROR("Target c="<<c<<", r="<<r);
         Hypothesis * left, *right;
-        if (cube_growing_){
-        	boost::mutex::scoped_lock lock(mutex_);
-			int pop_count = 0;
-			left = LazyKthBest(left_stack, 0, model, non_local_features, sent, pop_count);
-			pop_count = 0;
-			right = LazyKthBest(right_stack, 0, model, non_local_features, sent, pop_count);
-        }
-        else{
-        	left = left_stack->GetHypothesis(0);
-        	right = right_stack->GetHypothesis(0);
-        }
+       	left = left_stack->GetHypothesis(0);
+       	right = right_stack->GetHypothesis(0);
         // Add the straight terminal
         HyperEdge * edge = new HyperEdge(l, c, r, HyperEdge::EDGE_STR);
         score = GetEdgeScore(model, features, sent, *edge);
@@ -504,6 +495,15 @@ double HyperGraph::GetRootBigram(const Sentence & sent, const Hypothesis *hyp, l
     return non_local_score;
 }
 
+// for cube growing, trigger the best hypothesis
+void HyperGraph::TriggerTheBestHypotheses(int l, int r, ReordererModel & model,
+		const FeatureSet & non_local_features, const Sentence & sent) {
+	int pop_count = 0;
+	Hypothesis * best = LazyKthBest(GetStack(l, r), 0, model,
+			non_local_features, sent, pop_count);
+	if (!best)
+		THROW_ERROR("Fail to produce hypotheses " << *GetStack(l, r) << endl);
+}
 // Build a hypergraph using beam search and cube pruning
 void HyperGraph::BuildHyperGraph(ReordererModel & model,
         const FeatureSet & features,
@@ -525,6 +525,10 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
     		pool.Submit(task);
     	}
     	pool.Stop(true);
+    	// for cube growing, trigger the best hypothesis
+    	if (cube_growing_)
+    		for(int l = 0; l <= n_-L; l++)
+    			TriggerTheBestHypotheses(l, l+L-1, model, non_local_features, sent);
     }
 
     // Build the root node

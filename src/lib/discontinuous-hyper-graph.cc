@@ -91,22 +91,8 @@ void DiscontinuousHyperGraph::AddHypotheses(
 	int l, m, c, n, r;
 	HyperEdge * edge;
     Hypothesis * left, *right;
-    if (cube_growing_){
-    	boost::mutex::scoped_lock lock(mutex_);
-    	int pop_count = 0;
-		left = LazyKthBest(left_stack, 0, model, non_local_features, sent, pop_count);
-		pop_count = 0;
-		right = LazyKthBest(right_stack, 0, model, non_local_features, sent, pop_count);
-		if (!left || !right)
-			return;
-//			THROW_ERROR("Fail to AddHypothesis ["
-//					 << left_l << ", " << left_m << ", " << left_n << ", " << left_r << "] + ["
-//					 << right_l << ", " << right_m << ", " << right_n << ", " << right_r << "]" << endl)
-    }
-    else{
-    	left = left_stack->GetHypothesis(0);
-    	right = right_stack->GetHypothesis(0);
-    }
+   	left = left_stack->GetHypothesis(0);
+   	right = right_stack->GetHypothesis(0);
 	// continuous + continuous = continuous
 	if (left_m < 0 && left_n < 0 && right_m < 0 && right_n < 0 && left_r+1 == right_l){
 		l = left_l;
@@ -177,22 +163,8 @@ void DiscontinuousHyperGraph::AddDiscontinuousHypotheses(
 	int l, m, n, r, c;
 	HyperEdge * edge;
     Hypothesis * left, *right;
-    if (cube_growing_){
-    	boost::mutex::scoped_lock lock(mutex_);
-    	int pop_count = 0;
-    	left = LazyKthBest(left_stack, 0, model, non_local_features, sent, pop_count);
-    	pop_count = 0;
-    	right = LazyKthBest(right_stack, 0, model, non_local_features, sent, pop_count);
-    	if (!left || !right)
-    		return;
-//			THROW_ERROR("Fail to AddDiscontinuousHypothesis ["
-//					 << left_l << ", " << left_m << ", " << left_n << ", " << left_r << "] + ["
-//					 << right_l << ", " << right_m << ", " << right_n << ", " << right_r << "]" << endl)
-    }
-    else{
-    	left = left_stack->GetHypothesis(0);
-    	right = right_stack->GetHypothesis(0);
-    }
+   	left = left_stack->GetHypothesis(0);
+   	right = right_stack->GetHypothesis(0);
 	// continuous + continuous = discontinuous
     if (left_m < 0 && left_m < 0 && right_m < 0 && right_n < 0){
         l = left_l; m = left_r; n = right_l; r = right_r; c = -1;
@@ -413,17 +385,8 @@ void DiscontinuousHyperGraph::ProcessOneSpan(
 			if(left_stack == NULL) THROW_ERROR("Target l="<<l<<", c-1="<<m-1);
 			if(right_stack == NULL) THROW_ERROR("Target c="<<m<<", r="<<r);
 	        Hypothesis * left, *right;
-	        if (cube_growing_){
-	        	boost::mutex::scoped_lock lock(mutex_);
-	        	int pop_count = 0;
-				left = LazyKthBest(left_stack, 0, model, non_local_features, sent, pop_count);
-				pop_count = 0;
-				right = LazyKthBest(right_stack, 0, model, non_local_features, sent, pop_count);
-	        }
-	        else{
-	        	left = left_stack->GetHypothesis(0);
-	        	right = right_stack->GetHypothesis(0);
-	        }
+        	left = left_stack->GetHypothesis(0);
+        	right = right_stack->GetHypothesis(0);
 			// Add the straight non-terminal
 			HyperEdge * edge = new HyperEdge(l, m, r, HyperEdge::EDGE_STR);
 			score = GetEdgeScore(model, features, sent, *edge);
@@ -471,44 +434,49 @@ void DiscontinuousHyperGraph::ProcessOneSpan(
     delete q;
 }
 
+// for cube growing, trigger the best hypothesis
+void DiscontinuousHyperGraph::TriggerTheBestHypotheses(int l, int r,
+		ReordererModel & model, const FeatureSet & non_local_features,
+		const Sentence & sent) {
+	int N = sent[0]->GetNumWords();
+	int D = gap_size_;
+	if (verbose_ > 1)
+		cerr << "Trigger the best hypothesis " << *HyperGraph::GetStack(l, r) << endl;
+	int pop_count = 0;
+	Hypothesis * best = LazyKthBest(HyperGraph::GetStack(l, r), 0,
+			model, non_local_features, sent, pop_count);
+	if (!best)
+		THROW_ERROR("Fail to produce hypotheses " << *HyperGraph::GetStack(l, r) << endl)
+	for (int c = l+1 ; c <= r ; c++)
+		for (int d = 1 ; d <= D ; d++)
+			if ( IsXXD(l, c-1, c+d, r+d, D, N) ){
+				if (verbose_ > 1)
+					cerr << "Trigger the best hypothesis "
+					<< *(DiscontinuousTargetSpan*)GetStack(l, c-1, c+d, r+d) << endl;
+				pop_count = 0;
+				best = LazyKthBest(GetStack(l, c-1, c+d, r+d), 0,
+						model, non_local_features, sent, pop_count);
+				if (!best)
+					THROW_ERROR("Fail to produce hypotheses "
+							<< *(DiscontinuousTargetSpan*)GetStack(l, c-1, c+d, r+d) << endl)
+			}
+}
+
 // Build a hypergraph using beam search and cube pruning
 void DiscontinuousHyperGraph::BuildHyperGraph(ReordererModel & model,
         const FeatureSet & features,
         const FeatureSet & non_local_features,
         const Sentence & sent){
+	SetNumWords(sent[0]->GetNumWords());
+	next_.resize(n_ * (n_+1) / 2 + 1, NULL); // resize next hyper-graph in advance
 	if (verbose_ > 1)
 		cerr << "BuildHyperGraph with " << threads_ << " threads for the same-sized stack" << endl;
 	HyperGraph::BuildHyperGraph(model, features, non_local_features, sent);
 }
 
-// For cube growing
-void DiscontinuousHyperGraph::LazyNext(HypothesisQueue & q,
-		ReordererModel & model, const FeatureSet & non_local_features,
-		const Sentence & sent, const Hypothesis * hyp, int & pop_count) {
-	Hypothesis * new_left = NULL, *new_right = NULL;
-
-	TargetSpan *left_span = hyp->GetLeftChild();
-	if (left_span)
-		new_left = LazyKthBest(left_span, hyp->GetLeftRank() + 1,
-				model, non_local_features, sent, pop_count);
-    if (new_left != NULL && CanSkip(new_left))
-        delete new_left;
-    else
-        IncrementLeft(hyp, new_left, model, non_local_features, sent, q, pop_count);
-
-	TargetSpan *right_span = hyp->GetRightChild();
-	if (right_span)
-		new_right = LazyKthBest(right_span, hyp->GetRightRank() + 1,
-				model, non_local_features, sent, pop_count);
-    if (new_right != NULL && CanSkip(new_right))
-        delete new_right;
-    else
-        IncrementRight(hyp, new_right, model, non_local_features, sent, q, pop_count);
-}
+// skip unnecessary hypothesis
 bool DiscontinuousHyperGraph::CanSkip(Hypothesis * hyp)
 {
-    // skip unnecessary hypothesis
-    // Insert the hypothesis if unique
     DiscontinuousHypothesis *dhyp = dynamic_cast<DiscontinuousHypothesis*>(hyp);
     Hypothesis *left = hyp->GetLeftHyp();
     Hypothesis *right = hyp->GetRightHyp();
@@ -524,7 +492,7 @@ bool DiscontinuousHyperGraph::CanSkip(Hypothesis * hyp)
 // For cube growing
 Hypothesis * DiscontinuousHyperGraph::LazyKthBest(TargetSpan * stack, int k,
 		ReordererModel & model, const FeatureSet & non_local_features,
-		const Sentence & sent, int pop_count) {
+		const Sentence & sent, int & pop_count) {
 	while (((!beam_size_ && stack->HypSize() < k + 1)
 			|| stack->HypSize() < std::min(k + 1, beam_size_))
 			&& stack->CandSize() > 0) {
@@ -540,10 +508,10 @@ Hypothesis * DiscontinuousHyperGraph::LazyKthBest(TargetSpan * stack, int k,
 			THROW_ERROR("Malformed hypothesis in LazyKthBest " << (dhyp? *dhyp : *hyp) << endl)
 		}
 		// skip unnecessary hypothesis
-	    // do not skip the best hypothesis
-//		if ((k > 0 && CanSkip(hyp)) || !stack->AddUniqueHypothesis(hyp)){
+	    // do not skip the first hypothesis
+	    // it would be unnecessary, but ensures at least one hypothesis in stack
 		// Insert the hypothesis if unique
-	    bool skip = CanSkip(hyp) || !stack->AddUniqueHypothesis(hyp);
+	    bool skip = (k > 0 && CanSkip(hyp)) || !stack->AddUniqueHypothesis(hyp);
 	    LazyNext(q, model, non_local_features, sent, hyp, pop_count);
 		if (skip){
 			if(verbose_ > 2){
@@ -564,7 +532,7 @@ Hypothesis * DiscontinuousHyperGraph::LazyKthBest(TargetSpan * stack, int k,
 			else cerr << *hyp;
 			hyp->PrintChildren(cerr);
 		}
-		if (pop_limit_ && ++pop_count > pop_limit_)
+		if (pop_limit_ && ++pop_count >= pop_limit_)
 			break;
 	}
 	return stack->GetHypothesis(k);

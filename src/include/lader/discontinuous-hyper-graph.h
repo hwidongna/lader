@@ -228,8 +228,8 @@ protected:
     				}
     	}
     }
-    virtual void LazyNext(HypothesisQueue & q, ReordererModel & model, const FeatureSet & non_local_features, const Sentence & sent, const Hypothesis *hyp, int & pop_count);
-    virtual Hypothesis *LazyKthBest(TargetSpan *stack, int k, ReordererModel & model, const FeatureSet & non_local_features, const Sentence & sent, int pop_count = 0);
+    virtual void TriggerTheBestHypotheses(int l, int r, ReordererModel & model, const FeatureSet & non_local_features, const Sentence & sent);
+    virtual Hypothesis *LazyKthBest(TargetSpan *stack, int k, ReordererModel & model, const FeatureSet & non_local_features, const Sentence & sent, int & pop_count);
     void ProcessOneSpan(ReordererModel & model, const FeatureSet & features, const FeatureSet & non_local_features, const Sentence & sent, int l, int r, int beam_size = 0);
     void ProcessOneDiscontinuousSpan(ReordererModel & model, const FeatureSet & features, const FeatureSet & non_local_features, const Sentence & sent, int l, int m, int n, int r, int beam_size = 0);
     void AddHypotheses(ReordererModel & model, const FeatureSet & features, const FeatureSet & non_local_features, const Sentence & sent, HypothesisQueue & q, int left_l, int left_m, int left_n, int left_r, int right_l, int right_m, int right_n, int right_r);

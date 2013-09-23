@@ -180,6 +180,10 @@ protected:
 		if (init || !GetStack(l, r))
 			SetStack(l, r, new TargetSpan(l, r));
 	}
+	// For cube growing with threads > 1, we need to trigger the best hypothesis
+	// in advance to LazyKthBest
+	virtual void TriggerTheBestHypotheses(int l, int r, ReordererModel & model,
+			const FeatureSet & non_local_features, const Sentence & sent);
 	// For cube growing
 	virtual void LazyNext(HypothesisQueue & q, ReordererModel & model,
 			const FeatureSet & non_local_features, const Sentence & sent,

@@ -54,6 +54,7 @@ public:
         AddConfigEntry("parse_in", "", "The input file for the parses");
         AddConfigEntry("save_features", "false", "Save the features in memory after generating them once (more memory, more speed)");
         AddConfigEntry("features_dir", "/tmp", "Save the features in disk instead of memory after generating them once");
+        AddConfigEntry("reuse_features", "false", "Reuse the saved features in disk (useful when training again with different parameters)");
         AddConfigEntry("shuffle", "true", "Whether to shuffle the input");
         AddConfigEntry("source_in", "", "The input file for the source sentences");
         AddConfigEntry("use_reverse", "false", "Whether to use reverse terminals ");

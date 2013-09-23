@@ -52,8 +52,8 @@ void ReordererModel::AdjustWeightsPegasos(const FeatureVectorInt & feats) {
 
 #define MINIMUM_WEIGHT 1e-10
 
-// IO Functions
-void ReordererModel::ToStream(std::ostream & out) {
+// IO Functions for the backward compatibility
+void ReordererModel::ToStreamOld(std::ostream & out) {
     out << "reorderer_model" << std::endl;
     const vector<double> & weights = GetWeights();
     for(int i = 0; i < (int)weights.size(); i++)
@@ -61,7 +61,7 @@ void ReordererModel::ToStream(std::ostream & out) {
             out << feature_ids_.GetSymbol(i) << "\t" << weights[i] << endl;
     out << endl;
 }
-ReordererModel * ReordererModel::FromStream(std::istream & in) {
+ReordererModel * ReordererModel::FromStreamOld(std::istream & in) {
     std::string line;
     GetlineEquals(in, "reorderer_model");
     ReordererModel * ret = new ReordererModel;
@@ -74,6 +74,51 @@ ReordererModel * ReordererModel::FromStream(std::istream & in) {
         std::istringstream iss(columns[1]);
         iss >> dub;
         ret->SetWeight(columns[0], dub);
+    }
+    return ret;
+}
+
+// IO Functions
+void ReordererModel::ToStream(std::ostream & out) {
+    out << "ids" << std::endl;
+    for(int i = 0; i < (int)feature_ids_.capacity(); i++)
+    	out << feature_ids_.GetSymbol(i) << "\t" << i << endl;
+    out << endl;
+    out << "weights" << std::endl;
+    const vector<double> & weights = GetWeights();
+    for(int i = 0; i < (int)weights.size(); i++)
+        if(abs(weights[i]) > MINIMUM_WEIGHT)
+            out << i << "\t" << weights[i] << endl;
+    out << endl;
+}
+ReordererModel * ReordererModel::FromStream(std::istream & in) {
+    std::string line;
+    ReordererModel * ret = new ReordererModel;
+    GetlineEquals(in, "ids");
+    while(std::getline(in, line) && line.length()) {
+    	vector<string> columns;
+		algorithm::split(columns, line, is_any_of("\t"));
+		if(columns.size() != 2)
+			THROW_ERROR("Bad line in reordered model: " << line);
+		int i;
+		std::istringstream iss(columns[1]);
+		iss >> i;
+		ret->GetFeatureIds().SetId(columns[0], i);
+    }
+
+    GetlineEquals(in, "weights");
+    while(std::getline(in, line) && line.length()) {
+        vector<string> columns;
+        algorithm::split(columns, line, is_any_of("\t"));
+        if(columns.size() != 2)
+            THROW_ERROR("Bad line in reordered model: " << line);
+        int i;
+        std::istringstream id(columns[0]);
+        id >> i;
+        double dub;
+        std::istringstream weight(columns[1]);
+        weight >> dub;
+        ret->SetWeight(i, dub);
     }
     return ret;
 }

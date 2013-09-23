@@ -9,12 +9,14 @@ using namespace lader;
 using namespace boost;
 using namespace std;
 
+namespace fs = ::boost::filesystem;
+
 inline filesystem::path GetFeaturePath(const ConfigTrainer & config, int sent)
 {
-    filesystem::path dir(config.GetString("features_dir"));
-    filesystem::path prefix(config.GetString("source_in"));
-    filesystem::path file(prefix.filename().string() + "." + to_string(sent));
-    filesystem::path full_path = dir / file;
+    fs::path dir(config.GetString("features_dir"));
+    fs::path prefix(config.GetString("source_in"));
+    fs::path file(prefix.filename().string() + "." + to_string(sent));
+    fs::path full_path = dir / file;
     return full_path;
 }
 
@@ -41,15 +43,42 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
     FeatureVectorInt model_features, oracle_features;
     std::tr1::unordered_map<int,double> feat_map;
 
-    // TODO: Load the sentence order stored
     vector<int> sent_order(data_.size());
-    for(int i = 0 ; i < (int)(sent_order.size());i++)
-        sent_order[i] = i;
+
+    // This is useful when you run trainer again with different parameters
+    // for the same -source_in and -parse_in
+    if (config.GetBool("reuse_features")){
+        fs::directory_iterator it(config.GetString("features_dir"));
+        fs::directory_iterator endit;
+        fs::path stem(config.GetString("source_in"));
+        stem = stem.filename();
+        int i;
+        for (i = 0 ; it != endit ; it++)
+        	if (fs::is_regular_file(*it) && it->path().stem() == stem)
+        		// sentence id is the extension of the file
+        		// (+1 required as path().extension() starts with ".")
+        		sent_order[i++] = atoi(it->path().extension().c_str()+1);
+        // don't care the rest of sentences
+        if (i < samples)
+        	THROW_ERROR("if -reuse_features, set -samples " << samples
+        			<< " <= stored sentences " << i)
+        if (i > sent_order.size())
+        	THROW_ERROR("-source_in has fewer sentences " << sent_order.size()
+        			<< " than the sentences in -features_dir " << i)
+        sent_order.resize(i);
+        if(!config.GetBool("shuffle"))
+        	sort(sent_order.begin(), sent_order.end());
+    }
+    else
+    	for(int i = 0 ; i < (int)(sent_order.size());i++)
+    		sent_order[i] = i;
 
     cerr << "Total " << sent_order.size() << " sentences, "
     		<< "Sample " << samples << " sentences" << endl;
+
+    // TODO: parallize the feature extraction at sentence level
 	if (config.GetBool("save_features"))
-        saved_graphs_.resize((int)sent_order.size());
+        saved_graphs_.resize((int)sent_order.size(), NULL);
     // Shuffle the whole orders for the first time
 	if(config.GetBool("shuffle"))
 		random_shuffle(sent_order.begin(), sent_order.end());
@@ -85,34 +114,32 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
             // If we are saving features for efficiency, recover the saved
             // features and replace them in the hypergraph
             if(config.GetBool("save_features")){
-            	if (iter == 0){ // nothing to recover for the first time
+            	if (iter == 0) // nothing to recover for the first time
             		ptr_graph = graph.Clone();
+            	else // reuse the saved graph
+            		ptr_graph = saved_graphs_[sent];
+
+            	if (iter == 0 || !config.GetString("features_dir").empty()){
             		ptr_graph->SetNumWords(data_[sent][0]->GetNumWords());
             		ptr_graph->InitStacks();
             	}
-            	else{ // reuse the saved features
-            		ptr_graph = saved_graphs_[sent];
-            		// Load the stored features in the file
-            		if(!config.GetString("features_dir").empty()){
-            			clock_gettime(CLOCK_MONOTONIC, &tstart);
-            			ptr_graph->SetNumWords(data_[sent][0]->GetNumWords());
-            			ptr_graph->InitStacks();
-            			ifstream in(GetFeaturePath(config, sent).c_str());
-            			ptr_graph->FeaturesFromStream(in);
-            			in.close();
-            			clock_gettime(CLOCK_MONOTONIC, &tend);
-            			build.tv_sec += tend.tv_sec - tstart.tv_sec;
-            			build.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
-            			if(verbose > 0)
-            				printf("FeaturesFromStream took about %.5f seconds\n",
-									((double) ((tend.tv_sec))+ 1.0e-9 * tend.tv_nsec)
-									- ((double) ((tstart.tv_sec)) + 1.0e-9 * tstart.tv_nsec));
-            		}
+            	// Load the saved features in the file
+            	// Reuse the saved features in the file from the first iteration
+            	if((iter != 0 || config.GetBool("reuse_features"))
+            	&& !config.GetString("features_dir").empty()){
+            		clock_gettime(CLOCK_MONOTONIC, &tstart);
+            		ifstream in(GetFeaturePath(config, sent).c_str());
+            		ptr_graph->FeaturesFromStream(in);
+            		in.close();
+            		clock_gettime(CLOCK_MONOTONIC, &tend);
+            		build.tv_sec += tend.tv_sec - tstart.tv_sec;
+            		build.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
+            		if(verbose > 0)
+            			printf("FeaturesFromStream took about %.5f seconds\n",
+            					((double) ((tend.tv_sec))+ 1.0e-9 * tend.tv_nsec)
+            					- ((double) ((tstart.tv_sec)) + 1.0e-9 * tstart.tv_nsec));
             	}
             }
-            // because features are stored in stack, clear stack if -save_features=false
-            else
-            	ptr_graph->ClearStacks();
 
             clock_gettime(CLOCK_MONOTONIC, &tstart);
             // TODO: a loss-augmented parsing would result a different forest
@@ -223,11 +250,13 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 			// If we are saving features
 			if(config.GetBool("save_features") && iter == 0){
                 if (saved_graphs_[sent])
-                    THROW_ERROR("Graph is already stored")
+                    THROW_ERROR("Graph is already stored for sentence " << sent)
 				saved_graphs_[sent] = ptr_graph;
 			}
-			if(!config.GetString("features_dir").empty()){
-				if (iter == 0){
+			// because features are stored in stack, clear stack if not saved in memory
+			if(!config.GetBool("save_features") || !config.GetString("features_dir").empty()){
+				// if -reuse_features, do not rewrite the features
+				if (iter == 0 && !config.GetBool("reuse_features")){
 					ofstream out(GetFeaturePath(config, sent).c_str());
 					ptr_graph->FeaturesToStream(out);
 					out.close();
@@ -250,10 +279,10 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
         if(config.GetBool("write_every_iter")){
         	stringstream ss;
         	ss << ".it" << iter;
-        	WriteModel(config.GetString("model_out") + ss.str());
+        	WriteModel(config.GetString("model_out") + ss.str(), config.GetBool("backward_compatibility"));
         }
         if(last_iter) {
-            WriteModel(config.GetString("model_out"));
+            WriteModel(config.GetString("model_out"), config.GetBool("backward_compatibility"));
             break;
         }
     }
@@ -262,7 +291,13 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 void ReordererTrainer::InitializeModel(const ConfigTrainer & config) {
     srand(time(NULL));
     // Load the model from  a file if it exists, otherwise note features
-    if(config.GetString("model_in").length() != 0) {
+
+    if (config.GetBool("backward_compatibility") && config.GetBool("reuse_features"))
+    	THROW_ERROR("-backward_compatibility and -reuse_features cannot be used together.")
+	if (config.GetBool("reuse_features")
+	&& (config.GetString("model_in").empty() || config.GetString("features_dir").empty()))
+		THROW_ERROR("-reuse_features requires -model_in and -features_dir")
+    if(!config.GetString("model_in").empty()) {
         std::ifstream in(config.GetString("model_in").c_str());
         if(!in) THROW_ERROR("Couldn't read model from file (-model_in '"
                             << config.GetString("model_in") << "')");
@@ -270,7 +305,10 @@ void ReordererTrainer::InitializeModel(const ConfigTrainer & config) {
         features_ = FeatureSet::FromStream(in);
         if (!config.GetBool("backward_compatibility"))
         	non_local_features_ = FeatureSet::FromStream(in);
-        model_ = ReordererModel::FromStream(in);
+        if (config.GetBool("backward_compatibility"))
+        	model_ = ReordererModel::FromStreamOld(in);
+        else
+        	model_ = ReordererModel::FromStream(in);
     }
     else {
         model_ = new ReordererModel;

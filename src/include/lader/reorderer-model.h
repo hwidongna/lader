@@ -44,34 +44,38 @@ public:
     // Get an indexed feature vector from a string feature vector
     FeatureVectorInt * IndexFeatureVector(const FeatureVectorString & str) {
         FeatureVectorInt * ret = new FeatureVectorInt(str.size());
-        for(int i = 0; i < (int)str.size(); i++)
-            (*ret)[i] = MakePair(feature_ids_.GetId(str[i].first,add_features_),
-                                 str[i].second);
-        return ret;
-    }
-    // Get the strings for a feature vector index
-    FeatureVectorString *StringifyFeatureVector(const FeatureVectorInt & str){
-        FeatureVectorString * ret = new FeatureVectorString(str.size());
-        for(int i = 0; i < (int)str.size(); i++)
-            (*ret)[i] = MakePair(feature_ids_.GetSymbol(str[i].first),
-                                 str[i].second);
-        return ret;
-    }
+        for(int i = 0; i < (int)(str.size());i++)
+            (*ret)[i] = MakePair(feature_ids_.GetId(str[i].first, add_features_), str[i].second);
 
-    // Get the strings for a feature vector index
-    FeatureVectorString *StringifyWeightVector(const FeatureVectorInt & str){
-    	FeatureVectorString * ret = new FeatureVectorString(str.size());
-    	for(int i = 0; i < (int)str.size(); i++)
-    		(*ret)[i] = MakePair(feature_ids_.GetSymbol(str[i].first),
-    				GetWeight(str[i].first));
-    	return ret;
+        return ret;
     }
+    // Get the strings for a feature vector index
+    FeatureVectorString *StringifyFeatureVector(const FeatureVectorInt & str)
+    {
+        FeatureVectorString *ret = new FeatureVectorString(str.size());
+        for(int i = 0;i < (int)(str.size());i++)
+            (*ret)[i] = MakePair(feature_ids_.GetSymbol(str[i].first), str[i].second);
+
+        return ret;
+    }
+    // Get the strings for a feature vector index
+    FeatureVectorString *StringifyWeightVector(const FeatureVectorInt & str)
+    {
+        FeatureVectorString *ret = new FeatureVectorString(str.size());
+        for(int i = 0;i < (int)(str.size());i++)
+            (*ret)[i] = MakePair(feature_ids_.GetSymbol(str[i].first), GetWeight(str[i].first));
+
+        return ret;
+    }
+    // IO Functions for the backward compatibility
+	void ToStreamOld(std::ostream & out);
+	static ReordererModel *FromStreamOld(std::istream & in);
     // IO Functions
     void ToStream(std::ostream & out);
-    static ReordererModel * FromStream(std::istream & in);
-
+    static ReordererModel *FromStream(std::istream & in);
     // Comparators
-    bool operator==(const ReordererModel & rhs) const {
+    bool operator ==(const ReordererModel & rhs) const
+    {
         BOOST_FOREACH(const std::string * str, feature_ids_.GetSymbols())
             if(GetWeight(*str) != rhs.GetWeight(*str))
                 return false;
@@ -80,19 +84,26 @@ public:
                 return false;
         return true;
     }
-    bool operator!=(const ReordererModel & rhs) const {
+
+    bool operator !=(const ReordererModel & rhs) const
+    {
         return !(*this == rhs);
     }
 
     // Accessors
-    double GetWeight(int id) const {
-        return id >= 0 && id < (int)v_.size() ? v_[id] * alpha_: 0;
+    double GetWeight(int id) const
+    {
+        return id >= 0 && id < (int)(v_.size()) ? v_[id] * alpha_ : 0;
     }
-    double GetWeight(const std::string & str) const {
+
+    double GetWeight(const std::string & str) const
+    {
         return GetWeight(feature_ids_.GetId(str));
     }
+
     // Get the weight array
-    const std::vector<double> & GetWeights() { 
+    const std::vector<double> & GetWeights()
+    {
         // Update the values for the entire array
         if(alpha_ != 1) {
             BOOST_FOREACH(double & val, v_)
@@ -102,14 +113,22 @@ public:
         }
         return v_;
     }
+
     // Set the weight appropriately
-    void SetWeight(const std::string & name, double w) {
-        int idx = feature_ids_.GetId(name, true);
-        if((int)v_.size() <= idx)
-            v_.resize(idx+1,0.0);
+    void SetWeight(int idx, double w)
+    {
+        if((int)(v_.size()) <= idx)
+            v_.resize(idx + 1, 0.0);
+
         double old_val = v_[idx];
-        v_[idx] = w/alpha_;
-        v_squared_norm_ += v_[idx]*v_[idx] - old_val*old_val;
+        v_[idx] = w / alpha_;
+        v_squared_norm_ += v_[idx] * v_[idx] - old_val * old_val;
+    }
+
+    void SetWeight(const std::string & name, double w)
+    {
+        int idx = feature_ids_.GetId(name, true);
+        SetWeight(idx, w);
     }
     void SetCost(double cost) { lambda_ = cost; }
     void SetAdd(bool add) { add_features_ = add; }

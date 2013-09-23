@@ -49,12 +49,15 @@ public:
     void ReadParses(const std::string & align_in);
 
     // Write the model to a file
-    void WriteModel(const std::string & str) {
+    void WriteModel(const std::string & str, bool backward_compatibility) {
         std::ofstream out(str.c_str());
         if(!out) THROW_ERROR("Couldn't write model to file " << str)
         features_->ToStream(out);
         non_local_features_->ToStream(out);
-        model_->ToStream(out);
+        if (backward_compatibility)
+        	model_->ToStreamOld(out);
+        else
+        	model_->ToStream(out);
     }
 
     void TrainIncremental(const ConfigTrainer & config);

@@ -89,25 +89,13 @@ public:
 
     // Comparators
     virtual bool operator< (const Hypothesis & rhs) const {
-        return 
-            viterbi_score_ < rhs.viterbi_score_ || 
-            (viterbi_score_ == rhs.viterbi_score_ && (
-            trg_left_ < rhs.trg_left_ || (trg_left_ == rhs.trg_left_ && (
-            trg_right_ < rhs.trg_right_ || (trg_right_ == rhs.trg_right_ && (
-            GetEdgeType() < rhs.GetEdgeType() || (GetEdgeType() == rhs.GetEdgeType() && (
-            GetCenter() < rhs.GetCenter() || (GetCenter() == rhs.GetCenter() && (
-            left_child_ < rhs.left_child_ || (left_child_ == rhs.left_child_ && (
-            right_child_ < rhs.right_child_))))))))))));
+    	// just compare viterbi score
+        return viterbi_score_ < rhs.viterbi_score_;
     }
     virtual bool operator== (const Hypothesis & rhs) const {
-        return
-            viterbi_score_ == rhs.viterbi_score_ &&
-            trg_left_ == rhs.trg_left_ &&
-            trg_right_ == rhs.trg_right_ &&
-            GetEdgeType() == rhs.GetEdgeType() &&
-            GetCenter() == rhs.GetCenter() &&
-            left_child_ == rhs.left_child_ &&
-            right_child_ == rhs.right_child_;
+		return *GetEdge() == *rhs.GetEdge()
+			&& trg_left_ == rhs.trg_left_
+			&& trg_right_ == rhs.trg_right_;
     }
 
     // Accessors

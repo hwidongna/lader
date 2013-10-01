@@ -12,9 +12,6 @@ namespace lader {
 // A class to calculate features that concern parses of words, tags, etc.
 class FeatureParse : public FeatureBase {
 public:
-    // A template for the features given the type, and a vector containing
-    // the feature name and the values to be replaced
-    typedef std::pair<FeatureType, std::vector<std::string> > FeatureTemplate;
 
     FeatureParse() { }
     virtual ~FeatureParse() { }
@@ -50,7 +47,7 @@ public:
                                 FeatureVectorInt & feats);
 
     // Get the type of this feature generator
-    virtual std::string GetType() const { return "seq"; }
+    virtual std::string GetType() const { return "cfg"; }
 
     // Check whether this is equal
     virtual bool CheckEqual(const FeatureBase & rhs) const {
@@ -66,7 +63,7 @@ public:
     }
 
     // Check to make sure that the feature template can be interpreted
-    static bool FeatureTemplateIsLegal(const std::string & name);
+    virtual bool FeatureTemplateIsLegal(const std::string & name);
 
 private:
 
@@ -81,9 +78,6 @@ private:
     double GetEdgeFeatureValue(const FeatureDataParse & sent,
                                const HyperEdge & edge,
                                const std::string & type);
-
-    std::vector<FeatureTemplate> feature_templates_;
-
 };
 
 }

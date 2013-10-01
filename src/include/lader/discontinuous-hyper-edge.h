@@ -59,7 +59,10 @@ namespace std {
 inline std::ostream& operator << ( std::ostream& out,
                                    const lader::DiscontinuousHyperEdge & rhs )
 {
-    out << "l=" << rhs.GetLeft() << ", m=" << rhs.GetM() << ", n=" << rhs.GetN() << ", r=" << rhs.GetRight();
+    out << "l=" << rhs.GetLeft() << ", m=" << rhs.GetM()
+    		<< ", c=" << rhs.GetCenter() << ", n=" << rhs.GetN()
+			<< ", r=" << rhs.GetRight()
+			<< " : " << (char)rhs.GetType() << rhs.GetClass();;
     return out;
 }
 }

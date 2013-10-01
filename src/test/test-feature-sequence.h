@@ -65,8 +65,9 @@ public:
                                true, true, true, true,
                                true, true};
         int ret = 1;
+        FeatureSequence ft;
         for(int i = 0; i < num; i++) {
-            if(FeatureSequence::FeatureTemplateIsLegal(templ[i]) != exp[i]) {
+            if(ft.FeatureTemplateIsLegal(templ[i]) != exp[i]) {
                 cout << "FeatureTemplateIsLegal failed on " << templ[i] << endl;
                 ret = 0;
             }

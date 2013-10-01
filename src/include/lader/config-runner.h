@@ -29,8 +29,11 @@ public:
         AddConfigEntry("out_format", "string", "A comma seperated list of outputs (string/parse/order)");
         AddConfigEntry("model", "", "A model to be used in reordering");
         AddConfigEntry("beam", "1", "The maximum beam size");
+        AddConfigEntry("pop_limit", "10000", "The maximum pop count (for cube growing)");
         AddConfigEntry("gap-size", "1", "The gap size for discontinuous hyper graph");
+        AddConfigEntry("full_fledged", "false", "Enable discontinuous hyper graph full-fledged combinations");
         AddConfigEntry("mp", "false", "Monotone at punctuation");
+        AddConfigEntry("cube_growing", "true", "Use Cube Growing for construction of hyper graph");
         AddConfigEntry("threads", "1", "The number of threads to use");
         AddConfigEntry("verbose", "0", "The level of debugging output to print 2: detail for building");
         AddConfigEntry("source_in", "", "The input file for the source sentences");

@@ -60,8 +60,9 @@ public:
                                false, false, false, false, false,
                                false, false};
         int ret = 1;
+        FeatureParse ft;
         for(int i = 0; i < num; i++) {
-            if(FeatureParse::FeatureTemplateIsLegal(templ[i]) != exp[i]) {
+            if(ft.FeatureTemplateIsLegal(templ[i]) != exp[i]) {
                 cout << "FeatureTemplateIsLegal failed on " << templ[i] << endl;
                 ret = 0;
             }

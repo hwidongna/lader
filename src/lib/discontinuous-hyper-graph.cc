@@ -8,7 +8,6 @@
 #include <lader/discontinuous-hyper-graph.h>
 #include <lader/discontinuous-hypothesis.h>
 #include <lader/discontinuous-hyper-edge.h>
-#include <lader/discontinuous-target-span.h>
 #include <lader/hypothesis-queue.h>
 #include <lader/reorderer-model.h>
 #include <lader/feature-vector.h>
@@ -21,7 +20,57 @@ using namespace lader;
 using namespace std;
 using namespace boost;
 
-void DiscontinuousHyperGraph::AddHyperEdges(
+// Return the edge feature vector
+// if -save_features, edge features are stored in a stack.
+// thus, this is thread safe without lock.
+const FeatureVectorInt * DiscontinuousHyperGraph::GetEdgeFeatures(
+                                ReordererModel & model,
+                                const FeatureSet & feature_gen,
+                                const Sentence & sent,
+                                const HyperEdge & edge) {
+	FeatureVectorInt * ret;
+	const DiscontinuousHyperEdge * dedge =
+			dynamic_cast<const DiscontinuousHyperEdge *>(&edge);
+    if (save_features_) {
+    	TargetSpan * stack;
+		if (dedge){
+			stack = GetStack(edge.GetLeft(), dedge->GetM(), dedge->GetN(), dedge->GetRight());
+			if (!stack)
+				THROW_ERROR("SetStack first: " << *dedge << endl)
+		}
+		else{
+			stack = HyperGraph::GetStack(edge.GetLeft(), edge.GetRight());
+			if (!stack)
+				THROW_ERROR("SetStack first: " << edge << endl)
+		}
+    	switch (edge.GetType()){
+    	case HyperEdge::EDGE_FOR:
+    	case HyperEdge::EDGE_STR:
+			ret = stack->GetStraightFeautures(edge.GetCenter() - edge.GetLeft());
+			if (ret == NULL){
+				ret = feature_gen.MakeEdgeFeatures(sent, edge, model.GetFeatureIds(), model.GetAdd());
+				stack->SaveStraightFeautures(edge.GetCenter() - edge.GetLeft(), ret);
+			}
+			break;
+    	case HyperEdge::EDGE_BAC:
+    	case HyperEdge::EDGE_INV:
+    		ret = stack->GetInvertedFeautures(edge.GetCenter() - edge.GetLeft());
+    		if (ret == NULL){
+    			ret = feature_gen.MakeEdgeFeatures(sent, edge, model.GetFeatureIds(), model.GetAdd());
+    			stack->SaveInvertedFeautures(edge.GetCenter() - edge.GetLeft(), ret);
+    		}
+    		break;
+    	case HyperEdge::EDGE_ROOT:
+    	default:
+    		THROW_ERROR("Invalid hyper edge for GetEdgeFeatures: " << edge);
+    	}
+    } else {
+    	ret = feature_gen.MakeEdgeFeatures(sent, edge, model.GetFeatureIds(), model.GetAdd());
+    }
+    return ret;
+}
+
+void DiscontinuousHyperGraph::AddHypotheses(
 		ReordererModel & model, const FeatureSet & features,
 		const Sentence & sent,	HypothesisQueue & q,
 		int left_l, int left_m, int left_n, int left_r,
@@ -32,51 +81,63 @@ void DiscontinuousHyperGraph::AddHyperEdges(
 	// Find the best hypotheses on the left and right side
 	left_stack = GetStack(left_l, left_m, left_n, left_r);
 	right_stack = GetStack(right_l, right_m, right_n, right_r);
-	if(left_stack == NULL) THROW_ERROR("Null left_trg "
-			"["<<left_l<<", "<<left_m<<", "<<left_n<<", "<<left_r<<"]");
-	if(right_stack == NULL) THROW_ERROR("Null right_trg "
-			"["<<right_l<<", "<<right_m<<", "<<right_n<<", "<<right_r<<"]");
-	int l, c, r;
+	if (!left_stack)
+		THROW_ERROR("SetStack first [" << left_l << ", " << left_m << ", " << left_n << ", " << left_r << "]" << endl)
+	if (!right_stack)
+		THROW_ERROR("SetStack first [" << right_l << ", " << right_m << ", " << right_n << ", " << right_r << "]" << endl)
+	int l, m, c, n, r;
+	HyperEdge * edge;
+    Hypothesis * left, *right;
+   	left = left_stack->GetHypothesis(0);
+   	right = right_stack->GetHypothesis(0);
 	// continuous + continuous = continuous
 	if (left_m < 0 && left_n < 0 && right_m < 0 && right_n < 0 && left_r+1 == right_l){
 		l = left_l;
+		m = -1;
 		c = right_l;
+		n = -1;
 		r = right_r;
 	}
-//	// discontinuous + continuous = continuous
-//	else if (right_m < 0 && right_n < 0 && left_m+1 == right_l && right_r+1 == left_n){
-//		l = left_l;
-//		c = right_l; // TODO: distinguish this case
-//		r = left_r;
-//	}
 	// discontinuous + discontinuous = continuous
 	else if (left_m+1 == right_l && right_m+1 == left_n && left_r+1 == right_n){
 		l = left_l;
-		c = left_n; // TODO: is this correct?
+		m = right_l;
+		c = left_n;
+		n = right_n;
 		r = right_r;
 	}
 	if (l >= c || c > r)
 		THROW_ERROR("Invalid Target Span ["<<l<<", "<<c<<", "<<r<<"]");
 	// Add the straight terminal
-	HyperEdge * edge = new HyperEdge(l, c, r, HyperEdge::EDGE_STR);
+	if (m < 0 && n < 0)
+		edge = new HyperEdge(l, c, r, HyperEdge::EDGE_STR);
+	// For disctinction between this case and the above one,
+	// A hypothesis has a discontinuous hyper edge.
+	else
+		edge = new DiscontinuousHyperEdge(l, m, c, n, r, HyperEdge::EDGE_STR);
+
 	score = GetEdgeScore(model, features, sent, *edge);
-	viterbi_score = score + left_stack->GetScore() + right_stack->GetScore();
+	viterbi_score = score + left->GetScore() + right->GetScore();
 	q.push(new Hypothesis(viterbi_score, score, edge,
-			left_stack->GetHypothesis(0)->GetTrgLeft(),
-			right_stack->GetHypothesis(0)->GetTrgRight(),
+			left->GetTrgLeft(),
+			right->GetTrgRight(),
 			0, 0, left_stack, right_stack));
 	// Add the inverted terminal
-	edge = new HyperEdge(l, c, r, HyperEdge::EDGE_INV);
+	if (m < 0 && n < 0)
+		edge = new HyperEdge(l, c, r, HyperEdge::EDGE_INV);
+	else
+		edge = new DiscontinuousHyperEdge(l, m, c, n, r, HyperEdge::EDGE_INV);
+
 	score = GetEdgeScore(model, features, sent, *edge);
-	viterbi_score = score + left_stack->GetScore() + right_stack->GetScore();
+	viterbi_score = score + left->GetScore() + right->GetScore();
 	q.push(new Hypothesis(viterbi_score, score, edge,
-			right_stack->GetHypothesis(0)->GetTrgLeft(),
-			left_stack->GetHypothesis(0)->GetTrgRight(),
+			right->GetTrgLeft(),
+			left->GetTrgRight(),
 			0, 0, left_stack, right_stack));
 }
 
 
-void DiscontinuousHyperGraph::AddDiscontinuousHyperEdges(
+void DiscontinuousHyperGraph::AddDiscontinuousHypotheses(
 		ReordererModel & model, const FeatureSet & features,
 		const Sentence & sent,	HypothesisQueue & q,
 		int left_l, int left_m, int left_n, int left_r,
@@ -86,222 +147,195 @@ void DiscontinuousHyperGraph::AddDiscontinuousHyperEdges(
 	// Find the best hypotheses on the left and right side
 	left_stack = GetStack(left_l, left_m, left_n, left_r);
 	right_stack = GetStack(right_l, right_m, right_n, right_r);
-	if(left_stack == NULL) THROW_ERROR("Null left_trg "
-			"["<<left_l<<", "<<left_m<<", "<<left_n<<", "<<left_r<<"]");
-	if(right_stack == NULL) THROW_ERROR("Null right_trg "
-			"["<<right_l<<", "<<right_m<<", "<<right_n<<", "<<right_r<<"]");
+	if (!left_stack)
+		THROW_ERROR("SetStack first [" << left_l << ", " << left_m << ", " << left_n << ", " << left_r)
+	if (!right_stack)
+		THROW_ERROR("SetStack first [" << right_l << ", " << right_m << ", " << right_n << ", " << right_r)
 	int l, m, n, r, c;
+	HyperEdge * edge;
+    Hypothesis * left, *right;
+   	left = left_stack->GetHypothesis(0);
+   	right = right_stack->GetHypothesis(0);
+	// continuous + continuous = discontinuous
     if (left_m < 0 && left_m < 0 && right_m < 0 && right_n < 0){
         l = left_l; m = left_r; n = right_l; r = right_r; c = -1;
     }
+    // continuous + discontinuous = discontinuous
     else if (left_m < 0 && left_n < 0 && left_r+1 == right_l){
         l = left_l; m = right_m; n = right_n; r = right_r; c = right_l;
     }
+    // discontinuous + continuous = discontinuous
     else if (right_m < 0 && right_n < 0 && left_r+1 == right_l){
         l = left_l; m = left_m; n = left_n; r = right_r; c = right_l;
     }
-//    else if (right_m < 0 && right_n < 0 && left_m+1 == right_l){
-//        l = left_l; m = right_r; n = left_n; r = left_r;
-//    }
-//    else if (right_m < 0 && right_n < 0 && right_r+1 == left_n){
-//        l = left_l; m = left_m; n = right_l; r = left_r;
-//    }
 	if (l > m || m+1 > n-1 || n > r)
 		THROW_ERROR("Invalid Target Span "
 				"["<<l<<", "<<m<<", "<<n<<", "<<r<<"]");
 //    cerr << "Add discontinous str & inv "<<
 //				"["<<l<<", "<<m<<", "<<n<<", "<<r<<"]" << endl;
 	// Add the straight terminal
-	HyperEdge * edge = new DiscontinuousHyperEdge(l, m, c, n, r, HyperEdge::EDGE_STR);
+	edge = new DiscontinuousHyperEdge(l, m, c, n, r, HyperEdge::EDGE_STR);
 	score = GetEdgeScore(model, features, sent, *edge);
-	viterbi_score = score + left_stack->GetScore() + right_stack->GetScore();
+	viterbi_score = score + left->GetScore() + right->GetScore();
 	q.push(new DiscontinuousHypothesis(viterbi_score, score, edge,
-			left_stack->GetHypothesis(0)->GetTrgLeft(),
-			right_stack->GetHypothesis(0)->GetTrgRight(),
+			left->GetTrgLeft(), right->GetTrgRight(),
 			0, 0, left_stack, right_stack));
 	// Add the inverted terminal
 	edge = new DiscontinuousHyperEdge(l, m, c, n, r, HyperEdge::EDGE_INV);
 	score = GetEdgeScore(model, features, sent, *edge);
-	viterbi_score = score + left_stack->GetScore() + right_stack->GetScore();
+	viterbi_score = score + left->GetScore() + right->GetScore();
 	q.push(new DiscontinuousHypothesis(viterbi_score, score, edge,
-			right_stack->GetHypothesis(0)->GetTrgLeft(),
-			left_stack->GetHypothesis(0)->GetTrgRight(),
+			right->GetTrgLeft(), left->GetTrgRight(),
 			0, 0, left_stack, right_stack));
 }
 
-void DiscontinuousHyperGraph::nextCubeItems(const Hypothesis * hyp,
-		HypothesisQueue & q, int l, int r, bool gap)
+// For cube pruning
+void DiscontinuousHyperGraph::StartBeamSearch(
+		int beam_size,
+		HypothesisQueue & q, ReordererModel & model, const Sentence & sent,
+		const FeatureSet & features,
+		TargetSpan * ret, int l, int r)
 {
-	Hypothesis * new_hyp,
-	*new_left_hyp = NULL, *old_left_hyp = NULL,
-	*new_right_hyp = NULL, *old_right_hyp = NULL;
-	TargetSpan *left_span = hyp->GetLeftChild();
-	// Increment the left side if there is still a hypothesis left
-	if (left_span){
-		new_left_hyp = left_span->GetHypothesis(hyp->GetLeftRank()+1);
-		if(new_left_hyp)
-			old_left_hyp = left_span->GetHypothesis(hyp->GetLeftRank());
-	}
-	if (new_left_hyp != NULL && old_left_hyp != NULL){
-		if (gap){
-			DiscontinuousHyperEdge * edge =
-					dynamic_cast<DiscontinuousHyperEdge*>(hyp->GetEdge());
-			new_hyp = new DiscontinuousHypothesis(*hyp);
-			new_hyp->SetEdge(edge->Clone());
-		}
-		else{
-			new_hyp = new Hypothesis(*hyp);
-			new_hyp->SetEdge(hyp->GetEdge()->Clone());
-		}
-		new_hyp->SetScore(hyp->GetScore() - old_left_hyp->GetScore() + new_left_hyp->GetScore());
-		new_hyp->SetLeftRank(hyp->GetLeftRank() + 1);
-		new_hyp->SetLeftChild(left_span);
-		if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR){
-			new_hyp->SetTrgLeft(new_left_hyp->GetTrgLeft());
-		}else{
-			new_hyp->SetTrgRight(new_left_hyp->GetTrgRight());
-		}
-		q.push(new_hyp);
-	}
-	TargetSpan *right_span = hyp->GetRightChild();
-	// Increment the right side if there is still a hypothesis right
-	if (right_span){
-		new_right_hyp = right_span->GetHypothesis(hyp->GetRightRank()+1);
-		if(new_right_hyp)
-			old_right_hyp = right_span->GetHypothesis(hyp->GetRightRank());
-	}
+    //cerr << "Start beam search among " << q.size() << " hypotheses" << endl;
+    int num_processed = 0;
+    int pop_count = 0;
+    while((!beam_size || num_processed < beam_size) && q.size()){
+        // Pop a hypothesis from the stack and get its target span
+        Hypothesis *hyp = q.top(); q.pop();
+        // skip unnecessary hypothesis
+        // Insert the hypothesis if unique
+        bool skip = CanSkip(hyp) || !ret->AddUniqueHypothesis(hyp);
+        if (!skip){
+        	num_processed++;
+			if(verbose_ > 1){
+				boost::mutex::scoped_lock lock(mutex_);
+				DiscontinuousHypothesis * dhyp =
+						dynamic_cast<DiscontinuousHypothesis*>(hyp);
+				cerr << "Insert " << num_processed << "th hypothesis ";
+				if (dhyp) cerr << *dhyp;
+				else cerr << *hyp;
+				cerr << endl;
 
-	if (new_right_hyp != NULL && old_right_hyp != NULL){
-		if (gap){
-			DiscontinuousHyperEdge * edge =
-					dynamic_cast<DiscontinuousHyperEdge*>(hyp->GetEdge());
-			new_hyp = new DiscontinuousHypothesis(*hyp);
-			new_hyp->SetEdge(edge->Clone());
-		}
-		else{
-			new_hyp = new Hypothesis(*hyp);
-			new_hyp->SetEdge(hyp->GetEdge()->Clone());
-		}
-		new_hyp->SetScore(hyp->GetScore()
-				- old_right_hyp->GetScore() + new_right_hyp->GetScore());
-		new_hyp->SetRightRank(hyp->GetRightRank()+1);
-		new_hyp->SetRightChild(right_span);
-		if(new_hyp->GetEdgeType() == HyperEdge::EDGE_STR) {
-			new_hyp->SetTrgRight(new_right_hyp->GetTrgRight());
-		} else {
-			new_hyp->SetTrgLeft(new_right_hyp->GetTrgLeft());
-		}
-		q.push(new_hyp);
-	}
+				const FeatureVectorInt *fvi = GetEdgeFeatures(model, features, sent, *hyp->GetEdge());
+				FeatureVectorString *fvs = model.StringifyFeatureVector(*fvi);
+				FeatureVectorString *fws = model.StringifyWeightVector(*fvi);
+				cerr << *fvs << endl << *fws;
+				hyp->PrintChildren(cerr);
+				// otherwise, do not delete fvi for edge, will be deleted later
+				delete fvs, fws;
+				// if fvi is not stored, delete
+				if (!save_features_)
+					delete fvi;
+				Hypothesis * left =hyp->GetLeftHyp();
+				Hypothesis * right =hyp->GetRightHyp();
+				cerr << endl << "/****************************************************************/" << endl;
+			}
+        }
+
+        // Add next cube items
+    	Hypothesis * new_left = NULL, *new_right = NULL;
+
+    	TargetSpan *left_span = hyp->GetLeftChild();
+    	if (left_span)
+    		new_left = left_span->GetHypothesis(hyp->GetLeftRank()+1);
+    	IncrementLeft(hyp, new_left, model, sent, q, pop_count);
+
+    	TargetSpan *right_span = hyp->GetRightChild();
+    	if (right_span)
+    		new_right = right_span->GetHypothesis(hyp->GetRightRank()+1);
+    	IncrementRight(hyp, new_right, model, sent, q, pop_count);
+
+    	if (skip)
+    		delete hyp;
+    }
+
+    while(!q.empty()){
+        delete q.top();
+        q.pop();
+    }
+    sort(ret->GetHypotheses().begin(), ret->GetHypotheses().end(), DescendingScore<Hypothesis>());
 }
 
 // Build a hypergraph using beam search and cube pruning
-TargetSpan *DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
+void DiscontinuousHyperGraph::ProcessOneDiscontinuousSpan(
 		ReordererModel & model,
 		const FeatureSet & features,
 		const Sentence & sent,
 		int l, int m, int n, int r,
-		int beam_size, bool save_trg){
-	HypothesisQueue q;
+		int beam_size){
+    // Get a map to store identical target spans
+	TargetSpan * stack = GetStack(l, m, n, r);// new DiscontinuousTargetSpan(l, m, n, r);
+	if (!stack)
+		THROW_ERROR("SetStack is required: [" << l << ", " << m << ", " << n << ", " << r << "]")
+	// This is required when -save_features=true
+	stack->ClearHypotheses();
+	HypothesisQueue * q;
+	if (cube_growing_)
+		q = &stack->GetCands();
+    // Create the temporary data members for this span
+	else
+		q = new HypothesisQueue;
+
 	double score, viterbi_score;
-	if (verbose_ > 1)
-		cerr << "AddDiscontinuousHyperEdges ["<<l<<", "<<m<<", "<<n<<", "<<r<<"]" << endl;
+	if (verbose_ > 1){
+		boost::mutex::scoped_lock lock(mutex_);
+		cerr << "Process ["<<l<<", "<<m<<", "<<n<<", "<<r<<"]" << endl;
+	}
 	// continuous + continuous = discontinuous
 	//cerr << "continuous + continuous = discontinuous" << endl;
-	AddDiscontinuousHyperEdges(model, features, sent, q,
+	AddDiscontinuousHypotheses(model, features, sent, *q,
 			l, -1, -1, m,
 			n, -1, -1, r);
-	// continuous + discontinuous = discontinuous
-	//cerr << "continuous + discontinuous = discontinuous" << endl;
-	for (int i = l+1 ; i <= m ; i++)
-		AddDiscontinuousHyperEdges(model, features, sent, q,
-				l, -1, -1, i-1,
-				i, m, n, r);
-	// discontinuous + continuous = discontinuous
-	//cerr << "discontinuous + continuous = discontinuous" << endl;
-	for (int i = n+1 ; i <= r ; i++)
-		AddDiscontinuousHyperEdges(model, features, sent, q,
-				l, m, n, i-1,
-				i, -1, -1, r);
-//	// discontinuous + continuous = discontinuous
-//	//cerr << "discontinuous + left continuous = discontinuous" << endl;
-//	for (int i = m ; i > l && n-i <= gap_; i--)
-//		AddDiscontinuousHyperEdges(model, features, sent, q,
-//				l, i-1, n, r,
-//				i, -1, -1, m);
-//	// discontinuous + continuous = discontinuous
-//	//cerr << "discontinuous + right continuous = discontinuous" << endl;
-//	for (int i = r ; i > n && i-m-1 <= gap_ ; i--)
-//		AddDiscontinuousHyperEdges(model, features, sent, q,
-//				l, m, i, r,
-//				n, -1, -1, i-1);
+	if (full_fledged_){
+		// continuous + discontinuous = discontinuous
+		//cerr << "continuous + discontinuous = discontinuous" << endl;
+		for (int c = l+1 ; c <= m ; c++)
+			AddDiscontinuousHypotheses(model, features, sent, *q,
+					l, -1, -1, c-1,
+					c, m, n, r);
+		// discontinuous + continuous = discontinuous
+		//cerr << "discontinuous + continuous = discontinuous" << endl;
+		for (int c = n+1 ; c <= r ; c++)
+			AddDiscontinuousHypotheses(model, features, sent, *q,
+					l, m, n, c-1,
+					c, -1, -1, r);
+	}
 
-	TargetSpan * ret = new DiscontinuousTargetSpan(l, m, n, r);
-	// Start beam search
-	//cerr << "Start beam search among " << q.size() << " hypotheses" << endl;
-	int num_processed = 0;
-	while((!beam_size || num_processed < beam_size) && q.size()) {
-		// Pop a hypothesis from the stack and get its target span
-		DiscontinuousHypothesis * hyp =
-				dynamic_cast<DiscontinuousHypothesis*>(q.top()); q.pop();
-		// Insert the hypothesis
-		if (verbose_ > 1){
-			cerr << "Insert the discontinuous hypothesis " << *hyp << endl;
-			const FeatureVectorInt * fvi = HyperGraph::GetEdgeFeatures(model, features, sent, *hyp->GetEdge());
-			FeatureVectorString * fvs = model.StringifyFeatureVector(*fvi);
-			FeatureVectorString * fws = model.StringifyWeightVector(*fvi);
-			cerr << *fvs << endl << *fws;
-			hyp->PrintChildren(cerr);
-			delete fvs, fws;
-		}
-		ret->AddHypothesis(hyp);
-		num_processed++;
-		// If the next hypothesis on the stack is equal to the current
-		// hypothesis, remove it, as this just means that we added the same
-		// hypothesis
-		while(q.size() && *q.top() == *hyp) {
-			delete q.top();
-			q.pop();
-		}
-		// Skip terminals
-//		if(hyp->GetCenter() == -1) continue;
-		// Increment the left side if there is still a hypothesis left
-		nextCubeItems(hyp, q, l, r, true);
+	if (verbose_ > 1){
+		boost::mutex::scoped_lock lock(mutex_);
+		cerr << "Ready for search in ["<<l<<", "<<m<<", "<<n<<", "<<r<<"]: " << q->size() << " hypotheses" << endl;
 	}
-	while(q.size()) {
-		delete q.top();
-		q.pop();
-	}
-	sort(ret->GetHypotheses().begin(), ret->GetHypotheses().end(), DescendingScore<Hypothesis>());
-	return ret;
+    // For cube growing, search is lazy
+    if (cube_growing_)
+    	return;
+
+    StartBeamSearch(beam_size, *q, model, sent, features, stack, l, r);
+    delete q;
 }
 
 // Build a discontinuous hypergraph using beam search and cube pruning
 // Override HyperGraph::ProcessOneSpan
-TargetSpan * DiscontinuousHyperGraph::ProcessOneSpan(
+void DiscontinuousHyperGraph::ProcessOneSpan(
 		ReordererModel & model,
 		const FeatureSet & features,
 		const Sentence & sent,
 		int l, int r,
-		int beam_size, bool save_trg) {
-	// Create the temporary data members for this span
-	HypothesisQueue q;
+		int beam_size) {
+    // Get a map to store identical target spans
+    TargetSpan * stack = HyperGraph::GetStack(l, r);// new TargetSpan(l, r);
+    if (!stack)
+    	THROW_ERROR("SetStack is required: [" << l << ", " << r << "]")
+    // This is required when -save_features=true
+    stack->ClearHypotheses();
+    HypothesisQueue * q;
+	if (cube_growing_)
+		q = &stack->GetCands();
+    // Create the temporary data members for this span
+	else
+		q = new HypothesisQueue;
 	double score;
 	// If the length is OK, add a terminal
-	if((features.GetMaxTerm() == 0) || (r-l < features.GetMaxTerm())) {
-		int tl = (save_trg ? l : -1);
-		int tr = (save_trg ? r : -1);
-		// Create a hypothesis with the forward terminal
-		HyperEdge * edge = new HyperEdge(l, -1, r, HyperEdge::EDGE_FOR);
-		score = GetEdgeScore(model, features, sent, *edge);
-		q.push(new Hypothesis(score, score, edge, tl, tr));
-		if(features.GetUseReverse()) {
-			// Create a hypothesis with the backward terminal
-			edge = new HyperEdge(l, -1, r, HyperEdge::EDGE_BAC);
-			score = GetEdgeScore(model, features, sent, *edge);
-			q.push(new Hypothesis(score, score, edge, tr, tl));
-		}
-	}
+	AddTerminals(l, r, features, model, sent, q);
 
 
 
@@ -310,94 +344,210 @@ TargetSpan * DiscontinuousHyperGraph::ProcessOneSpan(
     	hasPunct |= sent[0]->isPunct(i);
 
 	int N = n_ = sent[0]->GetNumWords();
-	int D = gap_;
-	if (verbose_ > 1)
-		cerr << "AddHyperEdges ["<<l<<", "<<r<<"]" << endl;
-	for (int i = l+1 ; i <= r ; i++){
+	int D = gap_size_;
+	if (verbose_ > 1){
+		boost::mutex::scoped_lock lock(mutex_);
+		cerr << "Process ["<<l<<", "<<r<<"]" << endl;
+	}
+	for (int m = l+1 ; m <= r ; m++){
 		if (hasPunct && mp_){ // monotone at punctuation
 			TargetSpan *left_stack, *right_stack;
-			left_stack = HyperGraph::GetStack(l, i-1);
-			right_stack = HyperGraph::GetStack(i, r);
-			if(left_stack == NULL) THROW_ERROR("Target l="<<l<<", c-1="<<i-1);
-			if(right_stack == NULL) THROW_ERROR("Target c="<<i<<", r="<<r);
+			left_stack = HyperGraph::GetStack(l, m-1);
+			right_stack = HyperGraph::GetStack(m, r);
+			if(left_stack == NULL) THROW_ERROR("Target l="<<l<<", c-1="<<m-1);
+			if(right_stack == NULL) THROW_ERROR("Target c="<<m<<", r="<<r);
+	        Hypothesis * left, *right;
+        	left = left_stack->GetHypothesis(0);
+        	right = right_stack->GetHypothesis(0);
 			// Add the straight non-terminal
-			HyperEdge * edge = new HyperEdge(l, i, r, HyperEdge::EDGE_STR);
+			HyperEdge * edge = new HyperEdge(l, m, r, HyperEdge::EDGE_STR);
 			score = GetEdgeScore(model, features, sent, *edge);
-			double viterbi_score = score + left_stack->GetScore() + right_stack->GetScore();
-			q.push(new Hypothesis(viterbi_score, score, edge,
-					left_stack->GetHypothesis(0)->GetTrgLeft(),
-					right_stack->GetHypothesis(0)->GetTrgRight(),
+			double viterbi_score = score +
+					left->GetScore() + right->GetScore();
+			q->push(new Hypothesis(viterbi_score, score, edge,
+					left->GetTrgLeft(),
+					right->GetTrgRight(),
 					0, 0, left_stack, right_stack));
 			continue;
 		}
 		// continuous + continuous = continuous
 		//cerr << "continuous + continuous = continuous" << endl;
-		AddHyperEdges(model, features, sent, q,
-				l, -1, -1, i-1,
-				i, -1, -1, r);
-		for (int d = 1 ; d <= D ; d++){
-//			// discontinuous + continuous = continuous
-//			//cerr << "discontinuous + continuous = continuous" << endl;
-//			if ( i+d <= r ){
-//				AddHyperEdges(model, features, sent, q,
-//						l, i-1, i+d, r,
-//						i, -1, -1, i-1+d);
-//			}
-			// discontinuous + discontinuous = continuous
-			//cerr << "discontinuous + discontinuous = continuous" << endl;
-			for (int j = i+d+1 ; j <= r && j - (i + d) <= D ; j++){
-				AddHyperEdges(model, features, sent, q,
-						l, i-1, i+d, j-1,
-						i, i-1+d, j, r);
-			}
-			if ( r + d < N){
-				SetStack(l, i-1, i+d, r+d,
-						ProcessOneDiscontinuousSpan(
-								model, features, sent,
-								l, i-1, i+d, r+d,
-								beam_size, save_trg));
-			}
-		}
+		AddHypotheses(model, features, sent, *q,
+				l, -1, -1, m-1,
+				m, -1, -1, r);
+		// discontinuous + discontinuous = continuous
+		//cerr << "discontinuous + discontinuous = continuous" << endl;
+		for (int c = m+1; c-m <= D; c++)
+			for(int n = c+1; n-c <= D && n <= r;n++)
+				AddHypotheses(model, features, sent, *q,
+										l, m-1, c, n-1,
+										m, c-1, n, r);
+		// x + x = discontinuous
+		for (int d = 1 ; d <= D ; d++)
+			if ( IsXXD(l, m-1, m+d, r+d, D, N) )
+				ProcessOneDiscontinuousSpan(
+						model, features, sent,
+						l, m-1, m+d, r+d,
+						beam_size);
 	}
 
-	TargetSpan * ret = new TargetSpan(l, r);
-	// Start beam search
-	int num_processed = 0;
-	while((!beam_size || num_processed < beam_size) && q.size()) {
-		// Pop a hypothesis from the stack and get its target span
+	if (verbose_ > 1){
+		boost::mutex::scoped_lock lock(mutex_);
+		cerr << "Ready for search in ["<<l<<", "<<r<<"]: " << q->size() << " hypotheses" << endl;
+	}
+    // For cube growing, search is lazy
+    if (cube_growing_)
+    	return;
+
+    StartBeamSearch(beam_size, *q, model, sent, features, stack, l, r);
+    delete q;
+}
+
+// for cube growing, trigger the best hypothesis
+void DiscontinuousHyperGraph::TriggerTheBestHypotheses(int l, int r,
+		ReordererModel & model,
+		const Sentence & sent) {
+	int N = sent[0]->GetNumWords();
+	int D = gap_size_;
+	if (verbose_ > 1)
+		cerr << "Trigger the best hypothesis " << *HyperGraph::GetStack(l, r) << endl;
+	int pop_count = 0;
+	Hypothesis * best = LazyKthBest(HyperGraph::GetStack(l, r), 0,
+			model, sent, pop_count);
+	if (!best)
+		THROW_ERROR("Fail to produce hypotheses " << *HyperGraph::GetStack(l, r) << endl)
+	for (int c = l+1 ; c <= r ; c++)
+		for (int d = 1 ; d <= D ; d++)
+			if ( IsXXD(l, c-1, c+d, r+d, D, N) ){
+				if (verbose_ > 1)
+					cerr << "Trigger the best hypothesis "
+					<< *(DiscontinuousTargetSpan*)GetStack(l, c-1, c+d, r+d) << endl;
+				pop_count = 0;
+				best = LazyKthBest(GetStack(l, c-1, c+d, r+d), 0,
+						model, sent, pop_count);
+				if (!best)
+					THROW_ERROR("Fail to produce hypotheses "
+							<< *(DiscontinuousTargetSpan*)GetStack(l, c-1, c+d, r+d) << endl)
+			}
+}
+
+// Build a hypergraph using beam search and cube pruning
+void DiscontinuousHyperGraph::BuildHyperGraph(ReordererModel & model,
+        const FeatureSet & features,
+        const Sentence & sent){
+	SetNumWords(sent[0]->GetNumWords());
+	next_.resize(n_ * (n_+1) / 2 + 1, NULL); // resize next hyper-graph in advance
+	if (verbose_ > 1)
+		cerr << "BuildHyperGraph with " << threads_ << " threads for the same-sized stack" << endl;
+	HyperGraph::BuildHyperGraph(model, features, sent);
+}
+
+// skip unnecessary hypothesis
+bool DiscontinuousHyperGraph::CanSkip(Hypothesis * hyp)
+{
+    DiscontinuousHypothesis *dhyp = dynamic_cast<DiscontinuousHypothesis*>(hyp);
+    Hypothesis *left = hyp->GetLeftHyp();
+    Hypothesis *right = hyp->GetRightHyp();
+    bool skip;
+    if(dhyp)
+        skip = DiscontinuousHypothesis::CanSkip(hyp->GetEdge(), left, right);
+
+    else
+        skip = Hypothesis::CanSkip(hyp->GetEdge(), left, right);
+
+    return skip;
+}
+// For cube growing
+Hypothesis * DiscontinuousHyperGraph::LazyKthBest(TargetSpan * stack, int k,
+		ReordererModel & model,
+		const Sentence & sent, int & pop_count) {
+	while (((!beam_size_ && stack->HypSize() < k + 1)
+			|| stack->HypSize() < std::min(k + 1, beam_size_))
+			&& stack->CandSize() > 0) {
+		HypothesisQueue & q = stack->GetCands();
 		Hypothesis * hyp = q.top(); q.pop();
-		// Insert the hypothesis
-		if (verbose_ > 1){
-			cerr << "Insert the hypothesis " << *hyp << endl;
-			const FeatureVectorInt * fvi = HyperGraph::GetEdgeFeatures(model, features, sent, *hyp->GetEdge());
-			FeatureVectorString * fvs = model.StringifyFeatureVector(*fvi);
-			FeatureVectorString * fws = model.StringifyWeightVector(*fvi);
-			cerr << *fvs << endl << *fws;
-			if (hyp->GetCenter() == -1)
-				cerr << endl;
-			else
+	    if (hyp->GetTrgLeft() < hyp->GetLeft()
+		|| hyp->GetTrgRight() < hyp->GetLeft()
+		|| hyp->GetRight() < hyp->GetTrgLeft()
+		|| hyp->GetRight() < hyp->GetTrgRight()) {
+			hyp->PrintParse(cerr);
+			DiscontinuousHypothesis * dhyp =
+					dynamic_cast<DiscontinuousHypothesis*>(hyp);
+			THROW_ERROR("Malformed hypothesis in LazyKthBest " << (dhyp? *dhyp : *hyp) << endl)
+		}
+		// skip unnecessary hypothesis
+	    // do not skip the first hypothesis
+	    // it would be unnecessary, but ensures at least one hypothesis in stack
+		// Insert the hypothesis if unique
+	    bool skip = (k > 0 && CanSkip(hyp)) || !stack->AddUniqueHypothesis(hyp);
+	    LazyNext(q, model, sent, hyp, pop_count);
+		if (skip){
+			if(verbose_ > 2){
+				DiscontinuousHypothesis * dhyp =
+						dynamic_cast<DiscontinuousHypothesis*>(hyp);
+				cerr << "Prune ";
+				if (dhyp) cerr << *dhyp;
+				else cerr << *hyp;
 				hyp->PrintChildren(cerr);
+			}
+			delete hyp;
+		}
+		else if(verbose_ > 2){
+			DiscontinuousHypothesis * dhyp =
+					dynamic_cast<DiscontinuousHypothesis*>(hyp);
+			cerr << "Insert " << k << "th hypothesis ";
+			if (dhyp) cerr << *dhyp;
+			else cerr << *hyp;
+			hyp->PrintChildren(cerr);
+		}
+		if (pop_limit_ && ++pop_count >= pop_limit_)
+			break;
+	}
+	return stack->GetHypothesis(k);
+}
+
+// Accumulate edge features under a hyper-edge
+// Accumulate non-local features under a hypothesis
+void DiscontinuousHyperGraph::AccumulateFeatures(std::tr1::unordered_map<int,double> & feat_map,
+										ReordererModel & model,
+		                                const FeatureSet & features,
+		                                const Sentence & sent,
+		                                const Hypothesis * hyp){
+	if (verbose_ > 1){
+		const DiscontinuousHypothesis * dhyp =
+				dynamic_cast<const DiscontinuousHypothesis*>(hyp);
+		cerr << "Accumulate feature of hypothesis ";
+		if (dhyp) cerr << *dhyp;
+		else cerr << *hyp;
+		cerr << endl;
+	}
+	Hypothesis * left = hyp->GetLeftHyp();
+	Hypothesis * right = hyp->GetRightHyp();
+	// root has no edge feature
+	// root has only the bigram feature on the boundaries
+	if (hyp->GetEdgeType() != HyperEdge::EDGE_ROOT){
+		// accumulate edge features
+		const FeatureVectorInt * fvi = GetEdgeFeatures(model, features, sent, *hyp->GetEdge());
+		BOOST_FOREACH(FeaturePairInt feat_pair, *fvi)
+			feat_map[feat_pair.first] += feat_pair.second;
+		if (verbose_ > 1){
+			cerr << "/****************************************************************/" << endl;
+			FeatureVectorString *fvs = model.StringifyFeatureVector(*fvi);
+			FeatureVectorString *fws = model.StringifyWeightVector(*fvi);
+			cerr << *fvs << endl << *fws << endl;
+			// do not delete fvi for edge, will be deleted later
 			delete fvs, fws;
 		}
-		ret->AddHypothesis(hyp);
-		num_processed++;
-		// If the next hypothesis on the stack is equal to the current
-		// hypothesis, remove it, as this just means that we added the same
-		// hypothesis
-		while(q.size() && *q.top() == *hyp) {
-			delete q.top();
-			q.pop();
-		}
-		// Skip terminals
-//		if(hyp->GetCenter() == -1) continue;
-		nextCubeItems(hyp, q, l, r, false);
+		// if fvi is not stored, delete
+		if (!save_features_)
+			delete fvi;
+		if (verbose_ > 1)
+			cerr << "/****************************************************************/" << endl;
 	}
-	while(q.size()) {
-		delete q.top();
-		q.pop();
-	}
-	sort(ret->GetHypotheses().begin(), ret->GetHypotheses().end(), DescendingScore<Hypothesis>());
-	return ret;
+	if (left)
+		AccumulateFeatures(feat_map, model, features, sent, left);
+	if (right)
+		AccumulateFeatures(feat_map, model, features, sent, right);
 }
 
 void DiscontinuousHyperGraph::AddLoss(LossBase* loss,
@@ -406,7 +556,7 @@ void DiscontinuousHyperGraph::AddLoss(LossBase* loss,
     loss->Initialize(ranks, parse);
     // For each span in the hypergraph
     int N = n_;
-    int D = gap_;
+    int D = gap_size_;
     if (verbose_ > 1){
     	cerr << "Rank:";
     	BOOST_FOREACH(int rank, ranks->GetRanks())
@@ -420,7 +570,15 @@ void DiscontinuousHyperGraph::AddLoss(LossBase* loss,
         	if (verbose_ > 1)
         		cerr << "AddLoss ["<<l<<", "<<r<<"]" << endl;
         	BOOST_FOREACH(Hypothesis* hyp, HyperGraph::GetStack(l,r)->GetHypotheses()) {
-        		// DEBUG
+        	    if (hyp->GetTrgLeft() < hyp->GetLeft()
+				|| hyp->GetTrgRight() < hyp->GetLeft()
+				|| hyp->GetRight() < hyp->GetTrgLeft()
+				|| hyp->GetRight() < hyp->GetTrgRight()) {
+        	    	hyp->PrintParse(cerr);
+        	    	DiscontinuousHypothesis * dhyp =
+        	    			dynamic_cast<DiscontinuousHypothesis*>(hyp);
+        	    	THROW_ERROR("Malformed hypothesis in AddLossToProduction " << (dhyp? *dhyp : *hyp) << endl)
+        	    }
 				hyp->SetLoss(hyp->GetLoss() +
 							loss->AddLossToProduction(hyp, ranks, parse));
 				if (verbose_ > 1){
@@ -433,17 +591,18 @@ void DiscontinuousHyperGraph::AddLoss(LossBase* loss,
             }
             if (l < 0)
             	continue;
-            for (int i = l+1 ; i <= r ; i++){
+            for (int c = l+1 ; c <= r ; c++){
             	for (int d = 1 ; d <= D ; d++){
-					if ( i+d <= r && r+d < N && GetStack(l,i-1,i+d,r) != NULL){
+            		if ( IsXXD(l, c-1, c+d, r+d, D, N) ){
 						if (verbose_ > 1)
-							cerr << "AddLoss ["<<l<<", "<<i-1<<", "<<i+d<<", "<<r<<"]" << endl;
-						BOOST_FOREACH(Hypothesis* hyp, GetStack(l,i-1,i+d,r)->GetHypotheses()) {
-							// DEBUG
+							cerr << "AddLoss ["<<l<<", "<<c-1<<", "<<c+d<<", "<<r+d<<"]" << endl;
+						BOOST_FOREACH(Hypothesis* hyp, GetStack(l,c-1,c+d,r+d)->GetHypotheses()) {
 							hyp->SetLoss(hyp->GetLoss() +
 									loss->AddLossToProduction(hyp, ranks, parse));
 							if (verbose_ > 1){
-								cerr << "Loss=" << hyp->GetLoss() << ":" << *hyp;
+								DiscontinuousHypothesis * dhyp =
+										dynamic_cast<DiscontinuousHypothesis*>(hyp);
+								cerr << "Loss=" << hyp->GetLoss() << ":" << *dhyp;
 								hyp->PrintChildren(cerr);
 							}
 						}

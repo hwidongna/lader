@@ -1,13 +1,51 @@
 #!/bin/bash
-set -e
+
+THREADS=4
+SAVE_FEATURES=true
+FEATURES_DIR=/tmp
+
 GAP=$1
+SAMPLES=$2
+VERBOSE=$3
+SHUFFLE=$4
+CUBE_GROWING=$5
+FULL_FLEDGED=$6
+ITERATION=$7
 
 if [ $# -lt 1 ]
 then
 GAP=1
 fi
 
-SAMPLES=$2
+if [ $# -lt 2 ]
+then
+SAMPLES=4
+fi
+
+if [ $# -lt 3 ]
+then
+VERBOSE=0
+fi
+
+if [ $# -lt 4 ]
+then
+SHUFFLE=true
+fi
+
+if [ $# -lt 5 ]
+then
+CUBE_GROWING=false
+fi
+
+if [ $# -lt 6 ]
+then
+FULL_FLEDGED=false
+fi
+
+if [ $# -lt 7 ]
+then
+ITERATION=500
+fi
 
 # This bash file provides an example of how to train a model for lader.
 # There are a couple steps, some of which are optional.
@@ -103,8 +141,19 @@ paste data/train.en output/train.en.class data/train.en.pos data/train.en.parse 
 # -save_features ... (default is true which uses more memory but runs slower.
 #                     if you are using large data, this should be set to false)
 
-echo "../src/bin/train-lader -cost 1e-3 -attach_null right -feature_profile \"seq=dict=output/train.en-ja.pt,LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,O%SL%SR%ET,I%LR%RL%ET,Q%SQE0%ET,Q0%SQ#00%ET,Q1%SQ#01%ET,Q2%SQ#02%ET,CL%CL%ET,B%SB%ET,A%SA%ET,N%SN%ET,BIAS%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|cfg=LP%LP%ET,RP%RP%ET,SP%SP%ET,TP%SP%LP%RP%ET\" -iterations 500 -samples $SAMPLES -gap-size $GAP -model_out output/train-g$GAP.mod -source_in output/train.en.annot -align_in data/train.en-ja.align"
-../src/bin/train-lader -cost 1e-3 -attach_null right -feature_profile "seq=dict=output/train.en-ja.pt,LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,O%SL%SR%ET,I%LR%RL%ET,Q%SQE0%ET,Q0%SQ#00%ET,Q1%SQ#01%ET,Q2%SQ#02%ET,CL%CL%ET,B%SB%ET,A%SA%ET,N%SN%ET,BIAS%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|cfg=LP%LP%ET,RP%RP%ET,SP%SP%ET,TP%SP%LP%RP%ET" -iterations 500 -samples $SAMPLES -gap-size $GAP -model_out output/train-g$GAP.mod -source_in output/train.en.annot -align_in data/train.en-ja.align
+#rm output/train-g$GAP.mod*
+
+LAST=$(ls output/train-g$GAP.mod* | sed "s/output\/train-g$GAP.mod.it//g" | sort -n | tail -n1)
+if [ -s output/train-g$GAP.mod.it$LAST ]
+then
+
+MODEL_IN=output/train-g$GAP.mod.it$LAST
+
+fi
+
+echo "../src/bin/train-lader -cost 1e-3 -attach_null right -feature_profile \"seq=dict=output/train.en-ja.pt,LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,O%SL%SR%ET,I%LR%RL%ET,Q%SQE0%ET,Q0%SQ#00%ET,Q1%SQ#01%ET,Q2%SQ#02%ET,CL%CL%ET,B%SB%ET,A%SA%ET,N%SN%ET,BIAS%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|cfg=LP%LP%ET,RP%RP%ET,SP%SP%ET,TP%SP%LP%RP%ET\" -iterations $ITERATION -threads $THREADS -cube_growing $CUBE_GROWING -full_fledged $FULL_FLEDGED -shuffle $SHUFFLE -samples $SAMPLES -verbose $VERBOSE -gap-size $GAP -model_in $MODEL_IN'' -model_out output/train-g$GAP.mod -source_in output/train.en.annot -align_in data/train.en-ja.align -save_features $SAVE_FEATURES -features_dir $FEATURES_DIR"
+../src/bin/train-lader -cost 1e-3 -attach_null right -feature_profile "seq=dict=output/train.en-ja.pt,LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,O%SL%SR%ET,I%LR%RL%ET,Q%SQE0%ET,Q0%SQ#00%ET,Q1%SQ#01%ET,Q2%SQ#02%ET,CL%CL%ET,B%SB%ET,A%SA%ET,N%SN%ET,BIAS%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|cfg=LP%LP%ET,RP%RP%ET,SP%SP%ET,TP%SP%LP%RP%ET" -iterations $ITERATION -threads $THREADS -cube_growing $CUBE_GROWING -full_fledged $FULL_FLEDGED -shuffle $SHUFFLE -samples $SAMPLES -verbose $VERBOSE -gap-size $GAP -model_in $MODEL_IN'' -model_out output/train-g$GAP.mod -source_in output/train.en.annot -align_in data/train.en-ja.align -save_features $SAVE_FEATURES -features_dir $FEATURES_DIR
 
 # Once training finishes, a reordering model will be placed in output/train.mod.
 # This can be used in reordering, as described in run-reordering.sh
+

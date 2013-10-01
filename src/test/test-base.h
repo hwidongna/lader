@@ -4,7 +4,8 @@
 #include <vector>
 #include <iostream>
 #include <cmath>
-
+#include <lader/feature-vector.h>
+#include <target-span.h>
 using namespace std;
 
 namespace lader {
@@ -79,6 +80,45 @@ protected:
         return 1;
     }
 
+
+    int CheckStackEqual(TargetSpan * stack1, TargetSpan * stack2){
+    	int l = stack1->GetLeft();
+    	int r = stack1->GetRight();
+    	int n = l == r ? 1 : r-l+2;
+    	FeatureVectorInt * fvi1, *fvi2;
+    	int ret = 1;
+    	for (int c = 0 ; c < n ; c++){
+    		fvi1 = stack1->GetStraightFeautures(c);
+    		fvi2 = stack2->GetStraightFeautures(c);
+    		if (fvi1 && fvi2)
+    			ret = CheckVector(*fvi1, *fvi2);
+    		else if (fvi1 && !fvi1->empty()){
+    			int i = 0;
+    			cerr << "Straight features are not restored " << *stack1 << endl;
+    			BOOST_FOREACH(FeaturePairInt & feat, *fvi1){
+    				if (i++ != 0) cerr << " ";
+    				cerr << feat.first << ":" << feat.second;
+    			}
+    			cerr << endl;
+    			ret = 0;
+    		}
+    		fvi1 = stack1->GetInvertedFeautures(c);
+    		fvi2 = stack2->GetInvertedFeautures(c);
+    		if (fvi1 && fvi2)
+    			ret = CheckVector(*fvi1, *fvi2);
+    		else if (fvi1 && !fvi1->empty()){
+    			int i = 0;
+    			cerr << "Inverted features are not restored " << *stack1 << endl;
+    			BOOST_FOREACH(FeaturePairInt & feat, *fvi1){
+    				if (i++ != 0) cerr << " ";
+    				cerr << feat.first << ":" << feat.second;
+    			}
+    			cerr << endl;
+    			ret = 0;
+    		}
+    	}
+    	return ret;
+    }
 };
 
 }

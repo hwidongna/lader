@@ -4,11 +4,11 @@
 #include <lader/feature-data-base.h>
 #include <lader/feature-base.h>
 #include <lader/symbol-set.h>
-#include <lader/hyper-graph.h>
 #include <boost/foreach.hpp>
 
 namespace lader {
 
+class Hypothesis;
 // A class containing a set of features defined over various data types
 // Can assign features to the nodes and edges of a hypergraph
 class FeatureSet {

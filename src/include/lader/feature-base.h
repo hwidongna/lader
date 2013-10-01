@@ -11,6 +11,7 @@
 
 namespace lader {
 
+class Hypothesis;
 // A virtual class for feature generators
 // Four functions must be implemented to create a feature generator
 //   ParseConfiguration, ParseData, GenerateEdgeFeatures
@@ -22,6 +23,10 @@ public:
         ALL_FACTORED,
         NONTERM_FACTORED
     } FeatureType;
+
+    // A template for the features given the type, and a vector containing
+    // the feature name and the values to be replaced
+    typedef std::pair<FeatureType, std::vector<std::string> > FeatureTemplate;
 
     // Constructors
     FeatureBase() { }
@@ -53,6 +58,13 @@ public:
     //  type=seq --> FeatureSequence
     static FeatureBase* CreateNew(const std::string & type);
 
+    virtual bool FeatureTemplateIsLegal(const std::string & name) = 0;
+
+    int GetBalance(const HyperEdge & edge);
+    int GetSpanSize(const HyperEdge & edge);
+    
+protected:
+    std::vector<FeatureTemplate> feature_templates_;
 private:
 
 };

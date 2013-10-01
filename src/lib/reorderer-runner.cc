@@ -10,44 +10,46 @@ using namespace std;
 using namespace boost;
 
 void ReordererTask::Run() {
+    int verbose = config_.GetInt("verbose");
     // Load the data
-	if (verbose_ > 1)
+	if (verbose > 1)
 		cerr << "Sentence " << id_ << endl;
     std::vector<FeatureDataBase*> datas = features_->ParseInput(line_);
     // Save the original string
     vector<string> words = ((FeatureDataSequence*)datas[0])->GetSequence();
     // Build the hypergraph
-    HyperGraph * hyper_graph = new DiscontinuousHyperGraph(gap_, mp_, verbose_);
-    hyper_graph->BuildHyperGraph(*model_, *features_, datas, beam_, false);
+    graph_->BuildHyperGraph(*model_, *features_, datas);
     // Reorder
     std::vector<int> reordering;
-    hyper_graph->GetRoot()->GetReordering(reordering);
+    graph_->GetBest()->GetReordering(reordering);
     datas[0]->Reorder(reordering);
     // Print the string
-    ostringstream oss;
+    ostringstream out;
     for(int i = 0; i < (int)outputs_->size(); i++) {
-        if(i != 0) oss << "\t";
+        if(i != 0) out << "\t";
         if(outputs_->at(i) == ReordererRunner::OUTPUT_STRING) {
-            oss << datas[0]->ToString();
+            out << datas[0]->ToString();
         } else if(outputs_->at(i) == ReordererRunner::OUTPUT_PARSE) {
-            hyper_graph->GetRoot()->PrintParse(words, oss);
+            graph_->GetBest()->PrintParse(words, out);
         } else if(outputs_->at(i) == ReordererRunner::OUTPUT_HYPERGRAPH) {
-            hyper_graph->PrintHyperGraph(words, oss);
+            graph_->PrintHyperGraph(words, out);
         } else if(outputs_->at(i) == ReordererRunner::OUTPUT_ORDER) {
             for(int j = 0; j < (int)reordering.size(); j++) {
-                if(j != 0) oss << " ";
-                oss << reordering[j];
+                if(j != 0) out << " ";
+                out << reordering[j];
             }
         } else {
             THROW_ERROR("Unimplemented output format");
         }
     }
-    delete hyper_graph;
-    oss << endl;
-    collector_->Write(id_, oss.str(), "");
+    out << endl;
+    ostringstream err;
+    err << "Decoding " << id_+1 << "th sentence" << endl;
+    collector_->Write(id_, out.str(), err.str());
     // Clean up the data
     BOOST_FOREACH(FeatureDataBase* data, datas)
         delete data;
+    delete graph_;
 }
 
 // Run the model
@@ -58,19 +60,23 @@ void ReordererRunner::Run(const ConfigRunner & config) {
     OutputCollector collector;
 
     std::string line;
-    int id = 0, beam = config.GetInt("beam");
-    int gapSize = config.GetInt("gap-size");
-    bool mp = config.GetBool("mp");
-    int verbose = config.GetInt("verbose");
     std::string source_in = config.GetString("source_in");
     std::ifstream in(source_in.c_str());
-    if (gapSize > 0)
-    	cerr << "use discontinuous hyper-graph: D=" << gapSize << endl;
-    if (mp)
-        cerr << "enable monotone at punctuation to prevent excessive reordering" << endl;
+    int id = 0;
+    int gapSize = config.GetInt("gap-size");
+    int beam = config.GetInt("beam");
+    int pop_limit = config.GetInt("pop_limit");
+    bool cube_growing = config.GetBool("cube_growing");
+    bool mp = config.GetBool("mp");
+    bool full_fledged = config.GetBool("full_fledged");
+    int verbose = config.GetInt("verbose");
+    DiscontinuousHyperGraph graph(gapSize, cube_growing, full_fledged, mp, verbose) ;
+    graph.SetBeamSize(beam);
+	graph.SetPopLimit(pop_limit);
     while(std::getline(in != NULL? in : std::cin, line)) {
-    	ReordererTask *task = new ReordererTask(id++, line, model_, features_, &outputs_,
-    			beam, &collector, gapSize, mp, verbose);
+    	ReordererTask *task = new ReordererTask(id++, line, model_, features_,
+    		 	&outputs_, config, graph.Clone(),
+				&collector);
         pool.Submit(task);
     }
     if (in) in.close();

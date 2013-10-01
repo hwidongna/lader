@@ -12,10 +12,6 @@ namespace lader {
 // A class to calculate features that concern sequences of words, tags, etc.
 class FeatureSequence : public FeatureBase {
 public:
-    // A template for the features given the type, and a vector containing
-    // the feature name and the values to be replaced
-    typedef std::pair<FeatureType, std::vector<std::string> > FeatureTemplate;
-
     FeatureSequence() { }
     virtual ~FeatureSequence() {
     	BOOST_FOREACH(Dictionary* dict, dicts_)
@@ -75,7 +71,7 @@ public:
     }
 
     // Check to make sure that the feature template can be interpreted
-    static bool FeatureTemplateIsLegal(const std::string & name);
+    virtual bool FeatureTemplateIsLegal(const std::string & name);
 
     friend class TestDiscontinuousHyperGraph;
 private:
@@ -92,7 +88,6 @@ private:
                                const HyperEdge & edge,
                                const std::string & type);
 
-    std::vector<FeatureTemplate> feature_templates_;
     std::vector<Dictionary*> dicts_;
 
 };

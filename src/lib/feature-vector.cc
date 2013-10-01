@@ -25,3 +25,11 @@ FeatureVectorInt lader::VectorSubtract(const FeatureVectorInt & a,
     }
     return ret;
 }
+
+void lader::ClearAndSet(FeatureVectorInt & fvi,
+		const std::tr1::unordered_map<int, double> & feat_map)
+{
+    fvi.clear();
+    BOOST_FOREACH(FeaturePairInt feat_pair, feat_map)
+    	fvi.push_back(feat_pair);
+}

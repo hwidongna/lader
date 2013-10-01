@@ -4,14 +4,20 @@
 #include <lader/hyper-edge.h>
 #include <lader/feature-vector.h>
 #include <lader/util.h>
+#include <lader/hypothesis-queue.h>
+#include <lader/feature-data-base.h>
+#include <lader/reorderer-model.h>
 #include <sstream>
 #include <iostream>
+#include <vector>
+using namespace std;
 
+namespace std {
+
+inline std::ostream& operator <<(std::ostream& out,
+		const lader::Hypothesis & rhs);
+}
 namespace lader {
-
-typedef std::tr1::unordered_map<const HyperEdge*, FeatureVectorInt*,
-		PointerHash<const HyperEdge*>, PointerEqual<const HyperEdge*> > EdgeFeatureMap;
-typedef std::pair<const HyperEdge*, FeatureVectorInt*> EdgeFeaturePair;
 
 class TargetSpan;
 
@@ -29,43 +35,30 @@ public:
                trg_left_(trg_left), trg_right_(trg_right),
                left_child_(left_child), right_child_(right_child),
                left_rank_(left_rank), right_rank_(right_rank)
-               { } //std::cerr << "Hypothesis " << GetEdge() << std::endl; }
+               { }
 
-    Hypothesis(double viterbi_score, double single_score,
-				int left, int right,
-				int trg_left, int trg_right,
-				HyperEdge::Type type, int center = -1,
-				int left_rank = -1, int right_rank = -1,
-				TargetSpan* left_child = NULL, TargetSpan* right_child = NULL) :
-				viterbi_score_(viterbi_score),
-				single_score_(single_score), loss_(0),
-				edge_(new HyperEdge(left, center, right, type)),
-				trg_left_(trg_left), trg_right_(trg_right),
-				left_child_(left_child), right_child_(right_child),
-				left_rank_(left_rank), right_rank_(right_rank)
-				{ }
 
-    // be aware of the pointer member edge_
-    // After calling this method, you need to allocate a dynamic memory for edge_
-    // It is implicitly called (may be several times) when inserting an instance into std::containers
-    // For that case, we do not allocate a dynamic memory in this method, which lead a dangling pointer
-    Hypothesis(const Hypothesis & hyp) :
-				viterbi_score_(hyp.viterbi_score_),
-				single_score_(hyp.single_score_), loss_(hyp.loss_),
-				edge_(hyp.edge_),
-				trg_left_(hyp.trg_left_), trg_right_(hyp.trg_right_),
-				left_child_(hyp.left_child_), right_child_(hyp.right_child_),
-				left_rank_(hyp.left_rank_), right_rank_(hyp.right_rank_)
-    			{ }
+protected:
+	friend class TestHyperGraph;
+	friend class TestDiscontinuousHyperGraph;
 
+	// just for testing
+	Hypothesis(double viterbi_score, double single_score,
+			int left, int right,
+			int trg_left, int trg_right,
+			HyperEdge::Type type, int center = -1,
+			int left_rank = -1, int right_rank = -1,
+			TargetSpan *left_child =NULL, TargetSpan *right_child = NULL) :
+			viterbi_score_(viterbi_score), single_score_(single_score),
+			loss_(0), edge_(new HyperEdge(left, center, right, type)),
+			trg_left_(trg_left), trg_right_(trg_right),
+			left_child_(left_child), right_child_(right_child),
+			left_rank_(left_rank), right_rank_(right_rank) {}
+
+public:
     virtual ~Hypothesis() {
-    	if (edge_ != NULL){
+    	if (edge_ != NULL)
     		delete edge_;
-    	}
-//    	if (left_child_ != NULL)
-//    		delete left_child_;
-//    	if (right_child_ != NULL)
-//    		delete right_child_;
     }
     // Get a string representing the rule of this hypothesis
     std::string GetRuleString(const std::vector<std::string> & sent,
@@ -93,11 +86,28 @@ public:
         return viterbi_score_ < rhs.viterbi_score_;
     }
     virtual bool operator== (const Hypothesis & rhs) const {
-		return *GetEdge() == *rhs.GetEdge()
-			&& trg_left_ == rhs.trg_left_
-			&& trg_right_ == rhs.trg_right_;
+//		bool ret = *GetEdge() == *rhs.GetEdge()
+//			&& trg_left_ == rhs.trg_left_
+//			&& trg_right_ == rhs.trg_right_;
+//		if (!ret)
+//			return false;
+		// a terminal hypothesis is alwasy unique
+		if (IsTerminal() || rhs.IsTerminal()
+		|| GetLeft() != rhs.GetLeft() || GetRight() != rhs.GetRight()
+		|| trg_left_ != rhs.trg_left_ || trg_right_ != rhs.trg_right_)
+			return false;
+		// compare the permutation
+		vector<int> this_reorder;
+		vector<int> rhs_reorder;
+		GetReordering(this_reorder);
+		rhs.GetReordering(rhs_reorder);
+		if (this_reorder.size() != rhs_reorder.size())
+			THROW_ERROR("Difference size of hypothesis" << endl << *this << endl << rhs)
+		return std::equal(this_reorder.begin(), this_reorder.end(),
+						rhs_reorder.begin());			
     }
 
+	void GetReordering(std::vector<int> & reord, bool verbose = false) const;
     // Accessors
     double GetScore() const { return viterbi_score_; }
     double GetSingleScore() const { return single_score_; }
@@ -127,14 +137,18 @@ public:
     void SetTrgLeft(int dub) { trg_left_ = dub; }
     void SetTrgRight(int dub) { trg_right_ = dub; }
     void SetType(HyperEdge::Type type) { edge_->SetType(type); } // only for testing
-    virtual void PrintChildren( std::ostream& out ) const;
-
-    // Add up the loss over an entire subtree defined by this hyp
-    double AccumulateLoss();
-    FeatureVectorInt AccumulateFeatures(const EdgeFeatureMap * features);
-    void AccumulateFeatures(const EdgeFeatureMap * features,
-                            std::tr1::unordered_map<int,double> & feat_map);
-
+	virtual void PrintChildren(std::ostream & out) const;
+	void PrintParse(ostream & out) const;
+	void PrintParse(const vector<string> & strs, ostream & out) const;
+    // Add up the loss over an entire subtree defined by this hyp	
+	double AccumulateLoss();
+	bool IsTerminal() const {
+		return GetEdgeType() == HyperEdge::EDGE_FOR
+				|| GetEdgeType() == HyperEdge::EDGE_BAC;
+	}
+	virtual Hypothesis *Clone() const;
+	static bool CanSkip(const HyperEdge * edge,
+			const Hypothesis * left, const Hypothesis * right);
 private:
     double viterbi_score_; // The Viterbi score for the entire subtree that
                            // this hypothesis represents
@@ -152,14 +166,18 @@ private:
 
 namespace std {
 // Output function for pairs
-inline std::ostream& operator << ( std::ostream& out, 
-                                   const lader::Hypothesis & rhs )
-{
-    out << "<" << rhs.GetLeft() << ", " << rhs.GetRight() << ", "
-    	<< rhs.GetTrgLeft() << ", " << rhs.GetTrgRight() << ", "
-    	<< (char)rhs.GetEdgeType() << ", " << rhs.GetCenter() << " :: "
-    	<< rhs.GetScore() << ", " << rhs.GetSingleScore() << ">";
-    return out;
+inline std::ostream& operator <<(std::ostream& out,
+		const lader::Hypothesis & rhs) {
+	out << "<" << rhs.GetLeft() << ", " << rhs.GetRight() << ", "
+			<< rhs.GetTrgLeft() << ", " << rhs.GetTrgRight() << ", "
+			<< (char) rhs.GetEdgeType() << (char) rhs.GetEdge()->GetClass() << ", "
+			<< rhs.GetCenter() << " :: "
+			<< rhs.GetScore() << ", " << rhs.GetSingleScore() << ">";
+	vector<int> reorder;
+	rhs.GetReordering(reorder);
+	BOOST_FOREACH(int i, reorder)
+		out << " " << i;
+	return out;
 }
 }
 

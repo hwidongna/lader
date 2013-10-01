@@ -12,6 +12,11 @@ using namespace boost;
 using namespace lader;
 using namespace std;
 
+bool FeatureAlign::FeatureTemplateIsLegal(const string & name) {
+    THROW_ERROR("Undefined");
+    return false;
+}
+
 // Align the comma-separated list of configuration options
 void FeatureAlign::ParseConfiguration(const string & str) {
     if(str == "left")

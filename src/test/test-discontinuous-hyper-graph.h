@@ -3,6 +3,7 @@
 
 #include "test-base.h"
 #include <climits>
+#include <lader/hypothesis.h>
 #include <lader/hyper-graph.h>
 #include <lader/discontinuous-hyper-edge.h>
 #include <lader/discontinuous-target-span.h>
@@ -14,6 +15,9 @@
 #include <lader/ranks.h>
 #include <lader/feature-base.h>
 #include <lader/discontinuous-hyper-graph.h>
+#include <lader/discontinuous-hypothesis.h>
+#include "test-hyper-graph.h"
+
 using namespace std;
 
 namespace lader {
@@ -27,11 +31,12 @@ public:
             edge11(1, -1, 1, HyperEdge::EDGE_FOR), 
             edge22(2, -1, 2, HyperEdge::EDGE_FOR),
             edge33(3, -1, 3, HyperEdge::EDGE_FOR),
-            edge0_2b(0,0, -1, 2,2, HyperEdge::EDGE_INV),
-            edge1_3b(1,1, -1, 3,3, HyperEdge::EDGE_INV),
+            edge0_2(0,0, -1, 2,2, HyperEdge::EDGE_INV),
+            edge1_3(1,1, -1, 3,3, HyperEdge::EDGE_INV),
             edge01(0, -1, 1, HyperEdge::EDGE_FOR),
             edge23(2, -1, 3, HyperEdge::EDGE_FOR),
-            edge03f(0, 2, 3, HyperEdge::EDGE_STR)
+            edge03sd(0,1, 2, 3,3, HyperEdge::EDGE_STR),
+            edge03sc(0, 2, 3, HyperEdge::EDGE_STR)
             {
         // Create a combined Inside-Out alignment
         //  .x..
@@ -45,6 +50,7 @@ public:
         al.AddAlignment(MakePair(2,0));
         al.AddAlignment(MakePair(3,2));
         cal = CombinedAlign(words, al);
+        ranks = Ranks(cal);
         // Create a sentence
         string str = "he ate rice .";
         sent.FromString(str);
@@ -53,7 +59,7 @@ public:
         // Create a reorderer model with weights
         model.SetWeight("SW||ate||rice||IC", -1);
         model.SetWeight("SP||VBD||NN||IC", -1);
-        // prefer non-BTG more than BTG
+        // prefer non-ITG more than ITG
         model.SetWeight("SW||he||rice||ID", 1);
         model.SetWeight("SP||PRP||NN||ID", 1);
         model.SetWeight("SW||he||rice||SD", 2);
@@ -87,21 +93,22 @@ public:
         ts01 = new TargetSpan(0,1);
         ts23 = new TargetSpan(2,3);
         ts03 = new TargetSpan(0,3);
+        ts03d = new DiscontinuousTargetSpan(0,1,3,3); // only for saving feature
         tsRoot = new TargetSpan(0,3);
         // Add the hypotheses
         ts00->AddHypothesis(new Hypothesis(1,-1, edge00.Clone(), 0,0));
         ts11->AddHypothesis(new Hypothesis(2,-1, edge11.Clone(), 1,1));
         ts22->AddHypothesis(new Hypothesis(3,-1, edge22.Clone(), 2,2));
         ts33->AddHypothesis(new Hypothesis(4,-1, edge33.Clone(), 3,3));
-        ts0_2->AddHypothesis(new DiscontinuousHypothesis(1+3+5,-1, edge0_2b.Clone(), 2,0, 0,0, ts00,ts22));
-        ts1_3->AddHypothesis(new DiscontinuousHypothesis(2+4+6,-1, edge1_3b.Clone(), 3,1, 0,0, ts11,ts33));
+        ts0_2->AddHypothesis(new DiscontinuousHypothesis(1+3+5,-1, edge0_2.Clone(), 2,0, 0,0, ts00,ts22));
+        ts1_3->AddHypothesis(new DiscontinuousHypothesis(2+4+6,-1, edge1_3.Clone(), 3,1, 0,0, ts11,ts33));
         ts01->AddHypothesis(new DiscontinuousHypothesis(1,-1, edge01.Clone(), 0,1));
         ts23->AddHypothesis(new DiscontinuousHypothesis(2,-1, edge23.Clone(), 2,3));
         // the viterbi score of combining ts0_2b and ts1_3b is greater than that of ts01 and ts23
-        ts03->AddHypothesis(new Hypothesis(1+3+5+2+4+6+7,-1, edge03f.Clone(), 0,3, 0,0, ts0_2, ts1_3));
-        ts03->AddHypothesis(new Hypothesis(1+2+7,-1, edge03f.Clone(), 0,3, 0,0, ts01, ts23));
-        tsRoot->AddHypothesis(new Hypothesis(1+3+5+2+4+6+7, -1, 0,3, 0,3, HyperEdge::EDGE_ROOT,-1, 0,-1,ts03));
-        tsRoot->AddHypothesis(new Hypothesis(1+2+7, -1, 0,3, 0,3, HyperEdge::EDGE_ROOT,-1, 1,-1,ts03));
+        ts03->AddHypothesis(new Hypothesis(1+3+5+2+4+6+7,-1, edge03sd.Clone(), 0,3, 0,0, ts0_2, ts1_3));
+        ts03->AddHypothesis(new Hypothesis(1+2+7,-1, edge03sc.Clone(), 0,3, 0,0, ts01, ts23));
+        tsRoot->AddHypothesis(new Hypothesis(1+3+5+2+4+6+7, 0, 0,3, 0,3,  HyperEdge::EDGE_ROOT,-1, 0,-1,ts03));
+        tsRoot->AddHypothesis(new Hypothesis(1+2+7, 0, 0,3, 0,3,  HyperEdge::EDGE_ROOT,-1, 1,-1,ts03));
         // Add the features
         FeatureVectorInt 
             *fv00 = new FeatureVectorInt(1, MakePair(1,1)),
@@ -112,7 +119,8 @@ public:
             *fv1_3b = new FeatureVectorInt(1,MakePair(6,1)),
             *fv01 = new FeatureVectorInt(1,MakePair(5,1)),
         	*fv23 = new FeatureVectorInt(1,MakePair(6,1)),
-        	*fv03f = new FeatureVectorInt(1,MakePair(7,1));
+        	*fv03sc = new FeatureVectorInt(1,MakePair(7,1)),
+        	*fv03sd = new FeatureVectorInt(1,MakePair(8,1));
         fv00->push_back(MakePair(10,1));
         fv11->push_back(MakePair(10,1));
         fv22->push_back(MakePair(10,1));
@@ -121,16 +129,27 @@ public:
         fv1_3b->push_back(MakePair(10,1));
         fv01->push_back(MakePair(10,1));
         fv23->push_back(MakePair(10,1));
-        fv03f->push_back(MakePair(10,1));
-        my_hg->SetEdgeFeatures(HyperEdge(0,-1,0,HyperEdge::EDGE_FOR), fv00);
-        my_hg->SetEdgeFeatures(HyperEdge(1,-1,1,HyperEdge::EDGE_FOR), fv11);
-        my_hg->SetEdgeFeatures(HyperEdge(2,-1,2,HyperEdge::EDGE_FOR), fv22);
-        my_hg->SetEdgeFeatures(HyperEdge(3,-1,3,HyperEdge::EDGE_FOR), fv33);
-        my_hg->SetEdgeFeatures(edge0_2b, fv0_2b);
-        my_hg->SetEdgeFeatures(edge1_3b, fv1_3b);
-        my_hg->SetEdgeFeatures(edge01, fv01);
-        my_hg->SetEdgeFeatures(edge23, fv23);
-        my_hg->SetEdgeFeatures(edge03f, fv03f);
+        fv03sc->push_back(MakePair(10,1));
+        fv03sd->push_back(MakePair(10,1));
+        ts00->SaveStraightFeautures(-1, fv00);
+		ts11->SaveStraightFeautures(-1, fv11);
+		ts22->SaveStraightFeautures(-1, fv22);
+		ts33->SaveStraightFeautures(-1, fv33);
+		ts0_2->SaveInvertedFeautures(-1, fv0_2b);
+		ts1_3->SaveInvertedFeautures(-1, fv1_3b);
+		ts01->SaveStraightFeautures(-1, fv01);
+		ts23->SaveStraightFeautures(-1, fv23);
+		ts03->SaveStraightFeautures(2, fv03sc);
+		ts03d->SaveStraightFeautures(2, fv03sd); // only for saving feature
+//        my_hg->SetEdgeFeatures(HyperEdge(0,-1,0,HyperEdge::EDGE_FOR), fv00);
+//        my_hg->SetEdgeFeatures(HyperEdge(1,-1,1,HyperEdge::EDGE_FOR), fv11);
+//        my_hg->SetEdgeFeatures(HyperEdge(2,-1,2,HyperEdge::EDGE_FOR), fv22);
+//        my_hg->SetEdgeFeatures(HyperEdge(3,-1,3,HyperEdge::EDGE_FOR), fv33);
+//        my_hg->SetEdgeFeatures(edge0_2b, fv0_2b);
+//        my_hg->SetEdgeFeatures(edge1_3b, fv1_3b);
+//        my_hg->SetEdgeFeatures(edge01, fv01);
+//        my_hg->SetEdgeFeatures(edge23, fv23);
+//        my_hg->SetEdgeFeatures(edge03sc, fv03sc);
         // Set the stacks
         my_hg->HyperGraph::SetStack(0,0,ts00);
         my_hg->HyperGraph::SetStack(0,1,ts01);
@@ -144,7 +163,9 @@ public:
         my_hg->HyperGraph::SetStack(3,3,ts33);
         my_hg->SetStack(0,0, 2,2, ts0_2);
         my_hg->SetStack(1,1, 3,3, ts1_3);
+        my_hg->SetStack(0,1, 3,3, ts03d); // only for saving feature
         my_hg->HyperGraph::SetStack(0,4,tsRoot);
+        my_hg->SetSaveFeatures(true);
 //        BOOST_FOREACH(SpanStack * stack, my_hg->GetStacks())
 //			BOOST_FOREACH(TargetSpan * trg, stack->GetSpans()){
 //        		cerr << "Target span " << *trg << endl;
@@ -196,23 +217,27 @@ public:
         FeatureVectorString edge02exp;
         edge02exp.push_back(MakePair(string("SW||he||rice||ID"), 1));
         edge02exp.push_back(MakePair(string("SP||PRP||NN||ID"), 1));
-        FeatureVectorInt edge02intexp;
-        edge02intexp.push_back(MakePair(0, 1));
-        edge02intexp.push_back(MakePair(1, 1));
         // Make the hypergraph and get the features
         DiscontinuousHyperGraph hyper_graph(1);
+        hyper_graph.SetSaveFeatures(true);
+        // for Save{Striaght,Inverted}Features
+        TargetSpan * span0_2 = new DiscontinuousTargetSpan(0,0, 2,2);
+        hyper_graph.SetStack(0,0, 2,2, span0_2);
         // Generate the features
         const FeatureVectorInt * edge02int =
-                        hyper_graph.GetEdgeFeatures(mod, set, datas, edge0_2b);
+                        hyper_graph.GetEdgeFeatures(mod, set, datas, edge0_2);
         FeatureVectorString * edge02act =
                         mod.StringifyFeatureVector(*edge02int);
         // Do the parsing and checking
         int ret = 1;
         ret *= CheckVector(edge02exp, *edge02act);
+        FeatureVectorInt edge02intexp;
+        edge02intexp.push_back(MakePair(mod.GetFeatureIds().GetId("SW||he||rice||ID"), 1));
+        edge02intexp.push_back(MakePair(mod.GetFeatureIds().GetId("SP||PRP||NN||ID"), 1));
         ret *= CheckVector(edge02intexp, *edge02int);
         // Generate the features again
         const FeatureVectorInt * edge02int2 =
-                        hyper_graph.GetEdgeFeatures(mod, set, datas, edge0_2b);
+                        hyper_graph.GetEdgeFeatures(mod, set, datas, edge0_2);
         // Make sure that the pointers are equal
         if(edge02int != edge02int2) {
             cerr << "Edge pointers are not equal." << endl;
@@ -222,7 +247,7 @@ public:
         mod.SetWeight("SP||PRP||NN||ID", 2);
         // Check to make sure that the weights are Ok
         double weight_act = hyper_graph.GetEdgeScore(mod, set,
-                                                     datas, edge0_2b);
+                                                     datas, edge0_2);
         if(weight_act != 1+2) {
             cerr << "Weight is not the expected 3: "<<weight_act<<endl;
             ret = 0;
@@ -249,13 +274,16 @@ public:
         graph.HyperGraph::SetStack(3, 3, stack3);
         // Try processing stack01, which lead to set stack0_2
         set.SetMaxTerm(0);
-        graph.HyperGraph::SetStack(0, 1, graph.ProcessOneSpan(model, set, datas, 0, 1));
-        const TargetSpan *stack0_2 = graph.GetStack(0,0, 2,2);
+        TargetSpan *stack01 = new TargetSpan(0,1);
+        graph.HyperGraph::SetStack(0, 1, stack01);
+        TargetSpan *stack0_2 = new DiscontinuousTargetSpan(0,0, 2,2);
+        graph.SetStack(0,0, 2,2, stack0_2);
+        graph.ProcessOneSpan(model, set, datas, 0, 1);
         // The stack should contain two target spans (2,0) and (0,2),
         // each with one hypothesis
         int ret = 1;
-        if(stack0_2->size() != 2) {
-            cerr << "stack0_2->size() != 2: " << stack0_2->size() << endl; ret = 0;
+        if(stack0_2->HypSize() != 2) {
+            cerr << "stack0_2->size() != 2: " << stack0_2->HypSize() << endl; ret = 0;
         }
         if(!ret) return 0;
         // Check to make sure that the scores are in order
@@ -272,7 +300,8 @@ public:
     int TestBuildHyperGraph() {
         DiscontinuousHyperGraph graph(1);
         set.SetMaxTerm(1);
-        graph.BuildHyperGraph(model, set, datas, 4*3*2);
+        graph.SetBeamSize(4*3*2);
+        graph.BuildHyperGraph(model, set, datas);
         const std::vector<TargetSpan*> & stacks = graph.GetStacks();
         int ret = 1;
         TargetSpan * stack03 = graph.HyperGraph::GetStack(0, 3);
@@ -280,15 +309,18 @@ public:
         // The total number of stacks should be 11: 0-0 0-1 1-1 0-2 1-2 2-2 0-3 1-3 2-3 3-3 root
         if(stacks.size() != 11) {
             cerr << "stacks.size() != 11: " << stacks.size() << endl; ret = 0;
-        // The number of target spans should be 4*3*2: including non-BTGs
-        } else if (stack03->size() != 4*3*2) {
-            cerr << "Root node stack03->size() != 4*3*2: " << stack03->size()<< endl;
-            BOOST_FOREACH(const Hypothesis *hyp, stack03->GetHypotheses())
-            	cerr << " " << hyp->GetTrgLeft() << "-" <<hyp->GetTrgRight() << endl;
+        // The number of target spans should be 4*3*2: including non-ITGs
+        } else if (stack03->HypSize() != 4*3*2) {
+            cerr << "Root node stack03->size() != 4*3*2: " << stack03->HypSize()<< endl;
+            BOOST_FOREACH(Hypothesis *hyp, stack03->GetHypotheses()){
+            	DiscontinuousHypothesis * dhyp =
+            							dynamic_cast<DiscontinuousHypothesis*>(hyp);
+            	cerr << (dhyp ? *dhyp : *hyp) << endl;
+            }
             ret = 0;
-        } else if (stackRoot->size() != stack03->size()) {
-            cerr << "Root hypotheses " << stackRoot->size()
-                 << " and root spans " << stack03->size() << " don't match." << endl; ret = 0;
+        } else if (stackRoot->HypSize() != stack03->HypSize()) {
+            cerr << "Root hypotheses " << stackRoot->HypSize()
+                 << " and root spans " << stack03->HypSize() << " don't match." << endl; ret = 0;
         }
 
         BOOST_FOREACH(TargetSpan * stack, stacks)
@@ -299,20 +331,423 @@ public:
 						hyp->GetSingleScore()
 						+ (lhyp ? lhyp->GetScore() : 0)
 						+ (rhyp ? rhyp->GetScore() : 0) ){
-					cerr << "Incorrect viterbi score " << *hyp << endl;
+					cerr << "Incorrect viterbi score " << *hyp;
 					hyp->PrintChildren(cerr);
 					ret = 0;
 				}
+				if (hyp->GetTrgLeft() < hyp->GetLeft()
+					|| hyp->GetRight() < hyp->GetTrgRight()){
+					cerr << "Malformed hypothesis "<< *hyp;
+					hyp->PrintChildren(cerr);
+					ret = 0;
+				}
+				// root has no edge features
+				if (hyp->GetEdgeType() == HyperEdge::EDGE_ROOT)
+					continue;
+				DiscontinuousHypothesis * dhyp =
+						dynamic_cast<DiscontinuousHypothesis*>(hyp);
+				const FeatureVectorInt *fvi = graph.GetEdgeFeatures(model, set, datas, *hyp->GetEdge());
+				FeatureVectorString *fvs = model.StringifyFeatureVector(*fvi);
+				bool error = false;
+				BOOST_FOREACH(FeaturePairString feat, *fvs){
+					string edgetype = feat.first.substr(feat.first.size()-2);
+					if (edgetype[0] != hyp->GetEdgeType()){
+						cerr << "Incorrect edge type ";
+						error = true;
+					}
+					if (edgetype[1] != hyp->GetEdge()->GetClass()){
+						cerr << "Incorrect edge class ";
+						error = true;
+					}
+				}
+				if (error){
+					cerr << (dhyp ? *dhyp : *hyp) << endl << *fvs << endl;
+					ret = 0;
+				}
+				delete fvs;
 			}
         return ret;
     }
 
+    int TestBuildHyperGraphCubeGrowing() {
+        DiscontinuousHyperGraph graph(1, true);
+        set.SetMaxTerm(1);
+        graph.SetBeamSize(4*3*2);
+        graph.BuildHyperGraph(model, set, datas);
+        const std::vector<TargetSpan*> & stacks = graph.GetStacks();
+        int ret = 1;
+        TargetSpan * stack03 = graph.HyperGraph::GetStack(0, 3);
+        TargetSpan * stackRoot = graph.HyperGraph::GetRoot();
+        // The total number of stacks should be 11: 0-0 0-1 1-1 0-2 1-2 2-2 0-3 1-3 2-3 3-3 root
+        if(stacks.size() != 11) {
+            cerr << "stacks.size() != 11: " << stacks.size() << endl; ret = 0;
+        // The number of target spans should be 4*3*2: including non-ITGs
+        } else if (stack03->HypSize() != 4*3*2) {
+            cerr << "Root node stack03->size() != 4*3*2: " << stack03->HypSize()<< endl;
+            BOOST_FOREACH(const Hypothesis *hyp, stack03->GetHypotheses())
+            	cerr << " " << hyp->GetTrgLeft() << "-" <<hyp->GetTrgRight() << endl;
+            ret = 0;
+        } else if (stackRoot->HypSize() != stack03->HypSize()) {
+            cerr << "Root hypotheses " << stackRoot->HypSize()
+                 << " and root spans " << stack03->HypSize() << " don't match." << endl; ret = 0;
+        }
+
+        for(int i = 0; i < 4*3*2; i++){
+        	int pop_count = 0;
+        	Hypothesis * hyp = graph.LazyKthBest(stackRoot, i, model, datas, pop_count);
+        	Hypothesis * lhyp = hyp->GetLeftHyp();
+        	Hypothesis * rhyp = hyp->GetRightHyp();
+        	if (hyp->GetScore() !=
+        			hyp->GetSingleScore()
+        			+ (lhyp ? lhyp->GetScore() : 0)
+        			+ (rhyp ? rhyp->GetScore() : 0) ){
+        		cerr << "Incorrect viterbi score " << *hyp << endl;
+        		hyp->PrintChildren(cerr);
+        		ret = 0;
+        	}
+			if (hyp->GetTrgLeft() < hyp->GetLeft()
+				|| hyp->GetRight() < hyp->GetTrgRight()){
+				cerr << "Malformed hypothesis "<< *hyp;
+				hyp->PrintChildren(cerr);
+				ret = 0;
+			}
+        	// root has no edge features
+        	if (hyp->GetEdgeType() == HyperEdge::EDGE_ROOT)
+        		continue;
+        	DiscontinuousHypothesis * dhyp =
+        			dynamic_cast<DiscontinuousHypothesis*>(hyp);
+        	const FeatureVectorInt *fvi = graph.GetEdgeFeatures(model, set, datas, *hyp->GetEdge());
+        	FeatureVectorString *fvs = model.StringifyFeatureVector(*fvi);
+        	bool error = false;
+        	BOOST_FOREACH(FeaturePairString feat, *fvs){
+        		string edgetype = feat.first.substr(feat.first.size()-2);
+        		if (edgetype[0] != hyp->GetEdgeType()){
+        			cerr << "Incorrect edge type ";
+        			error = true;
+        		}
+        		if (edgetype[1] != hyp->GetEdge()->GetClass()){
+        			cerr << "Incorrect edge class ";
+        			error = true;
+        		}
+        	}
+        	if (error){
+        		cerr << (dhyp ? *dhyp : *hyp) << endl << *fvs << endl;
+        		ret = 0;
+        	}
+        	delete fvs;
+        }
+        return ret;
+    }
+
+    int TestBuildHyperGraphMultiThreads() {
+    	FeatureSet set;
+    	FeatureSequence * featw = new FeatureSequence;
+        featw->ParseConfiguration("SW%LS%RS");
+    	set.AddFeatureGenerator(featw);
+    	set.SetMaxTerm(0);
+    	set.SetUseReverse(false);
+        FeatureDataSequence sent;
+        sent.FromString("t h i s i s a v e r y l o n g s e n t e n c e .");
+        vector<FeatureDataBase*> datas;
+        datas.push_back(&sent);
+    	struct timespec tstart={0,0}, tend={0,0};
+        ReordererModel model;
+
+    	DiscontinuousHyperGraph graph(2, true, true);
+        int beam_size = 100;
+        graph.SetBeamSize(beam_size);
+    	graph.SetThreads(1);
+//    	graph.SetVerbose(2);
+
+        clock_gettime(CLOCK_MONOTONIC, &tstart);
+        graph.BuildHyperGraph(model, set, datas);
+		clock_gettime(CLOCK_MONOTONIC, &tend);
+		double thread1 = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) -
+				((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+
+		// reusing model requires no more model->GetFeatureIds()->GetId(add=true)
+		// therefore, it will be much faster
+		graph.SetThreads(4);
+		graph.ClearStacks();
+    	clock_gettime(CLOCK_MONOTONIC, &tstart);
+    	graph.BuildHyperGraph(model, set, datas);
+    	clock_gettime(CLOCK_MONOTONIC, &tend);
+    	double thread4 = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) -
+    			((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+    	const std::vector<TargetSpan*> & stacks = graph.GetStacks();
+    	int ret = 1;
+    	int n = sent.GetNumWords();
+    	// The total number of stacks should be n*(n+1)/2 + 1
+    	if(stacks.size() != n*(n+1)/2 + 1) {
+    		cerr << "stacks.size() != " << n*(n+1)/2 + 1 << ": " << stacks.size() << endl; ret = 0;
+    		// The number of hypothesis should be beam_size
+    	} else if (graph.GetRoot()->HypSize() != beam_size) {
+    		cerr << "root stacks->size() != " << beam_size << ": " <<graph.GetRoot()->HypSize()<< endl;
+    		BOOST_FOREACH(const Hypothesis *hyp, graph.GetRoot()->GetHypotheses()){
+    			cerr << *hyp <<  endl;
+    		}
+    		ret = 0;
+    	}
+		if(thread4 > thread1){
+			cerr << "more threads, more time? " << thread4 << " > " << thread1 << endl;
+			ret = 0;
+		}
+		for(int i = 0; i < beam_size; i++){
+			int pop_count = 0;
+			Hypothesis * hyp = graph.LazyKthBest(graph.GetRoot(), i, model, datas, pop_count);
+			Hypothesis * lhyp = hyp->GetLeftHyp();
+			Hypothesis * rhyp = hyp->GetRightHyp();
+			if (hyp->GetScore() !=
+					hyp->GetSingleScore()
+					+ (lhyp ? lhyp->GetScore() : 0)
+					+ (rhyp ? rhyp->GetScore() : 0) ){
+				cerr << "Incorrect viterbi score " << *hyp << endl;
+				hyp->PrintChildren(cerr);
+				ret = 0;
+			}
+			if (hyp->GetTrgLeft() < hyp->GetLeft()
+			|| hyp->GetRight() < hyp->GetTrgRight()){
+				cerr << "Malformed hypothesis "<< *hyp;
+				hyp->PrintChildren(cerr);
+				ret = 0;
+			}
+			// root has no edge features
+			if (hyp->GetEdgeType() == HyperEdge::EDGE_ROOT)
+				continue;
+			DiscontinuousHypothesis * dhyp =
+					dynamic_cast<DiscontinuousHypothesis*>(hyp);
+			const FeatureVectorInt *fvi = graph.GetEdgeFeatures(model, set, datas, *hyp->GetEdge());
+			FeatureVectorString *fvs = model.StringifyFeatureVector(*fvi);
+			bool error = false;
+			BOOST_FOREACH(FeaturePairString feat, *fvs){
+				string edgetype = feat.first.substr(feat.first.size()-2);
+				if (edgetype[0] != hyp->GetEdgeType()){
+					cerr << "Incorrect edge type ";
+					error = true;
+				}
+				if (edgetype[1] != hyp->GetEdge()->GetClass()){
+					cerr << "Incorrect edge class ";
+					error = true;
+				}
+			}
+			if (error){
+				cerr << (dhyp ? *dhyp : *hyp) << endl << *fvs << endl;
+				ret = 0;
+			}
+			delete fvs;
+		}
+    	set.SetUseReverse(true);
+    	return ret;
+    }
+
+    int TestBuildHyperGraphSaveFeatures() {
+    	FeatureSet set;
+    	FeatureSequence * featw = new FeatureSequence;
+    	featw->ParseConfiguration("SW%LS%RS");
+    	set.AddFeatureGenerator(featw);
+    	set.SetMaxTerm(0);
+    	set.SetUseReverse(false);
+    	FeatureDataSequence sent;
+    	sent.FromString("t h i s i s a v e r y l o n g s e n t e n c e .");
+    	vector<FeatureDataBase*> datas;
+    	datas.push_back(&sent);
+    	struct timespec tstart={0,0}, tend={0,0};
+
+    	DiscontinuousHyperGraph graph(3, 1, true, true);
+    	int beam_size = 100;
+    	graph.SetSaveFeatures(true);
+        graph.SetBeamSize(beam_size);
+        graph.SetNumWords(sent.GetNumWords());
+        graph.SetAllStacks();
+    	ReordererModel model;
+
+    	clock_gettime(CLOCK_MONOTONIC, &tstart);
+    	graph.BuildHyperGraph(model, set, datas);
+    	clock_gettime(CLOCK_MONOTONIC, &tend);
+    	double before_save = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) -
+    			((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+
+    	// reusing saved features does not access to model->GetFeatureIds() anymore
+    	// therefore, it will be much faster
+    	ReordererModel empty_model; // use empty model
+    	empty_model.SetAdd(false); // do not allow adding feature ids anymore
+    	clock_gettime(CLOCK_MONOTONIC, &tstart);
+    	graph.BuildHyperGraph(empty_model, set, datas);
+    	clock_gettime(CLOCK_MONOTONIC, &tend);
+    	double after_save = ((double)tend.tv_sec + 1.0e-9*tend.tv_nsec) -
+    			((double)tstart.tv_sec + 1.0e-9*tstart.tv_nsec);
+    	const std::vector<TargetSpan*> & stacks = graph.GetStacks();
+    	int ret = 1;
+    	int n = sent.GetNumWords();
+    	// The total number of stacks should be n*(n+1)/2 + 1
+    	if(stacks.size() != n*(n+1)/2 + 1) {
+    		cerr << "stacks.size() != " << n*(n+1)/2 + 1 << ": " << stacks.size() << endl; ret = 0;
+    		// The number of hypothesis should be beam_size
+    	} else if (graph.GetRoot()->HypSize() != beam_size) {
+    		cerr << "root stacks->size() != " << beam_size << ": " <<graph.GetRoot()->HypSize()<< endl;
+    		BOOST_FOREACH(const Hypothesis *hyp, graph.GetRoot()->GetHypotheses()){
+    			cerr << *hyp <<  endl;
+    		}
+    		ret = 0;
+    	}
+    	if(after_save > before_save){
+    		cerr << "save features, more time? " << after_save << " > " << before_save << endl;
+    		ret = 0;
+    	}
+    	set.SetUseReverse(true);
+    	return ret;
+    }
+
+
+    int TestBuildHyperGraphSerialize() {
+    	DiscontinuousHyperGraph graph1(3, true, true);
+    	FeatureSet set;
+    	FeatureSequence * featw = new FeatureSequence;
+    	featw->ParseConfiguration("SW%LS%RS");
+    	set.AddFeatureGenerator(featw);
+    	set.SetMaxTerm(0);
+    	set.SetUseReverse(false);
+    	FeatureDataSequence sent;
+    	sent.FromString("t h i s i s a v e r y l o n g s e n t e n c e .");
+    	vector<FeatureDataBase*> datas;
+    	datas.push_back(&sent);
+    	int beam_size = 100;
+    	graph1.SetBeamSize(beam_size);
+    	ReordererModel model;
+    	graph1.SetSaveFeatures(true);
+    	graph1.SetNumWords(sent.GetNumWords());
+    	graph1.SetAllStacks();
+    	graph1.SetThreads(4);
+    	graph1.BuildHyperGraph(model, set, datas);
+
+    	ofstream out("/tmp/feature.discontinuous");
+    	graph1.FeaturesToStream(out);
+    	out.close();
+
+    	DiscontinuousHyperGraph graph2(3, 1, true, true);
+    	graph2.SetBeamSize(beam_size);
+    	graph2.SetSaveFeatures(true); // use saved feature
+    	ReordererModel empty_model; // use empty model
+    	empty_model.SetAdd(false); // do not allow adding feature ids anymore
+    	int N = sent.GetNumWords();
+    	graph2.SetNumWords(N);
+    	graph2.SetAllStacks();
+    	ifstream in("/tmp/feature.discontinuous");
+    	graph2.FeaturesFromStream(in);
+    	in.close();
+    	graph2.SetThreads(4);
+    	graph2.BuildHyperGraph(empty_model, set, datas);
+    	const std::vector<TargetSpan*> & stacks = graph2.GetStacks();
+    	int ret = 1;
+
+    	FeatureVectorInt * fvi1, *fvi2;
+    	int D = graph2.gap_size_;
+    	for(int L = 1; L <= N; L++) {
+			for(int l = 0; l <= N-L; l++){
+				int r = l+L-1;
+//    			cout << "Check " << *graph1.HyperGraph::GetStack(l, r) << endl;
+				ret = CheckStackEqual(graph1.HyperGraph::GetStack(l, r), graph2.HyperGraph::GetStack(l, r));
+				for(int m = l + 1;m <= r;m++){
+					for (int c = m+1; c-m <= D; c++)
+						for(int n = c+1; n-c <= D && n <= r;n++){
+//    						cout << "Check " << *(DiscontinuousTargetSpan*)graph1.GetStack(l, m, n, r) << endl;
+							ret = CheckStackEqual(graph1.GetStack(l, m, n, r),
+									graph2.GetStack(l, m, n, r));
+						}
+					for(int d = 1;d <= D;d++){
+						if(IsXXD(l, m - 1, m + d, r + d, D, N)){
+//    						cout << "Check " << *(DiscontinuousTargetSpan*)graph1.GetStack(l, m - 1, m + d, r + d) << endl;
+							ret = CheckStackEqual(graph1.GetStack(l, m - 1, m + d, r + d),
+									graph2.GetStack(l, m - 1, m + d, r + d));
+						}
+					}
+				}
+			}
+		}
+    	set.SetUseReverse(true);
+    	return ret;
+    }
+
+    int TestBuildHyperGraphSaveAllFeatures() {
+    	DiscontinuousHyperGraph graph1(3, true, true);
+    	FeatureSet set;
+    	FeatureSequence * featw = new FeatureSequence;
+    	featw->ParseConfiguration("SW%LS%RS");
+    	set.AddFeatureGenerator(featw);
+    	set.SetMaxTerm(0);
+    	set.SetUseReverse(false);
+    	FeatureDataSequence sent;
+    	sent.FromString("t h i s i s a v e r y l o n g s e n t e n c e .");
+    	vector<FeatureDataBase*> datas;
+    	datas.push_back(&sent);
+    	int beam_size = 100;
+    	graph1.SetBeamSize(beam_size);
+    	ReordererModel model;
+    	graph1.SetSaveFeatures(true);
+    	graph1.SetNumWords(sent.GetNumWords());
+    	graph1.SetAllStacks();
+    	graph1.SaveAllEdgeFeatures(model, set, datas);
+
+    	ofstream out("/tmp/feature.discontinuous.saveall");
+    	graph1.FeaturesToStream(out);
+    	out.close();
+
+    	DiscontinuousHyperGraph graph2(3, 1, true, true);
+    	graph2.SetBeamSize(beam_size);
+    	graph2.SetSaveFeatures(true); // use saved feature
+    	ReordererModel empty_model; // use empty model
+    	empty_model.SetAdd(false); // do not allow adding feature ids anymore
+    	int N = sent.GetNumWords();
+    	graph2.SetNumWords(N);
+    	graph2.SetAllStacks();
+    	ifstream in("/tmp/feature.discontinuous.saveall");
+    	graph2.FeaturesFromStream(in);
+    	in.close();
+    	graph2.SetThreads(4);
+    	graph2.BuildHyperGraph(empty_model, set, datas);
+    	const std::vector<TargetSpan*> & stacks = graph2.GetStacks();
+    	int ret = 1;
+
+    	FeatureVectorInt * fvi1, *fvi2;
+    	int D = graph2.gap_size_;
+    	for(int L = 1; L <= N; L++) {
+    		for(int l = 0; l <= N-L; l++){
+    			int r = l+L-1;
+//    			cout << "Check " << *graph1.HyperGraph::GetStack(l, r) << endl;
+    			ret = CheckStackEqual(graph1.HyperGraph::GetStack(l, r), graph2.HyperGraph::GetStack(l, r));
+    			for(int m = l + 1;m <= r;m++){
+    				for (int c = m+1; c-m <= D; c++)
+    					for(int n = c+1; n-c <= D && n <= r;n++){
+//    						cout << "Check " << *(DiscontinuousTargetSpan*)graph1.GetStack(l, m, n, r) << endl;
+    						ret = CheckStackEqual(graph1.GetStack(l, m, n, r),
+    								graph2.GetStack(l, m, n, r));
+    					}
+    				for(int d = 1;d <= D;d++){
+    					if(IsXXD(l, m - 1, m + d, r + d, D, N)){
+//    						cout << "Check " << *(DiscontinuousTargetSpan*)graph1.GetStack(l, m - 1, m + d, r + d) << endl;
+    						ret = CheckStackEqual(graph1.GetStack(l, m - 1, m + d, r + d),
+    								graph2.GetStack(l, m - 1, m + d, r + d));
+    					}
+    				}
+    			}
+    		}
+    	}
+    	set.SetUseReverse(true);
+    	return ret;
+    }
     int TestBuildHyperGraphGap2() {
-        DiscontinuousHyperGraph graph(2);
-        set.SetMaxTerm(0);
+    	// use full-fledged version
+        DiscontinuousHyperGraph graph(2, true, true);
+        set.SetMaxTerm(1);
+        ReordererModel model;
+        FeatureDataSequence sent, sent_pos;
         sent.FromString("this sentence has five words");
 		sent_pos.FromString("PRP NNS VB ADJ NNP");
-        graph.BuildHyperGraph(model, set, datas, 100);
+        vector<FeatureDataBase*> datas;
+        datas.push_back(&sent);
+        datas.push_back(&sent_pos);
+        graph.SetBeamSize(5*4*3*2);
+        graph.BuildHyperGraph(model, set, datas);
         const std::vector<TargetSpan*> & stacks = graph.GetStacks();
         int ret = 1;
         TargetSpan * stack04 = graph.HyperGraph::GetStack(0, 4);
@@ -320,15 +755,15 @@ public:
         // The total number of stacks should be 6*5/2 + 1: 0-0 0-1 1-1 0-2 1-2 2-2 0-3 1-3 2-3 3-3 0-4 1-4 2-4 3-4 4-4 root
         if(stacks.size() != 16) {
             cerr << "stacks.size() != 16: " << stacks.size() << endl; ret = 0;
-        // The number of target spans should be 100:
-        } else if (stack04->size() != 100) {
-            cerr << "Root node stack04->size() != 100: " << stack04->size()<< endl;
+        // The number of target spans should be 5*4*3*2 =720:
+        } else if (stack04->HypSize() != 5*4*3*2) {
+            cerr << "Root node stack04->size() != 720: " << stack04->HypSize()<< endl;
             BOOST_FOREACH(const Hypothesis *hyp, stack04->GetHypotheses())
             	cerr << " " << hyp->GetTrgLeft() << "-" <<hyp->GetTrgRight() << endl;
             ret = 0;
-        } else if (stackRoot->size() != stack04->size()) {
-            cerr << "Root hypotheses " << stackRoot->size()
-                 << " and root spans " << stack04->size() << " don't match." << endl; ret = 0;
+        } else if (stackRoot->HypSize() != stack04->HypSize()) {
+            cerr << "Root hypotheses " << stackRoot->HypSize()
+                 << " and root spans " << stack04->HypSize() << " don't match." << endl; ret = 0;
         }
         return ret;
     }
@@ -336,8 +771,13 @@ public:
     int TestBuildHyperGraphSize1() {
 		DiscontinuousHyperGraph graph(0);
 		set.SetMaxTerm(0);
+		ReordererModel model;
+		FeatureDataSequence sent, sent_pos;
 		sent.FromString("one");
 		sent_pos.FromString("NNS");
+		vector<FeatureDataBase*> datas;
+		datas.push_back(&sent);
+		datas.push_back(&sent_pos);
 		graph.BuildHyperGraph(model, set, datas);
 		const std::vector<TargetSpan*> & stacks = graph.GetStacks();
 		int ret = 1;
@@ -361,7 +801,10 @@ public:
     }
 
     int TestAccumulateFeatures() {
-    	FeatureVectorInt act = my_hg->GetBest()->AccumulateFeatures(my_hg->GetFeatures());
+    	FeatureVectorInt act;
+    	std::tr1::unordered_map<int, double> feat_map;
+    	my_hg->AccumulateFeatures(feat_map, model, set, datas, my_hg->GetBest());
+    	ClearAndSet(act, feat_map);
         FeatureVectorInt exp;
         exp.push_back(MakePair(1,1));
         exp.push_back(MakePair(2,1));
@@ -369,12 +812,35 @@ public:
         exp.push_back(MakePair(4,1));
         exp.push_back(MakePair(5,1));
         exp.push_back(MakePair(6,1));
-        exp.push_back(MakePair(7,1));
+        exp.push_back(MakePair(8,1));
         exp.push_back(MakePair(10,1*7));
         // Test the rescoring
         return CheckVector(exp, act);
     }
 
+    int TestAddLoss() {
+    	DiscontinuousHyperGraph graph(1);
+    	set.SetMaxTerm(1);
+        graph.SetBeamSize(4*3*2);
+    	graph.BuildHyperGraph(model, set, datas);
+    	LossChunk loss;
+    	loss.Initialize(&ranks, NULL);
+    	graph.AddLoss(&loss, &ranks, NULL);
+    	TargetSpan * span1_3 = graph.GetStack(1,1, 3,3);
+    	int ret = 1;
+    	BOOST_FOREACH(Hypothesis * hyp, span1_3->GetHypotheses()){
+    		if (hyp->GetEdgeType() == HyperEdge::EDGE_STR && hyp->GetLoss() != 1){
+    			cerr << "Expect loss 1 != " << hyp->GetLoss() << *hyp << endl;
+    			ret = 0;
+    		}
+    		if (hyp->GetEdgeType() == HyperEdge::EDGE_INV && hyp->GetLoss() != 0){
+    			cerr << "Expect loss 0 != " << hyp->GetLoss() << *hyp << endl;
+    			ret = 0;
+    		}
+    	}
+
+    	return ret;
+    }
     // Test that rescoring works
     int TestRescore() {
         // Create a model that assigns a weight of -1 to each production
@@ -392,13 +858,13 @@ public:
         if(score != -3) {
             cerr << "Rescore(mod, 0.0) != -3: " << score << endl; ret = 0;
         }
-        // Rescoring with loss +1 should pick the non-BTG
+        // Rescoring with loss +1 should pick the non-ITG
         // with a loss of 1+2+3+4+5+6+7, minus a weight of 1*7 -> 21
         score = my_hg->Rescore(1.0);
         if(score != 21) {
             cerr << "Rescore(mod, 1.0) != 21: " << score << endl; ret = 0;
         }
-        // Rescoring with loss -1 should pick the BTG
+        // Rescoring with loss -1 should pick the ITG
 		// with a loss of -1-2-7, minus a weight of 1*7 -> 21
 		score = my_hg->Rescore(-1);
 		if(score != -17) {
@@ -409,45 +875,59 @@ public:
 
     // Test various types of reordering in the hypergraph
     int TestReorderingAndPrint() {
-        // Create the expected reordering vectors
-        vector<int> vec01(2,0); vec01[0] = 0; vec01[1] = 1;
-        vector<int> vec10(2,0); vec10[0] = 1; vec10[1] = 0;
-        vector<string> str01(2); str01[0] = "0"; str01[1] = "1";
+        // Create the expected reordering Inside-Out vectors
+        vector<int> vec1302(4,0); vec1302[0] = 1; vec1302[1] = 3; vec1302[2] = 0; vec1302[3] = 2;
+        vector<int> vec2031(4,0); vec2031[0] = 2; vec2031[1] = 0; vec2031[2] = 3; vec2031[3] = 1;
+        vector<string> str(4); str[0] = "0"; str[1] = "1"; str[2] = "2"; str[3] = "3";
         // Create a forest that can handle various things
         TargetSpan *span00 = new TargetSpan(0,0),
-                   *span01 = new TargetSpan(0,1),
                    *span11 = new TargetSpan(1,1),
-                   *spanr = new TargetSpan(0,1);
-        span00->AddHypothesis(new Hypothesis(1,1,0,0,-1,-1,HyperEdge::EDGE_FOR));
-        span11->AddHypothesis(new Hypothesis(1,1,1,1,-1,-1,HyperEdge::EDGE_FOR));
-        span01->AddHypothesis(new Hypothesis(1,1,0,1,-1,-1,HyperEdge::EDGE_FOR));
-        spanr->AddHypothesis(new Hypothesis(1,1,0,1,-1,-1,HyperEdge::EDGE_ROOT,-1,0,-1,span01));
-        // Get the reordering for forward
+                   *span22 = new TargetSpan(2,2),
+                   *span33 = new TargetSpan(3,3),
+                   *span0_2 = new DiscontinuousTargetSpan(0,0, 2,2),
+                   *span1_3 = new DiscontinuousTargetSpan(1,1, 3,3),
+                   *span03 = new TargetSpan(0,3),
+                   *spanr = new TargetSpan(0,3);
+        span00->AddHypothesis(new Hypothesis(1,1, 0,0,-1,-1,HyperEdge::EDGE_FOR));
+        span11->AddHypothesis(new Hypothesis(1,1, 1,1,-1,-1,HyperEdge::EDGE_FOR));
+        span22->AddHypothesis(new Hypothesis(1,1, 2,2,-1,-1,HyperEdge::EDGE_FOR));
+        span33->AddHypothesis(new Hypothesis(1,1, 3,3,-1,-1,HyperEdge::EDGE_FOR));
+        span0_2->AddHypothesis(new DiscontinuousHypothesis(1,1,
+        		0,0, 2,2, 0,2, HyperEdge::EDGE_STR, -1,
+        		0,0, span00, span22));
+        span0_2->AddHypothesis(new DiscontinuousHypothesis(1,1,
+        		0,0, 2,2, 2,0, HyperEdge::EDGE_INV, -1,
+        		0,0, span00, span22));
+        span1_3->AddHypothesis(new DiscontinuousHypothesis(1,1,
+        		1,1, 3,3, 1,3, HyperEdge::EDGE_STR, -1,
+        		0,0, span11, span33));
+        span1_3->AddHypothesis(new DiscontinuousHypothesis(1,1,
+        		1,1, 3,3, 3,1, HyperEdge::EDGE_INV, -1,
+        		0,0, span11, span33));
+        span03->AddHypothesis(new Hypothesis(1,1, 0,3, 1,2, HyperEdge::EDGE_INV,-1, 0,0, span0_2, span1_3));
+        span03->AddHypothesis(new Hypothesis(1,1, 0,3, 2,1, HyperEdge::EDGE_STR,-1, 1,1, span0_2, span1_3));
+        spanr->AddHypothesis(new Hypothesis(1,1, 0,3, 1,2, HyperEdge::EDGE_ROOT,-1,0,-1, span03));
+        spanr->AddHypothesis(new Hypothesis(1,1, 0,3, 2,1, HyperEdge::EDGE_ROOT,-1,1,-1, span03));
+        DiscontinuousHyperGraph graph(1);
+        graph.HyperGraph::SetStack(0,0, span00);
+        graph.HyperGraph::SetStack(1,1, span11);
+        graph.HyperGraph::SetStack(2,2, span22);
+        graph.HyperGraph::SetStack(3,3, span33);
+        graph.SetStack(0,0, 2,2, span0_2);
+        graph.SetStack(1,1, 3,3, span1_3);
+        // Get the reordering for 1302
         int ret = 1;
-        vector<int> for_reorder; spanr->GetReordering(for_reorder);
-         ostringstream for_oss; spanr->PrintParse(str01, for_oss);
-         ret = min(ret, CheckVector(vec01, for_reorder));
-         ret = min(ret, CheckString("(F (FW 0) (FW 1))", for_oss.str()));
-         // Get the reordering bac backward
-         span01->GetHypothesis(0)->SetType(HyperEdge::EDGE_BAC);
-         vector<int> bac_reorder; spanr->GetReordering(bac_reorder);
-         ostringstream bac_oss; spanr->PrintParse(str01, bac_oss);
-         ret = min(ret, CheckVector(vec10, bac_reorder));
-         ret = min(ret, CheckString("(B (BW 0) (BW 1))", bac_oss.str()));
-         // Get the reordering for forward
-         span01->GetHypothesis(0)->SetType(HyperEdge::EDGE_STR);
-         span01->GetHypothesis(0)->SetLeftChild(span00);
-         span01->GetHypothesis(0)->SetRightChild(span11);
-         vector<int> str_reorder; spanr->GetReordering(str_reorder);
-         ostringstream str_oss; spanr->PrintParse(str01, str_oss);
-         ret = min(ret, CheckVector(vec01, str_reorder));
-         ret = min(ret,CheckString("(S (F (FW 0)) (F (FW 1)))",str_oss.str()));
-         // Get the reordering for forward
-         span01->GetHypothesis(0)->SetType(HyperEdge::EDGE_INV);
-         vector<int> inv_reorder; spanr->GetReordering(inv_reorder);
-         ostringstream inv_oss; spanr->PrintParse(str01, inv_oss);
-         ret = min(ret, CheckVector(vec10, inv_reorder));
-         ret = min(ret,CheckString("(I (F (FW 0)) (F (FW 1)))",inv_oss.str()));
+        vector<int> reorder1302;
+        spanr->GetHypothesis(0)->GetReordering(reorder1302);
+        ostringstream for_oss; spanr->GetHypothesis(0)->PrintParse(str, for_oss);
+        ret = min(ret, CheckVector(vec1302, reorder1302));
+        ret = min(ret, CheckString("(I (S (F (FW 0)) (F (FW 2))) (S (F (FW 1)) (F (FW 3))))", for_oss.str()));
+        // Get the reordering for 2031
+        vector<int> reorder2031;
+        spanr->GetHypothesis(1)->GetReordering(reorder2031);
+        ostringstream bac_oss; spanr->GetHypothesis(1)->PrintParse(str, bac_oss);
+        ret = min(ret, CheckVector(vec2031, reorder2031));
+        ret = min(ret, CheckString("(S (I (F (FW 0)) (F (FW 2))) (I (F (FW 1)) (F (FW 3))))", bac_oss.str()));
         return ret;
     }
 
@@ -460,10 +940,10 @@ public:
                    *span01 = new TargetSpan(0,1),
                    *span11 = new TargetSpan(1,1),
                    *spanr = new TargetSpan(0,1);
-        span00->AddHypothesis(new Hypothesis(1,1,0,0,-1,-1,HyperEdge::EDGE_FOR));
-        span11->AddHypothesis(new Hypothesis(1,1,1,1,-1,-1,HyperEdge::EDGE_BAC));
-        span01->AddHypothesis(new Hypothesis(1,1,0,1,-1,-1,HyperEdge::EDGE_INV,-1,1,-1,span00,span11));
-        spanr->AddHypothesis(new Hypothesis(1,1,0,1,-1,-1,HyperEdge::EDGE_ROOT,-1,0,-1,span01));
+        span00->AddHypothesis(new Hypothesis(1,1, 0,0,-1,-1,HyperEdge::EDGE_FOR));
+        span11->AddHypothesis(new Hypothesis(1,1, 1,1,-1,-1,HyperEdge::EDGE_BAC));
+        span01->AddHypothesis(new Hypothesis(1,1, 0,1,-1,-1,HyperEdge::EDGE_INV,-1,1,-1,span00,span11));
+        spanr->AddHypothesis(new Hypothesis(1,1, 0,1,-1,-1,HyperEdge::EDGE_ROOT,-1,0,-1,span01));
         // Get the reordering for forward
         int ret = 1;
         span01->GetHypothesis(0)->SetType(HyperEdge::EDGE_FOR);
@@ -512,7 +992,7 @@ public:
         span01->GetHypothesis(0)->SetType(HyperEdge::EDGE_INV);
         span01->GetHypothesis(0)->SetLeftChild(span00);
         span01->GetHypothesis(0)->SetRightChild(span11);
-        span01->AddHypothesis(new Hypothesis(1,1,0,1,-1,-1,HyperEdge::EDGE_STR,-1,1,-1,span00,span11));
+        span01->AddHypothesis(new Hypothesis(1,1, 0,1,-1,-1,HyperEdge::EDGE_STR,-1,1,-1,span00,span11));
         // Print again
         ostringstream graph_stream;
         hg.PrintHyperGraph(str01, graph_stream);
@@ -522,24 +1002,30 @@ public:
 
     bool RunTest() {
         int done = 0, succeeded = 0;
-        done++; cout << "TestGetTrgSpanID()" << endl; if(TestGetTrgSpanID()) succeeded++; else cout << "FAILED!!!" << endl;
-        done++; cout << "TestGetEdgeFeaturesAndWeights()" << endl; if(TestGetEdgeFeaturesAndWeights()) succeeded++; else cout << "FAILED!!!" << endl;
-        done++; cout << "TestProcessOneSpan()" << endl; if(TestProcessOneSpan()) succeeded++; else cout << "FAILED!!!" << endl;
-        done++; cout << "TestBuildHyperGraph()" << endl; if(TestBuildHyperGraph()) succeeded++; else cout << "FAILED!!!" << endl;
-        done++; cout << "TestAccumulateLoss()" << endl; if(TestAccumulateLoss()) succeeded++; else cout << "FAILED!!!" << endl;
-        done++; cout << "TestAccumulateFeatures()" << endl; if(TestAccumulateFeatures()) succeeded++; else cout << "FAILED!!!" << endl;
-        done++; cout << "TestRescore()" << endl; if(TestRescore()) succeeded++; else cout << "FAILED!!!" << endl;
-        done++; cout << "TestReorderingAndPrint()" << endl; if(TestReorderingAndPrint()) succeeded++; else cout << "FAILED!!!" << endl;
-        done++; cout << "TestPrintHyperGraph()" << endl; if(TestPrintHyperGraph()) succeeded++; else cout << "FAILED!!!" << endl;
-        done++; cout << "TestBuildHyperGraphGap2()" << endl; if(TestBuildHyperGraphGap2()) succeeded++; else cout << "FAILED!!!" << endl;
-        done++; cout << "TestBuildHyperGraphSize1()" << endl; if(TestBuildHyperGraphSize1()) succeeded++; else cout << "FAILED!!!" << endl;
+        done++; cout << "TestGetTrgSpanID()"; if(TestGetTrgSpanID()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
+        done++; cout << "TestGetEdgeFeaturesAndWeights()"; if(TestGetEdgeFeaturesAndWeights()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
+        done++; cout << "TestProcessOneSpan()"; if(TestProcessOneSpan()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
+        done++; cout << "TestBuildHyperGraph()"; if(TestBuildHyperGraph()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
+        done++; cout << "TestBuildHyperGraphCubeGrowing()"; if(TestBuildHyperGraphCubeGrowing()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
+        done++; cout << "TestBuildHyperGraphMultiThreads()"; if(TestBuildHyperGraphMultiThreads()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
+        done++; cout << "TestBuildHyperGraphSaveFeatures()" << endl; if(TestBuildHyperGraphSaveFeatures()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
+        done++; cout << "TestBuildHyperGraphSerialize()" << endl; if(TestBuildHyperGraphSerialize()) succeeded++; else cout << "FAILED!!!" << endl;
+        done++; cout << "TestBuildHyperGraphSaveAllFeatures()" << endl; if(TestBuildHyperGraphSaveAllFeatures()) succeeded++; else cout << "FAILED!!!" << endl;
+        done++; cout << "TestAddLoss()"; if(TestAddLoss()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
+        done++; cout << "TestAccumulateLoss()"; if(TestAccumulateLoss()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
+        done++; cout << "TestAccumulateFeatures()"; if(TestAccumulateFeatures()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
+        done++; cout << "TestRescore()"; if(TestRescore()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
+        done++; cout << "TestReorderingAndPrint()"; if(TestReorderingAndPrint()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
+        done++; cout << "TestPrintHyperGraph()"; if(TestPrintHyperGraph()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
+        done++; cout << "TestBuildHyperGraphGap2()"; if(TestBuildHyperGraphGap2()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
+        done++; cout << "TestBuildHyperGraphSize1()"; if(TestBuildHyperGraphSize1()) succeeded++; else cout << "FAILED!!!" << endl; cout << "Done" << endl;
         cout << "#### TestDiscontinuousHyperGraph Finished with "<<succeeded<<"/"<<done<<" tests succeeding ####"<<endl;
         return done == succeeded;
     }
 
 private:
-    HyperEdge edge00, edge11, edge22, edge33, edge01, edge23, edge03f;
-    DiscontinuousHyperEdge edge0_2b, edge1_3b;
+    HyperEdge edge00, edge11, edge22, edge33, edge01, edge23, edge03sc;
+    DiscontinuousHyperEdge edge0_2, edge1_3, edge03sd;
     CombinedAlign cal;
     Ranks ranks;
     FeatureDataSequence sent, sent_pos;
@@ -549,7 +1035,7 @@ private:
     vector<FeatureDataBase*> datas;
     FeatureSequence *featw, *featp;
     TargetSpan *ts00, *ts11, *ts22, *ts33, *ts03, *ts01, *ts23, *tsRoot;
-    DiscontinuousTargetSpan *ts1_3, *ts0_2;
+    DiscontinuousTargetSpan *ts1_3, *ts0_2, *ts03d;
     DiscontinuousHyperGraph *my_hg;
 
 

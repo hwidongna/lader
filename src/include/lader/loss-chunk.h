@@ -33,6 +33,7 @@ public:
 
 
 private:
+    bool IsStraight(const Ranks * ranks, int trg_midleft, int trg_midright);
 
 };
 

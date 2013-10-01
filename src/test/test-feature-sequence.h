@@ -6,6 +6,7 @@
 #include <lader/feature-sequence.h>
 #include <lader/feature-data-sequence.h>
 #include <lader/feature-set.h>
+#include <lader/discontinuous-hyper-edge.h>
 #include <fstream>
 
 namespace lader {
@@ -20,7 +21,14 @@ public:
             edge22(2, -1, 2, HyperEdge::EDGE_FOR),
             edge12t(1, -1, 2, HyperEdge::EDGE_BAC),
             edge12nt(1, 2, 2, HyperEdge::EDGE_INV),
-            edge02(0, 1, 2, HyperEdge::EDGE_STR) {
+            edge02(0, 1, 2, HyperEdge::EDGE_STR),
+            edge0_2(0, 0, -1, 2, 2, HyperEdge::EDGE_STR),
+            edge0_23(0, 0, -1, 2, 3, HyperEdge::EDGE_STR),
+            edge01_3(0, 1, -1, 3, 3, HyperEdge::EDGE_STR),
+            edge12_4(1, 2, -1, 4, 4, HyperEdge::EDGE_STR),
+            edge0_2__3(0, 0, 3, 2, 3, HyperEdge::EDGE_STR),
+            edge0__1_3(0, 1, 1, 3, 3, HyperEdge::EDGE_STR),
+            edge03(0, 1, 2, 3, 3, HyperEdge::EDGE_STR){
         // Create a combined alignment
         //  x..
         //  ..x
@@ -182,6 +190,38 @@ public:
         return ret;
     }
 
+    int TestGetBalance() {
+        FeatureSequence feat;
+        int ret = 1;
+        ret *= feat.GetBalance(edge0_2) == 0 ? 1 : 0;
+        ret *= feat.GetBalance(edge0_23) == 1 ? 1 : 0;
+        ret *= feat.GetBalance(edge01_3) == -1 ? 1 : 0;
+        ret *= feat.GetBalance(edge12_4) == -1 ? 1 : 0;
+        ret *= feat.GetBalance(edge0_2__3) == -1 ? 1 : 0;
+        if (ret == 0) cerr << "feat.GetBalance(edge0_2__3) != -1, but " << feat.GetBalance(edge0_2__3) << endl;
+        ret *= feat.GetBalance(edge0__1_3) == 1 ? 1 : 0;
+        if (ret == 0) cerr << "feat.GetBalance(edge0__1_3) != 1, but " << feat.GetBalance(edge0__1_3) << endl;
+        ret *= feat.GetBalance(edge03) == 0 ? 1 : 0;
+        if (ret == 0) cerr << "feat.GetBalance(edge03) != 0, but " << feat.GetBalance(edge03) << endl;
+        return ret;
+    }
+
+    int TestGetSpanSize() {
+        FeatureSequence feat;
+        int ret = 1;
+        ret *= feat.GetSpanSize(edge0_2) == 2 ? 1 : 0;
+        ret *= feat.GetSpanSize(edge0_23) == 3 ? 1 : 0;
+        ret *= feat.GetSpanSize(edge01_3) ==  3 ? 1 : 0;
+        ret *= feat.GetSpanSize(edge12_4) == 3 ? 1 : 0;
+        ret *= feat.GetSpanSize(edge0_2__3) == 3 ? 1 : 0;
+        if (ret == 0) cerr << "feat.GetBalance(edge0_2__3) != 3, but " << feat.GetSpanSize(edge0_2__3) << endl;
+        ret *= feat.GetSpanSize(edge0__1_3) == 3 ? 1 : 0;
+        if (ret == 0) cerr << "feat.GetBalance(edge0__1_3) != 3, but " << feat.GetSpanSize(edge0__1_3) << endl;
+        ret *= feat.GetSpanSize(edge03) == 4 ? 1 : 0;
+        if (ret == 0) cerr << "feat.GetBalance(edge03) != 4, but " << feat.GetSpanSize(edge03) << endl;
+        return ret;
+    }
+
     int TestReorderData() {
         FeatureDataSequence data;
         data.FromString("a b c d");
@@ -213,6 +253,7 @@ public:
 
 private:
     HyperEdge edge00, edge11, edge22, edge12t, edge12nt, edge02;
+    DiscontinuousHyperEdge edge0_2, edge0_23, edge01_3, edge12_4, edge0_2__3, edge0__1_3, edge03;
     Ranks cal;
     FeatureDataSequence sent, sent_pos;
 

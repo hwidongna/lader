@@ -315,7 +315,8 @@ public:
             BOOST_FOREACH(Hypothesis *hyp, stack03->GetHypotheses()){
             	DiscontinuousHypothesis * dhyp =
             							dynamic_cast<DiscontinuousHypothesis*>(hyp);
-            	cerr << (dhyp ? *dhyp : *hyp) << endl;
+            	cerr << (dhyp ? *dhyp : *hyp);
+            	hyp->PrintChildren(cerr);
             }
             ret = 0;
         } else if (stackRoot->HypSize() != stack03->HypSize()) {

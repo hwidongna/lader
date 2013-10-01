@@ -233,9 +233,9 @@ public:
 		TargetSpan *stack02 = new TargetSpan(0, 2);
 		graph.SetStack(0, 2, stack02);
 		graph.ProcessOneSpan(model, set, datas, 0, 2, 100);
-        // The number of hypothesis should be 3! + 1
-		if(stack02->HypSize() != 3*2 + 1) {
-			cerr << "stack02->size() != 7: " << stack02->HypSize() << endl; ret = 0;
+        // The number of hypothesis should be 8: (0,21)*2 (01,2)*2 (10,2)*2 012 210
+		if(stack02->HypSize() != 8) {
+			cerr << "stack02->size() != 8: " << stack02->HypSize() << endl; ret = 0;
 			BOOST_FOREACH(const Hypothesis *hyp, stack02->GetHypotheses()){
 				cerr << *hyp;
 				if (!hyp->IsTerminal())
@@ -268,16 +268,16 @@ public:
         		cerr << *hyp <<  endl;
         	}
         	ret = 0;
-            // The number of hypothesis should be 2! + 1
+            // The number of hypothesis should be 3: (1,2)*2 12
         } else if (graph.GetStack(1,2)->HypSize() != 2 + 1) {
         	cerr << "stacks[1,2]->size() != 3: " <<graph.GetStack(1,2)->HypSize()<< endl;
         	BOOST_FOREACH(const Hypothesis *hyp, graph.GetStack(1,2)->GetHypotheses()){
         		cerr << *hyp <<  endl;
         	}
         	ret = 0;
-        	// The number of hypothesis should be 3! + 1
-        } else if (stacks[3]->HypSize() != 3*2 + 1) {
-        	cerr << "Root node stacks[3]->size() != 7: " <<stacks[3]->HypSize()<< endl;
+        	// The number of hypothesis should be 9: (0,12)*2 (01,2)*2 (0,21)*2 (10,2)*2 012
+        } else if (stacks[3]->HypSize() != 9) {
+        	cerr << "Root node stacks[3]->size() != 9: " <<stacks[3]->HypSize()<< endl;
         	BOOST_FOREACH(const Hypothesis *hyp, stacks[3]->GetHypotheses()){
         		cerr << *hyp <<  endl;
         	}
@@ -302,9 +302,9 @@ public:
         // The total number of stacks should be 7: 0-0 0-1 1-1 0-2 1-2 2-2 root
         if(stacks.size() != 7) {
             cerr << "stacks.size() != 7: " << stacks.size() << endl; ret = 0;
-		// The number of hypothesis should be 3! + 1
-        } else if (stacks[3]->HypSize() != 3*2 + 1) {
-            cerr << "Root node stacks[3]->size() != 7: " <<stacks[3]->HypSize()<< endl;
+		// The number of hypothesis should be 9: (0,12)*2 (01,2)*2 (0,21)*2 (10,2)*2 012
+        } else if (stacks[3]->HypSize() != 9) {
+            cerr << "Root node stacks[3]->size() != 9: " <<stacks[3]->HypSize()<< endl;
             BOOST_FOREACH(const Hypothesis *hyp, stacks[3]->GetHypotheses()){
                 cerr << *hyp <<  endl;
             }

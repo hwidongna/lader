@@ -86,14 +86,11 @@ public:
         return viterbi_score_ < rhs.viterbi_score_;
     }
     virtual bool operator== (const Hypothesis & rhs) const {
-//		bool ret = *GetEdge() == *rhs.GetEdge()
+//		return *GetEdge() == *rhs.GetEdge()
 //			&& trg_left_ == rhs.trg_left_
 //			&& trg_right_ == rhs.trg_right_;
-//		if (!ret)
-//			return false;
-		// a terminal hypothesis is alwasy unique
-		if (IsTerminal() || rhs.IsTerminal()
-		|| GetLeft() != rhs.GetLeft() || GetRight() != rhs.GetRight()
+		// hypotheses from different hyper edges are not equal
+		if (*GetEdge() != *rhs.GetEdge()
 		|| trg_left_ != rhs.trg_left_ || trg_right_ != rhs.trg_right_)
 			return false;
 		// compare the permutation
@@ -104,7 +101,7 @@ public:
 		if (this_reorder.size() != rhs_reorder.size())
 			THROW_ERROR("Difference size of hypothesis" << endl << *this << endl << rhs)
 		return std::equal(this_reorder.begin(), this_reorder.end(),
-						rhs_reorder.begin());			
+						rhs_reorder.begin());
     }
 
 	void GetReordering(std::vector<int> & reord, bool verbose = false) const;

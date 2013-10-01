@@ -45,6 +45,10 @@ public:
     virtual bool operator== (const HyperEdge & rhs) const {
         return l_ == rhs.l_ && c_ == rhs.c_ && r_ == rhs.r_ && t_ == rhs.t_;
     }
+
+    bool operator!= (const HyperEdge & rhs) const {
+    	return !(*this == rhs);
+    }
     size_t hash() const {
         return t_*HYPEREDGE_TMULT+l_*HYPEREDGE_LMULT+c_*HYPEREDGE_CMULT+r_;
     }

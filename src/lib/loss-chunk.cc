@@ -19,6 +19,13 @@ double LossChunk::AddLossToProduction(Hypothesis * hyp,
 	return AddLossToProduction(hyp->GetLeft(), hyp->GetCenter(), hyp->GetRight(),
 			trg_left, trg_midleft, trg_midright, trg_right, hyp->GetEdgeType(), ranks, parse);
 }
+
+bool LossChunk::IsStraight(const Ranks * ranks, int trg_midleft, int trg_midright)
+{
+    return Ranks::IsStepOneUp((*ranks)[trg_midleft], (*ranks)[trg_midright]) ||
+    		((*ranks)[trg_midleft] == (*ranks)[trg_midright] && trg_midleft + 1 == trg_midright);
+}
+
 double LossChunk::AddLossToProduction(
         int src_left, int src_mid, int src_right,
         int trg_left, int trg_midleft, int trg_midright, int trg_right,
@@ -35,19 +42,21 @@ double LossChunk::AddLossToProduction(
                 loss++;
             break;
         // For straight and inverse non-terms, check inside values
+		// If inside rank values are same,
+		// they should be straight. If not, it is a loss.
         case HyperEdge::EDGE_STR:
         case HyperEdge::EDGE_INV:
-            if(!Ranks::IsContiguous((*ranks)[trg_midleft], (*ranks)[trg_midright]))
-                loss++;
-            break;
+        	if(!IsStraight(ranks, trg_midleft, trg_midright))
+				loss++;
+			break;
         case HyperEdge::EDGE_FOR:
             for(int i = trg_left; i < trg_right; i++)
-                if(!Ranks::IsContiguous((*ranks)[i], (*ranks)[i+1]))
+                if(!IsStraight(ranks, i, i+1))
                     loss++;
             break;
         case HyperEdge::EDGE_BAC:
             for(int i = trg_left; i > trg_right; i--)
-                if(!Ranks::IsContiguous((*ranks)[i], (*ranks)[i-1]))
+                if(!Ranks::IsStepOneUp((*ranks)[i], (*ranks)[i-1]))
                     loss++;
             break;
         default:
@@ -63,14 +72,6 @@ std::pair<double,double> LossChunk::CalculateSentenceLoss(
         const Ranks * ranks, const FeatureDataParse * parse) {
     if(!ranks) THROW_ERROR("Chunk loss requires alignment input");
     std::pair<double,double> ret(0,0);
-    // If the maximum rank is zero, there is no way to mess up the loss,
-    // so we just return zero
-    if(ranks->GetMaxRank() == 0) return ret;
-    // Otherwise, we assume the maximum loss is n+1, because there are n-1
-    // bigrams between actual words, and 2 on the sentence boundaries. In
-    // reality, for shorter sentences that have multiple words of the same
-    // ranks this assumption will not hold (ie 0 0 1), but it is not worth
-    // complicating things just for this
     int n = order.size();
     ret.second = n + 1;
     // Calculate the boundaries
@@ -82,7 +83,7 @@ std::pair<double,double> LossChunk::CalculateSentenceLoss(
     }
     // Calculate all the rest
     for(int i = 1; i < n; i++)
-        if(!Ranks::IsContiguous((*ranks)[order[i-1]], (*ranks)[order[i]]))
+    	if(!IsStraight(ranks, order[i-1], order[i]))
             ret.first++;
     ret.first *= weight_;
     ret.second *= weight_;

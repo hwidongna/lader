@@ -97,13 +97,10 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
     cerr << "(\".\" == 100 sentences)" << endl;
     for(int iter = config.GetInt("continue"); iter < config.GetInt("iterations"); iter++) {
         double iter_model_loss = 0, iter_oracle_loss = 0;
-        // Shuffle
+        // Shuffle the orders within the sample size
         if(iter != 0 && config.GetBool("shuffle"))
-            random_shuffle(sent_order.begin(), sent_order.end());
-//        // Shuffle the sample size
-//        if(iter != 0 && config.GetBool("shuffle"))
-//            random_shuffle(sent_order.begin(),
-//            		sent_order.size() > samples ? sent_order.begin() + samples: sent_order.end());
+            random_shuffle(sent_order.begin(),
+            		sent_order.size() > samples ? sent_order.begin() + samples: sent_order.end());
 		// Over all values in the corpus
         // parallize the feature generation at sentence level
         if(config.GetBool("save_features")){

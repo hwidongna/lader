@@ -93,10 +93,9 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 
 	graph.SetSaveFeatures(config.GetBool("save_features"));
 	HyperGraph * ptr_graph = &graph;
-
     // Perform an iteration
     cerr << "(\".\" == 100 sentences)" << endl;
-    for(int iter = 0; iter < config.GetInt("iterations"); iter++) {
+    for(int iter = config.GetInt("continue"); iter < config.GetInt("iterations"); iter++) {
         double iter_model_loss = 0, iter_oracle_loss = 0;
         // Shuffle
         if(iter != 0 && config.GetBool("shuffle"))

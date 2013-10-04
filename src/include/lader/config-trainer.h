@@ -40,6 +40,7 @@ public:
         AddConfigEntry("cost", "1e-3", "The rate at which to learn");
         AddConfigEntry("feature_profile", "seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,O%SL%SR%ET,I%LR%RL%ET,CL%CL%ET,B%SB%ET,A%SA%ET,N%SN%ET,BIAS%ET", "Which features to use ");
         AddConfigEntry("iterations", "100", "The number of iterations of training to perform.");
+        AddConfigEntry("continue", "0", "The starting number of iterations of training to continue.");
         AddConfigEntry("learner", "pegasos", "Which learner to use (pegasos/perceptron)");
         AddConfigEntry("samples", "500", "The number of samples of training to perform.");
         AddConfigEntry("loss_profile", "chunk=1", "Which loss functions to use");

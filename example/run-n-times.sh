@@ -16,9 +16,10 @@ do
 #    for i in $(seq 1 1 $N)
 #    do
 #        ./train-model.sh $d $SAMPLES $VERBOSE $SHUFFLE false false $ITERATION > train-model.$d.out 2> train-model.$d.log
-#        tail -n2 train-model.$d.out > train-model.$d
+#        tail -n2 train-model.$d.out >> train-model.$d
 #        ./test-model.sh $d $BEAM $VERBOSE false false > test-model.$d.out 2> test-model.$d.log
-#        tail -n1 test-model.$d.out > test-model.$d
+#        tail -n1 test-model.$d.out >> test-model.$d
+#        rm output/train-g$d.mod*
 #    done
         
 	echo "" > train-model-cube-growing.$d
@@ -43,15 +44,15 @@ do
         rm output/train-g$d.mod*
     done
     
-    echo "" > train-model-plus-lm.$d
-	echo "" > test-model-plus-lm.$d
-    for i in $(seq 1 1 $N)
-    do
-        ./train-model.sh $d $SAMPLES $VERBOSE $SHUFFLE true true $ITERATION data/train.en.lm > train-model-plus-lm.$d.out 2> train-model-plus-lm.$d.log
-        tail -n2 train-model-plus-lm.$d.out >> train-model-plus-lm.$d
-        ./test-model.sh $d $BEAM $VERBOSE true true data/train.en.lm > test-model-plus-lm.$d.out 2> test-model-plus-lm.$d.log
-        tail -n1 test-model-plus-lm.$d.out >> test-model-plus-lm.$d
-        rm output/train-g$d.mod*
-    done
+#    echo "" > train-model-plus-lm.$d
+#	echo "" > test-model-plus-lm.$d
+#    for i in $(seq 1 1 $N)
+#    do
+#        ./train-model.sh $d $SAMPLES $VERBOSE $SHUFFLE true true $ITERATION data/train.en.lm > train-model-plus-lm.$d.out 2> train-model-plus-lm.$d.log
+#        tail -n2 train-model-plus-lm.$d.out >> train-model-plus-lm.$d
+#        ./test-model.sh $d $BEAM $VERBOSE true true data/train.en.lm > test-model-plus-lm.$d.out 2> test-model-plus-lm.$d.log
+#        tail -n1 test-model-plus-lm.$d.out >> test-model-plus-lm.$d
+#        rm output/train-g$d.mod*
+#    done
 done
 

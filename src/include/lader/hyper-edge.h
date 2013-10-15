@@ -43,12 +43,13 @@ public:
             t_ < rhs.t_))))));
     }
     virtual bool operator== (const HyperEdge & rhs) const {
-        return l_ == rhs.l_ && c_ == rhs.c_ && r_ == rhs.r_ && t_ == rhs.t_;
+        return l_ == rhs.l_ && c_ == rhs.c_ && r_ == rhs.r_ && t_ == rhs.t_ && GetClass() == rhs.GetClass();
     }
 
     bool operator!= (const HyperEdge & rhs) const {
     	return !(*this == rhs);
     }
+    // TODO: l < c <= r or c = -1, can we use this property?
     size_t hash() const {
         return t_*HYPEREDGE_TMULT+l_*HYPEREDGE_LMULT+c_*HYPEREDGE_CMULT+r_;
     }

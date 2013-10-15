@@ -15,6 +15,10 @@
 
 using namespace lader;
 
+// use Fermat primes
+#define HYPEREDGE_NMULT 257
+#define HYPEREDGE_MMULT 65537
+
 namespace lader {
 
 class DiscontinuousHyperEdge : public HyperEdge{
@@ -23,7 +27,7 @@ public:
 		HyperEdge(l, c, r, t),
 		m_(m), n_(n) { }
 
-	HyperEdge * Clone() const{
+	virtual HyperEdge * Clone() const{
 		return new DiscontinuousHyperEdge(GetLeft(), m_, GetCenter(), n_, GetRight(), GetType());
 	}
 	// Comparators
@@ -44,7 +48,10 @@ public:
 				dynamic_cast<const DiscontinuousHyperEdge*>(&rhs);
 		return HyperEdge::operator ==(rhs) && m_ == drhs->m_ && n_ == drhs->n_;
 	}
-
+	// TODO: l <= m < n <= r, can we use this property?
+    size_t hash() const {
+        return HyperEdge::hash() + m_*HYPEREDGE_MMULT+n_*HYPEREDGE_NMULT;
+    }
 	int GetM() const { return m_; }
 	int GetN() const { return n_; }
 	char GetClass() const { return 'D'; }

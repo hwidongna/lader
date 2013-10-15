@@ -328,7 +328,7 @@ public:
     	set.SetUseReverse(false);
         FeatureDataSequence sent;
         sent.FromString("t h i s i s a v e r y l o n g s e n t e n c e .");
-        vector<FeatureDataBase*> datas;
+        Sentence datas;
         datas.push_back(&sent);
     	struct timespec tstart={0,0}, tend={0,0};
         int beam_size = 100;
@@ -383,7 +383,7 @@ public:
     	set.SetUseReverse(false);
     	FeatureDataSequence sent;
     	sent.FromString("t h i s i s a v e r y l o n g s e n t e n c e .");
-    	vector<FeatureDataBase*> datas;
+    	Sentence datas;
     	datas.push_back(&sent);
     	struct timespec tstart={0,0}, tend={0,0};
     	int beam_size = 100;
@@ -439,7 +439,7 @@ public:
     	set.SetUseReverse(false);
     	FeatureDataSequence sent;
     	sent.FromString("t h i s i s a v e r y l o n g s e n t e n c e .");
-    	vector<FeatureDataBase*> datas;
+    	Sentence datas;
     	datas.push_back(&sent);
 
     	int beam_size = 100;
@@ -492,7 +492,7 @@ public:
     	set.SetUseReverse(false);
     	FeatureDataSequence sent;
     	sent.FromString("t h i s i s a v e r y l o n g s e n t e n c e .");
-    	vector<FeatureDataBase*> datas;
+    	Sentence datas;
     	datas.push_back(&sent);
 
     	int beam_size = 100;
@@ -739,7 +739,7 @@ private:
     ReordererModel model;
     std::vector<double> weights;
     FeatureSet set;
-    vector<FeatureDataBase*> datas;
+    Sentence datas;
     FeatureSequence *featw, *featp;
     TargetSpan *ts00, *ts01, *ts11, *tsr;
     HyperGraph my_hg;

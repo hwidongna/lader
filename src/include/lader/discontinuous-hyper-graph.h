@@ -63,10 +63,14 @@ public:
         return new DiscontinuousTargetSpanTask(this, model, features, non_local_features, sent, l, r, beam_size);
     }
 
-    DiscontinuousHyperGraph(int gap_size, bool cube_growing = false, bool full_fledged = false, bool mp = false, int verbose = 0)
-    :HyperGraph(cube_growing), gap_size_(gap_size), full_fledged_(full_fledged), mp_(mp), verbose_(verbose)
-    {
-    }
+    DiscontinuousHyperGraph(int gap_size, bool cube_growing = false,
+			bool full_fledged = false, bool mp = false, int verbose = 0) :
+			HyperGraph(cube_growing), gap_size_(gap_size),
+			full_fledged_(full_fledged), mp_(mp), verbose_(verbose) { }
+
+    DiscontinuousHyperGraph(const DiscontinuousHyperGraph & g) :
+			HyperGraph(g), gap_size_(g.gap_size_),
+			full_fledged_(g.full_fledged_), mp_(g.mp_), verbose_(g.verbose_) { }
 
     virtual ~DiscontinuousHyperGraph()
     {
@@ -77,12 +81,13 @@ public:
 
     virtual HyperGraph *Clone()
     {
-        HyperGraph *cloned = new DiscontinuousHyperGraph(gap_size_, cube_growing_, full_fledged_, mp_, verbose_);
-        cloned->SetThreads(threads_);
-        cloned->SetBeamSize(beam_size_);
-        cloned->SetPopLimit(pop_limit_);
-        cloned->SetSaveFeatures(save_features_);
-        cloned->SetNumWords(n_);
+    	HyperGraph *cloned = new DiscontinuousHyperGraph(*this);
+//        HyperGraph *cloned = new DiscontinuousHyperGraph(gap_size_, cube_growing_, full_fledged_, mp_, verbose_);
+//        cloned->SetThreads(threads_);
+//        cloned->SetBeamSize(beam_size_);
+//        cloned->SetPopLimit(pop_limit_);
+//        cloned->SetSaveFeatures(save_features_);
+//        cloned->SetNumWords(n_);
         cloned->MarkCloned();
         return cloned;
     }
@@ -260,6 +265,8 @@ protected:
     	HyperGraph::SetStacks(l, r, init);
     	int N = n_;
     	int D = gap_size_;
+    	if (verbose_ > 1)
+    		cerr << "SetStacks [" << l << ", " << r << "]" << endl;
     	for(int m = l + 1;m <= r;m++){
     		for(int d = 1;d <= 2*D && m+d+1 <= r;d++)
     			if(save_features_ && IsOnlyDDC(l, m, m+d+1, r, D, N))

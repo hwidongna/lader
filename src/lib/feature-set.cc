@@ -1,6 +1,7 @@
 
 #include <lader/feature-set.h>
 #include <boost/algorithm/string.hpp>
+#include <lader/feature-bilingual.h>
 
 using namespace lader;
 using namespace std;
@@ -13,15 +14,43 @@ FeatureVectorInt * FeatureSet::MakeEdgeFeatures(
         const HyperEdge & edge,
         SymbolSet<int> & feature_ids,
         bool add) const {
-    // Otherwise generate the features
     FeatureVectorInt * feats = new FeatureVectorInt;
     for(int i = 0; i < (int)sent.size(); i++)
-//    	SafeAccess(feature_gens_, i)->GenerateEdgeFeatures(*sent[i], edge, feature_ids, add, *feats);
         feature_gens_[i]->GenerateEdgeFeatures(*sent[i], edge, feature_ids, add, *feats);
     return feats;
 }
 
-vector<FeatureDataBase*> FeatureSet::ParseInput(const string & line) const {
+// Generates the biligual features that can be factored over a node
+// This is useful to accumulate features to the existing vector (ret)
+FeatureVectorInt *FeatureSet::MakeBilingualFeatures(
+		const Sentence & source,
+		const Sentence & target,
+		const CombinedAlign & align,
+		const HyperEdge & edge,
+		SymbolSet<int> & feature_ids,
+		bool add,
+		FeatureVectorInt * ret) const {
+	// bilingual features are defined in the target sentence
+    for(int i = 0; i < (int)target.size(); i++){
+		FeatureBilingual * feat_gen = dynamic_cast<FeatureBilingual*>(feature_gens_[i]);
+		if (!feat_gen)
+			THROW_ERROR("Only bilingual feature generator is acceptable")
+		feat_gen->GenerateBilingualFeatures(*source[i], *target[i], align, edge, feature_ids, add, *ret);
+	}
+    return ret;
+}
+
+// Generates the biligual features that can be factored over a node
+FeatureVectorInt * FeatureSet::MakeBilingualFeatures(
+		const Sentence & source,
+		const Sentence & target,
+		const CombinedAlign & align,
+		const HyperEdge & edge,
+		SymbolSet<int> & feature_ids,
+		bool add) const {
+	return MakeBilingualFeatures(source, target, align, edge, feature_ids, add, new FeatureVectorInt);
+}
+Sentence FeatureSet::ParseInput(const string & line) const {
     vector<string> columns;
     algorithm::split(columns, line, is_any_of("\t"));
     if(feature_gens_.size() != columns.size()) {
@@ -29,7 +58,7 @@ vector<FeatureDataBase*> FeatureSet::ParseInput(const string & line) const {
                     ") didn't equal feature profile ("<<feature_gens_.size()<<
                     ") at"<<endl<<line<<endl);
     }
-    vector<FeatureDataBase*> ret(columns.size());
+    Sentence ret(columns.size());
     for(int i = 0; i < (int)columns.size(); i++) {
         ret[i] = feature_gens_[i]->ParseData(columns[i]);
     }
@@ -38,6 +67,8 @@ vector<FeatureDataBase*> FeatureSet::ParseInput(const string & line) const {
 
 void FeatureSet::ParseConfiguration(const string & str) {
     config_str_ = str;
+    if (str.length() == 0)
+    	return;
     // Split configurations into sizes
     vector<string> configs;
     algorithm::split(configs, str, is_any_of("|"));

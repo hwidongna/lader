@@ -46,7 +46,7 @@ public:
         set.AddFeatureGenerator(featw);
         set.AddFeatureGenerator(featp);
         // Set up the data
-        vector<FeatureDataBase*> datas;
+        Sentence datas;
         datas.push_back(&sent);
         datas.push_back(&sent_pos);
         // These are both node-factored features, so they should exist for all
@@ -78,7 +78,7 @@ public:
 
     int TestFeatureSetIO() {
         // Set up the data
-        vector<FeatureDataBase*> datas;
+        Sentence datas;
         datas.push_back(&sent);
         datas.push_back(&sent_pos);
         // Create and generate some features

@@ -34,28 +34,35 @@ public:
     			const FeatureSet & features,
     			const Sentence & sent, int l, int r, int beam_size) :
     				graph_(graph), model_(model), features_(features),
-    				sent_(sent), l_(l), r_(r), beam_size_(beam_size) { }
+    				source_(sent), l_(l), r_(r), beam_size_(beam_size) { }
     	void Run(){
     		graph_->ProcessOneSpan(model_, features_,
-    		    						sent_, l_, r_, beam_size_);
+    		    						source_, l_, r_, beam_size_);
     	}
     private:
     	HyperGraph * graph_;
     	ReordererModel & model_;
     	const FeatureSet & features_;
-    	const Sentence & sent_;
+    	const Sentence & source_;
     	int l_, r_, beam_size_;
     };
 
     virtual Task * NewSpanTask(HyperGraph * graph, ReordererModel & model,
 			const FeatureSet & features,
-			const Sentence & sent, int l, int r, int beam_size){
+			const Sentence & source, int l, int r, int beam_size){
     	return new TargetSpanTask(this, model, features,
-				sent, l, r, beam_size);
+				source, l, r, beam_size);
     }
     HyperGraph(bool cube_growing = false) :
 			save_features_(false), n_(-1), threads_(1), cube_growing_(cube_growing),
-			cloned_(false), beam_size_(0), pop_limit_(0) { }
+			cloned_(false), beam_size_(0), pop_limit_(0),
+			bilingual_features_(NULL), target_(NULL), align_(NULL) { }
+
+    HyperGraph(const HyperGraph & g) :
+    			save_features_(g.save_features_), n_(g.n_), threads_(g.threads_),
+    			cube_growing_(g.cube_growing_),
+    			cloned_(g.cloned_), beam_size_(g.beam_size_), pop_limit_(g.pop_limit_),
+    			bilingual_features_(g.bilingual_features_), target_(g.target_), align_(g.align_) { }
 
     virtual void ClearStacks() {
 		BOOST_FOREACH(TargetSpan * stack, stacks_)
@@ -69,12 +76,13 @@ public:
     }
 
     virtual HyperGraph * Clone(){
-    	HyperGraph * cloned = new HyperGraph(cube_growing_);
-    	cloned->SetThreads(threads_);
-    	cloned->SetBeamSize(beam_size_);
-    	cloned->SetPopLimit(pop_limit_);
-    	cloned->SetSaveFeatures(save_features_);
-    	cloned->SetNumWords(n_);
+    	HyperGraph * cloned = new HyperGraph(*this);
+//    	HyperGraph * cloned = new HyperGraph(cube_growing_);
+//    	cloned->SetThreads(threads_);
+//    	cloned->SetBeamSize(beam_size_);
+//    	cloned->SetPopLimit(pop_limit_);
+//    	cloned->SetSaveFeatures(save_features_);
+//    	cloned->SetNumWords(n_);
     	cloned->MarkCloned();
     	return cloned;
     }
@@ -83,7 +91,7 @@ public:
     //  beam_size: the pop limit for cube pruning
     virtual void BuildHyperGraph(ReordererModel & model,
 			const FeatureSet & features,
-			const Sentence & sent);
+			const Sentence & source);
 	const TargetSpan *GetStack(int l, int r) const {
 		return SafeAccess(stacks_, GetTrgSpanID(l, r));
 	}
@@ -148,6 +156,12 @@ public:
 
     void MarkCloned(){ cloned_ = true; }
     void SetNumWords(int n){ n_ = n;}
+    void SetBilingual(FeatureSet * bilingual_features,
+			Sentence * target, CombinedAlign * align){
+    	bilingual_features_ = bilingual_features;
+    	target_ = target;
+    	align_ = align;
+    }
 	// IO Functions for stored features
 	virtual void FeaturesToStream(std::ostream & out){
 		BOOST_FOREACH(TargetSpan * stack, stacks_)
@@ -169,10 +183,10 @@ public:
 	}
 
 	void SaveAllEdgeFeatures(ReordererModel & model, const FeatureSet & features,
-			const Sentence & sent) {
+			const Sentence & source) {
 		for(int L = 1; L <= n_; L++)
 			for(int l = 0; l <= n_-L; l++)
-				SaveEdgeFeatures(l, l+L-1, model, features, sent);
+				SaveEdgeFeatures(l, l+L-1, model, features, source);
 	}
 protected:
     void AddTerminals(int l, int r, const FeatureSet & features,
@@ -238,7 +252,9 @@ protected:
         	THROW_ERROR("Stack exist [l="<<l<<", r="<<r<<"]"<<std::endl)
         stacks_[idx] = stack;
     }
-    
+    FeatureVectorInt *MakeEdgeFeatures(const FeatureSet & feature_gen,
+			const Sentence & sent, const HyperEdge & edge,
+			ReordererModel & model);
 private:
     // Stacks containing the hypotheses for each span
     // The indexing for the outer vector is:
@@ -257,6 +273,11 @@ protected:
     int n_;
     bool cube_growing_, cloned_;
     boost::mutex mutex_;
+
+    // they are optional
+    FeatureSet * bilingual_features_;
+	Sentence * target_;
+	CombinedAlign * align_;
 };
 
 }

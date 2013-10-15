@@ -3,6 +3,7 @@
 #include <lader/feature-sequence.h>
 #include <lader/feature-parse.h>
 #include <lader/feature-align.h>
+#include <lader/feature-bilingual.h>
 #include <lader/discontinuous-hyper-edge.h>
 
 using namespace lader;
@@ -16,8 +17,10 @@ FeatureBase * FeatureBase::CreateNew(const string & type) {
         return new FeatureParse;
     else if(type == "align")
         return new FeatureAlign;
+    else if(type == "bilingual")
+		return new FeatureBilingual;
     else
-        THROW_ERROR("Bad feature type " << type << " (must be seq/cfg/align)");
+        THROW_ERROR("Bad feature type " << type << " (must be seq/cfg/align/bilingual)");
     return NULL;
 }
 
@@ -64,6 +67,7 @@ int FeatureBase::GetSpanSize(const HyperEdge & edge)
         if (edge.GetCenter() < 0 || edge.GetCenter() <= e->GetM() || edge.GetCenter() > e->GetN())
             return (e->GetRight() - e->GetN() + 1) + (e->GetM() - e->GetLeft() + 1);
     }
+    // continuous + continuous = continuous
 	// discontinuous + discontinuous = continuous
     return edge.GetRight() - edge.GetLeft() + 1;
 }

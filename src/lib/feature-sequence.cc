@@ -93,101 +93,185 @@ FeatureDataBase * FeatureSequence::ParseData(const string & str) {
     return data;
 }
 
-string FeatureSequence::GetSpanFeatureString(const FeatureDataSequence & sent,
-                                             int l, int r,
-                                             const string & str) {
-    ostringstream oss;
-    char type = str[1];
-    if ( l > r ) THROW_ERROR("Invalid span ["<<l<<", "<<r<<"]")
-    switch (type) {
-        case 'L':
-            return sent.GetElement(l);
-        case 'R':
-            return sent.GetElement(r);
-        case 'B':
-            return l == 0 ? "<s>" : sent.GetElement(l-1);
-        case 'A':
-            return r == sent.GetNumWords() - 1 ? "</s>" : sent.GetElement(r+1);
-        case 'S':
-            return sent.GetRangeString(l, r, (str.length() == 3 ? str[2]-'0' : INT_MAX));
-        case 'N':
-            oss << r - l + 1;
-            return oss.str();
-        case 'Q':
-            return SafeAccess(dicts_, 
-                        str[3]-'0')->Exists(sent.GetRangeString(l, r)) ?
-                    "+" : "-";
-        default:
-            THROW_ERROR("Bad span feature type " << type);
-    }
-    return "";
-}
-
-double FeatureSequence::GetSpanFeatureValue(const FeatureDataSequence & sent,
-                                             int l, int r,
-                                             const std::string & str) {
-    char type = str[1];
-    if ( l > r ) THROW_ERROR("Invalid span ["<<l<<", "<<r<<"]")
-    switch (type) {
-        case 'N':
-            return r - l + 1;
-        case 'M':
-            return rand()/(double)RAND_MAX;
-        case 'Q':
-            return SafeAccess(dicts_,str[3]-'0')->GetFeature(
-                        sent.GetRangeString(l, r), str[4]-'0');
-        default:
-            THROW_ERROR("Bad span feature value " << type);
-    }
-    return -DBL_MAX;
-}
-
-string FeatureSequence::GetEdgeFeatureString(const FeatureDataSequence & sent,
+string FeatureSequence::GetFeatureString(const FeatureDataSequence & sent,
                                              const HyperEdge & edge,
                                              const std::string & str) {
-    char type = str[1];
+	int l = 0, r = -1;
     ostringstream oss;
     int bal;
-    switch (type) {
-        // Get the difference between values
-        case 'D':
-            // Distance is (r-c+1)-(c-l)
-        	oss << abs(GetBalance(edge));
-        	return oss.str();
-        case 'B':
-        case 'L':
-            // Get the balance between the values
-            bal = GetBalance(edge);
-            if(type == 'B') { oss << bal; return oss.str(); }
-            else if(bal < 0) { return "L"; }
-            else if(bal > 0) { return "R"; }
-            else { return "E"; }
-        case 'N':
-            oss << GetSpanSize(edge);
-            return oss.str();
-        case 'T':
-            oss << (char)edge.GetType() << edge.GetClass();
-            return oss.str();
-        default:
-            THROW_ERROR("Bad edge feature type " << type);
-    }
+	switch (str[0]) {
+	case 'S':
+		if (str[1] == 'N') {// for discontinuous hyper-edge
+			oss << GetSpanSize(edge);
+			return oss.str();
+		}
+		l = edge.GetLeft();
+		r = edge.GetRight();
+		break;
+	case 'L':
+		l = edge.GetLeft();
+		if (edge.GetClass() == 'D'){
+			DiscontinuousHyperEdge * e = (DiscontinuousHyperEdge *)&edge;
+			// continuous + continuous = discontinuous
+			if (edge.GetCenter() < 0)
+				r = e->GetM();
+			// continuous + discontinuous = discontinuous
+			// discontinuous + continuous = discontinuous
+			else if (edge.GetCenter() <= e->GetM() || edge.GetCenter() > e->GetN())
+				r = edge.GetCenter()-1;
+			// discontinuous + discontinuous = continuous
+			else if (e->GetM() < edge.GetCenter() && edge.GetCenter() < e->GetN())
+				r = e->GetN()-1;
+			else
+				THROW_ERROR("Span is undefined for " << *((DiscontinuousHyperEdge*)e) << endl)
+		}
+		else
+			r = edge.GetCenter()-1;
+		break;
+	case 'R':
+		r = edge.GetRight();
+		if (edge.GetClass() == 'D'){
+			DiscontinuousHyperEdge * e = (DiscontinuousHyperEdge *)&edge;
+			// continuous + continuous = discontinuous
+			if (edge.GetCenter() < 0)
+				l = e->GetN();
+			// continuous + discontinuous = discontinuous
+			// discontinuous + continuous = discontinuous
+			else if (edge.GetCenter() <= e->GetM() || edge.GetCenter() > e->GetN())
+				l = edge.GetCenter();
+			// discontinuous + discontinuous = continuous
+			else if (e->GetM() < edge.GetCenter() && edge.GetCenter() < e->GetN())
+				l = e->GetM();
+			else
+				THROW_ERROR("Span is undefined for " << *((DiscontinuousHyperEdge*)e) << endl)
+		}
+		else
+			l = edge.GetCenter();
+		break;
+	case 'C': // compare type
+		switch (str[1]) {
+		// Get the difference between values
+		case 'D':
+			oss << abs(GetBalance(edge));
+			return oss.str();
+		case 'B':
+		case 'L':
+			// Get the balance between the values
+			bal = GetBalance(edge);
+			if(str[1] == 'B') { oss << bal; return oss.str(); }
+			else if(bal < 0) { return "L"; }
+			else if(bal > 0) { return "R"; }
+			else { return "E"; }
+		default:
+			THROW_ERROR("Bad compare feature type " << str[1])
+			break;
+	    }
+		break;
+	}
+//    if ( l > r ) THROW_ERROR("Invalid span ["<<l<<", "<<r<<"]")
+	switch (str[1]) {
+	case 'L':
+		return sent.GetElement(l);
+	case 'R':
+		return sent.GetElement(r);
+	case 'B':
+		return l == 0 ? "<s>" : sent.GetElement(l-1);
+	case 'A':
+		return r == sent.GetNumWords() - 1 ? "</s>" : sent.GetElement(r+1);
+	case 'S':
+		return sent.GetRangeString(l, r, (str.length() == 3 ? str[2]-'0' : INT_MAX));
+	case 'Q':
+		return SafeAccess(dicts_,
+				str[3]-'0')->Exists(sent.GetRangeString(l, r)) ?
+						"+" : "-";
+	case 'N':
+		oss << r - l + 1;
+		return oss.str();
+	case 'T':
+		oss << (char)edge.GetType() << edge.GetClass();
+		return oss.str();
+	default:
+		THROW_ERROR("Bad edge feature type " << str[1])
+		break;
+	}
     return "";
 }
 
-double FeatureSequence::GetEdgeFeatureValue(const FeatureDataSequence & sent,
+double FeatureSequence::GetFeatureValue(const FeatureDataSequence & sent,
                                              const HyperEdge & edge,
                                              const std::string & str) {
+	int l = 0, r = -1;
+	switch (str[0]) {
+	case 'S':
+		if (str[1] == 'N') // for discontinuous hyper-edge
+			return GetSpanSize(edge);
+		l = edge.GetLeft();
+		r = edge.GetRight();
+		break;
+	case 'L':
+		l = edge.GetLeft();
+		if (edge.GetClass() == 'D'){
+			DiscontinuousHyperEdge * e = (DiscontinuousHyperEdge *)&edge;
+			// continuous + continuous = discontinuous
+			if (edge.GetCenter() < 0)
+				r = e->GetM();
+			// continuous + discontinuous = discontinuous
+			// discontinuous + continuous = discontinuous
+			else if (edge.GetCenter() <= e->GetM() || edge.GetCenter() > e->GetN())
+				r = edge.GetCenter()-1;
+			// discontinuous + discontinuous = continuous
+			else if (e->GetM() < edge.GetCenter() && edge.GetCenter() < e->GetN())
+				r = e->GetN()-1;
+			else
+				THROW_ERROR("Span is undefined for " << *((DiscontinuousHyperEdge*)e) << endl)
+		}
+		else
+			r = edge.GetCenter()-1;
+		break;
+	case 'R':
+		r = edge.GetRight();
+		if (edge.GetClass() == 'D'){
+			DiscontinuousHyperEdge * e = (DiscontinuousHyperEdge *)&edge;
+			// continuous + continuous = discontinuous
+			if (edge.GetCenter() < 0)
+				l = e->GetN();
+			// continuous + discontinuous = discontinuous
+			// discontinuous + continuous = discontinuous
+			else if (edge.GetCenter() <= e->GetM() || edge.GetCenter() > e->GetN())
+				l = edge.GetCenter();
+			// discontinuous + discontinuous = continuous
+			else if (e->GetM() < edge.GetCenter() && edge.GetCenter() < e->GetN())
+				l = e->GetM();
+			else
+				THROW_ERROR("Span is undefined for " << *((DiscontinuousHyperEdge*)e) << endl)
+		}
+		else
+			l = edge.GetCenter();
+		break;
+	case 'C': // compare type
+		switch (str[1]) {
+		// Get the difference between values
+		case 'D':
+			return abs(GetBalance(edge));
+		case 'B':
+			return GetBalance(edge);
+		default:
+			THROW_ERROR("Bad compare feature type " << str[1])
+			break;
+		}
+		break;
+	}
+	if ( l > r ) THROW_ERROR("Invalid span ["<<l<<", "<<r<<"]")
     char type = str[1];
-    switch (type) {
-        // Get the difference between values
-        case 'D':
-            // Distance is (r-c+1)-(c-l)
-        	return abs(GetBalance(edge));
-        case 'B':
-            // Get the balance between the values
-            return GetBalance(edge);
-        default:
-            THROW_ERROR("Bad edge feature value " << type);
+	switch (type) {
+	case 'N':
+		return r - l + 1;
+	case 'Q':
+		return SafeAccess(dicts_,str[3]-'0')->GetFeature(
+				sent.GetRangeString(l, r), str[4]-'0');
+		// Get the difference between values
+	default:
+		THROW_ERROR("Bad feature value " << type);
     }
     return -DBL_MAX;
 }
@@ -211,67 +295,10 @@ void FeatureSequence::GenerateEdgeFeatures(
             double feat_val = 1;
             // templ.second is the vector of the feature templates
             for(int i = 1; i < (int)templ.second.size(); i++) {
-                // Choose which span to use
-                pair<int,int> span(-1, -1);
-                switch (templ.second[i][0]) {
-                    case 'S':
-                    	if (edge.GetClass() == 'D' && templ.second[i][1] == 'N'){
-							// need to refer edge information
-						}
-						else
-                    		span = pair<int,int>(edge.GetLeft(), edge.GetRight());
-                        break;
-                    case 'L':
-                    	if (edge.GetClass() == 'D'){
-                    		DiscontinuousHyperEdge * e = (DiscontinuousHyperEdge *)&edge;
-                            // continuous + continuous = discontinuous
-                    		if (edge.GetCenter() < 0)
-                    			span = pair<int,int>(e->GetLeft(),e->GetM());
-                            // continuous + discontinuous = discontinuous
-                            // discontinuous + continuous = discontinuous
-                    		else if (edge.GetCenter() <= e->GetM() || edge.GetCenter() > e->GetN())
-                    			span = pair<int,int>(edge.GetLeft(),edge.GetCenter()-1);
-                        	// discontinuous + discontinuous = continuous
-                    		else if (e->GetM() < edge.GetCenter() && edge.GetCenter() < e->GetN())
-                    			span = pair<int,int>(e->GetLeft(),e->GetN()-1);
-                    		else
-                    			THROW_ERROR("Span is undefined for " << *e)
-                    	}
-                    	else
-                    		span = pair<int,int>(edge.GetLeft(),edge.GetCenter()-1);
-                        break;
-                    case 'R':
-                    	if (edge.GetClass() == 'D'){
-                    		DiscontinuousHyperEdge * e = (DiscontinuousHyperEdge *)&edge;
-                    		// continuous + continuous = discontinuous
-                    		if (edge.GetCenter() < 0)
-                        		span = pair<int,int>(e->GetN(), e->GetRight());
-                    		// continuous + discontinuous = discontinuous
-                    		// discontinuous + continuous = discontinuous
-                    		else if (edge.GetCenter() <= e->GetM() || edge.GetCenter() > e->GetN())
-                        		span = pair<int,int>(edge.GetCenter(), edge.GetRight());
-                    		// discontinuous + discontinuous = continuous
-                    		else if (e->GetM() < edge.GetCenter() && edge.GetCenter() < e->GetN())
-                        		span = pair<int,int>(e->GetM(), e->GetRight());
-                    		else
-                    			THROW_ERROR("Span is undefined for " << *e)
-                    	}
-                    	else
-                    		span = pair<int,int>(edge.GetCenter(), edge.GetRight());
-                        break;
-                }
-                if(templ.second[i].length() >= 3 && templ.second[i][2] == '#') {
-                    feat_val = (span.first == -1 ?
-                        GetEdgeFeatureValue(sent_seq, edge,templ.second[i]) :
-                        GetSpanFeatureValue(sent_seq, span.first, span.second, 
-                                                        templ.second[i]));
-                } else {
-                    values << "||" << 
-                      (span.first == -1 ?
-                        GetEdgeFeatureString(sent_seq, edge,templ.second[i]):
-                        GetSpanFeatureString(sent_seq, span.first,
-                                             span.second, templ.second[i]));
-                }
+                if(templ.second[i].length() >= 3 && templ.second[i][2] == '#')
+                	feat_val = GetFeatureValue(sent_seq, edge, templ.second[i]);
+                else
+                	values << "||" << GetFeatureString(sent_seq, edge, templ.second[i]);
             }
             if(feat_val) {
                 int id = feature_ids.GetId(values.str(), add);

@@ -17,6 +17,17 @@ using namespace lader;
 using namespace std;
 using namespace boost;
 
+// Make biligual features is possible
+FeatureVectorInt *HyperGraph::MakeEdgeFeatures(const FeatureSet & feature_gen,
+		const Sentence & source, const HyperEdge & edge, ReordererModel & model)
+{
+    FeatureVectorInt *ret;
+    ret = feature_gen.MakeEdgeFeatures(source, edge, model.GetFeatureIds(), model.GetAdd());
+    if(bilingual_features_ && target_ && align_)
+        bilingual_features_->MakeBilingualFeatures(source, *target_, *align_,
+				edge, model.GetFeatureIds(), model.GetAdd(), ret);
+    return ret;
+}
 // Return the edge feature vector
 // if -save_features, edge features are stored in a stack.
 // thus, this is thread safe without lock.
@@ -33,7 +44,7 @@ const FeatureVectorInt * HyperGraph::GetEdgeFeatures(
     	case HyperEdge::EDGE_STR:
     		ret = stack->GetStraightFeautures(edge.GetCenter() - edge.GetLeft());
     		if (ret == NULL){
-    			ret = feature_gen.MakeEdgeFeatures(sent, edge, model.GetFeatureIds(), model.GetAdd());
+    			ret = MakeEdgeFeatures(feature_gen, sent, edge, model);
     			stack->SaveStraightFeautures(edge.GetCenter() - edge.GetLeft(), ret);
     		}
     		break;
@@ -41,7 +52,7 @@ const FeatureVectorInt * HyperGraph::GetEdgeFeatures(
     	case HyperEdge::EDGE_INV:
     		ret = stack->GetInvertedFeautures(edge.GetCenter() - edge.GetLeft());
     		if (ret == NULL){
-    			ret = feature_gen.MakeEdgeFeatures(sent, edge, model.GetFeatureIds(), model.GetAdd());
+    			ret = MakeEdgeFeatures(feature_gen, sent, edge, model);
     			stack->SaveInvertedFeautures(edge.GetCenter() - edge.GetLeft(), ret);
     		}
     		break;
@@ -50,7 +61,7 @@ const FeatureVectorInt * HyperGraph::GetEdgeFeatures(
     		THROW_ERROR("Invalid hyper edge for GetEdgeFeatures: " << edge);
     	}
     } else {
-    	ret = feature_gen.MakeEdgeFeatures(sent, edge, model.GetFeatureIds(), model.GetAdd());
+    	ret = MakeEdgeFeatures(feature_gen, sent, edge, model);
     }
     return ret;
 }
@@ -84,10 +95,10 @@ double HyperGraph::Rescore(double loss_multiplier) {
 // Get the score for a single edge
 double HyperGraph::GetEdgeScore(ReordererModel & model,
                                 const FeatureSet & feature_gen,
-                                const Sentence & sent,
+                                const Sentence & source,
                                 const HyperEdge & edge) {
     const FeatureVectorInt * vec = 
-                GetEdgeFeatures(model, feature_gen, sent, edge);
+                GetEdgeFeatures(model, feature_gen, source, edge);
     double score = model.ScoreFeatureVector(SafeReference(vec));
     // features are not stored, thus delete
     if (!save_features_)
@@ -250,7 +261,7 @@ Hypothesis * HyperGraph::LazyKthBest(TargetSpan * stack, int k,
 // Build a hypergraph using beam search and cube pruning
 void HyperGraph::ProcessOneSpan(ReordererModel & model,
                                        const FeatureSet & features,
-                                       const Sentence & sent,
+                                       const Sentence & source,
                                        int l, int r,
                                        int beam_size) {
     // Get a map to store identical target spans
@@ -268,7 +279,7 @@ void HyperGraph::ProcessOneSpan(ReordererModel & model,
 
     double score, viterbi_score;
     // If the length is OK, add a terminal
-    AddTerminals(l, r, features, model, sent, q);
+    AddTerminals(l, r, features, model, source, q);
 
     TargetSpan *left_stack, *right_stack;
     Hypothesis *new_left_hyp, *old_left_hyp,
@@ -285,7 +296,7 @@ void HyperGraph::ProcessOneSpan(ReordererModel & model,
        	right = right_stack->GetHypothesis(0);
         // Add the straight terminal
         HyperEdge * edge = new HyperEdge(l, c, r, HyperEdge::EDGE_STR);
-        score = GetEdgeScore(model, features, sent, *edge);
+        score = GetEdgeScore(model, features, source, *edge);
     	viterbi_score = score + left->GetScore() + right->GetScore();
     	q->push(new Hypothesis(viterbi_score, score, edge,
                          left->GetTrgLeft(),
@@ -293,7 +304,7 @@ void HyperGraph::ProcessOneSpan(ReordererModel & model,
                          0, 0, left_stack, right_stack));
         // Add the inverted terminal
         edge = new HyperEdge(l, c, r, HyperEdge::EDGE_INV);
-        score = GetEdgeScore(model, features, sent, *edge);
+        score = GetEdgeScore(model, features, source, *edge);
     	viterbi_score = score + left->GetScore() + right->GetScore();
     	q->push(new Hypothesis(viterbi_score, score, edge,
 						 right->GetTrgLeft(),
@@ -323,12 +334,12 @@ void HyperGraph::ProcessOneSpan(ReordererModel & model,
     	TargetSpan *left_span = hyp->GetLeftChild();
     	if (left_span)
     		new_left = left_span->GetHypothesis(hyp->GetLeftRank()+1);
-    	IncrementLeft(hyp, new_left, model, sent, *q, pop_count);
+    	IncrementLeft(hyp, new_left, model, source, *q, pop_count);
 
     	TargetSpan *right_span = hyp->GetRightChild();
     	if (right_span)
     		new_right = right_span->GetHypothesis(hyp->GetRightRank()+1);
-    	IncrementRight(hyp, new_right, model, sent, *q, pop_count);
+    	IncrementRight(hyp, new_right, model, source, *q, pop_count);
         if (skip)
         	delete hyp;
     }
@@ -352,8 +363,8 @@ void HyperGraph::TriggerTheBestHypotheses(int l, int r, ReordererModel & model,
 // Build a hypergraph using beam search and cube pruning
 void HyperGraph::BuildHyperGraph(ReordererModel & model,
         const FeatureSet & features,
-        const Sentence & sent) {
-    SetNumWords(sent[0]->GetNumWords());
+        const Sentence & source) {
+    SetNumWords(source[0]->GetNumWords());
     // if -save_features=true, reuse the stacks storing edge features
     if (!save_features_)
     	SetAllStacks();
@@ -365,14 +376,14 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
     	for(int l = 0; l <= n_-L; l++){
     		int r = l+L-1;
     		Task * task = NewSpanTask(this, model, features,
-					sent, l, r, beam_size_);
+					source, l, r, beam_size_);
     		pool.Submit(task);
     	}
     	pool.Stop(true);
     	// for cube growing, trigger the best hypothesis
     	if (cube_growing_)
     		for(int l = 0; l <= n_-L; l++)
-    			TriggerTheBestHypotheses(l, l+L-1, model, sent);
+    			TriggerTheBestHypotheses(l, l+L-1, model, source);
     }
     // Build the root node
     TargetSpan * top = GetStack(0,n_-1);
@@ -384,7 +395,7 @@ void HyperGraph::BuildHyperGraph(ReordererModel & model,
     	Hypothesis * hyp = NULL;
     	if (cube_growing_){
     		int pop_count = 0;
-    		hyp = LazyKthBest(top, i, model, sent, pop_count);
+    		hyp = LazyKthBest(top, i, model, source, pop_count);
     	}
     	else if (i < (int)(top->HypSize()))
             hyp = (*top)[i];

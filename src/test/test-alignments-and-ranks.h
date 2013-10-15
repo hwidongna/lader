@@ -43,6 +43,20 @@ public:
             cout << " al.GetSrcLen() " << al.GetSrcLen()
                  << " != cal.GetSrcLen() " << cal.GetSrcLen() << endl; ret = 0;
         }
+        vector<int> act_min;
+        act_min.push_back(cal.GetMinF2E(0, 0));
+        act_min.push_back(cal.GetMinF2E(1, 1));
+        act_min.push_back(cal.GetMinF2E(0, 1));
+        vector<int> exp_min(3);
+        exp_min[0] = 0; exp_min[1] = 1; exp_min[2] = 0;
+        ret *= CheckVector(exp_min, act_min);
+        vector<int> act_max;
+		act_max.push_back(cal.GetMaxF2E(0, 0));
+		act_max.push_back(cal.GetMaxF2E(1, 1));
+		act_max.push_back(cal.GetMaxF2E(0, 1));
+		vector<int> exp_max(3);
+		exp_max[0] = 1; exp_max[1] = 3; exp_max[2] = 3;
+		ret *= CheckVector(exp_max, act_max);
         return ret;
     }
     
@@ -242,6 +256,45 @@ public:
             cerr << "GetMaxRank() != 3: " << my_ranks.GetMaxRank() << endl;
             ret = 0;
         }
+
+        // Create a bon-bon alignment
+        // .x.
+        // x.x
+        // .x.
+        words.resize(3);
+        Alignment bonbon(MakePair(3,3));
+        bonbon.AddAlignment(MakePair(0,1));
+        bonbon.AddAlignment(MakePair(1,0));
+        bonbon.AddAlignment(MakePair(1,2));
+        bonbon.AddAlignment(MakePair(2,1));
+        CombinedAlign cbonbon(words, bonbon);
+        Ranks bonbon_ranks(cbonbon);
+        // Which should have ranks
+        // 0 0 0
+        act = bonbon_ranks.GetRanks();
+        exp.resize(3);
+		exp[0] = 0; exp[1] = 0; exp[2] = 0;
+		ret *= CheckVector(exp, act);
+
+		// Create an Inside-Out alignment
+		// .x.
+		// ...x
+		// x...
+		// ..x.
+		words.resize(4);
+		Alignment io(MakePair(4,4));
+		io.AddAlignment(MakePair(0,1));
+		io.AddAlignment(MakePair(1,3));
+		io.AddAlignment(MakePair(2,0));
+		io.AddAlignment(MakePair(3,2));
+		CombinedAlign cio(words, io);
+		Ranks io_ranks(cio);
+		// Which should have ranks
+		// 1 3 0 2
+		act = io_ranks.GetRanks();
+		exp.resize(4);
+		exp[0] = 1; exp[1] = 3; exp[2] = 0; exp[3] = 2;
+		ret *= CheckVector(exp, act);
         return ret;
     }
 

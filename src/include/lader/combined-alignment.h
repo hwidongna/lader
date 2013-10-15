@@ -3,6 +3,7 @@
 
 #include <vector>
 #include <lader/alignment.h>
+#include <cfloat>
 
 namespace lader {
 
@@ -74,6 +75,23 @@ public:
     }
     int GetSrcLen() const { return spans_.size(); }
 
+    int GetMinF2E(int l, int r) const {
+    	if (l < 0 || r >= GetSrcLen())
+    		THROW_ERROR("Invalid argument for l=" << l << " and r=" << r << std::endl)
+    	double result = DBL_MAX;
+    	for (int j = l ; j <= r ; j++)
+    		result = std::min(result, spans_[j].first);
+    	return result;
+    }
+
+    int GetMaxF2E(int l, int r) const {
+    	if (l < 0 || r >= GetSrcLen())
+    		THROW_ERROR("Invalid argument for l=" << l << " and r=" << r << std::endl)
+    	double result = -1;
+    	for (int j = l ; j <= r ; j++)
+    		result = std::max(result, spans_[j].second);
+    	return result;
+    }
 private:
     
     // The set of opening and closing brackets to be used in alignment

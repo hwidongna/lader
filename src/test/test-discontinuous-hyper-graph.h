@@ -449,7 +449,7 @@ public:
     	set.SetUseReverse(false);
         FeatureDataSequence sent;
         sent.FromString("t h i s i s a v e r y l o n g s e n t e n c e .");
-        vector<FeatureDataBase*> datas;
+        Sentence datas;
         datas.push_back(&sent);
     	struct timespec tstart={0,0}, tend={0,0};
         ReordererModel model;
@@ -550,7 +550,7 @@ public:
     	set.SetUseReverse(false);
     	FeatureDataSequence sent;
     	sent.FromString("t h i s i s a v e r y l o n g s e n t e n c e .");
-    	vector<FeatureDataBase*> datas;
+    	Sentence datas;
     	datas.push_back(&sent);
     	struct timespec tstart={0,0}, tend={0,0};
 
@@ -610,7 +610,7 @@ public:
     	set.SetUseReverse(false);
     	FeatureDataSequence sent;
     	sent.FromString("t h i s i s a v e r y l o n g s e n t e n c e .");
-    	vector<FeatureDataBase*> datas;
+    	Sentence datas;
     	datas.push_back(&sent);
     	int beam_size = 100;
     	graph1.SetBeamSize(beam_size);
@@ -679,7 +679,7 @@ public:
     	set.SetUseReverse(false);
     	FeatureDataSequence sent;
     	sent.FromString("t h i s i s a v e r y l o n g s e n t e n c e .");
-    	vector<FeatureDataBase*> datas;
+    	Sentence datas;
     	datas.push_back(&sent);
     	int beam_size = 100;
     	graph1.SetBeamSize(beam_size);
@@ -744,7 +744,7 @@ public:
         FeatureDataSequence sent, sent_pos;
         sent.FromString("this sentence has five words");
 		sent_pos.FromString("PRP NNS VB ADJ NNP");
-        vector<FeatureDataBase*> datas;
+        Sentence datas;
         datas.push_back(&sent);
         datas.push_back(&sent_pos);
         graph.SetBeamSize(5*4*3*2);
@@ -776,7 +776,7 @@ public:
 		FeatureDataSequence sent, sent_pos;
 		sent.FromString("one");
 		sent_pos.FromString("NNS");
-		vector<FeatureDataBase*> datas;
+		Sentence datas;
 		datas.push_back(&sent);
 		datas.push_back(&sent_pos);
 		graph.BuildHyperGraph(model, set, datas);
@@ -1033,7 +1033,7 @@ private:
     ReordererModel model;
     std::vector<double> weights;
     FeatureSet set;
-    vector<FeatureDataBase*> datas;
+    Sentence datas;
     FeatureSequence *featw, *featp;
     TargetSpan *ts00, *ts11, *ts22, *ts33, *ts03, *ts01, *ts23, *tsRoot;
     DiscontinuousTargetSpan *ts1_3, *ts0_2, *ts03d;

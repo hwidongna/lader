@@ -1,7 +1,6 @@
 
 #include <lader/combined-alignment.h>
 #include <iostream>
-#include <cfloat>
 
 using namespace lader;
 using namespace std; 

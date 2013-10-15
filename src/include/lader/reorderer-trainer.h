@@ -17,7 +17,8 @@ public:
     ReordererTrainer() : learning_rate_(1),
                          attach_(CombinedAlign::ATTACH_NULL_LEFT),
                          combine_(CombinedAlign::COMBINE_BLOCKS),
-                         bracket_(CombinedAlign::ALIGN_BRACKET_SPANS) { }
+                         bracket_(CombinedAlign::ALIGN_BRACKET_SPANS),
+                         bilingual_features_(NULL) { }
     ~ReordererTrainer() {
         BOOST_FOREACH(std::vector<FeatureDataBase*> vec, data_)
             BOOST_FOREACH(FeatureDataBase* ptr, vec)
@@ -29,24 +30,23 @@ public:
         		delete graph;
         delete model_;
         delete features_;
+        if (bilingual_features_)
+        	delete bilingual_features_;
     }
 
     // Initialize the model
     void InitializeModel(const ConfigTrainer & config);
 
+    // Read in the reference data
+    void ReadTargetData(const std::string & ref_in);
     // Read in the data
-    void ReadData(const std::string & source_in) {
-        std::ifstream in(source_in.c_str());
-        if(!in) THROW_ERROR("Could not open source file (-source_in): "
-                                <<source_in);
-        std::string line;
-        data_.clear();
-        while(getline(in, line))
-            data_.push_back(features_->ParseInput(line));
-    }
+    void ReadData(const std::string & source_in);
 
     // Read in the alignments
     void ReadAlignments(const std::string & align_in);
+
+    // Read in the alignments
+    void ReadSrc2TrgAlignments(const std::string & align_in);
 
     // Read in the parses
     void ReadParses(const std::string & align_in);
@@ -54,8 +54,10 @@ public:
     // Write the model to a file
     void WriteModel(const std::string & str) {
         std::ofstream out(str.c_str());
-        if(!out) THROW_ERROR("Couldn't write model to file " << str);
+        if(!out) THROW_ERROR("Couldn't write model to file " << str)
         features_->ToStream(out);
+        if (bilingual_features_)
+	        bilingual_features_->ToStream(out);
        	model_->ToStream(out);
     }
 
@@ -77,6 +79,10 @@ private:
     CombinedAlign::BlockHandler combine_; // Whether to combine blocks
     CombinedAlign::BracketHandler bracket_; // Whether to handle brackets
 
+    // they are optional
+    FeatureSet * bilingual_features_;  // The mapping on feature ids and which to use
+    std::vector<Sentence> trg_data_; // The data for the bilingual features
+    std::vector<CombinedAlign> align_; // The alignments to use in training
 };
 
 }

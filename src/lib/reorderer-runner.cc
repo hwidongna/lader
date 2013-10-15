@@ -14,7 +14,7 @@ void ReordererTask::Run() {
     // Load the data
 	if (verbose > 1)
 		cerr << "Sentence " << id_ << endl;
-    std::vector<FeatureDataBase*> datas = features_->ParseInput(line_);
+	Sentence datas = features_->ParseInput(line_);
     // Save the original string
     vector<string> words = ((FeatureDataSequence*)datas[0])->GetSequence();
     // Build the hypergraph

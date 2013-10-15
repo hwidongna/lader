@@ -27,6 +27,7 @@ public:
     int GetMaxRank() const { return max_rank_; }
     const std::vector<int> & GetRanks() const { return ranks_; }
     int GetSrcLen() const { return ranks_.size(); }
+    void SetRanks(const std::vector<int> & order);
 
 private:
     std::vector<int> ranks_;

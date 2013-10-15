@@ -48,7 +48,7 @@ const FeatureVectorInt * DiscontinuousHyperGraph::GetEdgeFeatures(
     	case HyperEdge::EDGE_STR:
 			ret = stack->GetStraightFeautures(edge.GetCenter() - edge.GetLeft());
 			if (ret == NULL){
-				ret = feature_gen.MakeEdgeFeatures(sent, edge, model.GetFeatureIds(), model.GetAdd());
+				ret = MakeEdgeFeatures(feature_gen, sent, edge, model);
 				stack->SaveStraightFeautures(edge.GetCenter() - edge.GetLeft(), ret);
 			}
 			break;
@@ -56,7 +56,7 @@ const FeatureVectorInt * DiscontinuousHyperGraph::GetEdgeFeatures(
     	case HyperEdge::EDGE_INV:
     		ret = stack->GetInvertedFeautures(edge.GetCenter() - edge.GetLeft());
     		if (ret == NULL){
-    			ret = feature_gen.MakeEdgeFeatures(sent, edge, model.GetFeatureIds(), model.GetAdd());
+    			ret = MakeEdgeFeatures(feature_gen, sent, edge, model);
     			stack->SaveInvertedFeautures(edge.GetCenter() - edge.GetLeft(), ret);
     		}
     		break;
@@ -65,7 +65,7 @@ const FeatureVectorInt * DiscontinuousHyperGraph::GetEdgeFeatures(
     		THROW_ERROR("Invalid hyper edge for GetEdgeFeatures: " << edge);
     	}
     } else {
-    	ret = feature_gen.MakeEdgeFeatures(sent, edge, model.GetFeatureIds(), model.GetAdd());
+    	ret = MakeEdgeFeatures(feature_gen, sent, edge, model);
     }
     return ret;
 }

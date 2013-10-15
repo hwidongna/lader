@@ -12,11 +12,11 @@ using namespace std;
 
 namespace fs = ::boost::filesystem;
 
-inline filesystem::path GetFeaturePath(const ConfigTrainer & config, int sent)
+inline filesystem::path GetFeaturePath(const ConfigTrainer & config, int sent_num)
 {
     fs::path dir(config.GetString("features_dir"));
     fs::path prefix(config.GetString("source_in"));
-    fs::path file(prefix.filename().string() + "." + to_string(sent));
+    fs::path file(prefix.filename().string() + "." + to_string(sent_num));
     fs::path full_path = dir / file;
     return full_path;
 }
@@ -25,17 +25,26 @@ inline filesystem::path GetFeaturePath(const ConfigTrainer & config, int sent)
 class SaveFeaturesTask : public Task {
     public:
     	SaveFeaturesTask(HyperGraph * graph, ReordererModel & model,
-			const FeatureSet & features, const Sentence & datas, const int sent,
+			const FeatureSet & features, const Sentence & source, const int sent_num,
 			const ConfigTrainer & config) :
     				graph_(graph), model_(model), features_(features),
-    				datas_(datas), sent_(sent), config_(config) { }
+    				source_(source), sent_num_(sent_num), config_(config),
+    				bilingual_features_(NULL), target_(NULL), align_(NULL) { }
+    	void SetBilingual(FeatureSet * bilingual_features,
+    			Sentence * target, CombinedAlign * align){
+    		bilingual_features_ = bilingual_features;
+    		target_ = target;
+    		align_ = align;
+    	}
     	void Run(){
-			graph_->SetNumWords(datas_[0]->GetNumWords());
+			graph_->SetNumWords(source_[0]->GetNumWords());
 			graph_->SetAllStacks();
+			if (bilingual_features_ && target_ && align_)
+				graph_->SetBilingual(bilingual_features_, target_, align_);
 			// this is a lighter job than BuildHyperGraph
-			graph_->SaveAllEdgeFeatures(model_, features_, datas_);
+			graph_->SaveAllEdgeFeatures(model_, features_, source_);
 			if (!config_.GetString("features_dir").empty()){
-				ofstream out(GetFeaturePath(config_, sent_).c_str());
+				ofstream out(GetFeaturePath(config_, sent_num_).c_str());
 				graph_->FeaturesToStream(out);
 				out.close();
 				graph_->ClearStacks();
@@ -45,16 +54,26 @@ class SaveFeaturesTask : public Task {
     	HyperGraph * graph_;
     	ReordererModel & model_;
     	const FeatureSet & features_;
-    	const Sentence & datas_;
-    	const int sent_;
+    	const Sentence & source_;
+    	const int sent_num_;
     	const ConfigTrainer & config_;
+    	// they are optional
+    	FeatureSet * bilingual_features_;
+    	Sentence * target_;
+    	CombinedAlign * align_;
 };
 
 void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
     InitializeModel(config);
-    ReadData(config.GetString("source_in"));
-    if(config.GetString("align_in").length())
-        ReadAlignments(config.GetString("align_in"));
+    if (!config.GetString("target_in").empty()){
+    	ReadData(config.GetString("source_in"));
+    	ReadTargetData(config.GetString("target_in"));
+    	ReadSrc2TrgAlignments(config.GetString("align_in"));
+    }
+    else{
+    	ReadData(config.GetString("source_in"));
+    	ReadAlignments(config.GetString("align_in"));
+    }
     if(config.GetString("parse_in").length())
         ReadParses(config.GetString("parse_in"));
     int verbose = config.GetInt("verbose");
@@ -118,8 +137,13 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
         		generated = true;
         		saved_graphs_[sent] = graph.Clone();
         		clock_gettime(CLOCK_MONOTONIC, &tstart);
-        		Task * task = new SaveFeaturesTask(saved_graphs_[sent], *model_,
+        		SaveFeaturesTask * task = new SaveFeaturesTask(saved_graphs_[sent], *model_,
         				*features_, data_[sent], sent, config);
+        		if (bilingual_features_){
+        			Sentence * target = &trg_data_[sent];
+        			CombinedAlign * align = &align_[sent];
+        			task->SetBilingual(bilingual_features_, target, align);
+        		}
         		pool.Submit(task);
         		clock_gettime(CLOCK_MONOTONIC, &tend);
         		save.tv_sec += tend.tv_sec - tstart.tv_sec;
@@ -160,7 +184,12 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
             					- ((double) ((tstart.tv_sec)) + 1.0e-9 * tstart.tv_nsec));
             	}
             }
-
+            // If we use biligual features, set the optional information
+            else if (bilingual_features_){
+            	Sentence * target = &trg_data_[sent];
+            	CombinedAlign * align = &align_[sent];
+            	ptr_graph->SetBilingual(bilingual_features_, target, align);
+            }
             clock_gettime(CLOCK_MONOTONIC, &tstart);
             // TODO: a loss-augmented parsing would result a different forest
             // (but it is impossible in decoding time)
@@ -302,7 +331,9 @@ void ReordererTrainer::InitializeModel(const ConfigTrainer & config) {
                             << config.GetString("model_in") << "')");
         cerr << "Load the existing model" << endl;
         features_ = FeatureSet::FromStream(in);
-        model_ = ReordererModel::FromStream(in);
+        if (!config.GetBool("backward_compatibility"))
+        	bilingual_features_ = FeatureSet::FromStream(in);
+	   	model_ = ReordererModel::FromStream(in);
     }
     else {
         model_ = new ReordererModel;
@@ -310,6 +341,12 @@ void ReordererTrainer::InitializeModel(const ConfigTrainer & config) {
         features_->ParseConfiguration(config.GetString("feature_profile"));
         features_->SetMaxTerm(config.GetInt("max_term"));
         features_->SetUseReverse(config.GetBool("use_reverse"));
+        if (!config.GetString("bilingual_feature_profile").empty()){
+        	bilingual_features_ = new FeatureSet;
+        	bilingual_features_->ParseConfiguration(config.GetString("bilingual_feature_profile"));
+        	bilingual_features_->SetMaxTerm(config.GetInt("max_term"));
+        	bilingual_features_->SetUseReverse(config.GetBool("use_reverse"));
+        }
     }
     ofstream model_out(config.GetString("model_out").c_str());
     if(!model_out)
@@ -338,6 +375,26 @@ void ReordererTrainer::InitializeModel(const ConfigTrainer & config) {
     } 
 }
 
+void ReordererTrainer::ReadTargetData(const std::string & target_in) {
+	std::ifstream in(target_in.c_str());
+	if(!in) THROW_ERROR("Could not open reference file (-target_in): "
+			<<target_in);
+	std::string line;
+	trg_data_.clear();
+	while(getline(in, line))
+		trg_data_.push_back(bilingual_features_->ParseInput(line));
+}
+// Read in the data
+void ReordererTrainer::ReadData(const std::string & source_in) {
+    std::ifstream in(source_in.c_str());
+    if(!in) THROW_ERROR("Could not open source file (-source_in): "
+                            <<source_in);
+    std::string line;
+    data_.clear();
+    while(getline(in, line))
+        data_.push_back(features_->ParseInput(line));
+}
+
 void ReordererTrainer::ReadAlignments(const std::string & align_in) {
     std::ifstream in(align_in.c_str());
     if(!in) THROW_ERROR("Could not open alignment file (-align_in): "
@@ -349,6 +406,35 @@ void ReordererTrainer::ReadAlignments(const std::string & align_in) {
             Ranks(CombinedAlign(SafeAccess(data_,i++)[0]->GetSequence(),
                                 Alignment::FromString(line),
                                 attach_, combine_, bracket_)));
+}
+
+void ReordererTrainer::ReadSrc2TrgAlignments(const std::string & align_in) {
+    std::ifstream in(align_in.c_str());
+    if(!in) THROW_ERROR("Could not open alignment file (-align_in): "
+                            <<align_in);
+    std::string line;
+    for(int i = 0 ; getline(in, line) ; i++){
+    	Alignment alignment = Alignment::FromString(line);
+    	FeatureDataBase * sent = SafeAccess(data_, i)[0];
+    	Ranks ranks = Ranks(CombinedAlign(sent->GetSequence(), alignment, attach_, combine_, bracket_));
+    	// a vector contains lists of source indices by rank
+    	vector<vector<int> > ranked_vec(ranks.GetMaxRank() + 1);
+    	for(int j = 0; j < sent->GetNumWords(); j++)
+    		ranked_vec[ranks[j]].push_back(j);
+    	// obtain the new order of the source sentence
+    	vector<int> new_order;
+    	BOOST_FOREACH(vector<int> & ranked, ranked_vec)
+    		new_order.insert(new_order.end(), ranked.begin(), ranked.end());
+    	// reorder each annotated source sentence
+    	BOOST_FOREACH(FeatureDataBase* sent, SafeAccess(data_, i))
+    		sent->Reorder(new_order);
+    	// the rank is the new order
+    	ranks.SetRanks(new_order);
+    	ranks_.push_back(ranks);
+    	// also update the alignment using the new order
+    	alignment.UpdateF(new_order);
+    	align_.push_back(CombinedAlign(sent->GetSequence(), alignment, attach_, combine_, bracket_));
+    }
 }
 
 void ReordererTrainer::ReadParses(const std::string & parse_in) {

@@ -1,5 +1,5 @@
 nobase_include_HEADERS = lader/alignment.h lader/combined-alignment.h \
-lader/config-base.h lader/config-evaluator.h lader/config-runner.h \
+lader/config-base.h lader/config-evaluator.h lader/config-runner.h lader/config-oracle.h \
 lader/config-trainer.h lader/dictionary.h lader/feature-align.h \
 lader/feature-base.h lader/feature-data-align.h lader/feature-data-base.h \
 lader/feature-data-parse.h lader/feature-data-sequence.h lader/feature-parse.h \

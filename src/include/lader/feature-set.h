@@ -15,7 +15,7 @@ class Hypothesis;
 class FeatureSet {
 public:
 
-    FeatureSet() : max_term_(0), use_reverse_(true) { }
+    FeatureSet() { }
     ~FeatureSet() {
         BOOST_FOREACH(FeatureBase * gen, feature_gens_)
             if(gen)
@@ -66,26 +66,16 @@ public:
     // Comparators
     bool operator== (const FeatureSet & rhs) {
         return (config_str_ == rhs.config_str_ &&
-                feature_gens_.size() == rhs.feature_gens_.size() &&
-                // feature_ids_->size() == rhs.feature_ids_->size() &&
-                max_term_ == rhs.max_term_);
+                feature_gens_.size() == rhs.feature_gens_.size());
     }
 
     // Accessors
     const FeatureBase* GetGenerator(int id) const { return feature_gens_[id]; }
-    int GetMaxTerm() const { return max_term_; }
-    bool GetUseReverse() const { return use_reverse_; }
-
-    void SetMaxTerm(int max_term) { max_term_ = max_term; }
-    void SetUseReverse(bool use_reverse) { use_reverse_ = use_reverse; }
 
 private:
 
     std::string config_str_; // The configuration string
-    int max_term_; // The maximum length of a terminal
     std::vector<FeatureBase*> feature_gens_; // Feature generators
-    bool use_reverse_; // Reverse
-
 };
 
 }

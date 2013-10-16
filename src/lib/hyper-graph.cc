@@ -134,19 +134,19 @@ void HyperGraph::AccumulateFeatures(std::tr1::unordered_map<int,double> & feat_m
 void HyperGraph::AddTerminals(int l, int r, const FeatureSet & features, ReordererModel & model, const Sentence & sent, HypothesisQueue *& q)
 {
     // If the length is OK, add a terminal
-    if((features.GetMaxTerm() == 0) || (r - l < features.GetMaxTerm())){
+    if((model.GetMaxTerm() == 0) || (r - l < model.GetMaxTerm())){
         double score;
         // Create a hypothesis with the forward terminal
         HyperEdge *edge = new HyperEdge(l, -1, r, HyperEdge::EDGE_FOR);
         score = GetEdgeScore(model, features, sent, *edge);
         q->push(new Hypothesis(score, score, edge, l, r));
-        if(features.GetUseReverse()){
+        if(model.GetUseReverse()){
             edge = new HyperEdge(l, -1, r, HyperEdge::EDGE_BAC);
             score = GetEdgeScore(model, features, sent, *edge);
             q->push(new Hypothesis(score, score, edge, r, l));
         }
-
     }
+
 
 }
 

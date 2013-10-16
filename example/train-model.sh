@@ -6,7 +6,7 @@ FEATURES_DIR=/tmp
 SOURCE_IN=output/train.en.annot
 TARGET_IN=data/train.ja
 ALIGN_IN=data/train.en-ja.align
-BILINGUAL_FEATURE_PROFILE="bilingual=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,O%SL%SR%ET,I%LR%RL%ET"
+BILINGUAL_FEATURE_PROFILE="bilingual=BLL%SL%ET,BRR%SR%ET,BLR%LR%ET,BRL%RL%ET,BO%SL%SR%ET,BI%LR%RL%ET"
 
 GAP=$1
 SAMPLES=$2
@@ -155,7 +155,7 @@ MODEL_IN=output/train-g$GAP.mod.it$LAST
 
 fi
 
-echo "../src/bin/train-lader -cost 1e-3 -attach_null right -feature_profile \"seq=dict=output/train.en-ja.pt,LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,O%SL%SR%ET,I%LR%RL%ET,Q%SQE0%ET,Q0%SQ#00%ET,Q1%SQ#01%ET,Q2%SQ#02%ET,CL%CL%ET,B%SB%ET,A%SA%ET,N%SN%ET,BIAS%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|cfg=LP%LP%ET,RP%RP%ET,SP%SP%ET,TP%SP%LP%RP%ET\" -bilingual_feature_profile $BILINGUAL_FEATURE_PROFILE'' -iterations $ITERATION -threads $THREADS -cube_growing $CUBE_GROWING -full_fledged $FULL_FLEDGED -shuffle $SHUFFLE -samples $SAMPLES -verbose $VERBOSE -gap-size $GAP -model_in $MODEL_IN'' -model_out output/train-g$GAP.mod -source_in $SOURCE_IN -target_in $TARGET_IN -align_in $ALIGN_IN -save_features $SAVE_FEATURES -features_dir $FEATURES_DIR"
+echo "../src/bin/train-lader -cost 1e-3 -attach_null right -feature_profile \"seq=dict=output/train.en-ja.pt,LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,O%SL%SR%ET,I%LR%RL%ET,Q%SQE0%ET,Q0%SQ#00%ET,Q1%SQ#01%ET,Q2%SQ#02%ET,CL%CL%ET,B%SB%ET,A%SA%ET,N%SN%ET,BIAS%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|cfg=LP%LP%ET,RP%RP%ET,SP%SP%ET,TP%SP%LP%RP%ET\" -bilingual_feature_profile '$BILINGUAL_FEATURE_PROFILE' -iterations $ITERATION -threads $THREADS -cube_growing $CUBE_GROWING -full_fledged $FULL_FLEDGED -shuffle $SHUFFLE -samples $SAMPLES -verbose $VERBOSE -gap-size $GAP -model_in $MODEL_IN'' -model_out output/train-g$GAP.mod -source_in $SOURCE_IN -target_in $TARGET_IN -align_in $ALIGN_IN -save_features $SAVE_FEATURES -features_dir $FEATURES_DIR"
 ../src/bin/train-lader -cost 1e-3 -attach_null right -feature_profile "seq=dict=output/train.en-ja.pt,LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,O%SL%SR%ET,I%LR%RL%ET,Q%SQE0%ET,Q0%SQ#00%ET,Q1%SQ#01%ET,Q2%SQ#02%ET,CL%CL%ET,B%SB%ET,A%SA%ET,N%SN%ET,BIAS%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|cfg=LP%LP%ET,RP%RP%ET,SP%SP%ET,TP%SP%LP%RP%ET" -bilingual_feature_profile $BILINGUAL_FEATURE_PROFILE'' -iterations $ITERATION -threads $THREADS -cube_growing $CUBE_GROWING -full_fledged $FULL_FLEDGED -shuffle $SHUFFLE -samples $SAMPLES -verbose $VERBOSE -gap-size $GAP -model_in $MODEL_IN'' -model_out output/train-g$GAP.mod -source_in $SOURCE_IN -target_in $TARGET_IN -align_in $ALIGN_IN -save_features $SAVE_FEATURES -features_dir $FEATURES_DIR
 
 # Once training finishes, a reordering model will be placed in output/train.mod.

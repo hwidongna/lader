@@ -196,8 +196,8 @@ public:
         stack11->AddHypothesis(new Hypothesis(2,2, 1,1,1,1, HyperEdge::EDGE_FOR));
         graph.SetStack(1, 1, stack11);
         // Try processing 01
-        set.SetMaxTerm(0);
-    	set.SetUseReverse(true);
+        model.SetMaxTerm(0);
+    	model.SetUseReverse(true);
     	TargetSpan *stack01 = new TargetSpan(0, 1);
     	graph.SetStack(0, 1, stack01);
         graph.ProcessOneSpan(model, set, datas, 0, 1, 100);
@@ -252,9 +252,9 @@ public:
 
     int TestBuildHyperGraph() {
         HyperGraph graph;
-        set.SetMaxTerm(0);
-        set.SetUseReverse(false);
         ReordererModel model;
+        model.SetMaxTerm(0);
+        model.SetUseReverse(false);
         graph.BuildHyperGraph(model, set, datas);
         const std::vector<TargetSpan*> & stacks = graph.GetStacks();
         int ret = 1;
@@ -287,15 +287,15 @@ public:
                  << " and root spans " << stacks[3]->HypSize() << " don't match." <<
                  endl; ret = 0;
         }
-        set.SetUseReverse(true);
+        model.SetUseReverse(true);
         return ret;
     }
 
     int TestBuildHyperGraphCubeGrowing() {
         HyperGraph graph(true);
-        set.SetMaxTerm(0);
-        set.SetUseReverse(false);
         ReordererModel model;
+        model.SetMaxTerm(0);
+        model.SetUseReverse(false);
         graph.BuildHyperGraph(model, set, datas);
         const std::vector<TargetSpan*> & stacks = graph.GetStacks();
         int ret = 1;
@@ -314,7 +314,6 @@ public:
                  << " and root spans " << stacks[3]->HypSize() << " don't match." <<
                  endl; ret = 0;
         }
-        set.SetUseReverse(true);
         return ret;
     }
 
@@ -324,8 +323,6 @@ public:
     	FeatureSequence * featw = new FeatureSequence;
         featw->ParseConfiguration("SW%LS%RS");
     	set.AddFeatureGenerator(featw);
-    	set.SetMaxTerm(0);
-    	set.SetUseReverse(false);
         FeatureDataSequence sent;
         sent.FromString("t h i s i s a v e r y l o n g s e n t e n c e .");
         Sentence datas;
@@ -334,6 +331,8 @@ public:
         int beam_size = 100;
         graph.SetBeamSize(beam_size);
         ReordererModel model;
+    	model.SetMaxTerm(0);
+    	model.SetUseReverse(false);
 
     	graph.SetThreads(1);
         clock_gettime(CLOCK_MONOTONIC, &tstart);
@@ -369,7 +368,6 @@ public:
 			cerr << "more threads, more time? " << thread4 << " > " << thread1 << endl;
 			ret = 0;
 		}
-    	set.SetUseReverse(true);
     	return ret;
     }
 
@@ -379,8 +377,6 @@ public:
     	FeatureSequence * featw = new FeatureSequence;
     	featw->ParseConfiguration("SW%LS%RS");
     	set.AddFeatureGenerator(featw);
-    	set.SetMaxTerm(0);
-    	set.SetUseReverse(false);
     	FeatureDataSequence sent;
     	sent.FromString("t h i s i s a v e r y l o n g s e n t e n c e .");
     	Sentence datas;
@@ -391,6 +387,8 @@ public:
     	graph.SetNumWords(sent.GetNumWords());
     	graph.SetAllStacks();
     	ReordererModel model;
+    	model.SetMaxTerm(0);
+    	model.SetUseReverse(false);
 
     	graph.SetSaveFeatures(true);
     	clock_gettime(CLOCK_MONOTONIC, &tstart);
@@ -426,7 +424,6 @@ public:
     		cerr << "save features, more time? " << after_save << " > " << before_save << endl;
     		ret = 0;
     	}
-    	set.SetUseReverse(true);
     	return ret;
     }
 
@@ -435,8 +432,6 @@ public:
     	FeatureSequence * featw = new FeatureSequence;
     	featw->ParseConfiguration("SW%LS%RS");
     	set.AddFeatureGenerator(featw);
-    	set.SetMaxTerm(0);
-    	set.SetUseReverse(false);
     	FeatureDataSequence sent;
     	sent.FromString("t h i s i s a v e r y l o n g s e n t e n c e .");
     	Sentence datas;
@@ -449,6 +444,8 @@ public:
     	graph1.SetNumWords(sent.GetNumWords());
     	graph1.SetAllStacks();
     	ReordererModel model;
+    	model.SetMaxTerm(0);
+    	model.SetUseReverse(false);
 
     	graph1.BuildHyperGraph(model, set, datas);
     	ofstream out("/tmp/feature"); // store the features to a file
@@ -479,7 +476,6 @@ public:
     			ret = CheckStackEqual(graph1.HyperGraph::GetStack(l, r), graph2.HyperGraph::GetStack(l, r));
     		}
     	}
-    	set.SetUseReverse(true);
     	return ret;
     }
 
@@ -488,8 +484,6 @@ public:
     	FeatureSequence * featw = new FeatureSequence;
     	featw->ParseConfiguration("SW%LS%RS");
     	set.AddFeatureGenerator(featw);
-    	set.SetMaxTerm(0);
-    	set.SetUseReverse(false);
     	FeatureDataSequence sent;
     	sent.FromString("t h i s i s a v e r y l o n g s e n t e n c e .");
     	Sentence datas;
@@ -503,6 +497,8 @@ public:
     	graph1.SetAllStacks();
 
     	ReordererModel model;
+    	model.SetMaxTerm(0);
+    	model.SetUseReverse(false);
     	graph1.SaveAllEdgeFeatures(model, set, datas);
     	ofstream out("/tmp/feature.saveall"); // store the features to a file
     	graph1.FeaturesToStream(out);
@@ -532,7 +528,6 @@ public:
     			ret = CheckStackEqual(graph1.HyperGraph::GetStack(l, r), graph2.HyperGraph::GetStack(l, r));
     		}
     	}
-    	set.SetUseReverse(true);
     	return ret;
     }
     int TestAccumulateLoss() {

@@ -337,15 +337,13 @@ void ReordererTrainer::InitializeModel(const ConfigTrainer & config) {
     }
     else {
         model_ = new ReordererModel;
+        model_->SetMaxTerm(config.GetInt("max_term"));
+        model_->SetUseReverse(config.GetBool("use_reverse"));
         features_ = new FeatureSet;
         features_->ParseConfiguration(config.GetString("feature_profile"));
-        features_->SetMaxTerm(config.GetInt("max_term"));
-        features_->SetUseReverse(config.GetBool("use_reverse"));
         if (!config.GetString("bilingual_feature_profile").empty()){
         	bilingual_features_ = new FeatureSet;
         	bilingual_features_->ParseConfiguration(config.GetString("bilingual_feature_profile"));
-        	bilingual_features_->SetMaxTerm(config.GetInt("max_term"));
-        	bilingual_features_->SetUseReverse(config.GetBool("use_reverse"));
         }
     }
     ofstream model_out(config.GetString("model_out").c_str());

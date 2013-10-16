@@ -14,7 +14,8 @@ public:
     
     // Initialize the pegasos model
     ReordererModel() 
-        : t_(1), alpha_(1), v_squared_norm_(0), lambda_(1e-5), add_features_(true) { }
+        : t_(1), alpha_(1), v_squared_norm_(0), lambda_(1e-5), add_features_(true),
+          max_term_(0), use_reverse_(true) { }
 
     // Calculate the scores of each single edge and node in a hypergraph
     //  The loss_factor indicates the multiplier of the loss term compared
@@ -78,7 +79,7 @@ public:
         BOOST_FOREACH(const std::string * str, rhs.feature_ids_.GetSymbols())
             if(GetWeight(*str) != rhs.GetWeight(*str))
                 return false;
-        return true;
+        return max_term_ == rhs.max_term_ && use_reverse_ == rhs.use_reverse_;
     }
     bool operator!=(const ReordererModel & rhs) const {
         return !(*this == rhs);
@@ -115,6 +116,12 @@ public:
     void SetAdd(bool add) { add_features_ = add; }
     bool GetAdd() const { return add_features_; }
 
+    int GetMaxTerm() const { return max_term_; }
+    bool GetUseReverse() const { return use_reverse_; }
+
+    void SetMaxTerm(int max_term) { max_term_ = max_term; }
+    void SetUseReverse(bool use_reverse) { use_reverse_ = use_reverse; }
+
 private:
     // Weights over features and weights over losses
     std::vector<double> v_;
@@ -125,7 +132,8 @@ private:
     // Feature name values
     SymbolSet<int> feature_ids_; // Feature names and IDs
     bool add_features_; // Whether to allow the adding of new features
-
+    int max_term_; // The maximum length of a terminal
+    bool use_reverse_; // Reverse
 };
 
 }

@@ -77,12 +77,6 @@ public:
 
     virtual HyperGraph * Clone(){
     	HyperGraph * cloned = new HyperGraph(*this);
-//    	HyperGraph * cloned = new HyperGraph(cube_growing_);
-//    	cloned->SetThreads(threads_);
-//    	cloned->SetBeamSize(beam_size_);
-//    	cloned->SetPopLimit(pop_limit_);
-//    	cloned->SetSaveFeatures(save_features_);
-//    	cloned->SetNumWords(n_);
     	cloned->MarkCloned();
     	return cloned;
     }

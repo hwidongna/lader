@@ -52,14 +52,7 @@ public:
     void ReadParses(const std::string & align_in);
 
     // Write the model to a file
-    void WriteModel(const std::string & str) {
-        std::ofstream out(str.c_str());
-        if(!out) THROW_ERROR("Couldn't write model to file " << str)
-        features_->ToStream(out);
-        if (bilingual_features_)
-	        bilingual_features_->ToStream(out);
-       	model_->ToStream(out);
-    }
+    void WriteModel(const std::string & str);
 
     // Train the reorderer incrementally, building they hypergraph each time
     // we parse

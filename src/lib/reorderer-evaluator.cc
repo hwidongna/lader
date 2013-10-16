@@ -13,11 +13,15 @@ using namespace boost;
 // Run the evaluator
 void ReordererEvaluator::Evaluate(const ConfigEvaluator & config) {
     // Set the attachment handler
-    attach_ = config.GetString("attach_null") == "left"
-        ? CombinedAlign::ATTACH_NULL_LEFT : CombinedAlign::ATTACH_NULL_RIGHT;
+    attach_ = config.GetString("attach_null") == "left" ?
+    		CombinedAlign::ATTACH_NULL_LEFT :
+    		CombinedAlign::ATTACH_NULL_RIGHT;
     combine_ = config.GetBool("combine_blocks") ? 
-                CombinedAlign::COMBINE_BLOCKS :
-                CombinedAlign::LEAVE_BLOCKS_AS_IS;
+            CombinedAlign::COMBINE_BLOCKS :
+            CombinedAlign::LEAVE_BLOCKS_AS_IS;
+    bracket_ = config.GetBool("combine_brackets") ?
+			CombinedAlign::ALIGN_BRACKET_SPANS :
+			CombinedAlign::LEAVE_BRACKETS_AS_IS;
     // Set up the losses
     vector<LossBase*> losses;
     losses.push_back(new LossChunk());
@@ -28,44 +32,63 @@ void ReordererEvaluator::Evaluate(const ConfigEvaluator & config) {
     const vector<string> & args = config.GetMainArgs();
     ifstream aligns_in(SafeAccess(args, 0).c_str());
     if(!aligns_in) THROW_ERROR("Couldn't find alignment file " << args[0]);
-    ifstream data_in(SafeAccess(args, 1).c_str());
-    if(!data_in) THROW_ERROR("Couldn't find input file " << args[1]);
-    ifstream *src_in = NULL, *trg_in = NULL;
+    ifstream hyp_in(SafeAccess(args, 1).c_str());
+    if(!hyp_in) THROW_ERROR("Couldn't find hypothesis file " << args[1]);
+    ifstream src_in, trg_in;
     if(args.size() > 2) {
-        src_in = new ifstream(SafeAccess(args, 2).c_str());
-        if(!(*src_in)) THROW_ERROR("Couldn't find source file " << args[2]);
+        src_in.open(SafeAccess(args, 2).c_str(), ios_base::in);
+        if(!src_in) THROW_ERROR("Couldn't find source file " << args[2]);
     }
     if(args.size() > 3) {
-        trg_in = new ifstream(SafeAccess(args, 3).c_str());
-        if(!*trg_in) THROW_ERROR("Couldn't find target file " << args[3]);
+    	trg_in.open(SafeAccess(args, 3).c_str(), ios_base::in);
+        if(!trg_in) THROW_ERROR("Couldn't find target file " << args[3]);
     }
-    string data, align, src, trg;
+    string hline, aline, sline, tline;
     // Read them one-by-one and run the evaluator
-    while(getline(data_in, data) && getline(aligns_in, align)) {
+    while(getline(hyp_in, hline) && getline(aligns_in, aline)) {
         // Get the input values
         std::vector<string> datas;
-        algorithm::split(datas, data, is_any_of("\t"));
+        algorithm::split(datas, hline, is_any_of("\t"));
         istringstream iss(datas[0]);
         std::vector<int> order; int ival;
         while(iss >> ival) order.push_back(ival);
         // Get the source file
-        getline(*src_in, src);
-        vector<string> srcs;
-        algorithm::split(srcs, src, is_any_of(" "));
+        getline(src_in, sline);
+        FeatureDataSequence srcs;
+        srcs.FromString(sline);
         // Get the ranks
-        Ranks ranks = Ranks(CombinedAlign(srcs,
-                                          Alignment::FromString(align), 
-                                          attach_, combine_, bracket_));
+        // a vector contains lists of source indices by rank
+        Ranks ranks(CombinedAlign(srcs.GetSequence(), Alignment::FromString(aline), attach_, combine_, bracket_));
+        // in case of utilizing bilingual features
+        if(args.size() > 3) {
+			vector<vector<int> > ranked_vec(ranks.GetMaxRank() + 1);
+			for(int j = 0; j < (int)srcs.GetNumWords(); j++)
+				ranked_vec[ranks[j]].push_back(j);
+			// obtain the new order of the source sentence
+			vector<int> new_order;
+			BOOST_FOREACH(vector<int> & ranked, ranked_vec)
+				new_order.insert(new_order.end(), ranked.begin(), ranked.end());
+			// the rank is the new order
+			ranks.SetRanks(new_order);
+			// reorder the original source sentence
+			srcs.Reorder(new_order);
+        }
         // Print the input values
-        cout << "sys_ord:\t" << datas[0] << endl;
+        cout << "hyp_ord:\t" << datas[0] << endl;
         for(int i = 1; i < (int)datas.size(); i++)
-            cout << "sys_"<<i<<":\t" << datas[i] << endl;
+            cout << "hyp_"<<i<<":\t" << datas[i] << endl;
         // If source and target files exist, print them as well
-        cout << "src:\t" << src << endl;
+        cout << "src:\t" << srcs.ToString() << endl;
+        cout << "ord:\t";
+        for(int i = 0; i < ranks.GetSrcLen() ; i++){
+        	if (i > 0) cout << " ";
+        	cout << ranks[i];
+        }
+        cout << endl;
         // Print the reference reordering
         vector<vector<string> > src_order(ranks.GetMaxRank()+1);
-        for(int i = 0; i < (int)srcs.size(); i++)
-            src_order[ranks[i]].push_back(SafeAccess(srcs,i));
+        for(int i = 0; i < srcs.GetNumWords(); i++)
+            src_order[ranks[i]].push_back(srcs.GetElement(i));
         cout << "ref:\t";
         for(int i = 0; i < (int)src_order.size(); i++) {
             if(i != 0) cout << " ";
@@ -82,8 +105,8 @@ void ReordererEvaluator::Evaluate(const ConfigEvaluator & config) {
         }
         cout << endl;
         if(args.size() > 3) {
-            getline(*trg_in, trg);
-            cout << "trg:\t" << trg << endl;
+            getline(trg_in, tline);
+            cout << "trg:\t" << tline << endl;
         }
         // Score the values
         for(int i = 0; i < (int) losses.size(); i++) {

@@ -37,43 +37,49 @@ public:
     // Run the model
     void Run(const ConfigRunner & config);
 
-    // Write the model to a file
-    void ReadModel(const std::string & str) {
-        std::ifstream in(str.c_str());
-        if(!in) THROW_ERROR("Couldn't read model from file (-model_in '"
-                            << str << "')");
-        features_ = FeatureSet::FromStream(in);
-        model_ = ReordererModel::FromStream(in);
-    }
-
 private:
 
     ReordererModel * model_; // The model
     FeatureSet * features_;  // The mapping on feature ids and which to use
     std::vector<OutputType> outputs_;
 
+    // they are optional
+	FeatureSet * bilingual_features_;  // The mapping on feature ids and which to use
+	std::vector<Sentence> trg_data_; // The data for the bilingual features
+	std::vector<CombinedAlign> align_; // The alignments to use in training
 };
 
 // A task
 class ReordererTask : public Task {
 public:
-    ReordererTask(int id, const std::string & line,
+    ReordererTask(int id, const std::string & sline,
                   ReordererModel * model, FeatureSet * features,
                   std::vector<ReordererRunner::OutputType> * outputs,
                   const ConfigRunner& config, HyperGraph * hyper_graph,
                   OutputCollector * collector) :
-        id_(id), line_(line), model_(model), features_(features),
+        id_(id), sline_(sline), model_(model), features_(features),
         outputs_(outputs), collector_(collector), config_(config), graph_(hyper_graph) { }
+    void SetBilingual(FeatureSet * bilingual_features,
+    		std::string tline, std::string aline){
+    	bilingual_features_ = bilingual_features;
+    	tline_ = tline;
+    	aline_ = aline;
+    }
     void Run();
 protected:
     int id_;
-    std::string line_;
+    std::string sline_;
     ReordererModel * model_; // The model
     FeatureSet * features_;  // The mapping on feature ids and which to use
     std::vector<ReordererRunner::OutputType> * outputs_;
     OutputCollector * collector_;
     const ConfigRunner& config_;
     HyperGraph * graph_;
+
+    // they are optional
+	FeatureSet * bilingual_features_;  // The mapping on feature ids and which to use
+	std::string tline_;
+	std::string aline_;
 };
 
 }

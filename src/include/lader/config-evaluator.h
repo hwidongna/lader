@@ -23,17 +23,17 @@ public:
 "  by Graham Neubig\n"
 "\n"
 "Evaluates the reordering accuracy of a particluar reordering for a sentence.\n"
-"  Usage: evaluate-lader GOLDEN_ALIGNMENT DATA SRC [TRG]\n"
+"  Usage: evaluate-lader GOLDEN_ALIGNMENT HYP SRC [TRG]\n"
 "\n"
-"  GOLDEN_ALIGNMENT: [SRC_LEN]-[TRG_LEN] ||| f1-e1 f2-e2 f3-e3\n"
-"  INPUT: a1 a2 a3 a4 a5 where a1 is the reordered position of source word 1\n"
-"  TRG: Sentence in the original source order\n"
-"  TRG: Target sentence\n"
+"  GOLDEN_ALIGNMENT: [SRC_LEN]-[TRG_LEN] ||| f_j-e_i ... \n"
+"  HYP: a1 ... where a1 is the reordered position of source word 1\n"
+"  SRC: Sentence in the original source order\n"
+"  TRG: Target sentence in the original target order\n"
 );
 
         AddConfigEntry("attach_null", "right", "Whether to attach null alignments to the left or right");
         AddConfigEntry("combine_blocks", "true", "Whether to attach the blocks together");
-
+        AddConfigEntry("combine_brackets", "true", "Whether to combine alignments into brackets");
     }
 	
 };

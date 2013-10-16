@@ -82,12 +82,6 @@ public:
     virtual HyperGraph *Clone()
     {
     	HyperGraph *cloned = new DiscontinuousHyperGraph(*this);
-//        HyperGraph *cloned = new DiscontinuousHyperGraph(gap_size_, cube_growing_, full_fledged_, mp_, verbose_);
-//        cloned->SetThreads(threads_);
-//        cloned->SetBeamSize(beam_size_);
-//        cloned->SetPopLimit(pop_limit_);
-//        cloned->SetSaveFeatures(save_features_);
-//        cloned->SetNumWords(n_);
         cloned->MarkCloned();
         return cloned;
     }

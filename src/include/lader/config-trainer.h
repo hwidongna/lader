@@ -37,6 +37,7 @@ public:
         AddConfigEntry("mp", "false", "Monotone at punctuation");
         AddConfigEntry("cube_growing", "true", "Use Cube Growing for construction of hyper graph");
         AddConfigEntry("combine_blocks", "true", "Whether to combine alignments into blocks");
+        AddConfigEntry("combine_brackets", "true", "Whether to combine alignments into brackets");
         AddConfigEntry("cost", "1e-3", "The rate at which to learn");
         AddConfigEntry("feature_profile", "seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,O%SL%SR%ET,I%LR%RL%ET,CL%CL%ET,B%SB%ET,A%SA%ET,N%SN%ET,BIAS%ET", "Which features to use ");
         AddConfigEntry("bilingual_feature_profile", "", "Which bilingual features to use");

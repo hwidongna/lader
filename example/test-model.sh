@@ -2,6 +2,11 @@
 set -e
 
 THREADS=4
+TEST=test.ej
+SOURCE_IN=output/test.ej.annot
+TARGET_IN=data/test.ja
+ALIGN_IN=data/test.ej-ja.align
+OUTPUT=output/test.ej.reordered
 
 GAP=$1
 BEAM=$2
@@ -43,12 +48,13 @@ fi
 #  Like train-model.sh, we need to create annotations for our input sentence.
 #  This is the same as before, so read train-model.sh for more details.
 
-echo "../script/add-classes.pl data/classes.en < data/test.en > output/test.en.class"
-../script/add-classes.pl data/classes.en < data/test.en > output/test.en.class
+echo "../script/add-classes.pl data/classes.en < data/$TEST > output/$TEST.class"
+../script/add-classes.pl data/classes.en < data/$TEST > output/$TEST.class
 
-echo "paste data/test.en output/test.en.class data/test.en.pos data/test.en.parse > output/test.en.annot"
-paste data/test.en output/test.en.class data/test.en.pos data/test.en.parse > output/test.en.annot
-
+#echo "paste data/$TEST output/$TEST.class data/$TEST.pos data/$TEST.parse > $SOURCE_IN"
+#paste data/$TEST output/$TEST.class data/$TEST.pos data/$TEST.parse > $SOURCE_IN
+echo "paste data/$TEST output/$TEST.class data/$TEST.pos > $SOURCE_IN"
+paste data/$TEST output/$TEST.class data/$TEST.pos > $SOURCE_IN
 #############################################################################
 # 3. Running the reorderer
 #
@@ -60,8 +66,8 @@ paste data/test.en output/test.en.class data/test.en.pos data/test.en.parse > ou
 # of the reordered words in the original sentence. Let's output all of them
 # for now.
 
-echo "../src/bin/lader -gap-size $GAP -model output/train-g$GAP.mod -out_format order,string,parse -threads $THREADS -beam $BEAM -cube_growing $CUBE_GROWING -full_fledged $FULL_FLEDGED -verbose $VERBOSE < output/test.en.annot > output/test.en.reordered 2> output/test.en.reordered.log"
-../src/bin/lader -gap-size $GAP -model output/train-g$GAP.mod -out_format order,string,parse -threads $THREADS -beam $BEAM -cube_growing $CUBE_GROWING -full_fledged $FULL_FLEDGED -verbose $VERBOSE < output/test.en.annot > output/test.en.reordered 2> output/test.en.reordered.log
+echo "../src/bin/lader -gap-size $GAP -model output/train-g$GAP.mod -out_format order,string,parse -threads $THREADS -beam $BEAM -cube_growing $CUBE_GROWING -full_fledged $FULL_FLEDGED -verbose $VERBOSE -source_in $SOURCE_IN'' -target_in $TARGET_IN'' -align_in $ALIGN_IN'' > $OUTPUT 2> $OUTPUT.log"
+../src/bin/lader -gap-size $GAP -model output/train-g$GAP.mod -out_format order,string,parse -threads $THREADS -beam $BEAM -cube_growing $CUBE_GROWING -full_fledged $FULL_FLEDGED -verbose $VERBOSE -source_in $SOURCE_IN'' -target_in $TARGET_IN'' -align_in $ALIGN_IN'' > $OUTPUT 2> $OUTPUT.log
 
 #############################################################################
 # 4. Evaluating the reordered output
@@ -75,9 +81,8 @@ echo "../src/bin/lader -gap-size $GAP -model output/train-g$GAP.mod -out_format 
 # Also note that we need to set -attach-null to the same value that we set
 # during training. (In this case, we'll use the default, "right")
 
+echo "../src/bin/evaluate-lader -attach_null right data/test.en-ja.align $OUTPUT data/test.en $TARGET_IN'' > output/$TEST.grade"
+../src/bin/evaluate-lader -attach_null right data/test.en-ja.align $OUTPUT data/test.en $TARGET_IN'' > output/$TEST.grade
 
-echo "../src/bin/evaluate-lader -attach_null right data/test.en-ja.align output/test.en.reordered data/test.en > output/test.en.grade"
-../src/bin/evaluate-lader -attach_null right data/test.en-ja.align output/test.en.reordered data/test.en > output/test.en.grade
-
-tail -n 3 output/test.en.grade
-
+tail -n3 output/$TEST.grade
+	

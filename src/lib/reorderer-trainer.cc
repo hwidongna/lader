@@ -357,6 +357,9 @@ void ReordererTrainer::InitializeModel(const ConfigTrainer & config) {
     combine_ = config.GetBool("combine_blocks") ? 
                 CombinedAlign::COMBINE_BLOCKS :
                 CombinedAlign::LEAVE_BLOCKS_AS_IS;
+    bracket_ = config.GetBool("combine_brackets") ?
+    			CombinedAlign::ALIGN_BRACKET_SPANS :
+                CombinedAlign::LEAVE_BRACKETS_AS_IS;
     model_->SetCost(config.GetDouble("cost"));
     std::vector<std::string> losses, first_last;
     algorithm::split(
@@ -414,7 +417,7 @@ void ReordererTrainer::ReadSrc2TrgAlignments(const std::string & align_in) {
     for(int i = 0 ; getline(in, line) ; i++){
     	Alignment alignment = Alignment::FromString(line);
     	FeatureDataBase * sent = SafeAccess(data_, i)[0];
-    	Ranks ranks = Ranks(CombinedAlign(sent->GetSequence(), alignment, attach_, combine_, bracket_));
+    	Ranks ranks(CombinedAlign(sent->GetSequence(), alignment, attach_, combine_, bracket_));
     	// a vector contains lists of source indices by rank
     	vector<vector<int> > ranked_vec(ranks.GetMaxRank() + 1);
     	for(int j = 0; j < sent->GetNumWords(); j++)
@@ -443,4 +446,14 @@ void ReordererTrainer::ReadParses(const std::string & parse_in) {
         parses_.push_back(FeatureDataParse());
         parses_.rbegin()->FromString(line);
     }
+}
+
+// Write the model to a file
+void ReordererTrainer::WriteModel(const std::string & str){
+	std::ofstream out(str.c_str());
+	if(!out) THROW_ERROR("Couldn't write model to file " << str)
+    		   features_->ToStream(out);
+	if (bilingual_features_)
+		bilingual_features_->ToStream(out);
+	model_->ToStream(out);
 }

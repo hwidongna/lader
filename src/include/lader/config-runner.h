@@ -34,9 +34,16 @@ public:
         AddConfigEntry("full_fledged", "false", "Enable discontinuous hyper graph full-fledged combinations");
         AddConfigEntry("mp", "false", "Monotone at punctuation");
         AddConfigEntry("cube_growing", "true", "Use Cube Growing for construction of hyper graph");
+        AddConfigEntry("backward_compatibility", "false", "Support model trained from previous version without bilingual feature templates");
         AddConfigEntry("threads", "1", "The number of threads to use");
         AddConfigEntry("verbose", "0", "The level of debugging output to print 2: detail for building");
         AddConfigEntry("source_in", "", "The input file for the source sentences");
+        // They are optional
+        AddConfigEntry("target_in", "", "The input file for the target sentences");
+        AddConfigEntry("align_in", "", "The input file for the alignment");
+        AddConfigEntry("attach_null", "right", "Whether to attach null alignments to the left or right");
+        AddConfigEntry("combine_blocks", "true", "Whether to combine alignments into blocks");
+		AddConfigEntry("combine_brackets", "true", "Whether to combine alignments into brackets");
 
     }
 	

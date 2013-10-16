@@ -6,6 +6,15 @@ FEATURES_DIR=/tmp
 SOURCE_IN=output/train.en.annot
 TARGET_IN=data/train.ja
 ALIGN_IN=data/train.en-ja.align
+#FEATURE_PROFILE="\
+#seq=dict=output/train.en-ja.pt,LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,O%SL%SR%ET,I%LR%RL%ET,Q%SQE0%ET,Q0%SQ#00%ET,Q1%SQ#01%ET,Q2%SQ#02%ET,CL%CL%ET,B%SB%ET,A%SA%ET,N%SN%ET,BIAS%ET\
+#|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET\
+#|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET\
+#|cfg=LP%LP%ET,RP%RP%ET,SP%SP%ET,TP%SP%LP%RP%ET"
+FEATURE_PROFILE="\
+seq=dict=output/train.en-ja.pt,LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,O%SL%SR%ET,I%LR%RL%ET,Q%SQE0%ET,Q0%SQ#00%ET,Q1%SQ#01%ET,Q2%SQ#02%ET,CL%CL%ET,B%SB%ET,A%SA%ET,N%SN%ET,BIAS%ET\
+|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET\
+|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET"
 BILINGUAL_FEATURE_PROFILE="bilingual=BLL%SL%ET,BRR%SR%ET,BLR%LR%ET,BRL%RL%ET,BO%SL%SR%ET,BI%LR%RL%ET"
 
 GAP=$1
@@ -105,9 +114,10 @@ echo "../script/contiguous-extract.pl data/train.en data/train.ja $ALIGN_IN > ou
 # that this, of course, does not apply to the phrase table. We will add this
 # later.
 
-echo "paste data/train.en output/train.en.class data/train.en.pos data/train.en.parse > $SOURCE_IN"
-paste data/train.en output/train.en.class data/train.en.pos data/train.en.parse > $SOURCE_IN
-
+#echo "paste data/train.en output/train.en.class data/train.en.pos data/train.en.parse > $SOURCE_IN"
+#paste data/train.en output/train.en.class data/train.en.pos data/train.en.parse > $SOURCE_IN
+echo "paste data/train.en output/train.en.class data/train.en.pos > $SOURCE_IN"
+paste data/train.en output/train.en.class data/train.en.pos > $SOURCE_IN
 #############################################################################
 # 3. Training
 #
@@ -145,8 +155,6 @@ paste data/train.en output/train.en.class data/train.en.pos data/train.en.parse 
 # -save_features ... (default is true which uses more memory but runs slower.
 #                     if you are using large data, this should be set to false)
 
-#rm output/train-g$GAP.mod*
-
 LAST=$(ls output/train-g$GAP.mod* | sed "s/output\/train-g$GAP.mod.it//g" | sort -n | tail -n1)
 if [ -s output/train-g$GAP.mod.it$LAST ]
 then
@@ -155,8 +163,8 @@ MODEL_IN=output/train-g$GAP.mod.it$LAST
 
 fi
 
-echo "../src/bin/train-lader -cost 1e-3 -attach_null right -feature_profile \"seq=dict=output/train.en-ja.pt,LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,O%SL%SR%ET,I%LR%RL%ET,Q%SQE0%ET,Q0%SQ#00%ET,Q1%SQ#01%ET,Q2%SQ#02%ET,CL%CL%ET,B%SB%ET,A%SA%ET,N%SN%ET,BIAS%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|cfg=LP%LP%ET,RP%RP%ET,SP%SP%ET,TP%SP%LP%RP%ET\" -bilingual_feature_profile '$BILINGUAL_FEATURE_PROFILE' -iterations $ITERATION -threads $THREADS -cube_growing $CUBE_GROWING -full_fledged $FULL_FLEDGED -shuffle $SHUFFLE -samples $SAMPLES -verbose $VERBOSE -gap-size $GAP -model_in $MODEL_IN'' -model_out output/train-g$GAP.mod -source_in $SOURCE_IN -target_in $TARGET_IN -align_in $ALIGN_IN -save_features $SAVE_FEATURES -features_dir $FEATURES_DIR"
-../src/bin/train-lader -cost 1e-3 -attach_null right -feature_profile "seq=dict=output/train.en-ja.pt,LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,O%SL%SR%ET,I%LR%RL%ET,Q%SQE0%ET,Q0%SQ#00%ET,Q1%SQ#01%ET,Q2%SQ#02%ET,CL%CL%ET,B%SB%ET,A%SA%ET,N%SN%ET,BIAS%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|seq=LL%SL%ET,RR%SR%ET,LR%LR%ET,RL%RL%ET,B%SB%ET,A%SA%ET,O%SL%SR%ET,I%LR%RL%ET|cfg=LP%LP%ET,RP%RP%ET,SP%SP%ET,TP%SP%LP%RP%ET" -bilingual_feature_profile $BILINGUAL_FEATURE_PROFILE'' -iterations $ITERATION -threads $THREADS -cube_growing $CUBE_GROWING -full_fledged $FULL_FLEDGED -shuffle $SHUFFLE -samples $SAMPLES -verbose $VERBOSE -gap-size $GAP -model_in $MODEL_IN'' -model_out output/train-g$GAP.mod -source_in $SOURCE_IN -target_in $TARGET_IN -align_in $ALIGN_IN -save_features $SAVE_FEATURES -features_dir $FEATURES_DIR
+echo "../src/bin/train-lader -cost 1e-3 -attach_null right -feature_profile '$FEATURE_PROFILE' -bilingual_feature_profile '$BILINGUAL_FEATURE_PROFILE' -iterations $ITERATION -threads $THREADS -cube_growing $CUBE_GROWING -full_fledged $FULL_FLEDGED -shuffle $SHUFFLE -samples $SAMPLES -verbose $VERBOSE -gap-size $GAP -model_in $MODEL_IN'' -model_out output/train-g$GAP.mod -source_in $SOURCE_IN -target_in $TARGET_IN -align_in $ALIGN_IN -save_features $SAVE_FEATURES -features_dir $FEATURES_DIR"
+../src/bin/train-lader -cost 1e-3 -attach_null right -feature_profile $FEATURE_PROFILE -bilingual_feature_profile $BILINGUAL_FEATURE_PROFILE'' -iterations $ITERATION -threads $THREADS -cube_growing $CUBE_GROWING -full_fledged $FULL_FLEDGED -shuffle $SHUFFLE -samples $SAMPLES -verbose $VERBOSE -gap-size $GAP -model_in $MODEL_IN'' -model_out output/train-g$GAP.mod -source_in $SOURCE_IN -target_in $TARGET_IN -align_in $ALIGN_IN -save_features $SAVE_FEATURES -features_dir $FEATURES_DIR
 
 # Once training finishes, a reordering model will be placed in output/train.mod.
 # This can be used in reordering, as described in run-reordering.sh

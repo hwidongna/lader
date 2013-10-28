@@ -119,7 +119,8 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
         // Shuffle the orders within the sample size
         if(iter != 0 && config.GetBool("shuffle"))
             random_shuffle(sent_order.begin(),
-            		sent_order.size() > samples ? sent_order.begin() + samples: sent_order.end());
+            		sent_order.size() > samples && config.GetBool("stable") ?
+            				sent_order.begin() + samples: sent_order.end());
 		// Over all values in the corpus
         // parallize the feature generation at sentence level
         if(config.GetBool("save_features")){

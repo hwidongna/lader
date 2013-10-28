@@ -55,6 +55,7 @@ public:
         AddConfigEntry("save_features", "false", "Save the features in memory after generating them once (more memory, more speed)");
         AddConfigEntry("features_dir", "/tmp", "Save the features in disk instead of memory after generating them once");
         AddConfigEntry("shuffle", "true", "Whether to shuffle the input");
+        AddConfigEntry("stable", "true", "Whether to shuffle the input within the sample size");
         AddConfigEntry("source_in", "", "The input file for the source sentences");
         AddConfigEntry("target_in", "", "The input file for the target sentences");
         AddConfigEntry("use_reverse", "false", "Whether to use reverse terminals ");

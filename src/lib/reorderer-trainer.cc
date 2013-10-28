@@ -12,12 +12,24 @@ using namespace std;
 
 namespace fs = ::boost::filesystem;
 
+#define MAX_NUM 0xFF
+
 inline filesystem::path GetFeaturePath(const ConfigTrainer & config, int sent_num)
 {
-    fs::path dir(config.GetString("features_dir"));
+    fs::path full_path(config.GetString("features_dir"));
+    if (!fs::exists(full_path))
+    	fs::create_directories(full_path);
     fs::path prefix(config.GetString("source_in"));
-    fs::path file(prefix.filename().string() + "." + to_string(sent_num));
-    fs::path full_path = dir / file;
+    while (sent_num > MAX_NUM){
+    	full_path /= to_string(sent_num % MAX_NUM);
+    	sent_num /= MAX_NUM;
+    	if (!fs::exists(full_path))
+    		fs::create_directories(full_path);
+    }
+    full_path /= prefix.filename();
+    if (!fs::exists(full_path))
+    	fs::create_directories(full_path);
+    full_path /= to_string(sent_num);
     return full_path;
 }
 

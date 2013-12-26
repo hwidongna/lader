@@ -6,10 +6,11 @@ LADERCPP = lader.cc hyper-graph.cc combined-alignment.cc alignment.cc \
            feature-data-parse.cc target-span.cc feature-parse.cc \
            loss-bracket.cc feature-align.cc thread-pool.cc hypothesis.cc
 
+SRDPCPP = parser.cc dpstate.cc shift-reduce-trainer.cc
 
 AM_CPPFLAGS = -I$(srcdir)/../include
 
 lib_LTLIBRARIES = liblader.la
 
-liblader_la_SOURCES = ${LADERCPP}
+liblader_la_SOURCES = ${LADERCPP} ${SRDPCPP}
 liblader_la_LDFLAGS = -version-info 0:0:0

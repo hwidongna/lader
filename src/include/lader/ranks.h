@@ -3,7 +3,7 @@
 
 #include <vector>
 #include <lader/combined-alignment.h>
-
+#include <shift-reduce-dp/dpstate.h>
 namespace lader {
 
 class Ranks {
@@ -28,6 +28,7 @@ public:
     const std::vector<int> & GetRanks() const { return ranks_; }
     int GetSrcLen() const { return ranks_.size(); }
     void SetRanks(const std::vector<int> & order);
+    std::vector<DPState::Action> GetReference ();
 
 private:
     std::vector<int> ranks_;

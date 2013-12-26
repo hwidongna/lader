@@ -53,7 +53,8 @@ public:
         AddConfigEntry("threads", "1", "The number of threads to use");
         AddConfigEntry("verbose", "0", "The level of debugging output to print 1: {model,oracle}{loss,score} 2: detail for building and rescoring");
         AddConfigEntry("write_every_iter", "false", "Write the model out every time during training.");
-
+        AddConfigEntry("algorithm", "cubic", "Whether to use linear (shift-reduce) or cubic (CYK) algorithm");
+        AddConfigEntry("update", "max", "Which update strategy to use {naive,early,max} (only for algorithm=linear)");
     }
 	
 };

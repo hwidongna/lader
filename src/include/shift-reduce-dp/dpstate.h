@@ -55,8 +55,8 @@ public:
 			ReordererModel * model = NULL, const FeatureSet * feature_gen = NULL,
 			const Sentence * sent = NULL);
 	bool Allow(const Action & action, const int n);
+	void InsideActions(vector<Action> & result);
 	void AllActions(vector <Action> & result);
-	void InsideActions(vector <Action> & result);
 	DPState * Previous();
 	DPState * GetLeftState() const;
 	DPState * LeftChild() const;
@@ -69,11 +69,12 @@ public:
 	int GetL() const { return l_; }
 	int GetStep() const { return step_; }
 	Action GetAction() const { return action_; }
-	pair<int,int> GetSpan() { return MakePair(i_, j_-1); }
-	pair<int,int> GetTargetSpan() { return MakePair(k_, l_-1); }
-	void InsideReordering(vector<int> & result);
+	pair<int,int> GetSpan() const { return MakePair(i_, j_-1); }
+	pair<int,int> GetTargetSpan() const { return MakePair(k_, l_-1); }
+	vector<DPState*> GetLeftPtrs() const { return leftptrs_; }
 	void GetReordering(vector <int> & result);
 
+	// TODO: check signature based on the feature template, how?
 	// a simple hash function
 	size_t hash() const { return k_ * MULTI_K + l_; }
 	bool operator == (const DPState & other) const {
@@ -122,7 +123,7 @@ inline ostream& operator << ( ostream& out,
     	<< rhs.GetAction() << ", " << rhs.GetRank() << "):"
     	<< "< " << rhs.GetI() << ", " << rhs.GetJ()-1 << ", "
 		<< rhs.GetK() << ", " << rhs.GetL()-1 << " > :: "
-		<< rhs.GetScore() << ", " << rhs.GetInside();
+		<< rhs.GetScore() << ", " << rhs.GetInside() << ": left " << rhs.GetLeftPtrs().size();
     return out;
 }
 }

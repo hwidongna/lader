@@ -29,6 +29,7 @@ public:
         // AddConfigEntry("first_step", "1", "The first step (1=hypergraph, 2=loss, 3=features, 4=train)");
         // AddConfigEntry("last_step", "4", "The last step to perform");
         AddConfigEntry("align_in", "", "The input file for the alignments");
+        AddConfigEntry("align_dev", "", "The dev file for the alignments  (for shift-reduce parser)");
         AddConfigEntry("attach_null", "right", "Whether to attach null alignments to the left or right");
         AddConfigEntry("beam", "100", "The maximum beam size");
         AddConfigEntry("pop_limit", "10000", "The maximum pop count (for cube growing)");
@@ -49,6 +50,7 @@ public:
         AddConfigEntry("features_dir", "", "Save the features on disk instead of memory after generating them once");
         AddConfigEntry("shuffle", "true", "Whether to shuffle the input");
         AddConfigEntry("source_in", "", "The input file for the source sentences");
+        AddConfigEntry("source_dev", "", "The dev file for the source sentences (for shift-reduce parser)");
         AddConfigEntry("use_reverse", "false", "Whether to use reverse terminals ");
         AddConfigEntry("threads", "1", "The number of threads to use");
         AddConfigEntry("verbose", "0", "The level of debugging output to print 1: {model,oracle}{loss,score} 2: detail for building and rescoring");

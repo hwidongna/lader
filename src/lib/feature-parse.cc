@@ -216,10 +216,13 @@ void FeatureParse::GenerateStateFeatures(
 				ptr_state = &state;
 				for (int j = 0 ; j < offset && ptr_state; j++)
 					ptr_state = ptr_state->GetLeftState();
-				if (templ.second[i][0] == 'l')
+				if (!ptr_state || ptr_state->GetAction() == DPState::INIT)
+					valid = false;
+				else if (templ.second[i][0] == 'l')
 					ptr_state = ptr_state->LeftChild();
-				if (templ.second[i][0] == 'r')
+				else if (templ.second[i][0] == 'r')
 					ptr_state = ptr_state->RightChild();
+				// need to check ptr_state again
 				if (ptr_state && ptr_state->GetAction() != DPState::INIT)
 					values << "||" << tree.GetSpanLabel(ptr_state->GetI(), ptr_state->GetJ()-1);
 				else

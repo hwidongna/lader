@@ -11,6 +11,7 @@
 #include <shift-reduce-dp/dpstate.h>
 #include <lader/feature-data-base.h>
 #include <lader/feature-vector.h>
+#include <boost/foreach.hpp>
 #include <string>
 #include <vector>
 using namespace std;
@@ -20,12 +21,13 @@ class Parser {
 public:
 	Parser();
 	virtual ~Parser();
-	struct Result{
+	void Clear();
+	typedef struct {
 		vector<int> order;
 		vector<DPState::Action> actions;
 		double score;
 		int step;
-	};
+	} Result;
 
 	void Search(ReordererModel & model,
 	        const FeatureSet & feature_gen,
@@ -43,10 +45,25 @@ private:
 	void Update(vector< DPStateVector > & beams, DPStateVector & golds,
 			Result & result, vector<DPState::Action> * refseq = NULL,
 			string * update = NULL);
+	vector< DPStateVector > beams_;
 	int beamsize_;
 	int nstates_, nedges_, nuniq_;
 	int verbose_;
 };
 
+
 } /* namespace lader */
+
+namespace std {
+// Output function for pairs
+inline ostream& operator << ( ostream& out,
+                                   const lader::Parser::Result & rhs )
+{
+    out << rhs.step << ": " << rhs.score << " ::";
+    BOOST_FOREACH(lader::DPState::Action action, rhs.actions)
+    	out << " " << action;
+    out << endl;
+    return out;
+}
+}
 #endif /* PARSER_H_ */

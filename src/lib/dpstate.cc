@@ -116,44 +116,46 @@ bool DPState::Allow(const Action & action, const int n){
 }
 
 void DPState::InsideActions(vector<Action> & result){
-	if (!backptrs_.empty()){
-		if (action_ == DPState::STRAIGTH || action_ == DPState::INVERTED){ // reduce
-			BackPtr & back = backptrs_[0];
-			back.leftstate->AllActions(result);
-			back.istate->AllActions(result);
-		}
-		result.insert(result.begin(), action_);
+	switch(action_){
+	case DPState::INIT:
+		break;
+	case DPState::SHIFT:
+		result.push_back(DPState::SHIFT);
+		break;
+	case DPState::STRAIGTH:
+	case DPState::INVERTED:
+		LeftChild()->InsideActions(result);
+		RightChild()->InsideActions(result);
+		result.push_back(action_);
+		break;
 	}
 }
 
 void DPState::AllActions(vector<Action> & result){
-	DPState * item = this;
-	while (!item->leftptrs_.empty()){
-		item->InsideActions(result);
-		item = item->leftptrs_[0];
-	}
-}
-
-void DPState::InsideReordering(vector<int> & result){
-	if (!backptrs_.empty()){
-		BackPtr & back = backptrs_[0];
-		if (action_ == DPState::STRAIGTH){
-			back.leftstate->GetReordering(result);
-			back.istate->GetReordering(result);
-		}
-		else if (action_ == DPState::INVERTED){
-			back.istate->GetReordering(result);
-			back.leftstate->GetReordering(result);
-		}
-		result.insert(result.begin(), i_);
+	DPState * state = this;
+	while (state){
+		vector<Action> tmp;
+		state->InsideActions(tmp);
+		result.insert(result.begin(), tmp.begin(), tmp.end());
+		state = state->GetLeftState();
 	}
 }
 
 void DPState::GetReordering(vector<int> & result){
-	DPState * item = this;
-	while (!item->leftptrs_.empty()){
-		item->InsideReordering(result);
-		item = item->leftptrs_[0];
+	switch(action_){
+	case DPState::INIT:
+		break;
+	case DPState::STRAIGTH:
+		LeftChild()->GetReordering(result);
+		RightChild()->GetReordering(result);
+		break;
+	case DPState::INVERTED:
+		RightChild()->GetReordering(result);
+		LeftChild()->GetReordering(result);
+		break;
+	case DPState::SHIFT:
+		result.push_back(i_);
+		break;
 	}
 }
 

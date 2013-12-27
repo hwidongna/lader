@@ -19,6 +19,7 @@
 #include <lader/combined-alignment.h>
 #include <lader/feature-data-parse.h>
 #include <lader/ranks.h>
+#include <lader/loss-base.h>
 using namespace std;
 
 namespace lader {
@@ -37,18 +38,11 @@ public:
 	void InitializeModel(const ConfigTrainer & config);
 
 	// Read in the data
-	void ReadData(const std::string & source_in) {
-		std::ifstream in(source_in.c_str());
-		if(!in) THROW_ERROR("Could not open source file (-source_in): "
-								<<source_in);
-		std::string line;
-		data_.clear();
-		while(getline(in, line))
-			data_.push_back(features_->ParseInput(line));
-	}
+	void ReadData(const std::string & source_in, std::vector<Sentence> & datas);
 
 	// Read in the alignments
-	void ReadAlignments(const std::string & align_in);
+	void ReadAlignments(const std::string & align_in,
+			std::vector<Ranks> & ranks, std::vector<Sentence> & datas);
 
 	// Read in the parses
 	void ReadParses(const std::string & align_in);
@@ -66,9 +60,12 @@ public:
 
 private:
 	double learning_rate_;
-	std::vector<Ranks> ranks_; // The alignments to use in training
+	std::vector<Ranks> train_ranks_; // The alignments to use in training
+	std::vector<Ranks> dev_ranks_; // The alignments to use in development
 	std::vector<FeatureDataParse> parses_; // The parses to use in training
-	std::vector<Sentence> data_; // The data
+	std::vector<LossBase*> losses_; // The loss functions
+	std::vector<Sentence> train_data_; // The training data
+	std::vector<Sentence> dev_data_; // The development data
 	FeatureSet* features_;  // The mapping on feature ids and which to use
 	ReordererModel* model_; // The model
 	CombinedAlign::NullHandler attach_; // Where to attach nulls

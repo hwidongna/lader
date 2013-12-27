@@ -10,6 +10,7 @@
 #include "test-loss-tau.h"
 #include "test-loss-bracket.h"
 #include "test-dictionary.h"
+#include "test-shift-reduce-parser.h"
 #include <vector>
 
 using namespace std;
@@ -30,6 +31,7 @@ int main() {
     tests.push_back(new TestLossTau());
     tests.push_back(new TestLossBracket());
     tests.push_back(new TestDictionary());
+    tests.push_back(new TestShiftReduceParser());
     // Run all the tests
     int number_passed = 0;
     for(int i = 0; i < (int)tests.size(); i++)

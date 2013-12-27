@@ -13,14 +13,14 @@ typedef std::pair<std::string, double> FeaturePairString;
 typedef std::vector<FeaturePairString> FeatureVectorString;
 typedef std::pair<int, double> FeaturePairInt;
 typedef std::vector<FeaturePairInt> FeatureVectorInt;
+typedef std::tr1::unordered_map<int,double> FeatureMapInt;
 
 // Vector subtract
 FeatureVectorInt VectorSubtract(const FeatureVectorInt & a, 
                                 const FeatureVectorInt & b);
 
 
-void ClearAndSet(FeatureVectorInt & fvi,
-		const std::tr1::unordered_map<int, double> & feat_map);
+void ClearAndSet(FeatureVectorInt & fvi, const FeatureMapInt & feat_map);
 
 }
 

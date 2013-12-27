@@ -15,10 +15,13 @@ using namespace std;
 bool FeatureParse::FeatureTemplateIsLegal(const string & name) {
     if(name.length() < 2)
         return false;
-    // For edge values, the only type is 'T'
-    if(name[0] == 'E') {
+    // For edge/action values, the only type is 'T'
+    if(name[0] == 'E' || name[0] == 'a') {
         return name.length() == 2 && name[1] == 'T';
-    } else {
+	// only for shift-reduce parsing
+	} else if(name[0] == 's' || name[0] == 'l' || name[0] == 'r'){
+		return name.length() == 2;
+	} else {
         // For span values, only type is production P
         if(name[1] == 'P') {
             return name.length() == 2;
@@ -188,4 +191,49 @@ void FeatureParse::GenerateEdgeFeatures(
                                           feat_val));
         }
     }
+}
+
+void FeatureParse::GenerateStateFeatures(
+								const FeatureDataBase & sent,
+								const DPState & state,
+								SymbolSet<int> & feature_ids,
+								bool add,
+								FeatureVectorInt & feats) {
+	const FeatureDataParse & tree = (const FeatureDataParse &)sent;
+	// Iterate over each feature
+	BOOST_FOREACH(FeatureTemplate templ, feature_templates_) {
+		ostringstream values; values << templ.second[0];
+		bool valid = true;
+		for(int i = 1; i < (int)templ.second.size(); i++) {
+			// Choose which span to use
+			int offset;
+			const DPState * ptr_state;
+			switch (templ.second[i][0]) {
+			case 's':
+			case 'l':
+			case 'r':
+				offset = templ.second[i][1]-'0';
+				ptr_state = &state;
+				for (int j = 0 ; j < offset && ptr_state; j++)
+					ptr_state = ptr_state->GetLeftState();
+				if (templ.second[i][0] == 'l')
+					ptr_state = ptr_state->LeftChild();
+				if (templ.second[i][0] == 'r')
+					ptr_state = ptr_state->RightChild();
+				if (ptr_state && ptr_state->GetAction() != DPState::INIT)
+					values << "||" << tree.GetSpanLabel(ptr_state->GetI(), ptr_state->GetJ()-1);
+				else
+					valid = false;
+				break;
+			case 'a':
+				values << "||" << state.GetAction();
+				break;
+			}
+		}
+		if (valid){
+			int id = feature_ids.GetId(values.str(), add);
+			if(id >= 0)
+				feats.push_back(MakePair(id,valid));
+		}
+	}
 }

@@ -148,7 +148,7 @@ public:
     // Add up the loss over an entire subtree defined by span
     double AccumulateLoss(const TargetSpan* span);
 
-	virtual void AccumulateFeatures(std::tr1::unordered_map<int, double> & feat_map,
+	virtual void AccumulateFeatures(FeatureMapInt & feat_map,
 			ReordererModel & model, const FeatureSet & features,
 			const Sentence & sent,
 			const TargetSpan * span);

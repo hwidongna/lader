@@ -19,6 +19,18 @@ FeatureVectorInt * FeatureSet::MakeEdgeFeatures(
     return feats;
 }
 
+// Generates the features that can be factored over a state
+FeatureVectorInt * FeatureSet::MakeStateFeatures(
+		const Sentence & sent,
+        const DPState & state,
+        SymbolSet<int> & feature_ids,
+        bool add) const {
+    FeatureVectorInt * feats = new FeatureVectorInt;
+    for(int i = 0; i < (int)sent.size(); i++)
+        feature_gens_[i]->GenerateStateFeatures(*sent[i], state, feature_ids, add, *feats);
+    return feats;
+}
+
 Sentence FeatureSet::ParseInput(const string & line) const {
     vector<string> columns;
     algorithm::split(columns, line, is_any_of("\t"));

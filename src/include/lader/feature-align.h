@@ -33,6 +33,14 @@ public:
                                 bool add,
                                 FeatureVectorInt & feats);
 
+    // Generates the features that can be factored over a state
+	virtual void GenerateStateFeatures(
+								const FeatureDataBase & sentence,
+								const DPState & state,
+								SymbolSet<int> & feature_ids,
+								bool add,
+								FeatureVectorInt & feats) { THROW_ERROR("Unsupported") }
+
     // Get the type of this feature generator
     virtual std::string GetType() const { return "align"; }
 

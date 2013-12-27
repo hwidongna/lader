@@ -10,6 +10,7 @@
 
 #include <shift-reduce-dp/dpstate.h>
 #include <lader/feature-data-base.h>
+#include <lader/feature-vector.h>
 #include <string>
 #include <vector>
 using namespace std;
@@ -26,10 +27,13 @@ public:
 		int step;
 	};
 
-	void Search(const Sentence & sent, Result & result,
+	void Search(ReordererModel & model,
+	        const FeatureSet & feature_gen,
+	        const Sentence & sent, Result & result,
 			vector<DPState::Action> * refseq = NULL, string * update = NULL);
-	void Simulate(const vector<DPState::Action> & actions, const Sentence & sent,
-			const int firstdiff, FeatureVectorInt & actionfeats, int c);
+	void Simulate(ReordererModel & model, const FeatureSet & feature_gen,
+			const vector<DPState::Action> & actions, const Sentence & sent,
+			const int firstdiff, std::tr1::unordered_map<int,double> & featmap, double c);
 	void SetBeamSize(int beamsize) { beamsize_ = beamsize; }
 	void SetVerbose(int verbose) { verbose_ = verbose; }
 
@@ -39,7 +43,6 @@ private:
 	void Update(vector< DPStateVector > & beams, DPStateVector & golds,
 			Result & result, vector<DPState::Action> * refseq = NULL,
 			string * update = NULL);
-	ReordererModel * model_;
 	int beamsize_;
 	int nstates_, nedges_, nuniq_;
 	int verbose_;

@@ -34,6 +34,12 @@ public:
         SymbolSet<int> & feature_ids,
         bool add_features) const;
     
+    // Generates the features that can be factored over a state
+    FeatureVectorInt * MakeStateFeatures(
+    		const Sentence & sent,
+            const DPState & state,
+            SymbolSet<int> & feature_ids,
+            bool add) const;
     // Change an integer-indexed feature vector into a string-indexed vector
     FeatureVectorString StringifyFeatureIndices(const FeatureVectorInt & vec);
 

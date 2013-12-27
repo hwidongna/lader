@@ -42,6 +42,17 @@ public:
     // 
     // In addition N and D can be used with at the beginning (eg %SN#) to
     // fire non-binary features. These cannot be combined with other features
+    //
+    // For shift-reduce parsing
+    // The templates that can be used will all start with:
+    //  S: For feetures designating a stack element
+    //  L or R: For features defined over the left or right child of a stack element
+    //  Q: For feetures designating a buffer element
+    //
+    // The templates that can be used and combined for binary features are:
+    //  %s[0-9]: the [0-9]th element in stack (from top)
+    //  %[lr][0-9]: the left/right child or the [0-9]th stack element
+    //  %aT :        The action type: SHIFT(0), STRAIGHT(1), INVERTED(2)
     virtual void ParseConfiguration(const std::string & str);
 
     // Parses a space-separated input string of data
@@ -54,6 +65,14 @@ public:
                                 SymbolSet<int> & feature_ids,
                                 bool add,
                                 FeatureVectorInt & feats);
+
+    // Generates the features that can be factored over a state
+	virtual void GenerateStateFeatures(
+								const FeatureDataBase & sentence,
+								const DPState & state,
+								SymbolSet<int> & feature_ids,
+								bool add,
+								FeatureVectorInt & feats);
 
     // Get the type of this feature generator
     virtual std::string GetType() const { return "seq"; }

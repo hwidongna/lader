@@ -8,6 +8,7 @@
 #include "shift-reduce-dp/dpstate.h"
 #include <cstdlib>
 #include <boost/foreach.hpp>
+#include <lader/reorderer-model.h>
 using namespace std;
 
 namespace lader {
@@ -21,6 +22,7 @@ DPState::DPState() {
 	rank_ = -1;
 	action_ = DPState::INIT;
 	gold_ = true;
+	feat_ = NULL;
 }
 
 // new state
@@ -32,9 +34,12 @@ DPState::DPState(int step, int i, int j, Action action) {
 	rank_ = -1;
 	action_ = action;
 	gold_ = false;
+	feat_ = NULL;
 }
 
 DPState::~DPState() {
+	if (feat_)
+		delete feat_;
 }
 
 void DPState::MergeWith(DPState * other){
@@ -44,12 +49,14 @@ void DPState::MergeWith(DPState * other){
 		if (keep_alternatives_)
 			backptrs_.push_back(other->backptrs_[0]);
 }
-vector<DPState*> DPState::Take(Action action, bool actiongold){
+void DPState::Take(Action action, DPStateVector & result, bool actiongold,
+		ReordererModel * model, const FeatureSet * feature_gen,
+		const Sentence * sent) {
 	double 	actioncost = 0;
-	vector<DPState*> result;
-	// TODO: get action cost
-//	if (model_ != NULL)
-//		actioncost =
+	if (model != NULL && feature_gen != NULL && sent != NULL){
+		feat_ = feature_gen->MakeStateFeatures(*sent, *this, model->GetFeatureIds(), model->GetAdd());
+		actioncost = model->ScoreFeatureVector(*feat_);
+	}
 	if (action == DPState::SHIFT){
 		DPState * next = Shift();
 		next->inside_ = 0;
@@ -81,7 +88,6 @@ vector<DPState*> DPState::Take(Action action, bool actiongold){
 			result.push_back(next);
 		}
 	}
-	return result;
 }
 
 
@@ -157,13 +163,25 @@ DPState * DPState::Previous(){
 		return NULL;
 	else if (action_ == DPState::SHIFT)
 		return leftptrs_[0];
-	return backptrs_[0].istate;
+	return RightChild();
 }
 
-DPState * DPState::GetLeftState(){
+DPState * DPState::GetLeftState() const{
 	if (action_ == DPState::INIT)
 		return NULL;
 	return leftptrs_[0];
+}
+
+DPState * DPState::LeftChild() const{
+	if (action_ == DPState::INIT || action_ == DPState::SHIFT)
+		return NULL;
+	return backptrs_[0].leftstate;
+}
+
+DPState * DPState::RightChild() const{
+	if (action_ == DPState::INIT || action_ == DPState::SHIFT)
+		return NULL;
+	return backptrs_[0].istate;
 }
 
 } /* namespace lader */

@@ -7,7 +7,10 @@
 
 #include "shift-reduce-dp/parser.h"
 #include <boost/foreach.hpp>
+#include <iostream>
+#include <lader/reorderer-model.h>
 
+using namespace std;
 
 namespace lader {
 
@@ -18,7 +21,9 @@ Parser::Parser(): nstates_(0), nedges_(0), nuniq_(0)  {
 Parser::~Parser() {
 }
 
-void Parser::Search(const Sentence & sent, Result & result,
+void Parser::Search(ReordererModel & model,
+        const FeatureSet & feature_gen,
+        const Sentence & sent, Result & result,
 		vector<DPState::Action> * refseq, string * update){
 	int n = sent[0]->GetNumWords();
 	int maxStep = 2*n;
@@ -44,7 +49,10 @@ void Parser::Search(const Sentence & sent, Result & result,
 				if (!old->Allow((DPState::Action)action, n))
 					continue;
 				bool actiongold = (refseq != NULL && action == (*refseq)[step-1]);
-				BOOST_FOREACH(DPState * next, old->Take((DPState::Action)action, actiongold)){
+				DPStateVector stateseq;
+				old->Take((DPState::Action) action, stateseq, actiongold,
+						&model, &feature_gen, &sent);
+				BOOST_FOREACH(DPState * next, stateseq){
 					if (next->IsGold())
 						golds[step] = next;
 					q.push(next);
@@ -88,18 +96,36 @@ void Parser::Search(const Sentence & sent, Result & result,
 			delete q.top(); q.pop();
 		}
 	}
-
+	DPStateVector goldseq;
+	if (refseq){
+		// complete the rest gold items using refseq
+		for (int step = 1 ; step <= (int)refseq->size() ; step++){
+			if (golds[step] == NULL){
+				DPState::Action action = (*refseq)[step-1];
+				if (golds[step-1]->Allow(action, n))
+					golds[step-1]->Take(action, goldseq, true,
+							&model, &feature_gen, &sent);
+				else
+					break;
+				golds[step] = goldseq.back(); // only one next item
+				if (verbose_ >= 2)
+					cerr << "SIMGOLD: " << *golds[step] << endl;
+			}
+		}
+	}
 	Update(beams, golds, result, refseq, update);
-	// TODO: clean-up beams
 	for (int step = 0 ; step < maxStep ; step++)
 		BOOST_FOREACH(DPState * state, beams[step])
 			delete state;
+	// clean-up the rest gold items using refseq
+	BOOST_FOREACH(DPState * gold, goldseq)
+		delete gold;
 }
 
 // support naive, early, max update for perceptron
 void Parser::Update(vector< DPStateVector > & beams, DPStateVector & golds,
 		Result & result, vector<DPState::Action> * refseq, string * update) {
-	if (update != NULL and *update != "naive"){
+	if (update && *update != "naive"){
 		if (verbose_ >= 2){
 			cerr << "update strategy: " << *update << endl;
 			cerr << "gold size: " << golds.size() << ", beam size: " << beams.size() << endl;
@@ -112,15 +138,7 @@ void Parser::Update(vector< DPStateVector > & beams, DPStateVector & golds,
 			BOOST_FOREACH(DPState * gold, golds)
 				if (gold != NULL)
 					cerr << *gold << endl;
-		DPStateVector goldseq;
 		for (int step = 1 ; step < (int)beams.size() ; step++){
-			if (golds[step] == NULL){
-				goldseq.push_back(golds[step-1]->Take((*refseq)[step-1], true)[0]); // only one next item
-				golds[step] = goldseq.back();
-				if (verbose_ >= 2)
-					cerr << "SIMGOLD: " << *golds[step] << endl;
-			}
-
 			DPState * best = beams[step][0]; // update against best
 			if (verbose_ >= 2){
 				cerr << "BEST: " << *best << endl;
@@ -141,8 +159,6 @@ void Parser::Update(vector< DPStateVector > & beams, DPStateVector & golds,
 				}
 			}
 		}
-		BOOST_FOREACH(DPState * gold, goldseq)
-			delete gold;
 		if (*update == "max"){
 			beams[maxpos][0]->AllActions(result.actions);
 			result.step = maxpos;
@@ -157,19 +173,27 @@ void Parser::Update(vector< DPStateVector > & beams, DPStateVector & golds,
 	}
 }
 
-void Parser::Simulate(const vector<DPState::Action> & actions, const Sentence & sent,
-			const int firstdiff, FeatureVectorInt & actionfeats, int c){
+void Parser::Simulate(ReordererModel & model, const FeatureSet & feature_gen,
+		const vector<DPState::Action> & actions, const Sentence & sent,
+		const int firstdiff, FeatureMapInt & featmap, double c) {
 	int n = sent[0]->GetNumWords();
 	DPStateVector stateseq;
 	DPState * state = new DPState();
 	stateseq.push_back(state);
 	for (int step = 1 ; step < (const int)actions.size() ; step++){
 		if (step >= firstdiff){
-			// TODO: generate features
-			// TODO: +c to actionfeats
+			const FeatureVectorInt * fvi = feature_gen.MakeStateFeatures(
+					sent, *state, model.GetFeatureIds(), model.GetAdd());
+			BOOST_FOREACH(FeaturePairInt feat, *fvi){
+				FeatureMapInt::iterator it = featmap.find(feat.first);
+				if (it == featmap.end())
+					featmap[feat.first] = 0;
+				featmap[feat.first] += c * feat.second;
+			}
+			delete fvi;
 		}
 		if (state->Allow(actions[step], n)){
-			stateseq.push_back(state->Take(actions[step])[0]); // only one item
+			state->Take(actions[step], stateseq); // only one item
 			state = stateseq.back();
 		}
 		else{

@@ -9,15 +9,22 @@
 #define DPSTATE_H_
 
 #include <vector>
-#include <lader/reorderer-model.h>
 #include <lader/hypothesis-queue.h>
+#include <lader/feature-data-base.h>
+#include <lader/util.h>
 #include <queue>
 #include <tr1/unordered_map>
+#include <lader/feature-vector.h>
 using namespace std;
 
 namespace lader {
 
 #define MULTI_K 0xFFFF
+
+class ReordererModel;
+class FeatureSet;
+class DPState;
+typedef std::vector<DPState*> DPStateVector;
 
 class DPState {
 public:
@@ -44,12 +51,16 @@ public:
 	void SetRank(int rank) { rank_ = rank; }
 	int GetRank() const { return rank_; }
 	void MergeWith(DPState * other);
-	vector<DPState*> Take(Action action, bool actiongold=false);
+	void Take(Action action, DPStateVector & result, bool actiongold = false,
+			ReordererModel * model = NULL, const FeatureSet * feature_gen = NULL,
+			const Sentence * sent = NULL);
 	bool Allow(const Action & action, const int n);
 	void AllActions(vector <Action> & result);
 	void InsideActions(vector <Action> & result);
 	DPState * Previous();
-	DPState * GetLeftState();
+	DPState * GetLeftState() const;
+	DPState * LeftChild() const;
+	DPState * RightChild() const;
 	double GetScore() const { return score_; }
 	double GetInside() const { return inside_; }
 	int GetI() const { return i_; }
@@ -85,10 +96,8 @@ private:
 	vector<DPState*> leftptrs_;
 	vector<BackPtr> backptrs_;
 	bool keep_alternatives_;
-	ReordererModel * model_;
+	FeatureVectorInt * feat_;
 };
-
-typedef std::vector<DPState*> DPStateVector;
 
 typedef std::priority_queue<DPState*,
 		DPStateVector, PointerLess<DPState*> > DPStateQueue;

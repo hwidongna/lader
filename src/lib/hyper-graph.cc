@@ -438,7 +438,7 @@ void HyperGraph::AddLoss(LossBase* loss,
 
 
 // Accumulate edge features under a hyper-edge
-void HyperGraph::AccumulateFeatures(std::tr1::unordered_map<int,double> & feat_map,
+void HyperGraph::AccumulateFeatures(FeatureMapInt & feat_map,
 										ReordererModel & model,
 		                                const FeatureSet & features,
 		                                const Sentence & sent,

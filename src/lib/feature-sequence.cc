@@ -15,12 +15,18 @@ using namespace std;
 bool FeatureSequence::FeatureTemplateIsLegal(const string & name) {
     if(name.length() < 2)
         return false;
-    // For edge values, the only type is 'T'
-    if(name[0] == 'E') {
+    // For edge/action values, the only type is 'T'
+    if(name[0] == 'E' || name[0] == 'a') {
         return name[1] == 'T';
     // For comparison values, difference, balance, or longer side
     } else if(name[0] == 'C') {
         return name[1] == 'D' || name[1] == 'B' || name[1] == 'L';
+    // only for shift-reduce parsing
+    } else if(name[0] == 'q') {
+    	return name.length() == 2 && '0' <= name[1] <= '9';
+    // only for shift-reduce parsing
+    } else if(name[0] == 's' || name[0] == 'l' || name[0] == 'r'){
+    	return name.length() == 3 && '0' <= name[1] <= '9' && (name[2] == 'L' || name[2] == 'R');
     } else {
         // For sequence matcher Q, check to make sure that the type
         //  name[2] = E (existance indicator) or # (feature)
@@ -184,6 +190,7 @@ double FeatureSequence::GetEdgeFeatureValue(const FeatureDataSequence & sent,
             return edge.GetRight()-2*edge.GetCenter()+edge.GetLeft()+1;
         default:
             THROW_ERROR("Bad edge feature value " << type);
+            break;
     }
     return -DBL_MAX;
 }
@@ -238,4 +245,74 @@ void FeatureSequence::GenerateEdgeFeatures(
             }
         }
     }
+}
+
+void FeatureSequence::GenerateStateFeatures(
+								const FeatureDataBase & sent,
+								const DPState & state,
+								SymbolSet<int> & feature_ids,
+								bool add,
+								FeatureVectorInt & feats) {
+	// Iterate over each feature
+	BOOST_FOREACH(FeatureTemplate templ, feature_templates_) {
+		ostringstream values; values << templ.second[0];
+		bool valid = true;
+		for(int i = 1; i < (int)templ.second.size(); i++) {
+			// Choose which span to use
+			int offset;
+			const DPState * ptr_state;
+			switch (templ.second[i][0]) {
+			case 'q':
+				offset = templ.second[i][1]-'0';
+				if (state.GetJ()+offset < sent.GetNumWords())
+					values << "||" << sent.GetElement(state.GetJ()+offset);
+				else
+					values << "||</s>";
+				break;
+			case 's':
+				offset = templ.second[i][1]-'0';
+				ptr_state = &state;
+				for (int j = 0 ; j < offset && ptr_state; j++)
+					ptr_state = ptr_state->GetLeftState();
+				if (!ptr_state || ptr_state->GetAction() == DPState::INIT)
+					values << "||<s>";
+				else if (templ.second[i][2] == 'L'){
+					if (ptr_state->GetI() >= sent.GetNumWords())
+						THROW_ERROR("Bad state: " << *ptr_state << endl)
+					values << "||" << sent.GetElement(ptr_state->GetI());
+				}
+				else if (templ.second[i][2] == 'R'){
+					if (ptr_state->GetJ()-1 >= sent.GetNumWords())
+						THROW_ERROR("Bad state: " << *ptr_state << endl)
+					values << "||" << sent.GetElement(ptr_state->GetJ()-1);
+				}
+				break;
+			case 'l':
+			case 'r':
+				offset = templ.second[i][1]-'0';
+				ptr_state = &state;
+				for (int j = 0 ; j < offset && ptr_state; j++)
+					ptr_state = ptr_state->GetLeftState();
+				if (templ.second[i][0] == 'l')
+					ptr_state = ptr_state->LeftChild();
+				if (templ.second[i][0] == 'r')
+					ptr_state = ptr_state->RightChild();
+				if (!ptr_state || ptr_state->GetAction() == DPState::INIT)
+					valid = false;
+				else if (templ.second[i][2] == 'L')
+					values << "||" << sent.GetElement(ptr_state->GetI());
+				else if (templ.second[i][2] == 'R')
+					values << "||" << sent.GetElement(ptr_state->GetJ()-1);
+				break;
+			case 'a':
+				values << "||" << state.GetAction();
+				break;
+			}
+		}
+		if (valid){
+			int id = feature_ids.GetId(values.str(), add);
+			if(id >= 0)
+				feats.push_back(MakePair(id,valid));
+		}
+	}
 }

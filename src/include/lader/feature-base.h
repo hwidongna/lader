@@ -8,6 +8,7 @@
 #include <lader/hyper-edge.h>
 #include <lader/dictionary.h>
 #include <lader/symbol-set.h>
+#include <shift-reduce-dp/dpstate.h>
 
 namespace lader {
 
@@ -42,6 +43,14 @@ public:
                                 SymbolSet<int> & feature_ids,
                                 bool add,
                                 FeatureVectorInt & feats) = 0;
+
+    // Generates the features that can be factored over a state
+	virtual void GenerateStateFeatures(
+								const FeatureDataBase & sentence,
+								const DPState & state,
+								SymbolSet<int> & feature_ids,
+								bool add,
+								FeatureVectorInt & feats) = 0;
 
     // Get the type string of this particular value
     virtual std::string GetType() const = 0;

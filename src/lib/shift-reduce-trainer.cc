@@ -22,6 +22,11 @@ ShiftReduceTrainer::ShiftReduceTrainer() : learning_rate_(1),
 }
 
 ShiftReduceTrainer::~ShiftReduceTrainer() {
+    BOOST_FOREACH(std::vector<FeatureDataBase*> vec, data_)
+        BOOST_FOREACH(FeatureDataBase* ptr, vec)
+            delete ptr;
+    if(model_) delete model_;
+    if(features_) delete features_;
 }
 
 void ShiftReduceTrainer::InitializeModel(const ConfigTrainer & config) {
@@ -71,7 +76,6 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
     p.SetVerbose(verbose);
     string update = config.GetString("update");
     for(int iter = 0; iter < config.GetInt("iterations"); iter++) {
-        double iter_model_loss = 0, iter_oracle_loss = 0;
         // Shuffle
         if(config.GetBool("shuffle"))
         	random_shuffle(sent_order.begin(), sent_order.end());
@@ -95,20 +99,48 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
         			cerr << action << " ";
         		cerr << endl;
         	}
-        	p.Search(data_[sent], result, &refseq, update.empty() ? NULL : &update);
+        	if (refseq.size() < data_[sent][0]->GetNumWords()*2 - 1){
+        		if (verbose >= 1)
+        			cerr << "Fail to get correct reference sequence, skip it" << endl;
+        		continue;
+        	}
+        	p.Search(*model_, *features_, data_[sent], result, &refseq, update.empty() ? NULL : &update);
+        	if (verbose >= 1){
+        		cerr << "Purmutation:";
+        		BOOST_FOREACH(int order, result.order)
+        			cerr << " " << order;
+        		cerr << endl;
+        	}
         	int step;
         	for (step = 0 ; step < result.step ; step++)
         		if (result.actions[step] != refseq[step])
         			break;
+        	FeatureMapInt feat_map;
+        	p.Simulate(*model_, *features_, refseq, data_[sent], step, feat_map, +1); // positive examples
+        	p.Simulate(*model_, *features_, result.actions, data_[sent], step, feat_map, -1); // negative examples
         	FeatureVectorInt deltafeats;
-        	p.Simulate(refseq, data_[sent], step, deltafeats, +1); // positive examples
-        	p.Simulate(result.actions, data_[sent], step, deltafeats, -1); // negative examples
-        	model_->AdjustWeightsPerceptron(deltafeats);
-        	// TODO: collect statistics
+        	ClearAndSet(deltafeats, feat_map);
+        	if(config.GetString("learner") == "pegasos")
+        		model_->AdjustWeightsPegasos(deltafeats);
+        	else if(config.GetString("learner") == "perceptron")
+        		model_->AdjustWeightsPerceptron(deltafeats);
+        	else
+        		THROW_ERROR("Bad learner: " << config.GetString("learner"));
         	iter_nedge += p.GetNumEdges();
         	iter_nstate += p.GetNumStates();
         }
         cout << "Finished iteration " << iter << ": " << iter_nedge << " edges, " << iter_nstate << " states" << endl;
+        cout.flush();
+        // write every iteration to a different file
+        if(config.GetBool("write_every_iter")){
+        	stringstream ss;
+        	ss << ".it" << iter;
+        	WriteModel(config.GetString("model_out") + ss.str());
+        }
+        if(iter == config.GetInt("iterations") - 1) {
+            WriteModel(config.GetString("model_out"));
+            break;
+        }
     }
 }
 

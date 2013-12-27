@@ -55,6 +55,15 @@ public:
     // Train the reorderer incrementally, building they hypergraph each time
     // we parse
     void TrainIncremental(const ConfigTrainer & config);
+
+    // Write the model to a file
+    void WriteModel(const std::string & str) {
+        std::ofstream out(str.c_str());
+        if(!out) THROW_ERROR("Couldn't write model to file " << str);
+        features_->ToStream(out);
+        model_->ToStream(out);
+    }
+
 private:
 	double learning_rate_;
 	std::vector<Ranks> ranks_; // The alignments to use in training

@@ -63,6 +63,47 @@ public:
     	return ret;
     }
 
+    int TestSetSignature() {
+    	DPStateVector stateseq;
+    	int n = sent.GetNumWords();
+    	vector<DPState::Action> refseq = cal.GetReference();
+    	stateseq.push_back(new DPState());
+    	DPState * state = stateseq.back();
+    	int max = 3;
+    	for (int step = 1 ; step < 2*n ; step++){
+    		state->Take(refseq[step-1], stateseq, true);
+    		state = stateseq.back();
+    		state->SetSignature(max);
+    	}
+    	vector<Span> act = state->GetSignature(); // a reduce state for the whole sentence
+		vector<Span> exp(1); // only one elements in signature
+		exp[0]=MakePair(0,3);
+		int ret = 1;
+		ret *= CheckVector(exp, act);
+		if (!ret)
+			cerr << "SetSignature fails: " << *state << endl;
+
+    	state = stateseq[2*n-2]; // a shifted state after reduce
+    	act = state->GetSignature();
+    	exp.resize(2); // only two elements in signature
+    	exp[0]=MakePair(3,3), exp[1]=MakePair(0,1); // from stack top
+    	ret *= CheckVector(exp, act);
+    	if (!ret)
+    		cerr << "SetSignature fails: " << *state << endl;
+
+    	state = stateseq[3]; // a 3*shifted state
+    	act = state->GetSignature();
+    	exp.resize(3);
+    	exp[0]=MakePair(2,2), exp[1]=MakePair(1,1), exp[2]=MakePair(0,0);
+    	ret *= CheckVector(exp, act);
+    	if (!ret)
+    		cerr << "SetSignature fails: " << *state << endl;
+
+    	BOOST_FOREACH(DPState * state, stateseq)
+    		delete state;
+    	return ret;
+    }
+
     int TestAllActions() {
     	DPStateVector stateseq;
     	int n = sent.GetNumWords();
@@ -105,6 +146,7 @@ public:
     bool RunTest() {
     	int done = 0, succeeded = 0;
     	done++; cout << "TestGetReordering()" << endl; if(TestGetReordering()) succeeded++; else cout << "FAILED!!!" << endl;
+    	done++; cout << "TestSetSignature()" << endl; if(TestSetSignature()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestAllActions()" << endl; if(TestAllActions()) succeeded++; else cout << "FAILED!!!" << endl;
     	cout << "#### TestShiftReduceParser Finished with "<<succeeded<<"/"<<done<<" tests succeeding ####"<<endl;
     	return done == succeeded;

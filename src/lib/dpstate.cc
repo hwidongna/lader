@@ -17,8 +17,8 @@ namespace lader {
 DPState::DPState() {
 	score_ = 0; inside_ = 0; shiftcost_ = 0;
 	step_ = 0;
-	i_ = 0; j_ = 0;
-	k_ = 0; l_ = 0;
+	src_l_ = 0; src_r_ = 0;
+	trg_l_ = 0; trg_r_ = 0;
 	rank_ = -1;
 	action_ = DPState::INIT;
 	gold_ = true;
@@ -30,7 +30,7 @@ DPState::DPState() {
 DPState::DPState(int step, int i, int j, Action action) {
 	score_ = 0, inside_ = 0, shiftcost_ = 0;
 	step_ = step;
-	i_ = i, j_ = j;
+	src_l_ = i, src_r_ = j;
 	rank_ = -1;
 	action_ = action;
 	gold_ = false;
@@ -92,27 +92,27 @@ void DPState::Take(Action action, DPStateVector & result, bool actiongold,
 
 
 DPState * DPState::Shift(){
-	DPState * next = new DPState(step_+1, j_, j_+1, DPState::SHIFT);
-	next->k_ = j_; next->l_ = j_+1;
+	DPState * next = new DPState(step_+1, src_r_, src_r_+1, DPState::SHIFT);
+	next->trg_l_ = src_r_; next->trg_r_ = src_r_+1;
 	return next;
 }
 DPState * DPState::Reduce(DPState * leftstate, Action action){
-	DPState * next = new DPState(step_+1, leftstate->i_, j_, action);
+	DPState * next = new DPState(step_+1, leftstate->src_l_, src_r_, action);
 	if (action == STRAIGTH){
-		next->k_ = leftstate->k_;		next->l_ = l_;
+		next->trg_l_ = leftstate->trg_l_;		next->trg_r_ = trg_r_;
 	}
 	else if (action == INVERTED){
-		next->k_ = k_;		next->l_ = leftstate->l_;
+		next->trg_l_ = trg_l_;		next->trg_r_ = leftstate->trg_r_;
 	}
 	return next;
 }
 
 bool DPState::Allow(const Action & action, const int n){
 	if (action == DPState::SHIFT)
-		return j_ < n;
+		return src_r_ < n;
 	DPState * leftstate = GetLeftState();
 	return leftstate && leftstate->action_ != INIT
-			&& (leftstate->j_ == i_ || j_ == leftstate->i_);
+			&& (leftstate->src_r_ == src_l_ || src_r_ == leftstate->src_l_);
 }
 
 void DPState::InsideActions(vector<Action> & result){
@@ -154,12 +154,20 @@ void DPState::GetReordering(vector<int> & result){
 		LeftChild()->GetReordering(result);
 		break;
 	case DPState::SHIFT:
-		result.push_back(i_);
+		result.push_back(src_l_);
 		break;
 	}
 }
 
-
+void DPState::SetSignature(int max){
+	if (!signature_.empty())
+		THROW_ERROR("Signature exists!" << *this)
+	DPState * leftstate = this;
+	for (int i = 0 ; i < max && leftstate->action_ != DPState::INIT ; i++){
+		signature_.push_back(leftstate->GetTrgSpan());
+		leftstate = leftstate->GetLeftState();
+	}
+}
 DPState * DPState::Previous(){
 	if (action_ == DPState::INIT)
 		return NULL;

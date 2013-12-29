@@ -264,8 +264,8 @@ void FeatureSequence::GenerateStateFeatures(
 			switch (templ.second[i][0]) {
 			case 'q':
 				offset = templ.second[i][1]-'0';
-				if (state.GetJ()+offset < sent.GetNumWords())
-					values << "||" << sent.GetElement(state.GetJ()+offset);
+				if (state.GetSrcR()+offset < sent.GetNumWords())
+					values << "||" << sent.GetElement(state.GetSrcR()+offset);
 				else
 					values << "||</s>";
 				break;
@@ -277,14 +277,14 @@ void FeatureSequence::GenerateStateFeatures(
 				if (!ptr_state || ptr_state->GetAction() == DPState::INIT)
 					values << "||<s>";
 				else if (templ.second[i][2] == 'L'){
-					if (ptr_state->GetI() >= sent.GetNumWords())
+					if (ptr_state->GetSrcL() >= sent.GetNumWords())
 						THROW_ERROR("Bad state: " << *ptr_state << endl)
-					values << "||" << sent.GetElement(ptr_state->GetI());
+					values << "||" << sent.GetElement(ptr_state->GetSrcL());
 				}
 				else if (templ.second[i][2] == 'R'){
-					if (ptr_state->GetJ()-1 >= sent.GetNumWords())
+					if (ptr_state->GetSrcR()-1 >= sent.GetNumWords())
 						THROW_ERROR("Bad state: " << *ptr_state << endl)
-					values << "||" << sent.GetElement(ptr_state->GetJ()-1);
+					values << "||" << sent.GetElement(ptr_state->GetSrcR()-1);
 				}
 				break;
 			case 'l':
@@ -303,9 +303,9 @@ void FeatureSequence::GenerateStateFeatures(
 				if (!ptr_state || ptr_state->GetAction() == DPState::INIT)
 					valid = false;
 				else if (templ.second[i][2] == 'L')
-					values << "||" << sent.GetElement(ptr_state->GetI());
+					values << "||" << sent.GetElement(ptr_state->GetSrcL());
 				else if (templ.second[i][2] == 'R')
-					values << "||" << sent.GetElement(ptr_state->GetJ()-1);
+					values << "||" << sent.GetElement(ptr_state->GetSrcR()-1);
 				break;
 			case 'a':
 				values << "||" << state.GetAction();

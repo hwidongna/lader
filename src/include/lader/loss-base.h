@@ -61,6 +61,7 @@ public:
 
     // Accessors
     void SetWeight(double weight) { weight_ = weight; }
+    double GetWeight() { return weight_; }
 
 protected:
     double weight_;

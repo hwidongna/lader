@@ -94,14 +94,16 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
     p.SetBeamSize(config.GetInt("beam"));
     p.SetVerbose(verbose);
     string update = config.GetString("update");
-    struct timespec search={0,0}, simulate={0,0}, adjust={0,0};
+    struct timespec search={0,0}, simulate={0,0};
     struct timespec tstart={0,0}, tend={0,0};
+    double best_prec = 0;
+    int best_iter, best_wlen;
     for(int iter = 0; iter < config.GetInt("iterations"); iter++) {
         // Shuffle
         if(config.GetBool("shuffle"))
         	random_shuffle(sent_order.begin(), sent_order.end());
         int done = 0;
-        int iter_nedge = 0, iter_nstate = 0, bad_update = 0;
+        int iter_nedge = 0, iter_nstate = 0, bad_update = 0, early_update = 0;
         if (verbose >= 1)
         	cerr << "Start training parsing iter " << iter << endl;
         BOOST_FOREACH(int sent, sent_order) {
@@ -109,7 +111,7 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
         	if(done % (100*10) == 0) cerr << done << endl;
 
         	if (verbose >= 1){
-        		cerr << "Sentence " << sent << endl;
+        		cerr << endl << "Sentence " << sent << endl;
         		cerr << "Rank:";
         		BOOST_FOREACH(int rank, train_ranks_[sent].GetRanks())
         			cerr << " " << rank;
@@ -130,7 +132,8 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
 
         	Parser::Result result;
         	clock_gettime(CLOCK_MONOTONIC, &tstart);
-        	p.Search(*model_, *features_, train_data_[sent], result, &refseq, update.empty() ? NULL : &update);
+        	p.Search(*model_, *features_, train_data_[sent], result,
+        			&refseq, update.empty() ? NULL : &update, config.GetInt("max_state"));
         	clock_gettime(CLOCK_MONOTONIC, &tend);
         	search.tv_sec += tend.tv_sec - tstart.tv_sec;
         	search.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
@@ -143,6 +146,8 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
 					cerr << " " << result.actions[step];
 				cerr << endl;
         	}
+        	if (result.step < refseq.size())
+        		early_update++;
         	refseq.resize(result.step);
         	int step;
         	for (step = 1 ; step <= result.step ; step++)
@@ -167,33 +172,24 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
 				cerr << endl;
 				delete fvs;
         	}
-        	clock_gettime(CLOCK_MONOTONIC, &tstart);
         	if (model_->ScoreFeatureVector(deltafeats) > 0){
         		bad_update++;
         		if (verbose >= 1)
         			cerr << "Bad update at step " << result.step << endl;
         	}
-        	if(config.GetString("learner") == "pegasos")
-        		model_->AdjustWeightsPegasos(deltafeats);
-        	else if(config.GetString("learner") == "perceptron")
-        		model_->AdjustWeightsPerceptron(deltafeats);
-        	else
-        		THROW_ERROR("Bad learner: " << config.GetString("learner"));
-        	clock_gettime(CLOCK_MONOTONIC, &tend);
-			adjust.tv_sec += tend.tv_sec - tstart.tv_sec;
-			adjust.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
+        	model_->AdjustWeightsPerceptron(deltafeats);
         	iter_nedge += p.GetNumEdges();
         	iter_nstate += p.GetNumStates();
         }
         if (verbose >= 1)
 			cerr << "Running time on average: "
 					<< "searh " << ((double)search.tv_sec + 1.0e-9*search.tv_nsec) / (iter+1) << "s"
-					<< ", simulate " << ((double)simulate.tv_sec + 1.0e-9*simulate.tv_nsec) / (iter+1) << "s"
-					<< ", adjust " << ((double)adjust.tv_sec + 1.0e-9*adjust.tv_nsec)  / (iter+1) << "s" << endl;
+					<< ", simulate " << ((double)simulate.tv_sec + 1.0e-9*simulate.tv_nsec) / (iter+1) << "s" << endl;
         time_t now = time(0);
         char* dt = ctime(&now);
         cout << "Finished update " << dt
-        	<< iter_nedge << " edges, " << iter_nstate << " states, " << bad_update << " bad_update" << endl;
+        	<< iter_nedge << " edges, " << iter_nstate << " states, "
+        	<< bad_update << " bad, " << early_update << " early" << endl;
 
         if (verbose >= 1)
         	cerr << "Start development parsing iter " << iter << endl;
@@ -201,7 +197,7 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
 		for (int sent = 0 ; sent < dev_data_.size() ; sent++) {
         	Parser::Result result;
         	if (verbose >= 1){
-        		cerr << "Sentence " << sent << endl;
+        		cerr << endl << "Sentence " << sent << endl;
         		cerr << "Rank: ";
         		BOOST_FOREACH(int rank, dev_ranks_[sent].GetRanks())
         			cerr << rank << " ";
@@ -242,12 +238,14 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
             if (verbose >= 1)
             	cerr << endl;
         }
+		double prec = 0;
         cout << "Finished iteration " << iter << " with total loss:" << endl;
 		for(int i = 0; i < (int) sums.size(); i++) {
 			if(i != 0) cout << "\t";
 			cout << losses_[i]->GetName() << "="
 					<< (1 - sums[i].first/sums[i].second)
 					<< " (loss "<<sums[i].first << "/" <<sums[i].second<<")";
+			prec += (1 - sums[i].first/sums[i].second) * losses_[i]->GetWeight();
 		}
 		cout << endl;
         cout.flush();
@@ -257,11 +255,18 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
         	ss << ".it" << iter;
         	WriteModel(config.GetString("model_out") + ss.str());
         }
-        if(iter == config.GetInt("iterations") - 1) {
+        if(prec > best_prec) {
+        	best_prec = prec;
+        	best_iter = iter;
+        	best_wlen = model_->GetWeights().size();
             WriteModel(config.GetString("model_out"));
-            break;
+            cout << "new high at iter " << iter << ": " << prec << endl;
         }
     }
+    time_t now = time(0);
+    char* dt = ctime(&now);
+    cout << "Finished training " << dt
+    	 << "peaked at iter " << best_iter << ": " << best_prec << ", |w|=" << best_wlen << endl;
 }
 
 void ShiftReduceTrainer::ReadData(const std::string & source_in,

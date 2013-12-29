@@ -32,7 +32,8 @@ public:
 	void Search(ReordererModel & model,
 	        const FeatureSet & feature_gen,
 	        const Sentence & sent, Result & result,
-			vector<DPState::Action> * refseq = NULL, string * update = NULL);
+			vector<DPState::Action> * refseq = NULL, string * update = NULL,
+			int max_state = 0);
 	void Simulate(ReordererModel & model, const FeatureSet & feature_gen,
 			const vector<DPState::Action> & actions, const Sentence & sent,
 			const int firstdiff, std::tr1::unordered_map<int,double> & featmap, double c);

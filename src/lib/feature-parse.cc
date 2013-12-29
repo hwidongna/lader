@@ -224,7 +224,7 @@ void FeatureParse::GenerateStateFeatures(
 					ptr_state = ptr_state->RightChild();
 				// need to check ptr_state again
 				if (ptr_state && ptr_state->GetAction() != DPState::INIT)
-					values << "||" << tree.GetSpanLabel(ptr_state->GetI(), ptr_state->GetJ()-1);
+					values << "||" << tree.GetSpanLabel(ptr_state->GetSrcL(), ptr_state->GetSrcR()-1);
 				else
 					valid = false;
 				break;

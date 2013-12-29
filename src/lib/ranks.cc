@@ -49,12 +49,12 @@ std::vector<DPState::Action> Ranks::GetReference(){
 		DPState * leftstate = state->GetLeftState();
 		DPState::Action action;
 		if (state->Allow(DPState::STRAIGTH, n) &&
-				Ranks::IsContiguous(ranks_[leftstate->GetL()-1], ranks_[state->GetK()]))
+				Ranks::IsContiguous(ranks_[leftstate->GetTrgR()-1], ranks_[state->GetTrgL()]))
 			action = DPState::STRAIGTH;
 		else if (state->Allow(DPState::INVERTED, n) &&
-				Ranks::IsContiguous(ranks_[state->GetL()-1], ranks_[leftstate->GetK()]) &&
-				(state->GetJ() >= n
-				|| !Ranks::IsContiguous(ranks_[state->GetL()-1], ranks_[state->GetJ()])))// avoid tie ranks in buffer
+				Ranks::IsContiguous(ranks_[state->GetTrgR()-1], ranks_[leftstate->GetTrgL()]) &&
+				(state->GetSrcR() >= n
+				|| !Ranks::IsContiguous(ranks_[state->GetTrgR()-1], ranks_[state->GetSrcR()])))// avoid tie ranks in buffer
 			action = DPState::INVERTED;
 		else if (state->Allow(DPState::SHIFT, n))
 			action = DPState::SHIFT;

@@ -32,7 +32,8 @@ void Parser::Clear() {
 void Parser::Search(ReordererModel & model,
         const FeatureSet & feature_gen,
         const Sentence & sent, Result & result,
-		vector<DPState::Action> * refseq, string * update){
+		vector<DPState::Action> * refseq, string * update,
+		int max_state){
 	int n = sent[0]->GetNumWords();
 	int maxStep = 2*n;
 	Clear();
@@ -47,8 +48,12 @@ void Parser::Search(ReordererModel & model,
 			cerr << "step " << step << endl;
 		DPStateQueue q;
 		BOOST_FOREACH(DPState * old, beams_[step-1]){
-			if (verbose_ >= 2)
-				cerr << "OLD: " << *old << endl;
+			if (verbose_ >= 2){
+				cerr << "OLD: " << *old;
+				BOOST_FOREACH(Span span, old->GetSignature())
+					cerr << " [" << span.first << ", " << span.second << "]";
+				cerr << endl;
+			}
 			// iterate over actions by abusing enum type
 			for (int action = DPState::SHIFT ; action < DPState::NOP ; action++){
 				if (!old->Allow((DPState::Action)action, n))
@@ -58,11 +63,16 @@ void Parser::Search(ReordererModel & model,
 				old->Take((DPState::Action) action, stateseq, actiongold,
 						&model, &feature_gen, &sent);
 				BOOST_FOREACH(DPState * next, stateseq){
+					next->SetSignature(max_state);
 					if (next->IsGold())
 						golds[step] = next;
 					q.push(next);
-					if (verbose_ >= 2)
-						cerr << "  NEW: " << *next << endl;
+					if (verbose_ >= 2){
+						cerr << "  NEW: " << *next;
+						BOOST_FOREACH(Span span, next->GetSignature())
+							cerr << " [" << span.first << ", " << span.second << "]";
+						cerr << endl;
+					}
 				}
 			}
 		}
@@ -79,8 +89,12 @@ void Parser::Search(ReordererModel & model,
 				tmp[*top] = top;
 				beams_[step].push_back(top);
 				top->SetRank(rank++);
-				if (verbose_ >= 2)
-					cerr << *top << endl;
+				if (verbose_ >= 2){
+					cerr << *top << " :";
+					BOOST_FOREACH(Span span, top->GetSignature())
+						cerr << " [" << span.first << ", " << span.second << "]";
+					cerr << endl;
+				}
 			}
 			else{
 				it->second->MergeWith(top);
@@ -115,7 +129,6 @@ void Parser::Search(ReordererModel & model,
 		for (int step = 1 ; step <= (int)refseq->size() ; step++){
 			if (golds[step] == NULL){
 				DPState::Action action = (*refseq)[step-1];
-				// TODO: maybe more than one leftptr for golds[step-1]
 				DPStateVector tmp;
 				if (golds[step-1]->Allow(action, n))
 					golds[step-1]->Take(action, tmp, true,
@@ -206,10 +219,11 @@ void Parser::Simulate(ReordererModel & model, const FeatureSet & feature_gen,
 		cerr << endl;
 	}
 
+	int i = 1;
 	BOOST_FOREACH(DPState::Action action, actions){
 		if (verbose_ >= 2)
 			cerr << *state << endl;
-		if (state->GetStep() >= firstdiff){
+		if (i++ >= firstdiff){
 			const FeatureVectorInt * fvi = feature_gen.MakeStateFeatures(
 					sent, *state, model.GetFeatureIds(), model.GetAdd());
 			if (verbose_ >= 2){

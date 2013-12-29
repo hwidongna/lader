@@ -24,8 +24,8 @@ namespace lader {
 class ReordererModel;
 class FeatureSet;
 class DPState;
-typedef std::vector<DPState*> DPStateVector;
-
+typedef vector<DPState*> DPStateVector;
+typedef pair<int,int> Span;
 class DPState {
 public:
 	typedef enum{
@@ -63,23 +63,27 @@ public:
 	DPState * RightChild() const;
 	double GetScore() const { return score_; }
 	double GetInside() const { return inside_; }
-	int GetI() const { return i_; }
-	int GetJ() const { return j_; }
-	int GetK() const { return k_; }
-	int GetL() const { return l_; }
+	int GetSrcL() const { return src_l_; }
+	int GetSrcR() const { return src_r_; }
+	int GetTrgL() const { return trg_l_; }
+	int GetTrgR() const { return trg_r_; }
 	int GetStep() const { return step_; }
 	Action GetAction() const { return action_; }
-	pair<int,int> GetSpan() const { return MakePair(i_, j_-1); }
-	pair<int,int> GetTargetSpan() const { return MakePair(k_, l_-1); }
+	Span GetSrcSpan() const { return MakePair(src_l_, src_r_-1); }
+	Span GetTrgSpan() const { return MakePair(trg_l_, trg_r_-1); }
 	vector<DPState*> GetLeftPtrs() const { return leftptrs_; }
 	void GetReordering(vector <int> & result);
+	void SetSignature(int max);
+	vector<Span> GetSignature() const { return signature_; }
 
-	// TODO: check signature based on the feature template, how?
 	// a simple hash function
-	size_t hash() const { return k_ * MULTI_K + l_; }
+	size_t hash() const { return trg_l_ * MULTI_K + trg_r_; }
+	// compare signature
 	bool operator == (const DPState & other) const {
-		return k_ == other.k_ && l_ == other.l_ // they are signature
-				&& i_ == other.i_; // do not need to compare j_
+		if (signature_.size() != other.signature_.size())
+			return false;
+		return std::equal(signature_.begin(), signature_.end(), other.signature_.begin())
+				&& src_l_ == other.src_l_; // do not need to compare j_
 	}
 	bool operator < (const DPState & other) const {
 		return score_ < other.score_ || (score_ == other.score_ && inside_ < other.inside_);
@@ -89,8 +93,9 @@ private:
 	DPState * Reduce(DPState * leftstate, Action action);
 	double score_, inside_, shiftcost_;
 	int step_;
-	int i_, j_; // source span
-	int k_, l_; // target span
+	int src_l_, src_r_; // source span
+	int trg_l_, trg_r_; // target span
+	vector<Span> signature_; // target spans in the stack (from the top)
 	int rank_;
 	Action action_;
 	bool gold_;
@@ -121,8 +126,8 @@ inline ostream& operator << ( ostream& out,
 {
     out << (rhs.IsGold() ? "*" : " ") << rhs.GetStep() << "("
     	<< rhs.GetAction() << ", " << rhs.GetRank() << "):"
-    	<< "< " << rhs.GetI() << ", " << rhs.GetJ()-1 << ", "
-		<< rhs.GetK() << ", " << rhs.GetL()-1 << " > :: "
+    	<< "< " << rhs.GetSrcL() << ", " << rhs.GetSrcR()-1 << ", "
+		<< rhs.GetTrgL() << ", " << rhs.GetTrgR()-1 << " > :: "
 		<< rhs.GetScore() << ", " << rhs.GetInside() << ": left " << rhs.GetLeftPtrs().size();
     return out;
 }

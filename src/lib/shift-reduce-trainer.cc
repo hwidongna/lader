@@ -27,6 +27,11 @@ ShiftReduceTrainer::~ShiftReduceTrainer() {
     BOOST_FOREACH(std::vector<FeatureDataBase*> vec, train_data_)
         BOOST_FOREACH(FeatureDataBase* ptr, vec)
             delete ptr;
+    BOOST_FOREACH(std::vector<FeatureDataBase*> vec, dev_data_)
+		BOOST_FOREACH(FeatureDataBase* ptr, vec)
+			delete ptr;
+    BOOST_FOREACH(LossBase * loss, losses_)
+    	delete loss;
     if(model_) delete model_;
     if(features_) delete features_;
 }
@@ -239,15 +244,16 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
             	cerr << endl;
         }
 		double prec = 0;
-        cout << "Finished iteration " << iter << " with total loss:" << endl;
 		for(int i = 0; i < (int) sums.size(); i++) {
 			if(i != 0) cout << "\t";
 			cout << losses_[i]->GetName() << "="
 					<< (1 - sums[i].first/sums[i].second)
-					<< " (loss "<<sums[i].first << "/" <<sums[i].second<<")";
+					<< " (loss "<<sums[i].first/losses_[i]->GetWeight() << "/"
+					<<sums[i].second/losses_[i]->GetWeight()<<")";
 			prec += (1 - sums[i].first/sums[i].second) * losses_[i]->GetWeight();
 		}
 		cout << endl;
+        cout << "Finished iteration " << iter << ": " << prec << endl;
         cout.flush();
         // write every iteration to a different file
         if(config.GetBool("write_every_iter")){

@@ -1,7 +1,7 @@
 
 AM_CPPFLAGS = -I$(srcdir)/../include
 
-bin_PROGRAMS = train-lader lader evaluate-lader label-ranking
+bin_PROGRAMS = train-lader lader evaluate-lader label-ranking train-shift-reduce
 
 train_lader_SOURCES = train-lader.cc
 train_lader_LDADD = ../lib/liblader.la -lboost_regex-mt -lboost_thread-mt -lboost_filesystem -lboost_system -lrt
@@ -14,3 +14,6 @@ evaluate_lader_LDADD = ../lib/liblader.la -lboost_regex-mt -lboost_thread-mt -lb
 
 label_ranking_SOURCES = label-ranking.cc
 label_ranking_LDADD = ../lib/liblader.la -lboost_regex-mt -lboost_thread-mt -lboost_filesystem -lboost_system -lrt
+
+train_shift_reduce_SOURCES = train-shift-reduce.cc
+train_shift_reduce_LDADD = ../lib/liblader.la -lboost_regex-mt -lboost_thread-mt -lboost_filesystem -lboost_system -lrt

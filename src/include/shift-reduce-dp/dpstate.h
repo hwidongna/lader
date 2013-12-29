@@ -14,7 +14,6 @@
 #include <lader/util.h>
 #include <queue>
 #include <tr1/unordered_map>
-#include <lader/feature-vector.h>
 using namespace std;
 
 namespace lader {
@@ -102,7 +101,6 @@ private:
 	vector<DPState*> leftptrs_;
 	vector<BackPtr> backptrs_;
 	bool keep_alternatives_;
-	FeatureVectorInt * feat_;
 };
 
 typedef std::priority_queue<DPState*,

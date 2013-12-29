@@ -22,7 +22,6 @@ DPState::DPState() {
 	rank_ = -1;
 	action_ = DPState::INIT;
 	gold_ = true;
-	feat_ = NULL;
 }
 
 // new state
@@ -34,12 +33,9 @@ DPState::DPState(int step, int i, int j, Action action) {
 	rank_ = -1;
 	action_ = action;
 	gold_ = false;
-	feat_ = NULL;
 }
 
 DPState::~DPState() {
-	if (feat_)
-		delete feat_;
 }
 
 void DPState::MergeWith(DPState * other){
@@ -54,8 +50,10 @@ void DPState::Take(Action action, DPStateVector & result, bool actiongold,
 		const Sentence * sent) {
 	double 	actioncost = 0;
 	if (model != NULL && feature_gen != NULL && sent != NULL){
-		feat_ = feature_gen->MakeStateFeatures(*sent, *this, model->GetFeatureIds(), model->GetAdd());
-		actioncost = model->ScoreFeatureVector(*feat_);
+		const FeatureVectorInt * fvi = feature_gen->MakeStateFeatures(*sent,
+				*this, model->GetFeatureIds(), model->GetAdd());
+		actioncost = model->ScoreFeatureVector(*fvi);
+		delete fvi;
 	}
 	if (action == DPState::SHIFT){
 		DPState * next = Shift();

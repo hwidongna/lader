@@ -6,7 +6,7 @@ TARGET_IN=data/train.ja
 ALIGN_IN=data/train.en-ja.align
 SOURCE_DEV=output/test.en.annot
 ALIGN_DEV=data/test.en-ja.align
-LOSS_PROFILE="chunk=1"
+LOSS_PROFILE="chunk=0.5|tau=0.5"
 FEATURE_PROFILE="\
 seq=Q0%q0%aT,LL0%s0L%aT,RR0%s0R%aT,LR0%l0R%aT,RL0%r0L%aT,O0%s0L%s0R%aT,I0%l0R%r0L%aT,LL1%s1L%aT,RR1%s1R%aT,LR1%l1R%aT,RL1%r1L%aT,O1%s1L%s1R%aT,I1%l1R%r1L%aT,BIAS%aT\
 |seq=Q0%q0%aT,Q1%q1%aT,Q2%q2%aT,LL0%s0L%aT,RR0%s0R%aT,LR0%l0R%aT,RL0%r0L%aT,O0%s0L%s0R%aT,I0%l0R%r0L%aT,LL1%s1L%aT,RR1%s1R%aT,LR1%l1R%aT,RL1%r1L%aT,O1%s1L%s1R%aT,I1%l1R%r1L%aT,LL2%s2L%aT,RR2%s2R%aT,O2%s2L%s2R%aT\
@@ -108,7 +108,7 @@ paste data/test.en output/test.en.class data/test.en.pos data/test.en.parse > $S
 # the first, two of the second, and one of the third, in order, split by 
 #
 # There are also a couple of other options that you can tune for greater
-# performance. (more in "train-lader --help")
+# performance. (more in "train-shift-reduce --help")
 # 
 # -attach_null left/right (should be right (default) for English, as we want to
 #                          attach null-aligned articles to the right word)
@@ -122,8 +122,8 @@ paste data/test.en output/test.en.class data/test.en.pos data/test.en.parse > $S
 # -threads ...	(the number of threads used for parallel feature generation, parallel cube pruning/growing at cell-level
 # -cube_growing ...	(default is false which uses a lazy search)
 
-echo "../src/bin/train-lader -cost 1e-3 -attach_null right -loss_profile '$LOSS_PROFILE' -feature_profile '$FEATURE_PROFILE' -iterations $ITERATION -threads $THREADS -shuffle $SHUFFLE -verbose $VERBOSE -model_in $MODEL_IN'' -model_out output/train.mod -source_in $SOURCE_IN -align_in $ALIGN_IN -update $UPDATE -source_dev $SOURCE_DEV -align_dev $ALIGN_DEV -beam $BEAM -max_state $MAX_STATE"
-../src/bin/train-lader -cost 1e-3 -attach_null right -loss_profile $LOSS_PROFILE -feature_profile $FEATURE_PROFILE -iterations $ITERATION -threads $THREADS -shuffle $SHUFFLE -verbose $VERBOSE -model_in $MODEL_IN'' -model_out output/train.mod -source_in $SOURCE_IN -align_in $ALIGN_IN -update $UPDATE -source_dev $SOURCE_DEV -align_dev $ALIGN_DEV -beam $BEAM -max_state $MAX_STATE -algorithm linear -learner perceptron
+echo "../src/bin/train-shift-reduce -cost 1e-3 -attach_null right -loss_profile '$LOSS_PROFILE' -feature_profile '$FEATURE_PROFILE' -iterations $ITERATION -threads $THREADS -shuffle $SHUFFLE -verbose $VERBOSE -model_in $MODEL_IN'' -model_out output/train.mod -source_in $SOURCE_IN -align_in $ALIGN_IN -update $UPDATE -source_dev $SOURCE_DEV -align_dev $ALIGN_DEV -beam $BEAM -max_state $MAX_STATE"
+../src/bin/train-shift-reduce -cost 1e-3 -attach_null right -loss_profile $LOSS_PROFILE -feature_profile $FEATURE_PROFILE -iterations $ITERATION -threads $THREADS -shuffle $SHUFFLE -verbose $VERBOSE -model_in $MODEL_IN'' -model_out output/train.mod -source_in $SOURCE_IN -align_in $ALIGN_IN -update $UPDATE -source_dev $SOURCE_DEV -align_dev $ALIGN_DEV -beam $BEAM -max_state $MAX_STATE
 
 # Once training finishes, a reordering model will be placed in output/train.mod.
 # This can be used in reordering, as described in run-reordering.sh

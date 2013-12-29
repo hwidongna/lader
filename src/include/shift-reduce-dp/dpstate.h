@@ -87,6 +87,7 @@ public:
 	bool operator < (const DPState & other) const {
 		return score_ < other.score_ || (score_ == other.score_ && inside_ < other.inside_);
 	}
+	void PrintParse(const vector<string> & strs, ostream & out) const;
 private:
 	DPState * Shift();
 	DPState * Reduce(DPState * leftstate, Action action);

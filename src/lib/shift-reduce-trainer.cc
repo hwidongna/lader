@@ -108,7 +108,7 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
         if(config.GetBool("shuffle"))
         	random_shuffle(sent_order.begin(), sent_order.end());
         int done = 0;
-        int iter_nedge = 0, iter_nstate = 0, bad_update = 0, early_update = 0;
+        long int iter_nedge = 0, iter_nstate = 0, bad_update = 0, early_update = 0;
         if (verbose >= 1)
         	cerr << "Start training parsing iter " << iter << endl;
         BOOST_FOREACH(int sent, sent_order) {
@@ -137,8 +137,8 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
 
         	Parser::Result result;
         	clock_gettime(CLOCK_MONOTONIC, &tstart);
-        	p.Search(*model_, *features_, train_data_[sent], result,
-        			&refseq, update.empty() ? NULL : &update, config.GetInt("max_state"));
+        	p.Search(*model_, *features_, train_data_[sent], result, config.GetInt("max_state"),
+        			&refseq, update.empty() ? NULL : &update);
         	clock_gettime(CLOCK_MONOTONIC, &tend);
         	search.tv_sec += tend.tv_sec - tstart.tv_sec;
         	search.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
@@ -215,6 +215,7 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
         			cerr << action << " ";
         		cerr << endl;
         	}
+        	// TODO: do we need SetSignature?
         	p.Search(*model_, *features_, dev_data_[sent], result);
         	if (verbose >= 1){
         		cerr << "Result:   ";

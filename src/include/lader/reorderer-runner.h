@@ -27,7 +27,7 @@ public:
     } OutputType;
 
     ReordererRunner(): model_(NULL), features_(NULL){ }
-    ~ReordererRunner() {
+    virtual ~ReordererRunner() {
         if(model_) delete model_;
         if(features_) delete features_;
     }
@@ -36,7 +36,7 @@ public:
     void InitializeModel(const ConfigRunner & config);
     
     // Run the model
-    void Run(const ConfigRunner & config);
+    virtual void Run(const ConfigRunner & config);
 
     // Write the model to a file
     void ReadModel(const string & str) {
@@ -47,7 +47,7 @@ public:
         model_ = ReordererModel::FromStream(in);
     }
 
-private:
+protected:
 
     ReordererModel * model_; // The model
     FeatureSet * features_;  // The mapping on feature ids and which to use

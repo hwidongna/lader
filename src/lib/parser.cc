@@ -29,11 +29,9 @@ void Parser::Clear() {
 	beams_.clear();
 }
 
-void Parser::Search(ReordererModel & model,
-        const FeatureSet & feature_gen,
-        const Sentence & sent, Result & result,
-		vector<DPState::Action> * refseq, string * update,
-		int max_state){
+void Parser::Search(ReordererModel & model, const FeatureSet & feature_gen,
+		const Sentence & sent, Result & result, int max_state,
+		vector<DPState::Action> * refseq, string * update) {
 	int n = sent[0]->GetNumWords();
 	int maxStep = 2*n;
 	Clear();

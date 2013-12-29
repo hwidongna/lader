@@ -29,11 +29,9 @@ public:
 		int step;
 	} Result;
 
-	void Search(ReordererModel & model,
-	        const FeatureSet & feature_gen,
-	        const Sentence & sent, Result & result,
-			vector<DPState::Action> * refseq = NULL, string * update = NULL,
-			int max_state = 0);
+	void Search(ReordererModel & model, const FeatureSet & feature_gen,
+			const Sentence & sent, Result & result, int max_state = 0,
+			vector<DPState::Action> * refseq = NULL, string * update = NULL);
 	void Simulate(ReordererModel & model, const FeatureSet & feature_gen,
 			const vector<DPState::Action> & actions, const Sentence & sent,
 			const int firstdiff, std::tr1::unordered_map<int,double> & featmap, double c);
@@ -42,6 +40,11 @@ public:
 
 	int GetNumStates() const { return nstates_; }
 	int GetNumEdges() const { return nedges_; }
+	DPState * GetBest() const {
+		if (beams_.empty() || beams_.back().empty())
+			THROW_ERROR("Search result is empty!")
+		return beams_.back()[0];
+	}
 private:
 	void Update(vector< DPStateVector > & beams, DPStateVector & golds,
 			Result & result, vector<DPState::Action> * refseq = NULL,

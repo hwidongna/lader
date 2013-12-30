@@ -20,11 +20,67 @@
 #include <lader/feature-data-parse.h>
 #include <lader/ranks.h>
 #include <lader/loss-base.h>
+#include <lader/thread-pool.h>
+#include <lader/output-collector.h>
+#include <shift-reduce-dp/parser.h>
 using namespace std;
 
 namespace lader {
 
 class ShiftReduceTrainer {
+	// A task
+	class ShiftReduceTask : public Task {
+	public:
+		ShiftReduceTask(int id, const Sentence & data, const Ranks & ranks,
+				ReordererModel * model, FeatureSet * features, const ConfigTrainer& config,
+				Parser::Result & result, OutputCollector & collector) :
+					id_(id), data_(data), ranks_(ranks), model_(model), features_(features), config_(config),
+					collector_(collector), result_(result) { }
+		void Run(){
+			int verbose = config_.GetInt("verbose");
+			int sent = id_;
+			ostringstream err;
+			if (verbose >= 1){
+				err << endl << "Sentence " << sent << endl;
+				err << "Rank: ";
+				BOOST_FOREACH(int rank, ranks_.GetRanks())
+					err << rank << " ";
+				err << endl;
+			}
+			vector<DPState::Action> refseq = ranks_.GetReference();
+			if (verbose >= 1){
+				err << "Reference: ";
+				BOOST_FOREACH(DPState::Action action, refseq)
+					err << action << " ";
+				err << endl;
+			}
+			Parser p;
+			p.SetBeamSize(config_.GetInt("beam"));
+			p.SetVerbose(config_.GetInt("verbose"));
+			// TODO: do we need SetSignature?
+			p.Search(*model_, *features_, data_, result_);
+			if (verbose >= 1){
+				err << "Result:   ";
+				for (int step = 0 ; step < (const int)result_.actions.size() ; step++)
+					err << " " << result_.actions[step];
+				err << endl;
+				err << "Purmutation:";
+				BOOST_FOREACH(int order, result_.order)
+					err << " " << order;
+				err << endl;
+			}
+			collector_.Write(id_, "", err.str());
+		}
+	protected:
+		int id_;
+		const Sentence & data_;
+		const Ranks & ranks_;
+		ReordererModel * model_; // The model
+		FeatureSet * features_;  // The mapping on feature ids and which to use
+		const ConfigTrainer& config_;
+		Parser::Result & result_;
+		OutputCollector & collector_;
+	};
 public:
 	ShiftReduceTrainer();
 	virtual ~ShiftReduceTrainer();

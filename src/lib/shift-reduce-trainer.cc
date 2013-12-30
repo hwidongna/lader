@@ -195,54 +195,38 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
         cout << "Finished update " << dt
         	<< iter_nedge << " edges, " << iter_nstate << " states, "
         	<< bad_update << " bad, " << early_update << " early" << endl;
+        cout.flush();
 
         if (verbose >= 1)
         	cerr << "Start development parsing iter " << iter << endl;
-        vector<pair<double,double> > sums(losses_.size(), pair<double,double>(0,0));
+        ThreadPool pool(config.GetInt("threads"), 1000);
+        OutputCollector collector;
+        vector<Parser::Result> results(dev_data_.size());
 		for (int sent = 0 ; sent < dev_data_.size() ; sent++) {
-        	Parser::Result result;
-        	if (verbose >= 1){
-        		cerr << endl << "Sentence " << sent << endl;
-        		cerr << "Rank: ";
-        		BOOST_FOREACH(int rank, dev_ranks_[sent].GetRanks())
-        			cerr << rank << " ";
-        		cerr << endl;
+			ShiftReduceTask *task = new ShiftReduceTask(sent, dev_data_[sent],
+					dev_ranks_[sent], model_, features_, config, results[sent], collector);
+			pool.Submit(task);
+        }
+		pool.Stop(true);
+
+		// Calculate the losses
+        vector<pair<double,double> > sums(losses_.size(), pair<double,double>(0,0));
+        for (int sent = 0 ; sent < dev_data_.size() ; sent++) {
+        	for(int i = 0; i < (int) losses_.size(); i++) {
+        		pair<double,double> my_loss =
+        				losses_[i]->CalculateSentenceLoss(results[sent].order,&dev_ranks_[sent],NULL);
+        		sums[i].first += my_loss.first;
+        		sums[i].second += my_loss.second;
+        		double acc = my_loss.second == 0 ?
+        				1 : (1-my_loss.first/my_loss.second);
+        		if (verbose >= 1){
+        			if(i != 0) cerr << "\t";
+        			cerr << losses_[i]->GetName() << "=" << acc
+        					<< " (loss "<<my_loss.first<< "/" <<my_loss.second<<")";
+        		}
         	}
-        	vector<DPState::Action> refseq = dev_ranks_[sent].GetReference();
-        	if (verbose >= 1){
-        		cerr << "Reference: ";
-        		BOOST_FOREACH(DPState::Action action, refseq)
-        			cerr << action << " ";
+        	if (verbose >= 1)
         		cerr << endl;
-        	}
-        	// TODO: do we need SetSignature?
-        	p.Search(*model_, *features_, dev_data_[sent], result);
-        	if (verbose >= 1){
-        		cerr << "Result:   ";
-        		for (int step = 0 ; step < (const int)result.actions.size() ; step++)
-        			cerr << " " << result.actions[step];
-        		cerr << endl;
-        		cerr << "Purmutation:";
-        		BOOST_FOREACH(int order, result.order)
-        			cerr << " " << order;
-        		cerr << endl;
-        	}
-            // Score the values
-            for(int i = 0; i < (int) losses_.size(); i++) {
-                pair<double,double> my_loss =
-                        losses_[i]->CalculateSentenceLoss(result.order,&dev_ranks_[sent],NULL);
-                sums[i].first += my_loss.first;
-                sums[i].second += my_loss.second;
-                double acc = my_loss.second == 0 ?
-                                        1 : (1-my_loss.first/my_loss.second);
-                if (verbose >= 1){
-                	if(i != 0) cerr << "\t";
-                	cerr << losses_[i]->GetName() << "=" << acc
-                			<< " (loss "<<my_loss.first<< "/" <<my_loss.second<<")";
-                }
-            }
-            if (verbose >= 1)
-            	cerr << endl;
         }
 		double prec = 0;
 		for(int i = 0; i < (int) sums.size(); i++) {

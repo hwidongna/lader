@@ -28,7 +28,7 @@ public:
     const std::vector<int> & GetRanks() const { return ranks_; }
     int GetSrcLen() const { return ranks_.size(); }
     void SetRanks(const std::vector<int> & order);
-    std::vector<DPState::Action> GetReference ();
+    std::vector<DPState::Action> GetReference() const;
 
 private:
     std::vector<int> ranks_;

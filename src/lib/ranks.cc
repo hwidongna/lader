@@ -39,7 +39,7 @@ void Ranks::SetRanks(const std::vector<int> & order) {
 	max_rank_ = order.size()-1;
 }
 
-std::vector<DPState::Action> Ranks::GetReference(){
+std::vector<DPState::Action> Ranks::GetReference() const{
 	std::vector<DPState::Action> reference;
 	DPStateVector stateseq;
 	DPState * state = new DPState();

@@ -94,11 +94,11 @@ public:
 	void InitializeModel(const ConfigTrainer & config);
 
 	// Read in the data
-	void ReadData(const std::string & source_in, std::vector<Sentence> & datas);
+	void ReadData(const std::string & source_in, std::vector<Sentence*> & datas);
 
 	// Read in the alignments
 	void ReadAlignments(const std::string & align_in,
-			std::vector<Ranks> & ranks, std::vector<Sentence> & datas);
+			std::vector<Ranks*> & ranks, std::vector<Sentence*> & datas);
 
 	// Read in the parses
 	void ReadParses(const std::string & align_in);
@@ -116,12 +116,12 @@ public:
 
 private:
 	double learning_rate_;
-	std::vector<Ranks> train_ranks_; // The alignments to use in training
-	std::vector<Ranks> dev_ranks_; // The alignments to use in development
+	std::vector<Ranks*> train_ranks_; // The alignments to use in training
+	std::vector<Ranks*> dev_ranks_; // The alignments to use in development
 	std::vector<FeatureDataParse> parses_; // The parses to use in training
 	std::vector<LossBase*> losses_; // The loss functions
-	std::vector<Sentence> train_data_; // The training data
-	std::vector<Sentence> dev_data_; // The development data
+	std::vector<Sentence*> train_data_; // The training data
+	std::vector<Sentence*> dev_data_; // The development data
 	FeatureSet* features_;  // The mapping on feature ids and which to use
 	ReordererModel* model_; // The model
 	CombinedAlign::NullHandler attach_; // Where to attach nulls

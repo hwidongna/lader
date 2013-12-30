@@ -24,12 +24,18 @@ ShiftReduceTrainer::ShiftReduceTrainer() : learning_rate_(1),
 }
 
 ShiftReduceTrainer::~ShiftReduceTrainer() {
-    BOOST_FOREACH(std::vector<FeatureDataBase*> vec, train_data_)
-        BOOST_FOREACH(FeatureDataBase* ptr, vec)
-            delete ptr;
-    BOOST_FOREACH(std::vector<FeatureDataBase*> vec, dev_data_)
-		BOOST_FOREACH(FeatureDataBase* ptr, vec)
-			delete ptr;
+    BOOST_FOREACH(Sentence * vec, train_data_)
+    	if (vec){
+    		BOOST_FOREACH(FeatureDataBase* ptr, *vec)
+    			delete ptr;
+    		delete vec;
+    	}
+    BOOST_FOREACH(Sentence * vec, dev_data_)
+		if (vec){
+			BOOST_FOREACH(FeatureDataBase* ptr, *vec)
+								delete ptr;
+			delete vec;
+		}
     BOOST_FOREACH(LossBase * loss, losses_)
     	delete loss;
     if(model_) delete model_;
@@ -79,14 +85,36 @@ void ShiftReduceTrainer::InitializeModel(const ConfigTrainer & config) {
     }
 }
 
+template <class T>
+void LeavingOneOut(vector<T> & from, vector<T> & to, double threshold = 0.1){
+	srand(time(0)); // intensionally use same seed across fuction calls
+	to.resize(from.size());
+	bool found = false;
+	for (int i = 0 ; i < from.size() ; i++){
+		double r = ((double) rand() / (RAND_MAX));
+		if (r > threshold)
+			continue;
+		to[i] = from[i];
+		from[i] = NULL;
+		found = true;
+	}
+	if (!found)
+		LeavingOneOut(from, to, threshold); // try again
+}
+
 void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
     InitializeModel(config);
     ReadData(config.GetString("source_in"), train_data_);
-    ReadData(config.GetString("source_dev"), dev_data_);
     if(config.GetString("align_in").length())
         ReadAlignments(config.GetString("align_in"), train_ranks_, train_data_);
-    if(config.GetString("align_dev").length())
+    if(config.GetString("source_dev").length() && config.GetString("align_dev").length()){
+    	ReadData(config.GetString("source_dev"), dev_data_);
     	ReadAlignments(config.GetString("align_dev"), dev_ranks_, dev_data_);
+    }
+    else{
+    	LeavingOneOut(train_data_, dev_data_);
+    	LeavingOneOut(train_ranks_, dev_ranks_);
+    }
     if(config.GetString("parse_in").length())
         ReadParses(config.GetString("parse_in"));
     int verbose = config.GetInt("verbose");
@@ -112,24 +140,26 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
         if (verbose >= 1)
         	cerr << "Start training parsing iter " << iter << endl;
         BOOST_FOREACH(int sent, sent_order) {
+        	if (!train_ranks_[sent]) // if leaving-one-out, it would be NULL
+        		continue;
         	if(++done% 100 == 0) cerr << ".";
         	if(done % (100*10) == 0) cerr << done << endl;
 
         	if (verbose >= 1){
         		cerr << endl << "Sentence " << sent << endl;
         		cerr << "Rank:";
-        		BOOST_FOREACH(int rank, train_ranks_[sent].GetRanks())
+        		BOOST_FOREACH(int rank, train_ranks_[sent]->GetRanks())
         			cerr << " " << rank;
         		cerr << endl;
         	}
-        	vector<DPState::Action> refseq = train_ranks_[sent].GetReference();
+        	vector<DPState::Action> refseq = train_ranks_[sent]->GetReference();
         	if (verbose >= 1){
         		cerr << "Reference:";
         		BOOST_FOREACH(DPState::Action action, refseq)
         			cerr << " " << action;
         		cerr << endl;
         	}
-        	if (refseq.size() < train_data_[sent][0]->GetNumWords()*2 - 1){
+        	if (refseq.size() < (*train_data_[sent])[0]->GetNumWords()*2 - 1){
         		if (verbose >= 1)
         			cerr << "Fail to get correct reference sequence, skip it" << endl;
         		continue;
@@ -137,7 +167,7 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
 
         	Parser::Result result;
         	clock_gettime(CLOCK_MONOTONIC, &tstart);
-        	p.Search(*model_, *features_, train_data_[sent], result, config.GetInt("max_state"),
+        	p.Search(*model_, *features_, *train_data_[sent], result, config.GetInt("max_state"),
         			&refseq, update.empty() ? NULL : &update);
         	clock_gettime(CLOCK_MONOTONIC, &tend);
         	search.tv_sec += tend.tv_sec - tstart.tv_sec;
@@ -162,8 +192,8 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
         		cerr << "Result step " << result.step << ", update from " << step << endl;
         	clock_gettime(CLOCK_MONOTONIC, &tstart);
         	FeatureMapInt feat_map;
-        	p.Simulate(*model_, *features_, refseq, train_data_[sent], step, feat_map, +1); // positive examples
-        	p.Simulate(*model_, *features_, result.actions, train_data_[sent], step, feat_map, -1); // negative examples
+        	p.Simulate(*model_, *features_, refseq, *train_data_[sent], step, feat_map, +1); // positive examples
+        	p.Simulate(*model_, *features_, result.actions, *train_data_[sent], step, feat_map, -1); // negative examples
         	clock_gettime(CLOCK_MONOTONIC, &tend);
         	simulate.tv_sec += tend.tv_sec - tstart.tv_sec;
 			simulate.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
@@ -203,8 +233,10 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
         OutputCollector collector;
         vector<Parser::Result> results(dev_data_.size());
 		for (int sent = 0 ; sent < dev_data_.size() ; sent++) {
-			ShiftReduceTask *task = new ShiftReduceTask(sent, dev_data_[sent],
-					dev_ranks_[sent], model_, features_, config, results[sent], collector);
+			if (!dev_data_[sent] || !dev_ranks_[sent])  // if leaving-one-out, it would be NULL
+				continue;
+			ShiftReduceTask *task = new ShiftReduceTask(sent, *dev_data_[sent],
+					*dev_ranks_[sent], model_, features_, config, results[sent], collector);
 			pool.Submit(task);
         }
 		pool.Stop(true);
@@ -212,9 +244,11 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
 		// Calculate the losses
         vector<pair<double,double> > sums(losses_.size(), pair<double,double>(0,0));
         for (int sent = 0 ; sent < dev_data_.size() ; sent++) {
+        	if (!dev_data_[sent] || !dev_ranks_[sent])  // if leaving-one-out, it would be NULL
+        		continue;
         	for(int i = 0; i < (int) losses_.size(); i++) {
         		pair<double,double> my_loss =
-        				losses_[i]->CalculateSentenceLoss(results[sent].order,&dev_ranks_[sent],NULL);
+        				losses_[i]->CalculateSentenceLoss(results[sent].order,dev_ranks_[sent],NULL);
         		sums[i].first += my_loss.first;
         		sums[i].second += my_loss.second;
         		double acc = my_loss.second == 0 ?
@@ -261,25 +295,25 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
 }
 
 void ShiftReduceTrainer::ReadData(const std::string & source_in,
-		std::vector<Sentence> & datas){
+		std::vector<Sentence*> & datas){
 	std::ifstream in(source_in.c_str());
 	if(!in) THROW_ERROR("Could not open source file: "
 			<<source_in);
 	std::string line;
 	datas.clear();
 	while(getline(in, line))
-		datas.push_back(features_->ParseInput(line));
+		datas.push_back(new Sentence(features_->ParseInput(line)));
 }
 void ShiftReduceTrainer::ReadAlignments(const std::string & align_in,
-		std::vector<Ranks> & ranks, std::vector<Sentence> & datas) {
+		std::vector<Ranks*> & ranks, std::vector<Sentence*> & datas) {
     std::ifstream in(align_in.c_str());
     if(!in) THROW_ERROR("Could not open alignment file: "
                             <<align_in);
     std::string line;
     int i = 0;
     while(getline(in, line))
-        ranks.push_back(
-            Ranks(CombinedAlign(SafeAccess(datas,i++)[0]->GetSequence(),
+        ranks.push_back(new
+            Ranks(CombinedAlign((*SafeAccess(datas,i++))[0]->GetSequence(),
                                 Alignment::FromString(line),
                                 attach_, combine_, bracket_)));
 }
@@ -293,4 +327,5 @@ void ShiftReduceTrainer::ReadParses(const std::string & parse_in) {
         parses_.rbegin()->FromString(line);
     }
 }
+
 } /* namespace lader */

@@ -8,7 +8,7 @@
 
 
 
-#include <lader/config-runner.h>
+#include <shift-reduce-dp/config-runner.h>
 #include <shift-reduce-dp/shift-reduce-runner.h>
 
 using namespace lader;

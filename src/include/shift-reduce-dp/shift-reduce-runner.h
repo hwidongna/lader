@@ -28,17 +28,30 @@ class ShiftReduceRunner : public ReordererRunner{
 	        id_(id), line_(line), model_(model), features_(features),
 	        outputs_(outputs), collector_(collector), config_(config) { }
 	    void Run(){
+	    	int verbose = config_.GetInt("verbose");
+	    	int sent = id_;
 		    // Load the data
 		    Sentence datas = features_->ParseInput(line_);
 		    // Save the original string
 		    vector<string> words = ((FeatureDataSequence*)datas[0])->GetSequence();
 		    // Build a reordering tree
+		    if (verbose >= 1)
+		    	cerr << endl << "Sentence " << sent << endl;
 	    	Parser p;
 			p.SetBeamSize(config_.GetInt("beam"));
 			p.SetVerbose(config_.GetInt("verbose"));
 			Parser::Result result;
-			// TODO: do we need SetSignature?
-			p.Search(*model_, *features_, datas, result);
+			p.Search(*model_, *features_, datas, result, config_.GetInt("max_state"));
+			if (verbose >= 1){
+				cerr << "Result:   ";
+				for (int step = 0 ; step < (const int)result.actions.size() ; step++)
+					cerr << " " << result.actions[step];
+				cerr << endl;
+				cerr << "Purmutation:";
+				BOOST_FOREACH(int order, result.order)
+					cerr << " " << order;
+				cerr << endl;
+			}
 		    // Reorder
 		    std::vector<int> & reordering = result.order;
 		    datas[0]->Reorder(reordering);

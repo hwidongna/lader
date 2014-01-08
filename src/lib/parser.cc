@@ -58,12 +58,11 @@ void Parser::Search(ReordererModel & model, const FeatureSet & feature_gen,
 					continue;
 				bool actiongold = (refseq != NULL && action == (*refseq)[step-1]);
 				DPStateVector stateseq;
-				old->Take((DPState::Action) action, stateseq, actiongold,
+				// take an action, see below shift-m
+				old->Take((DPState::Action) action, stateseq, actiongold, 1,
 						&model, &feature_gen, &sent);
 				BOOST_FOREACH(DPState * next, stateseq){
 					next->SetSignature(max_state);
-					if (next->IsGold())
-						golds[step] = next;
 					q.push(next);
 					if (verbose_ >= 2){
 						cerr << "  NEW: " << *next;
@@ -71,6 +70,44 @@ void Parser::Search(ReordererModel & model, const FeatureSet & feature_gen,
 							cerr << " [" << span.first << ", " << span.second << "]";
 						cerr << endl;
 					}
+				}
+			}
+		}
+		// shift m+1 element monotonically, i.e., shift-{shift-straight}*m
+		// from an oldstep (=step-2*m-1) if possible
+		// the new state is identical to the state that apply a sequence of actions
+		// from the old state if exist. however, it may not exist due to the pruning.
+		// therefore, this is the second chance to revive the state we needed often.
+		for (int m = 1 ; step > 2*m && m < model.GetMaxTerm() ; m++){
+			// from the proper previous step
+			int oldstep = step-2*m-1;
+			BOOST_FOREACH(DPState * old, beams_[oldstep]){
+				if (old->GetSrcR()+m >= n)
+					continue;
+				if (verbose_ >= 2){
+					cerr << "OLD: " << *old;
+					BOOST_FOREACH(Span span, old->GetSignature())
+						cerr << " [" << span.first << ", " << span.second << "]";
+					cerr << endl;
+				}
+				DPState::Action action = DPState::SHIFT;
+				bool actiongold = (refseq != NULL && action == (*refseq)[oldstep]);
+				// get the correct judgement of actiongold
+				for (int i = 0 ; refseq && i < 2*m-1; i += 2){
+					actiongold &= DPState::SHIFT == (*refseq)[oldstep+i+1];
+					actiongold &= DPState::STRAIGTH == (*refseq)[oldstep+i+2];
+				}
+				DPStateVector stateseq;
+				old->Take((DPState::Action) action, stateseq, actiongold, m+1,
+						&model, &feature_gen, &sent);
+				DPState * next = stateseq.back(); // only one item
+				next->SetSignature(max_state);
+				q.push(next);
+				if (verbose_ >= 2){
+					cerr << "  NEW: " << *next;
+					BOOST_FOREACH(Span span, next->GetSignature())
+						cerr << " [" << span.first << ", " << span.second << "]";
+					cerr << endl;
 				}
 			}
 		}
@@ -87,20 +124,20 @@ void Parser::Search(ReordererModel & model, const FeatureSet & feature_gen,
 				tmp[*top] = top;
 				beams_[step].push_back(top);
 				top->SetRank(rank++);
+				if (top->IsGold())
+					golds[step] = top;
 				if (verbose_ >= 2){
 					cerr << *top << " :";
 					BOOST_FOREACH(Span span, top->GetSignature())
 						cerr << " [" << span.first << ", " << span.second << "]";
 					cerr << endl;
 				}
+
 			}
 			else{
 				it->second->MergeWith(top);
-				if (top->IsGold()){
-					golds[step] = NULL; // fall-off by merge
-					if (verbose_ >= 2)
-						cerr << "GOLD at " << k << " MERGED with " << it->second->GetRank() << endl;
-				}
+				if (top->IsGold() && verbose_ >= 2) // fall-off by merge
+					cerr << "GOLD at " << k << " MERGED with " << it->second->GetRank() << endl;
 				delete top;
 			}
 		}
@@ -128,8 +165,8 @@ void Parser::Search(ReordererModel & model, const FeatureSet & feature_gen,
 			if (golds[step] == NULL){
 				DPState::Action action = (*refseq)[step-1];
 				DPStateVector tmp;
-				if (golds[step-1]->Allow(action, n))
-					golds[step-1]->Take(action, tmp, true,
+				if (golds[step-1]->Allow(action, n)) // take an action for golds
+					golds[step-1]->Take(action, tmp, true, 1,
 							&model, &feature_gen, &sent);
 				else
 					THROW_ERROR("Bad reference seq! " << endl);

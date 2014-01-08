@@ -51,7 +51,7 @@ public:
 	int GetRank() const { return rank_; }
 	void MergeWith(DPState * other);
 	void Take(Action action, DPStateVector & result, bool actiongold = false,
-			ReordererModel * model = NULL, const FeatureSet * feature_gen = NULL,
+			int maxterm = 1, ReordererModel * model = NULL, const FeatureSet * feature_gen = NULL,
 			const Sentence * sent = NULL);
 	bool Allow(const Action & action, const int n);
 	void InsideActions(vector<Action> & result);

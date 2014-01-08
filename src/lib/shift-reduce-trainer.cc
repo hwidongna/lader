@@ -136,7 +136,8 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
         if(config.GetBool("shuffle"))
         	random_shuffle(sent_order.begin(), sent_order.end());
         int done = 0;
-        long int iter_nedge = 0, iter_nstate = 0, bad_update = 0, early_update = 0;
+        double iter_nedge = 0, iter_nstate = 0;
+        int bad_update = 0, early_update = 0;
         if (verbose >= 1)
         	cerr << "Start training parsing iter " << iter << endl;
         BOOST_FOREACH(int sent, sent_order) {
@@ -216,10 +217,9 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
         	iter_nedge += p.GetNumEdges();
         	iter_nstate += p.GetNumStates();
         }
-        if (verbose >= 1)
-			cerr << "Running time on average: "
-					<< "searh " << ((double)search.tv_sec + 1.0e-9*search.tv_nsec) / (iter+1) << "s"
-					<< ", simulate " << ((double)simulate.tv_sec + 1.0e-9*simulate.tv_nsec) / (iter+1) << "s" << endl;
+        cerr << "Running time on average: "
+        		<< "searh " << ((double)search.tv_sec + 1.0e-9*search.tv_nsec) / (iter+1) << "s"
+        		<< ", simulate " << ((double)simulate.tv_sec + 1.0e-9*simulate.tv_nsec) / (iter+1) << "s" << endl;
         time_t now = time(0);
         char* dt = ctime(&now);
         cout << "Finished update " << dt

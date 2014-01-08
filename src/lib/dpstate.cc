@@ -46,7 +46,7 @@ void DPState::MergeWith(DPState * other){
 			backptrs_.push_back(other->backptrs_[0]);
 }
 void DPState::Take(Action action, DPStateVector & result, bool actiongold,
-		ReordererModel * model, const FeatureSet * feature_gen,
+		int maxterm, ReordererModel * model, const FeatureSet * feature_gen,
 		const Sentence * sent) {
 	double 	actioncost = 0;
 	if (model != NULL && feature_gen != NULL && sent != NULL){
@@ -59,6 +59,36 @@ void DPState::Take(Action action, DPStateVector & result, bool actiongold,
 		DPState * next = Shift();
 		next->inside_ = 0;
 		next->score_ = score_ + actioncost;
+		while (maxterm-- > 1){ // shift more than one element monotonically
+			DPState * shifted = next->Shift();
+			double shiftcost = 0;
+			if (model != NULL && feature_gen != NULL && sent != NULL){
+				next->leftptrs_.push_back(this);
+				// TODO: reflect the maxterm information for feature generation
+				const FeatureVectorInt * fvi = feature_gen->MakeStateFeatures(*sent,
+						*next, model->GetFeatureIds(), model->GetAdd());
+				shiftcost = model->ScoreFeatureVector(*fvi);
+				delete fvi;
+			}
+			// shifted->inside_ = 0;
+			shifted->score_ = next->score_ + shiftcost;
+			DPState * reduced = shifted->Reduce(next, DPState::STRAIGTH);
+			double reducecost = 0;
+			if (model != NULL && feature_gen != NULL && sent != NULL){
+				shifted->leftptrs_.push_back(next);
+				// TODO: reflect the maxterm information for feature generation?
+				const FeatureVectorInt * fvi = feature_gen->MakeStateFeatures(*sent,
+						*shifted, model->GetFeatureIds(), model->GetAdd());
+				reducecost = model->ScoreFeatureVector(*fvi);
+				delete fvi;
+			}
+			// because shifted->inside_ == 0, do not need to add them
+			reduced->inside_ = next->inside_ + shiftcost + reducecost;
+			reduced->score_ = next->score_ + shiftcost + reducecost;
+			delete shifted, next; // intermidiate states
+			next = reduced;
+			next->action_ = DPState::SHIFT; // it is actuall a shifted state
+		}
 		shiftcost_ = actioncost;
 		next->gold_ = gold_ && actiongold;
 		next->leftptrs_.push_back(this);
@@ -68,7 +98,7 @@ void DPState::Take(Action action, DPStateVector & result, bool actiongold,
 		back.leftstate = NULL;
 		back.istate = NULL;
 		next->backptrs_.push_back(back);
-		result.push_back(next); // copy, right?
+		result.push_back(next);
 	}
 	else{ // reduce
 		BOOST_FOREACH(DPState * leftstate, leftptrs_){
@@ -119,6 +149,10 @@ void DPState::InsideActions(vector<Action> & result){
 		break;
 	case DPState::SHIFT:
 		result.push_back(DPState::SHIFT);
+		for (int i = src_l_+1 ; i < src_r_ ; i++){ // for shift-m > 1
+			result.push_back(DPState::SHIFT);
+			result.push_back(DPState::STRAIGTH);
+		}
 		break;
 	case DPState::STRAIGTH:
 	case DPState::INVERTED:
@@ -152,7 +186,8 @@ void DPState::GetReordering(vector<int> & result){
 		LeftChild()->GetReordering(result);
 		break;
 	case DPState::SHIFT:
-		result.push_back(src_l_);
+		for (int i = src_l_ ; i < src_r_ ; i++)
+			result.push_back(i);
 		break;
 	}
 }

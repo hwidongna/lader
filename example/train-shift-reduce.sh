@@ -16,9 +16,10 @@ MAX_STATE=3
 THREADS=4
 SHUFFLE=false
 ITERATION=10
-VERBOSE=1
+VERBOSE=0
 UPDATE=max
 BEAM=10
+MAX_TERM=3
 
 # This bash file provides an example of how to train a model for lader.
 # There are a couple steps, some of which are optional.
@@ -48,8 +49,8 @@ BEAM=10
 echo "../script/add-classes.pl data/classes.en < data/train.en > output/train.en.class"
 ../script/add-classes.pl data/classes.en < data/train.en > output/train.en.class
 
-echo "../script/add-classes.pl data/classes.en < data/test.en > output/test.en.class"
-../script/add-classes.pl data/classes.en < data/test.en > output/test.en.class
+#echo "../script/add-classes.pl data/classes.en < data/test.en > output/test.en.class"
+#../script/add-classes.pl data/classes.en < data/test.en > output/test.en.class
 
 #  b) POS tags
 #   You can also add POS tags in a similar fashion using your favorite tagger.
@@ -80,8 +81,8 @@ echo "../script/contiguous-extract.pl data/train.en data/train.ja $ALIGN_IN > ou
 echo "paste data/train.en output/train.en.class data/train.en.pos data/train.en.parse > $SOURCE_IN"
 paste data/train.en output/train.en.class data/train.en.pos data/train.en.parse > $SOURCE_IN
 
-echo "paste data/test.en output/test.en.class data/test.en.pos data/test.en.parse > $SOURCE_DEV"
-paste data/test.en output/test.en.class data/test.en.pos data/test.en.parse > $SOURCE_DEV
+#echo "paste data/test.en output/test.en.class data/test.en.pos data/test.en.parse > $SOURCE_DEV"
+#paste data/test.en output/test.en.class data/test.en.pos data/test.en.parse > $SOURCE_DEV
 #############################################################################
 # 3. Training
 #
@@ -122,8 +123,8 @@ paste data/test.en output/test.en.class data/test.en.pos data/test.en.parse > $S
 # -threads ...	(the number of threads used for parallel feature generation, parallel cube pruning/growing at cell-level
 # -cube_growing ...	(default is false which uses a lazy search)
 
-echo "../src/bin/train-shift-reduce -cost 1e-3 -attach_null right -loss_profile '$LOSS_PROFILE' -feature_profile '$FEATURE_PROFILE' -iterations $ITERATION -threads $THREADS -shuffle $SHUFFLE -verbose $VERBOSE -model_in $MODEL_IN'' -model_out output/train.mod -source_in $SOURCE_IN -align_in $ALIGN_IN -update $UPDATE -source_dev $SOURCE_DEV -align_dev $ALIGN_DEV -beam $BEAM -max_state $MAX_STATE -verbose $VERBOSE"
-../src/bin/train-shift-reduce -cost 1e-3 -attach_null right -loss_profile $LOSS_PROFILE -feature_profile $FEATURE_PROFILE -iterations $ITERATION -threads $THREADS -shuffle $SHUFFLE -verbose $VERBOSE -model_in $MODEL_IN'' -model_out output/train.mod -source_in $SOURCE_IN -align_in $ALIGN_IN -update $UPDATE -source_dev $SOURCE_DEV -align_dev $ALIGN_DEV -beam $BEAM -max_state $MAX_STATE -verbose $VERBOSE
+echo "../src/bin/train-shift-reduce -cost 1e-3 -attach_null right -loss_profile '$LOSS_PROFILE' -feature_profile '$FEATURE_PROFILE' -iterations $ITERATION -threads $THREADS -shuffle $SHUFFLE -verbose $VERBOSE -model_in $MODEL_IN'' -model_out output/train.mod -source_in $SOURCE_IN -align_in $ALIGN_IN -update $UPDATE -source_dev '$SOURCE_DEV' -align_dev '$ALIGN_DEV' -beam $BEAM -max_state $MAX_STATE -max_term $MAX_TERM -verbose $VERBOSE"
+../src/bin/train-shift-reduce -cost 1e-3 -attach_null right -loss_profile $LOSS_PROFILE -feature_profile $FEATURE_PROFILE -iterations $ITERATION -threads $THREADS -shuffle $SHUFFLE -verbose $VERBOSE -model_in $MODEL_IN'' -model_out output/train.mod -source_in $SOURCE_IN -align_in $ALIGN_IN -update $UPDATE -source_dev $SOURCE_DEV'' -align_dev $ALIGN_DEV'' -beam $BEAM -max_state $MAX_STATE -max_term $MAX_TERM -verbose $VERBOSE
 
 # Once training finishes, a reordering model will be placed in output/train.mod.
 # This can be used in reordering, as described in run-reordering.sh

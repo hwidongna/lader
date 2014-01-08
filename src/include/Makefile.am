@@ -10,4 +10,4 @@ lader/reorderer-evaluator.h lader/reorderer-model.h lader/reorderer-runner.h \
 lader/reorderer-trainer.h lader/symbol-set.h lader/target-span.h \
 lader/util.h lader/config.h lader/thread-pool.h lader/output-collector.h \
 shift-reduce-dp/dpstate.h shift-reduce-dp/parser.h shift-reduce-dp/shift-reduce-trainer.h \
-shift-reduce-dp/config-trainer.h
+shift-reduce-dp/config-trainer.h shift-reduce-dp/config-runner.h

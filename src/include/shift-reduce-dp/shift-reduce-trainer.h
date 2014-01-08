@@ -9,7 +9,7 @@
 #define PERCEPTRON_H_
 
 #include <lader/feature-vector.h>
-#include <lader/config-trainer.h>
+#include <shift-reduce-dp/config-trainer.h>
 #include <fstream>
 #include <tr1/unordered_map>
 #include <lader/util.h>
@@ -41,33 +41,32 @@ class ShiftReduceTrainer {
 			int sent = id_;
 			ostringstream err;
 			if (verbose >= 1){
-				err << endl << "Sentence " << sent << endl;
-				err << "Rank: ";
+				cerr << endl << "Sentence " << sent << endl;
+				cerr << "Rank: ";
 				BOOST_FOREACH(int rank, ranks_.GetRanks())
-					err << rank << " ";
-				err << endl;
+					cerr << rank << " ";
+				cerr << endl;
 			}
 			vector<DPState::Action> refseq = ranks_.GetReference();
 			if (verbose >= 1){
-				err << "Reference: ";
+				cerr << "Reference: ";
 				BOOST_FOREACH(DPState::Action action, refseq)
-					err << action << " ";
-				err << endl;
+					cerr << action << " ";
+				cerr << endl;
 			}
 			Parser p;
 			p.SetBeamSize(config_.GetInt("beam"));
 			p.SetVerbose(config_.GetInt("verbose"));
-			// TODO: do we need SetSignature?
-			p.Search(*model_, *features_, data_, result_);
+			p.Search(*model_, *features_, data_, result_, config_.GetInt("max_state"));
 			if (verbose >= 1){
-				err << "Result:   ";
+				cerr << "Result:   ";
 				for (int step = 0 ; step < (const int)result_.actions.size() ; step++)
-					err << " " << result_.actions[step];
-				err << endl;
-				err << "Purmutation:";
+					cerr << " " << result_.actions[step];
+				cerr << endl;
+				cerr << "Purmutation:";
 				BOOST_FOREACH(int order, result_.order)
-					err << " " << order;
-				err << endl;
+					cerr << " " << order;
+				cerr << endl;
 			}
 			collector_.Write(id_, "", err.str());
 		}

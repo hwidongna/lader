@@ -253,35 +253,37 @@ void FeatureSequence::GenerateStateFeatures(
 								SymbolSet<int> & feature_ids,
 								bool add,
 								FeatureVectorInt & feats) {
+	const FeatureDataSequence & sent_seq = (const FeatureDataSequence &)sent;
 	// Iterate over each feature
 	BOOST_FOREACH(FeatureTemplate templ, feature_templates_) {
 		ostringstream values; values << templ.second[0];
-		bool valid = true;
+		double feat_val = 1;
 		for(int i = 1; i < (int)templ.second.size(); i++) {
 			// Choose which span to use
 			int offset;
 			const DPState * ptr_state;
-			switch (templ.second[i][0]) {
+			string & str = templ.second[i];
+			switch (str[0]) {
 			case 'q':
-				offset = templ.second[i][1]-'0';
+				offset = str[1]-'0';
 				if (state.GetSrcR()+offset < sent.GetNumWords())
 					values << "||" << sent.GetElement(state.GetSrcR()+offset);
 				else
 					values << "||</s>";
 				break;
 			case 's':
-				offset = templ.second[i][1]-'0';
+				offset = str[1]-'0';
 				ptr_state = &state;
 				for (int j = 0 ; j < offset && ptr_state; j++)
 					ptr_state = ptr_state->GetLeftState();
 				if (!ptr_state || ptr_state->GetAction() == DPState::INIT)
 					values << "||<s>";
-				else if (templ.second[i][2] == 'L'){
+				else if (str[2] == 'L'){
 					if (ptr_state->GetSrcL() >= sent.GetNumWords())
 						THROW_ERROR("Bad state: " << *ptr_state << endl)
 					values << "||" << sent.GetElement(ptr_state->GetSrcL());
 				}
-				else if (templ.second[i][2] == 'R'){
+				else if (str[2] == 'R'){
 					if (ptr_state->GetSrcR()-1 >= sent.GetNumWords())
 						THROW_ERROR("Bad state: " << *ptr_state << endl)
 					values << "||" << sent.GetElement(ptr_state->GetSrcR()-1);
@@ -289,33 +291,53 @@ void FeatureSequence::GenerateStateFeatures(
 				break;
 			case 'l':
 			case 'r':
-				offset = templ.second[i][1]-'0';
+				offset = str[1]-'0';
 				ptr_state = &state;
 				for (int j = 0 ; j < offset && ptr_state; j++)
 					ptr_state = ptr_state->GetLeftState();
 				if (!ptr_state || ptr_state->GetAction() == DPState::INIT)
-					valid = false;
-				else if (templ.second[i][0] == 'l')
+					feat_val = 0;
+				else if (str[0] == 'l')
 					ptr_state = ptr_state->LeftChild();
-				else if (templ.second[i][0] == 'r')
+				else if (str[0] == 'r')
 					ptr_state = ptr_state->RightChild();
 				// need to check ptr_state again
 				if (!ptr_state || ptr_state->GetAction() == DPState::INIT)
-					valid = false;
-				else if (templ.second[i][2] == 'L')
+					feat_val = 0;
+				else if (str[2] == 'L')
 					values << "||" << sent.GetElement(ptr_state->GetSrcL());
-				else if (templ.second[i][2] == 'R')
+				else if (str[2] == 'R')
 					values << "||" << sent.GetElement(ptr_state->GetSrcR()-1);
 				break;
 			case 'a':
 				values << "||" << state.GetAction();
 				break;
+	        default:
+	        	if (str.length() < 3)
+	        		THROW_ERROR("Bad feature template " << str);
+				offset = str[0]-'0';
+				ptr_state = &state;
+				for (int j = 0 ; j < offset && ptr_state; j++)
+					ptr_state = ptr_state->GetLeftState();
+				if (!ptr_state){
+					feat_val = 0;
+					break;
+				}
+				int l = ptr_state->GetSrcL();
+				int r = ptr_state->GetSrcR()-1;
+	        	if (str[2] == 'E')
+	        		values << "||" << (SafeAccess(dicts_,str[3]-'0')->Exists(
+	        				sent_seq.GetRangeString(l, r)) ? "+" : "-");
+	        	else
+	        		feat_val = SafeAccess(dicts_,str[3]-'0')->GetFeature(
+	        				sent_seq.GetRangeString(l, r), str[4]-'0');
+	            break;
 			}
 		}
-		if (valid){
+		if (feat_val){
 			int id = feature_ids.GetId(values.str(), add);
 			if(id >= 0)
-				feats.push_back(MakePair(id,valid));
+				feats.push_back(MakePair(id,feat_val));
 		}
 	}
 }

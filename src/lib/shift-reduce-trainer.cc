@@ -92,20 +92,21 @@ void ShiftReduceTrainer::InitializeModel(const ConfigTrainer & config) {
 }
 
 template <class T>
-void MoveRandom(vector<T> & from, vector<T> & to, double ratio){
+int MoveRandom(vector<T> & from, vector<T> & to, double ratio){
 	srand(time(0)); // intensionally use same seed across fuction calls
 	to.resize(from.size());
-	bool done = false;
+	int count = 0;
 	for (int i = 0 ; i < from.size() ; i++){
 		double r = ((double) rand() / (RAND_MAX));
 		if (r > ratio)
 			continue;
 		to[i] = from[i];
 		from[i] = NULL;
-		done = true;
+		count++;
 	}
-	if (!done)
-		MoveRandom(from, to, ratio); // try again
+	if (count == 0)
+		return MoveRandom(from, to, ratio); // try again
+	return count;
 }
 
 void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
@@ -118,8 +119,12 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
     	ReadAlignments(config.GetString("align_dev"), dev_ranks_, dev_data_);
     }
     else{
-    	MoveRandom(train_data_, dev_data_, config.GetDouble("ratio_dev"));
-    	MoveRandom(train_ranks_, dev_ranks_, config.GetDouble("ratio_dev"));
+    	int count1 = MoveRandom(train_data_, dev_data_, config.GetDouble("ratio_dev"));
+    	int count2 = MoveRandom(train_ranks_, dev_ranks_, config.GetDouble("ratio_dev"));
+    	if (count1 != count2)
+    		THROW_ERROR("Do not split train set correctly");
+    	cerr << "Split " << train_data_.size() << " train set into "
+    			<< train_data_.size()-count1 << " train and " << count1 << " dev set" << endl;
     }
     if(config.GetString("parse_in").length())
         ReadParses(config.GetString("parse_in"));

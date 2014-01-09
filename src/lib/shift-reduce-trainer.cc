@@ -30,12 +30,18 @@ ShiftReduceTrainer::~ShiftReduceTrainer() {
     			delete ptr;
     		delete vec;
     	}
+    BOOST_FOREACH(Ranks * ranks, train_ranks_)
+    	if (ranks)
+        	delete ranks;
     BOOST_FOREACH(Sentence * vec, dev_data_)
 		if (vec){
 			BOOST_FOREACH(FeatureDataBase* ptr, *vec)
 								delete ptr;
 			delete vec;
 		}
+    BOOST_FOREACH(Ranks * ranks, dev_ranks_)
+		if (ranks)
+			delete ranks;
     BOOST_FOREACH(LossBase * loss, losses_)
     	delete loss;
     if(model_) delete model_;

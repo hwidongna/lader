@@ -85,7 +85,7 @@ void DPState::Take(Action action, DPStateVector & result, bool actiongold,
 			// because shifted->inside_ == 0, do not need to add them
 			reduced->inside_ = next->inside_ + shiftcost + reducecost;
 			reduced->score_ = next->score_ + shiftcost + reducecost;
-			delete shifted, next; // intermidiate states
+			delete shifted; delete next; // intermidiate states, c++ syntax sucks!
 			next = reduced;
 			next->action_ = DPState::SHIFT; // it is actuall a shifted state
 		}

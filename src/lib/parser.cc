@@ -100,6 +100,8 @@ void Parser::Search(ReordererModel & model, const FeatureSet & feature_gen,
 				DPStateVector stateseq;
 				old->Take((DPState::Action) action, stateseq, actiongold, m+1,
 						&model, &feature_gen, &sent);
+				if (stateseq.size() > 1)
+					THROW_ERROR("shift-" << m+1 << " produces more than one next state")
 				DPState * next = stateseq.back(); // only one item
 				next->SetSignature(max_state);
 				q.push(next);

@@ -92,20 +92,20 @@ void ShiftReduceTrainer::InitializeModel(const ConfigTrainer & config) {
 }
 
 template <class T>
-void LeavingOneOut(vector<T> & from, vector<T> & to, double threshold = 0.1){
+void MoveRandom(vector<T> & from, vector<T> & to, double ratio){
 	srand(time(0)); // intensionally use same seed across fuction calls
 	to.resize(from.size());
-	bool found = false;
+	bool done = false;
 	for (int i = 0 ; i < from.size() ; i++){
 		double r = ((double) rand() / (RAND_MAX));
-		if (r > threshold)
+		if (r > ratio)
 			continue;
 		to[i] = from[i];
 		from[i] = NULL;
-		found = true;
+		done = true;
 	}
-	if (!found)
-		LeavingOneOut(from, to, threshold); // try again
+	if (!done)
+		MoveRandom(from, to, ratio); // try again
 }
 
 void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
@@ -118,8 +118,8 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
     	ReadAlignments(config.GetString("align_dev"), dev_ranks_, dev_data_);
     }
     else{
-    	LeavingOneOut(train_data_, dev_data_);
-    	LeavingOneOut(train_ranks_, dev_ranks_);
+    	MoveRandom(train_data_, dev_data_, config.GetDouble("ratio_dev"));
+    	MoveRandom(train_ranks_, dev_ranks_, config.GetDouble("ratio_dev"));
     }
     if(config.GetString("parse_in").length())
         ReadParses(config.GetString("parse_in"));

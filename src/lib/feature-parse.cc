@@ -196,6 +196,7 @@ void FeatureParse::GenerateEdgeFeatures(
 void FeatureParse::GenerateStateFeatures(
 								const FeatureDataBase & sent,
 								const DPState & state,
+								const DPState::Action & action,
 								SymbolSet<int> & feature_ids,
 								bool add,
 								FeatureVectorInt & feats) {
@@ -229,7 +230,7 @@ void FeatureParse::GenerateStateFeatures(
 					valid = false;
 				break;
 			case 'a':
-				values << "||" << state.GetAction();
+				values << "||" << action;
 				break;
 			}
 		}

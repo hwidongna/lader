@@ -75,6 +75,7 @@ public:
 	virtual void GenerateStateFeatures(
 								const FeatureDataBase & sentence,
 								const DPState & state,
+								const DPState::Action & action,
 								SymbolSet<int> & feature_ids,
 								bool add,
 								FeatureVectorInt & feats);

@@ -38,6 +38,7 @@ public:
     FeatureVectorInt * MakeStateFeatures(
     		const Sentence & sent,
             const DPState & state,
+            const DPState::Action & action,
             SymbolSet<int> & feature_ids,
             bool add) const;
     // Change an integer-indexed feature vector into a string-indexed vector

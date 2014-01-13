@@ -250,6 +250,7 @@ void FeatureSequence::GenerateEdgeFeatures(
 void FeatureSequence::GenerateStateFeatures(
 								const FeatureDataBase & sent,
 								const DPState & state,
+								const DPState::Action & action,
 								SymbolSet<int> & feature_ids,
 								bool add,
 								FeatureVectorInt & feats) {
@@ -310,7 +311,7 @@ void FeatureSequence::GenerateStateFeatures(
 					values << "||" << sent.GetElement(ptr_state->GetSrcR()-1);
 				break;
 			case 'a':
-				values << "||" << state.GetAction();
+				values << "||" << action;
 				break;
 	        default:
 	        	if (str.length() < 3)

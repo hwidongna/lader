@@ -51,7 +51,7 @@ void DPState::Take(Action action, DPStateVector & result, bool actiongold,
 	double 	actioncost = 0;
 	if (model != NULL && feature_gen != NULL && sent != NULL){
 		const FeatureVectorInt * fvi = feature_gen->MakeStateFeatures(*sent,
-				*this, model->GetFeatureIds(), model->GetAdd());
+				*this, action, model->GetFeatureIds(), model->GetAdd());
 		actioncost = model->ScoreFeatureVector(*fvi);
 		delete fvi;
 	}
@@ -66,7 +66,7 @@ void DPState::Take(Action action, DPStateVector & result, bool actiongold,
 				next->leftptrs_.push_back(this);
 				// TODO: reflect the maxterm information for feature generation
 				const FeatureVectorInt * fvi = feature_gen->MakeStateFeatures(*sent,
-						*next, model->GetFeatureIds(), model->GetAdd());
+						*next, DPState::SHIFT, model->GetFeatureIds(), model->GetAdd());
 				shiftcost = model->ScoreFeatureVector(*fvi);
 				delete fvi;
 			}
@@ -78,7 +78,7 @@ void DPState::Take(Action action, DPStateVector & result, bool actiongold,
 				shifted->leftptrs_.push_back(next);
 				// TODO: reflect the maxterm information for feature generation?
 				const FeatureVectorInt * fvi = feature_gen->MakeStateFeatures(*sent,
-						*shifted, model->GetFeatureIds(), model->GetAdd());
+						*shifted, DPState::STRAIGTH, model->GetFeatureIds(), model->GetAdd());
 				reducecost = model->ScoreFeatureVector(*fvi);
 				delete fvi;
 			}

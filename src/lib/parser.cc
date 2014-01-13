@@ -262,7 +262,7 @@ void Parser::Simulate(ReordererModel & model, const FeatureSet & feature_gen,
 			cerr << *state << endl;
 		if (i++ >= firstdiff){
 			const FeatureVectorInt * fvi = feature_gen.MakeStateFeatures(
-					sent, *state, model.GetFeatureIds(), model.GetAdd());
+					sent, *state, action, model.GetFeatureIds(), model.GetAdd());
 			if (verbose_ >= 2){
 				FeatureVectorString * fvs = model.StringifyFeatureVector(*fvi);
 				BOOST_FOREACH(FeaturePairString feat, *fvs)

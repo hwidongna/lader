@@ -23,11 +23,12 @@ FeatureVectorInt * FeatureSet::MakeEdgeFeatures(
 FeatureVectorInt * FeatureSet::MakeStateFeatures(
 		const Sentence & sent,
         const DPState & state,
+        const DPState::Action & action,
         SymbolSet<int> & feature_ids,
         bool add) const {
     FeatureVectorInt * feats = new FeatureVectorInt;
     for(int i = 0; i < (int)sent.size(); i++)
-        feature_gens_[i]->GenerateStateFeatures(*sent[i], state, feature_ids, add, *feats);
+        feature_gens_[i]->GenerateStateFeatures(*sent[i], state, action, feature_ids, add, *feats);
     return feats;
 }
 

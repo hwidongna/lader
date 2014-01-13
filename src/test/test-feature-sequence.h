@@ -203,11 +203,11 @@ public:
     	feat.ParseConfiguration("Q0%q0,LL0%s0L,RR0%s0R,LR0%l0R,RL0%r0L,T%aT");
     	SymbolSet<int> syms;
     	int n = sent.GetNumWords();
-    	vector<FeatureVectorInt> exp(2*n, FeatureVectorInt());
+    	vector<FeatureVectorInt> exp(2*n-1, FeatureVectorInt());
     	exp[0].push_back(MakePair(syms.GetId("Q0||he",true),1));
     	exp[0].push_back(MakePair(syms.GetId("LL0||<s>",true),1));
     	exp[0].push_back(MakePair(syms.GetId("RR0||<s>",true),1));
-    	exp[0].push_back(MakePair(syms.GetId("T||-1",true),1));
+    	exp[0].push_back(MakePair(syms.GetId("T||0",true),1));
     	exp[1].push_back(MakePair(syms.GetId("Q0||ate",true),1));
     	exp[1].push_back(MakePair(syms.GetId("LL0||he",true),1));
     	exp[1].push_back(MakePair(syms.GetId("RR0||he",true),1));
@@ -219,19 +219,13 @@ public:
     	exp[3].push_back(MakePair(syms.GetId("Q0||</s>",true),1));
 		exp[3].push_back(MakePair(syms.GetId("LL0||rice",true),1));
 		exp[3].push_back(MakePair(syms.GetId("RR0||rice",true),1));
-		exp[3].push_back(MakePair(syms.GetId("T||0",true),1));
+		exp[3].push_back(MakePair(syms.GetId("T||2",true),1));
     	exp[4].push_back(MakePair(syms.GetId("Q0||</s>",true),1));
 		exp[4].push_back(MakePair(syms.GetId("LL0||ate",true),1));
 		exp[4].push_back(MakePair(syms.GetId("RR0||rice",true),1));
 		exp[4].push_back(MakePair(syms.GetId("LR0||ate",true),1));
 		exp[4].push_back(MakePair(syms.GetId("RL0||rice",true),1));
-		exp[4].push_back(MakePair(syms.GetId("T||2",true),1));
-    	exp[5].push_back(MakePair(syms.GetId("Q0||</s>",true),1));
-		exp[5].push_back(MakePair(syms.GetId("LL0||he",true),1));
-		exp[5].push_back(MakePair(syms.GetId("RR0||rice",true),1));
-		exp[5].push_back(MakePair(syms.GetId("LR0||he",true),1));
-		exp[5].push_back(MakePair(syms.GetId("RL0||ate",true),1));
-		exp[5].push_back(MakePair(syms.GetId("T||1",true),1));
+		exp[4].push_back(MakePair(syms.GetId("T||1",true),1));
 		vector<FeatureVectorInt> act(2*n, FeatureVectorInt());
     	DPStateVector stateseq;
     	vector<DPState::Action> refseq = cal.GetReference();
@@ -239,7 +233,7 @@ public:
     	stateseq.push_back(new DPState());
     	for (int step = 1 ; step < 2*n ; step++){
     		DPState * state = stateseq.back();
-    		feat.GenerateStateFeatures(sent, *state, syms, true, act[step-1]);
+    		feat.GenerateStateFeatures(sent, *state, refseq[step-1], syms, true, act[step-1]);
 //    		cerr << "step " << step-1 << ":";
 //    		BOOST_FOREACH(FeaturePairInt f, act[step-1]){
 //    			cerr << " " << syms.GetSymbol(f.first);
@@ -247,7 +241,6 @@ public:
 //    		cerr << endl;
     		state->Take(refseq[step-1], stateseq, true);
     	}
-    	feat.GenerateStateFeatures(sent, *stateseq.back(), syms, true, act[2*n-1]);
     	BOOST_FOREACH(DPState * state, stateseq)
     		delete state;
     	int ret = 1;

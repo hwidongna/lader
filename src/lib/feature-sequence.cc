@@ -291,22 +291,26 @@ void FeatureSequence::GenerateStateFeatures(
 				}
 				break;
 			case 'l':
+				offset = str[1]-'0';
+				ptr_state = &state;
+				for (int j = 0 ; j < offset && ptr_state; j++)
+					ptr_state = ptr_state->GetLeftState();
+				if (!ptr_state || ptr_state->GetAction() == DPState::INIT || ptr_state->GetAction() == DPState::SHIFT)
+					feat_val = 0;
+				else if (str[2] == 'L')
+					values << "||" << sent.GetElement(ptr_state->GetSrcL());
+				else if (str[2] == 'R')
+					values << "||" << sent.GetElement(ptr_state->GetSrcC()-1);
+				break;
 			case 'r':
 				offset = str[1]-'0';
 				ptr_state = &state;
 				for (int j = 0 ; j < offset && ptr_state; j++)
 					ptr_state = ptr_state->GetLeftState();
-				if (!ptr_state || ptr_state->GetAction() == DPState::INIT)
-					feat_val = 0;
-				else if (str[0] == 'l')
-					ptr_state = ptr_state->LeftChild();
-				else if (str[0] == 'r')
-					ptr_state = ptr_state->RightChild();
-				// need to check ptr_state again
-				if (!ptr_state || ptr_state->GetAction() == DPState::INIT)
+				if (!ptr_state || ptr_state->GetAction() == DPState::INIT || ptr_state->GetAction() == DPState::SHIFT)
 					feat_val = 0;
 				else if (str[2] == 'L')
-					values << "||" << sent.GetElement(ptr_state->GetSrcL());
+					values << "||" << sent.GetElement(ptr_state->GetSrcC());
 				else if (str[2] == 'R')
 					values << "||" << sent.GetElement(ptr_state->GetSrcR()-1);
 				break;

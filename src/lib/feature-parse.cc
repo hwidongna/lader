@@ -204,40 +204,51 @@ void FeatureParse::GenerateStateFeatures(
 	// Iterate over each feature
 	BOOST_FOREACH(FeatureTemplate templ, feature_templates_) {
 		ostringstream values; values << templ.second[0];
-		bool valid = true;
+		bool feat_val = 1;
 		for(int i = 1; i < (int)templ.second.size(); i++) {
 			// Choose which span to use
 			int offset;
 			const DPState * ptr_state;
 			switch (templ.second[i][0]) {
 			case 's':
-			case 'l':
-			case 'r':
 				offset = templ.second[i][1]-'0';
 				ptr_state = &state;
 				for (int j = 0 ; j < offset && ptr_state; j++)
 					ptr_state = ptr_state->GetLeftState();
 				if (!ptr_state || ptr_state->GetAction() == DPState::INIT)
-					valid = false;
-				else if (templ.second[i][0] == 'l')
-					ptr_state = ptr_state->LeftChild();
-				else if (templ.second[i][0] == 'r')
-					ptr_state = ptr_state->RightChild();
-				// need to check ptr_state again
-				if (ptr_state && ptr_state->GetAction() != DPState::INIT)
-					values << "||" << tree.GetSpanLabel(ptr_state->GetSrcL(), ptr_state->GetSrcR()-1);
+					feat_val = 0;
 				else
-					valid = false;
+					values << "||" << tree.GetSpanLabel(ptr_state->GetSrcL(), ptr_state->GetSrcR()-1);
+				break;
+			case 'l':
+				offset = templ.second[i][1]-'0';
+				ptr_state = &state;
+				for (int j = 0 ; j < offset && ptr_state; j++)
+					ptr_state = ptr_state->GetLeftState();
+				if (!ptr_state || ptr_state->GetAction() == DPState::INIT || ptr_state->GetAction() == DPState::SHIFT)
+					feat_val = 0;
+				else
+					values << "||" << tree.GetSpanLabel(ptr_state->GetSrcL(), ptr_state->GetSrcC()-1);
+				break;
+			case 'r':
+				offset = templ.second[i][1]-'0';
+				ptr_state = &state;
+				for (int j = 0 ; j < offset && ptr_state; j++)
+					ptr_state = ptr_state->GetLeftState();
+				if (!ptr_state || ptr_state->GetAction() == DPState::INIT || ptr_state->GetAction() == DPState::SHIFT)
+					feat_val = 0;
+				else
+					values << "||" << tree.GetSpanLabel(ptr_state->GetSrcC(), ptr_state->GetSrcR()-1);
 				break;
 			case 'a':
 				values << "||" << action;
 				break;
 			}
 		}
-		if (valid){
+		if (feat_val){
 			int id = feature_ids.GetId(values.str(), add);
 			if(id >= 0)
-				feats.push_back(MakePair(id,valid));
+				feats.push_back(MakePair(id,feat_val));
 		}
 	}
 }

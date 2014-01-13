@@ -64,6 +64,7 @@ public:
 	double GetInside() const { return inside_; }
 	int GetSrcL() const { return src_l_; }
 	int GetSrcR() const { return src_r_; }
+	int GetSrcC() const { return src_c_; }
 	int GetTrgL() const { return trg_l_; }
 	int GetTrgR() const { return trg_r_; }
 	int GetStep() const { return step_; }
@@ -93,8 +94,9 @@ private:
 	DPState * Reduce(DPState * leftstate, Action action);
 	double score_, inside_, shiftcost_;
 	int step_;
-	int src_l_, src_r_; // source span
-	int trg_l_, trg_r_; // target span
+	int src_l_, src_r_;	// source span
+	int src_c_; 		// the split point of subspans if exists, otherwise -1
+	int trg_l_, trg_r_;	// target span
 	vector<Span> signature_; // target spans in the stack (from the top)
 	int rank_;
 	Action action_;

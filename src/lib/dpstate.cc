@@ -87,8 +87,8 @@ void DPState::Take(Action action, DPStateVector & result, bool actiongold,
 			reduced->score_ = next->score_ + shiftcost + reducecost;
 			delete shifted; delete next; // intermidiate states, c++ syntax sucks!
 			next = reduced;
-			next->action_ = DPState::SHIFT; // it is actuall a shifted state
 		}
+		next->action_ = DPState::SHIFT; // it is actuall a shifted state
 		shiftcost_ = actioncost;
 		next->gold_ = gold_ && actiongold;
 		next->leftptrs_.push_back(this);
@@ -122,10 +122,12 @@ void DPState::Take(Action action, DPStateVector & result, bool actiongold,
 DPState * DPState::Shift(){
 	DPState * next = new DPState(step_+1, src_r_, src_r_+1, DPState::SHIFT);
 	next->trg_l_ = src_r_; next->trg_r_ = src_r_+1;
+	next->src_c_ = -1;
 	return next;
 }
 DPState * DPState::Reduce(DPState * leftstate, Action action){
 	DPState * next = new DPState(step_+1, leftstate->src_l_, src_r_, action);
+	next->src_c_ = src_l_;
 	if (action == STRAIGTH){
 		next->trg_l_ = leftstate->trg_l_;		next->trg_r_ = trg_r_;
 	}
@@ -140,6 +142,7 @@ bool DPState::Allow(const Action & action, const int n){
 		return src_r_ < n;
 	DPState * leftstate = GetLeftState();
 	return leftstate && leftstate->action_ != INIT
+			&& action_ != action // for non spurious ambiguity
 			&& (leftstate->src_r_ == src_l_ || src_r_ == leftstate->src_l_);
 }
 

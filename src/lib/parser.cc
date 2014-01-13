@@ -216,9 +216,10 @@ void Parser::Update(vector< DPStateVector > & beams, DPStateVector & golds,
 						cerr << "Early update " << result;
 					return;
 				}
-				earlypos = step;
+				if (earlypos < 0)
+					earlypos = step;
 			}
-			else if (*update == "max"){
+			if (*update == "max"){
 				double mdiff = best->GetScore() - golds[step]->GetScore();
 				if (mdiff >= maxdiff){
 					maxdiff = mdiff;

@@ -225,7 +225,7 @@ void FeatureParse::GenerateStateFeatures(
 				ptr_state = &state;
 				for (int j = 0 ; j < offset && ptr_state; j++)
 					ptr_state = ptr_state->GetLeftState();
-				if (!ptr_state || ptr_state->GetAction() == DPState::INIT || ptr_state->GetAction() == DPState::SHIFT)
+				if (!ptr_state || ptr_state->GetSrcC() < 0)
 					feat_val = 0;
 				else
 					values << "||" << tree.GetSpanLabel(ptr_state->GetSrcL(), ptr_state->GetSrcC()-1);
@@ -235,7 +235,7 @@ void FeatureParse::GenerateStateFeatures(
 				ptr_state = &state;
 				for (int j = 0 ; j < offset && ptr_state; j++)
 					ptr_state = ptr_state->GetLeftState();
-				if (!ptr_state || ptr_state->GetAction() == DPState::INIT || ptr_state->GetAction() == DPState::SHIFT)
+				if (!ptr_state || ptr_state->GetSrcC() < 0)
 					feat_val = 0;
 				else
 					values << "||" << tree.GetSpanLabel(ptr_state->GetSrcC(), ptr_state->GetSrcR()-1);

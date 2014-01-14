@@ -152,7 +152,7 @@ public:
     	return ret;
     }
 
-    int TestShiftM() {
+    int TestShift2() {
     	// Create a combined alignment
 		//  ..x.
 		//  ...x
@@ -228,12 +228,89 @@ public:
     	return ret;
     }
 
+    int TestShift3() {
+    	// Create a combined alignment
+		//  .x..
+		//  ..x.
+		//  ...x
+    	//  x...
+    	vector<string> words(4, "x");
+    	Alignment al(MakePair(4,4));
+    	al.AddAlignment(MakePair(0,1));
+    	al.AddAlignment(MakePair(1,2));
+    	al.AddAlignment(MakePair(2,3));
+    	al.AddAlignment(MakePair(3,0));
+    	Ranks cal;
+    	FeatureDataSequence sent, sent_pos;
+    	cal = Ranks(CombinedAlign(words,al));
+    	// Create a sentence
+    	string str = "let's shift 3 words";
+    	sent.FromString(str);
+    	DPStateVector stateseq;
+    	int n = sent.GetNumWords();
+    	vector<DPState::Action> refseq = cal.GetReference();
+		vector<DPState::Action> exp(2*n-1, DPState::SHIFT);
+		exp[2]=DPState::STRAIGTH, exp[4]=DPState::STRAIGTH, exp[6]=DPState::INVERTED;
+		int ret = 1;
+		ret *= CheckVector(exp, refseq);
+		if (!ret){
+			cerr << "incorrect reference sequence" << endl;
+			return 0;
+		}
+
+    	stateseq.push_back(new DPState());
+    	stateseq.back()->Take(DPState::SHIFT, stateseq, true, 3); // shift-3
+    	stateseq.back()->Take(DPState::SHIFT, stateseq, true);
+    	stateseq.back()->Take(DPState::INVERTED, stateseq, true);
+    	// for a complete tree
+    	DPState * goal = stateseq.back();
+    	if (!goal->IsGold()){
+    		cerr << *goal << endl;
+    		return 0;
+    	}
+    	vector<DPState::Action> act;
+    	goal->AllActions(act);
+    	if (act.size() != 2*n-1){
+    		cerr << "incomplete all actions: size " << act.size() << endl;
+    		return 0;
+    	}
+    	ret *= CheckVector(refseq, act);
+    	if (!ret){
+    		cerr << "incorrect all actions" << endl;
+    		return 0;
+    	}
+    	{ // check reordering
+    		vector<int> act;
+			goal->GetReordering(act);
+			vector<int> exp(n);
+			exp[0]=3, exp[1]=0, exp[2]=1, exp[3]=2;
+			ret *= CheckVector(exp, act);
+			if (!ret){
+				cerr << "incorrect get reordering" << endl;
+				return 0;
+			}
+    	}
+
+    	// for an incomplete tree
+    	act.clear();
+    	goal = stateseq[2];
+    	goal->AllActions(act);
+    	if (act.size() != 2*n-2){
+    		cerr << "incomplete all actions: size " << act.size() << endl;
+    		return 0;
+    	}
+    	BOOST_FOREACH(DPState * state, stateseq)
+    		delete state;
+    	return ret;
+    }
+
     bool RunTest() {
     	int done = 0, succeeded = 0;
     	done++; cout << "TestGetReordering()" << endl; if(TestGetReordering()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestSetSignature()" << endl; if(TestSetSignature()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestAllActions()" << endl; if(TestAllActions()) succeeded++; else cout << "FAILED!!!" << endl;
-    	done++; cout << "TestShfitM()" << endl; if(TestShiftM()) succeeded++; else cout << "FAILED!!!" << endl;
+    	done++; cout << "TestShift2()" << endl; if(TestShift2()) succeeded++; else cout << "FAILED!!!" << endl;
+    	done++; cout << "TestShift3()" << endl; if(TestShift3()) succeeded++; else cout << "FAILED!!!" << endl;
     	cout << "#### TestShiftReduceParser Finished with "<<succeeded<<"/"<<done<<" tests succeeding ####"<<endl;
     	return done == succeeded;
     }

@@ -18,6 +18,7 @@ DPState::DPState() {
 	score_ = 0; inside_ = 0; shiftcost_ = 0;
 	step_ = 0;
 	src_l_ = 0; src_r_ = 0;
+	src_c_ = -1;
 	trg_l_ = 0; trg_r_ = 0;
 	rank_ = -1;
 	action_ = DPState::INIT;
@@ -25,7 +26,7 @@ DPState::DPState() {
 }
 
 // new state
-// set k_ and l_ latter
+// set src_c_, trg_l_ and trg_r_ latter
 DPState::DPState(int step, int i, int j, Action action) {
 	score_ = 0, inside_ = 0, shiftcost_ = 0;
 	step_ = step;
@@ -87,8 +88,8 @@ void DPState::Take(Action action, DPStateVector & result, bool actiongold,
 			reduced->score_ = next->score_ + shiftcost + reducecost;
 			delete shifted; delete next; // intermidiate states, c++ syntax sucks!
 			next = reduced;
+			next->action_ = DPState::SHIFT; // it is actuall a shifted state
 		}
-		next->action_ = DPState::SHIFT; // it is actuall a shifted state
 		shiftcost_ = actioncost;
 		next->gold_ = gold_ && actiongold;
 		next->leftptrs_.push_back(this);
@@ -142,7 +143,6 @@ bool DPState::Allow(const Action & action, const int n){
 		return src_r_ < n;
 	DPState * leftstate = GetLeftState();
 	return leftstate && leftstate->action_ != INIT
-			&& action_ != action // for non spurious ambiguity
 			&& (leftstate->src_r_ == src_l_ || src_r_ == leftstate->src_l_);
 }
 

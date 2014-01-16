@@ -67,7 +67,7 @@ public:
     };
     
     HyperGraph(bool cube_growing = false) : 
-        n_(-1), threads_(1), cube_growing_(cube_growing) { }
+        beam_size_(0), pop_limit_(0), n_(-1), threads_(1), cube_growing_(cube_growing) { }
 
     virtual void Clear() {
 		BOOST_FOREACH(SpanStack * stack, stacks_)

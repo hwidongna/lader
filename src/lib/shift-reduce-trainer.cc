@@ -36,7 +36,7 @@ ShiftReduceTrainer::~ShiftReduceTrainer() {
     BOOST_FOREACH(Sentence * vec, dev_data_)
 		if (vec){
 			BOOST_FOREACH(FeatureDataBase* ptr, *vec)
-								delete ptr;
+				delete ptr;
 			delete vec;
 		}
     BOOST_FOREACH(Ranks * ranks, dev_ranks_)
@@ -109,6 +109,17 @@ int MoveRandom(vector<T> & from, vector<T> & to, double ratio){
 	return count;
 }
 
+template <class T>
+void Merge(vector<T> & to, vector<T> & from){
+//	if (to.size() != from.size())
+//		THROW_ERROR("vector size " << to.size() << " != " << from.size() << endl);
+	for (int i = 0 ; i < to.size() ; i++)
+		if (!to[i] && from[i]){
+			to[i] = from[i];
+			from[i] = NULL;
+		}
+}
+
 void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
     InitializeModel(config);
     ReadData(config.GetString("source_in"), train_data_);
@@ -117,14 +128,6 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
     if(config.GetString("source_dev").length() && config.GetString("align_dev").length()){
     	ReadData(config.GetString("source_dev"), dev_data_);
     	ReadAlignments(config.GetString("align_dev"), dev_ranks_, dev_data_);
-    }
-    else{
-    	int count1 = MoveRandom(train_data_, dev_data_, config.GetDouble("ratio_dev"));
-    	int count2 = MoveRandom(train_ranks_, dev_ranks_, config.GetDouble("ratio_dev"));
-    	if (count1 != count2)
-    		THROW_ERROR("Do not split train set correctly");
-    	cerr << "Split " << train_data_.size() << " train set into "
-    			<< train_data_.size()-count1 << " train and " << count1 << " dev set" << endl;
     }
     if(config.GetString("parse_in").length())
         ReadParses(config.GetString("parse_in"));
@@ -146,13 +149,26 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
         // Shuffle
         if(config.GetBool("shuffle"))
         	random_shuffle(sent_order.begin(), sent_order.end());
+        // Split train and dev set for each iteration
+        if(!(config.GetString("source_dev").length() && config.GetString("align_dev").length())){
+        	int count1, count2;
+        	do{
+        		Merge(train_data_, dev_data_);
+        		Merge(train_ranks_, dev_ranks_);
+        		count1 = MoveRandom(train_data_, dev_data_, config.GetDouble("ratio_dev"));
+        		count2 = MoveRandom(train_ranks_, dev_ranks_, config.GetDouble("ratio_dev"));
+        	} while(count1 != count2 || count1 == train_data_.size());
+			cerr << "Split " << train_data_.size() << " train set into "
+					<< train_data_.size()-count1 << " train and " << count1 << " dev set" << endl;
+        }
+
         int done = 0;
         double iter_nedge = 0, iter_nstate = 0;
         int bad_update = 0, early_update = 0;
         if (verbose >= 1)
         	cerr << "Start training parsing iter " << iter << endl;
         BOOST_FOREACH(int sent, sent_order) {
-        	if (!train_ranks_[sent]) // if leaving-one-out, it would be NULL
+        	if (!train_ranks_[sent]) // it would be NULL
         		continue;
         	if(++done% 100 == 0) cerr << ".";
         	if(done % (100*10) == 0) cerr << done << endl;
@@ -244,7 +260,7 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
         OutputCollector collector;
         vector<Parser::Result> results(dev_data_.size());
 		for (int sent = 0 ; sent < dev_data_.size() ; sent++) {
-			if (!dev_data_[sent] || !dev_ranks_[sent])  // if leaving-one-out, it would be NULL
+			if (!dev_data_[sent] || !dev_ranks_[sent])  // it would be NULL
 				continue;
 			ShiftReduceTask *task = new ShiftReduceTask(sent, *dev_data_[sent],
 					*dev_ranks_[sent], model_, features_, config, results[sent], collector);
@@ -254,8 +270,11 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
 
 		// Calculate the losses
         vector<pair<double,double> > sums(losses_.size(), pair<double,double>(0,0));
+        done = 0;
         for (int sent = 0 ; sent < dev_data_.size() ; sent++) {
-        	if (!dev_data_[sent] || !dev_ranks_[sent])  // if leaving-one-out, it would be NULL
+        	if(++done% 100 == 0) cerr << ".";
+        	if(done % (100*10) == 0) cerr << done << endl;
+        	if (!dev_data_[sent] || !dev_ranks_[sent])  // it would be NULL
         		continue;
         	for(int i = 0; i < (int) losses_.size(); i++) {
         		pair<double,double> my_loss =

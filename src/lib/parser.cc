@@ -236,13 +236,24 @@ void Parser::Update(vector< DPStateVector > & beams, DPStateVector & golds,
 			return;
 		}
 	}
-	DPState * goal = beams.back()[0];
+	SetResult(result, beams.back()[0]);
+}
+
+void Parser::SetResult(Result & result, DPState * goal){
 	goal->GetReordering(result.order);
 	result.step = goal->GetStep();
 	goal->AllActions(result.actions);
 	result.score = goal->GetScore();
 }
-
+void Parser::GetKbestResult(vector<Result> & kbest){
+	int i = 0;
+	BOOST_FOREACH(DPState * state, beams_.back())
+		if (state){
+			Result result;
+			SetResult(result, state);
+			kbest.push_back(result);
+		}
+}
 void Parser::Simulate(ReordererModel & model, const FeatureSet & feature_gen,
 		const vector<DPState::Action> & actions, const Sentence & sent,
 		const int firstdiff, FeatureMapInt & featmap, double c) {

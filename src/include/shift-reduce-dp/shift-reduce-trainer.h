@@ -33,9 +33,9 @@ class ShiftReduceTrainer {
 	public:
 		ShiftReduceTask(int id, const Sentence & data, const Ranks & ranks,
 				ReordererModel * model, FeatureSet * features, const ConfigTrainer& config,
-				Parser::Result & result, OutputCollector & collector) :
+				Parser::Result & result, OutputCollector & collector, vector<Parser::Result> & kbest) :
 					id_(id), data_(data), ranks_(ranks), model_(model), features_(features), config_(config),
-					collector_(collector), result_(result) { }
+					collector_(collector), result_(result), kbest_(kbest) { }
 		void Run(){
 			int verbose = config_.GetInt("verbose");
 			int sent = id_;
@@ -58,6 +58,7 @@ class ShiftReduceTrainer {
 			p.SetBeamSize(config_.GetInt("beam"));
 			p.SetVerbose(config_.GetInt("verbose"));
 			p.Search(*model_, *features_, data_, result_, config_.GetInt("max_state"));
+			p.GetKbestResult(kbest_);
 			if (verbose >= 1){
 				cerr << "Result:   ";
 				for (int step = 0 ; step < (const int)result_.actions.size() ; step++)
@@ -79,6 +80,7 @@ class ShiftReduceTrainer {
 		const ConfigTrainer& config_;
 		Parser::Result & result_;
 		OutputCollector & collector_;
+		vector<Parser::Result> & kbest_;
 	};
 public:
 	ShiftReduceTrainer();

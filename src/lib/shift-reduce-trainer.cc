@@ -259,17 +259,19 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
         ThreadPool pool(config.GetInt("threads"), 1000);
         OutputCollector collector;
         vector<Parser::Result> results(dev_data_.size());
+        vector< vector<Parser::Result> > result_kbests(dev_data_.size());
 		for (int sent = 0 ; sent < dev_data_.size() ; sent++) {
 			if (!dev_data_[sent] || !dev_ranks_[sent])  // it would be NULL
 				continue;
 			ShiftReduceTask *task = new ShiftReduceTask(sent, *dev_data_[sent],
-					*dev_ranks_[sent], model_, features_, config, results[sent], collector);
+					*dev_ranks_[sent], model_, features_, config, results[sent], collector, result_kbests[sent]);
 			pool.Submit(task);
         }
 		pool.Stop(true);
 
 		// Calculate the losses
-        vector<pair<double,double> > sums(losses_.size(), pair<double,double>(0,0));
+        vector<pair<double,double> > sum_losses(losses_.size(), pair<double,double>(0,0));
+        vector<pair<double,double> > sum_losses_kbests(losses_.size(), pair<double,double>(0,0));
         done = 0;
         for (int sent = 0 ; sent < dev_data_.size() ; sent++) {
         	if(++done% 100 == 0) cerr << ".";
@@ -279,8 +281,8 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
         	for(int i = 0; i < (int) losses_.size(); i++) {
         		pair<double,double> my_loss =
         				losses_[i]->CalculateSentenceLoss(results[sent].order,dev_ranks_[sent],NULL);
-        		sums[i].first += my_loss.first;
-        		sums[i].second += my_loss.second;
+        		sum_losses[i].first += my_loss.first;
+        		sum_losses[i].second += my_loss.second;
         		double acc = my_loss.second == 0 ?
         				1 : (1-my_loss.first/my_loss.second);
         		if (verbose >= 1){
@@ -288,18 +290,38 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigTrainer & config) {
         			cerr << losses_[i]->GetName() << "=" << acc
         					<< " (loss "<<my_loss.first<< "/" <<my_loss.second<<")";
         		}
+        		BOOST_FOREACH(Parser::Result & result, result_kbests[sent]){
+            		pair<double,double> loss_k =
+            				losses_[i]->CalculateSentenceLoss(result.order,dev_ranks_[sent],NULL);
+            		double acc_k = loss_k.second == 0 ?
+            				1 : (1-loss_k.first/loss_k.second);
+            		if (acc_k > acc){
+            			acc = acc_k;
+            			my_loss = loss_k;
+            		}
+        		}
+        		sum_losses_kbests[i].first += my_loss.first;
+        		sum_losses_kbests[i].second += my_loss.second;
         	}
         	if (verbose >= 1)
         		cerr << endl;
         }
 		double prec = 0;
-		for(int i = 0; i < (int) sums.size(); i++) {
+		for(int i = 0; i < (int) sum_losses.size(); i++) {
 			if(i != 0) cout << "\t";
 			cout << losses_[i]->GetName() << "="
-					<< (1 - sums[i].first/sums[i].second)
-					<< " (loss "<<sums[i].first/losses_[i]->GetWeight() << "/"
-					<<sums[i].second/losses_[i]->GetWeight()<<")";
-			prec += (1 - sums[i].first/sums[i].second) * losses_[i]->GetWeight();
+					<< (1 - sum_losses[i].first/sum_losses[i].second)
+					<< " (loss "<<sum_losses[i].first/losses_[i]->GetWeight() << "/"
+					<<sum_losses[i].second/losses_[i]->GetWeight()<<")";
+			prec += (1 - sum_losses[i].first/sum_losses[i].second) * losses_[i]->GetWeight();
+		}
+		cout << endl;
+		for(int i = 0; i < (int) sum_losses_kbests.size(); i++) {
+			if(i != 0) cout << "\t";
+			cout << losses_[i]->GetName() << "="
+					<< (1 - sum_losses_kbests[i].first/sum_losses_kbests[i].second)
+					<< " (kbest "<<sum_losses_kbests[i].first/losses_[i]->GetWeight() << "/"
+					<<sum_losses_kbests[i].second/losses_[i]->GetWeight()<<")";
 		}
 		cout << endl;
         cout << "Finished iteration " << iter << ": " << prec << endl;

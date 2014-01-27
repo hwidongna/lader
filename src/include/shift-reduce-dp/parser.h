@@ -29,9 +29,11 @@ public:
 		int step;
 	} Result;
 
+	void SetResult(Result & result, DPState * goal);
 	void Search(ReordererModel & model, const FeatureSet & feature_gen,
 			const Sentence & sent, Result & result, int max_state = 0,
 			vector<DPState::Action> * refseq = NULL, string * update = NULL);
+	void GetKbestResult(vector<Parser::Result> & kbest);
 	void Simulate(ReordererModel & model, const FeatureSet & feature_gen,
 			const vector<DPState::Action> & actions, const Sentence & sent,
 			const int firstdiff, std::tr1::unordered_map<int,double> & featmap, double c);

@@ -33,6 +33,8 @@ void ReordererTask::Run() {
         } else if(outputs_->at(i) == ReordererRunner::OUTPUT_HYPERGRAPH) {
             graph_->PrintHyperGraph(words, oss);
         } else if(outputs_->at(i) == ReordererRunner::OUTPUT_ORDER) {
+        	oss << graph_->GetBest()->GetScore();
+        } else if(outputs_->at(i) == ReordererRunner::OUTPUT_SCORE) {
             for(int j = 0; j < (int)reordering.size(); j++) {
                 if(j != 0) oss << " ";
                 oss << reordering[j];
@@ -95,6 +97,8 @@ void ReordererRunner::InitializeModel(const ConfigRunner & config) {
             outputs_.push_back(OUTPUT_HYPERGRAPH);
         else if(str == "order")
             outputs_.push_back(OUTPUT_ORDER);
+        else if(str == "score")
+        	outputs_.push_back(OUTPUT_SCORE);
         else
             THROW_ERROR("Bad output format '" << str <<"'");
     }

@@ -1,12 +1,12 @@
 /*
  * shift-reduce-runner.h
  *
- *  Created on: Dec 29, 2013
+ *  Created on: Feb 14, 2014
  *      Author: leona
  */
 
-#ifndef SHIFT_REDUCE_RUNNER_H_
-#define SHIFT_REDUCE_RUNNER_H_
+#ifndef SHIFT_REDUCE_KBEST_H_
+#define SHIFT_REDUCE_KBEST_H_
 
 #include <lader/reorderer-runner.h>
 #include <lader/feature-set.h>
@@ -17,7 +17,7 @@ using namespace std;
 namespace lader {
 
 
-class ShiftReduceRunner : public ReordererRunner{
+class ShiftReduceKbest : public ReordererRunner{
 	// A task
 	class ShiftReduceTask : public Task {
 	public:
@@ -34,7 +34,7 @@ class ShiftReduceRunner : public ReordererRunner{
 		    Sentence datas = features_->ParseInput(line_);
 		    // Save the original string
 		    vector<string> words = ((FeatureDataSequence*)datas[0])->GetSequence();
-		    ostringstream ess;
+		    ostringstream oss, ess;
 		    // Build a reordering tree
 		    if (verbose >= 1)
 		    	ess << endl << "Sentence " << sent << endl;
@@ -43,39 +43,44 @@ class ShiftReduceRunner : public ReordererRunner{
 			p.SetVerbose(config_.GetInt("verbose"));
 			Parser::Result result;
 			p.Search(*model_, *features_, datas, result, config_.GetInt("max_state"));
-			if (verbose >= 1){
-				ess << "Result:   ";
-				for (int step = 0 ; step < (const int)result.actions.size() ; step++)
-					ess << " " << result.actions[step];
-				ess << endl;
-				ess << "Purmutation:";
-				BOOST_FOREACH(int order, result.order)
+			vector<Parser::Result> kbest;
+			p.GetKbestResult(kbest);
+			oss << kbest.size() << endl;
+			for (int k = 0 ; k < kbest.size() ; k++){
+				Parser::Result & result = kbest[k];
+				if (verbose >= 1){
+					ess << "Result:   ";
+					for (int step = 0 ; step < (const int)result.actions.size() ; step++)
+						ess << " " << result.actions[step];
+					ess << endl;
+					ess << "Purmutation:";
+					BOOST_FOREACH(int order, result.order)
 					ess << " " << order;
-				ess << endl;
+					ess << endl;
+				}
+				// Reorder
+				std::vector<int> & reordering = result.order;
+				datas[0]->Reorder(reordering);
+				// Print the string
+				for(int i = 0; i < (int)outputs_->size(); i++) {
+					if(i != 0) oss << "\t";
+					if(outputs_->at(i) == ReordererRunner::OUTPUT_STRING) {
+						oss << datas[0]->ToString();
+					} else if(outputs_->at(i) == ReordererRunner::OUTPUT_PARSE) {
+						p.GetKthBest(k)->PrintParse(words, oss);
+					} else if(outputs_->at(i) == ReordererRunner::OUTPUT_ORDER) {
+						for(int j = 0; j < (int)reordering.size(); j++) {
+							if(j != 0) oss << " ";
+							oss << reordering[j];
+						}
+					} else if(outputs_->at(i) == ReordererRunner::OUTPUT_SCORE) {
+						oss << result.score;
+					} else {
+						THROW_ERROR("Unimplemented output format");
+					}
+				}
+				oss << endl;
 			}
-		    // Reorder
-		    std::vector<int> & reordering = result.order;
-		    datas[0]->Reorder(reordering);
-		    // Print the string
-		    ostringstream oss;
-		    for(int i = 0; i < (int)outputs_->size(); i++) {
-		        if(i != 0) oss << "\t";
-		        if(outputs_->at(i) == ReordererRunner::OUTPUT_STRING) {
-		            oss << datas[0]->ToString();
-		        } else if(outputs_->at(i) == ReordererRunner::OUTPUT_PARSE) {
-		            p.GetBest()->PrintParse(words, oss);
-		        } else if(outputs_->at(i) == ReordererRunner::OUTPUT_ORDER) {
-		            for(int j = 0; j < (int)reordering.size(); j++) {
-		                if(j != 0) oss << " ";
-		                oss << reordering[j];
-		            }
-		        } else if(outputs_->at(i) == ReordererRunner::OUTPUT_SCORE) {
-		        	oss << result.score;
-		        } else {
-		            THROW_ERROR("Unimplemented output format");
-		        }
-		    }
-		    oss << endl;
 		    collector_->Write(id_, oss.str(), ess.str());
 		    // Clean up the data
 		    BOOST_FOREACH(FeatureDataBase* data, datas)
@@ -116,4 +121,4 @@ public:
 };
 
 } /* namespace lader */
-#endif /* SHIFT_REDUCE_RUNNER_H_ */
+#endif /* SHIFT_REDUCE_KBEST_H_ */

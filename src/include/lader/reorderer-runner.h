@@ -23,7 +23,8 @@ public:
         OUTPUT_STRING,
         OUTPUT_PARSE,
         OUTPUT_HYPERGRAPH,
-        OUTPUT_ORDER
+        OUTPUT_ORDER,
+        OUTPUT_SCORE,
     } OutputType;
 
     ReordererRunner(): model_(NULL), features_(NULL){ }

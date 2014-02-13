@@ -43,9 +43,12 @@ public:
 	int GetNumStates() const { return nstates_; }
 	int GetNumEdges() const { return nedges_; }
 	DPState * GetBest() const {
+		return GetKthBest(0);
+	}
+	DPState * GetKthBest(int k) const {
 		if (beams_.empty() || beams_.back().empty())
 			THROW_ERROR("Search result is empty!")
-		return beams_.back()[0];
+			return beams_.back()[k];
 	}
 private:
 	void Update(vector< DPStateVector > & beams, DPStateVector & golds,

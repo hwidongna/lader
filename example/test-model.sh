@@ -10,8 +10,18 @@ OUTPUT=output/test.en.reordered
 THREADS=2
 BEAM=1
 VERBOSE=1
-CUBE_GROWING=true
+CUBE_GROWING=false
 
+# define helper function: run a command and print its exit code
+function run () {
+    echo -e "\nrun: $1\n-------------"
+    eval $1
+    local code=$?
+    if [ $code -ne 0 ]; then
+	run "Exit code: $code"
+	exit $code
+    fi
+}
 # This bash file provides an example of how to run lader and evaluate its
 # accuracy. Before using this file, you must run train-model.sh to create
 # the model to be used.
@@ -21,11 +31,9 @@ CUBE_GROWING=true
 #  Like train-model.sh, we need to create annotations for our input sentence.
 #  This is the same as before, so read train-model.sh for more details.
 
-echo "../script/add-classes.pl data/classes.en < data/$TEST_IN > output/$TEST_IN.class"
-../script/add-classes.pl data/classes.en < data/$TEST_IN > output/$TEST_IN.class
+run "../script/add-classes.pl data/classes.en < data/$TEST_IN > output/$TEST_IN.class"
 
-echo "paste data/$TEST_IN output/$TEST_IN.class data/$TEST_IN.pos data/$TEST_IN.parse > $SOURCE_IN"
-paste data/$TEST_IN output/$TEST_IN.class data/$TEST_IN.pos data/$TEST_IN.parse > $SOURCE_IN
+run "paste data/$TEST_IN output/$TEST_IN.class data/$TEST_IN.pos data/$TEST_IN.parse > $SOURCE_IN"
 #############################################################################
 # 3. Running the reorderer
 #
@@ -37,8 +45,7 @@ paste data/$TEST_IN output/$TEST_IN.class data/$TEST_IN.pos data/$TEST_IN.parse 
 # of the reordered words in the original sentence. Let's output all of them
 # for now.
 
-echo "../src/bin/lader -model $MODEL_IN -out_format order,string,parse -threads $THREADS -beam $BEAM -cube_growing $CUBE_GROWING -verbose $VERBOSE -source_in $SOURCE_IN > $OUTPUT 2> $OUTPUT.log"
-../src/bin/lader -model $MODEL_IN -out_format order,string,parse -threads $THREADS -beam $BEAM -cube_growing $CUBE_GROWING -verbose $VERBOSE -source_in $SOURCE_IN > $OUTPUT 2> $OUTPUT.log
+run "../src/bin/lader -model $MODEL_IN -out_format order,string,flatten -threads $THREADS -beam $BEAM -cube_growing $CUBE_GROWING -verbose $VERBOSE -source_in $SOURCE_IN > $OUTPUT 2> $OUTPUT.log"
 
 #############################################################################
 # 4. Evaluating the reordered output
@@ -52,8 +59,7 @@ echo "../src/bin/lader -model $MODEL_IN -out_format order,string,parse -threads 
 # Also note that we need to set -attach-null to the same value that we set
 # during training. (In this case, we'll use the default, "right")
 
-echo "../src/bin/evaluate-lader -attach_null right $ALIGN_IN $OUTPUT data/$TEST_IN $TARGET_IN'' > output/$TEST_IN.grade"
-../src/bin/evaluate-lader -attach_null right $ALIGN_IN $OUTPUT data/$TEST_IN $TARGET_IN'' > output/$TEST_IN.grade
+run "../src/bin/evaluate-lader -attach_null right $ALIGN_IN $OUTPUT data/$TEST_IN $TARGET_IN'' > output/$TEST_IN.grade"
 
 tail -n3 output/$TEST_IN.grade
 	

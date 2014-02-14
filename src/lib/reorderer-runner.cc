@@ -4,10 +4,12 @@
 #include <lader/output-collector.h>
 #include <boost/tokenizer.hpp>
 #include <lader/hyper-graph.h>
+#include <reranker/flat-tree.h>
 
 using namespace lader;
 using namespace std;
 using namespace boost;
+using namespace reranker;
 
 void ReordererTask::Run() {
     int verbose = config_.GetInt("verbose");
@@ -33,12 +35,16 @@ void ReordererTask::Run() {
         } else if(outputs_->at(i) == ReordererRunner::OUTPUT_HYPERGRAPH) {
             graph_->PrintHyperGraph(words, oss);
         } else if(outputs_->at(i) == ReordererRunner::OUTPUT_ORDER) {
-        	oss << graph_->GetBest()->GetScore();
-        } else if(outputs_->at(i) == ReordererRunner::OUTPUT_SCORE) {
             for(int j = 0; j < (int)reordering.size(); j++) {
                 if(j != 0) oss << " ";
                 oss << reordering[j];
             }
+        } else if(outputs_->at(i) == ReordererRunner::OUTPUT_SCORE) {
+        	oss << graph_->GetBest()->GetScore();
+        } else if(outputs_->at(i) == ReordererRunner::OUTPUT_FLATTEN) {
+        	reranker::HypNode dummy(0, words.size(), NULL, HyperEdge::EDGE_ROOT);
+        	reranker::HypNode * root = dummy.Flatten(graph_->GetBest()->GetLeftHyp());
+        	root->PrintParse(words, oss);
         } else {
             THROW_ERROR("Unimplemented output format");
         }
@@ -99,6 +105,8 @@ void ReordererRunner::InitializeModel(const ConfigRunner & config) {
             outputs_.push_back(OUTPUT_ORDER);
         else if(str == "score")
         	outputs_.push_back(OUTPUT_SCORE);
+        else if(str == "flatten")
+        	outputs_.push_back(OUTPUT_FLATTEN);
         else
             THROW_ERROR("Bad output format '" << str <<"'");
     }

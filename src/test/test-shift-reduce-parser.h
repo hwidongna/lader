@@ -13,7 +13,9 @@
 #include <lader/feature-sequence.h>
 #include <lader/feature-data-sequence.h>
 #include <lader/feature-set.h>
+#include <reranker/flat-tree.h>
 #include <fstream>
+using namespace reranker;
 
 namespace lader {
 
@@ -304,6 +306,82 @@ public:
     	return ret;
     }
 
+    int TestFlatten() {
+    	// Create a combined alignment
+		//  .x..
+		//  ..x.
+		//  ...x
+		//  x...
+		vector<string> words(4, "x");
+		Alignment al(MakePair(4,4));
+		al.AddAlignment(MakePair(0,1));
+		al.AddAlignment(MakePair(1,2));
+		al.AddAlignment(MakePair(2,3));
+		al.AddAlignment(MakePair(3,0));
+		Ranks cal;
+		FeatureDataSequence sent, sent_pos;
+		cal = Ranks(CombinedAlign(words,al));
+		// Create a sentence
+		string str = "this has spurious ambiguity";
+		sent.FromString(str);
+		DPStateVector stateseq;
+		int n = sent.GetNumWords();
+		vector<DPState::Action> refseq = cal.GetReference();
+		vector<DPState::Action> exp(2*n-1, DPState::SHIFT);
+		exp[2]=DPState::STRAIGTH, exp[4]=DPState::STRAIGTH, exp[6]=DPState::INVERTED;
+		int ret = 1;
+		ret *= CheckVector(exp, refseq);
+		if (!ret){
+			cerr << "incorrect reference sequence" << endl;
+			return 0;
+		}
+
+		stateseq.push_back(new DPState());
+		for (int step = 1 ; step < 2*n ; step++){
+			DPState * state = stateseq.back();
+			state->Take(refseq[step-1], stateseq, true);
+		}
+		// for a complete tree
+		DPState * goal = stateseq.back();
+		if (!goal->IsGold()){
+			cerr << *goal << endl;
+			return 0;
+		}
+    	DPStateNode dummy(0, n, NULL, DPState::NOP);
+    	DPStateNode * root = dummy.Flatten(goal);
+    	NodeList & children = root->GetChildren();
+    	if ( children.size() != 2 ){
+    		cerr << "root node has " << children.size() << " children != 2" << endl;
+    		return 0;
+    	}
+    	if ( root->GetAction() != DPState::INVERTED ){
+    		cerr << "root node has action " << root->GetAction() << " != " << DPState::INVERTED << endl;
+    		return 0;
+    	}
+
+    	DPStateNode * lchild = dynamic_cast<DPStateNode*> (children.front());
+    	if ( lchild->GetAction() != DPState::STRAIGTH ){
+    		cerr << "lchild has action " << lchild->GetAction() << " != " << DPState::STRAIGTH << endl;
+    		return 0;
+    	}
+    	if ( lchild->GetChildren().size() != 3 ){
+			cerr << "lchild has " << lchild->GetChildren().size() << " != 3" << endl;
+			return 0;
+		}
+    	BOOST_FOREACH(Node * node, lchild->GetChildren()){
+    		DPStateNode * dpnode = dynamic_cast<DPStateNode*> (node);
+			if ( dpnode->GetAction() != DPState::SHIFT ){
+				cerr << "node has action " << dpnode->GetAction() << " != " << DPState::SHIFT << endl;
+				return 0;
+			}
+    	}
+    	DPStateNode * rchild = dynamic_cast<DPStateNode*> (children.back());
+    	if ( rchild->GetAction() != DPState::SHIFT ){
+    		cerr << "rchild has action " << rchild->GetAction() << " != " << DPState::SHIFT << endl;
+    		return 0;
+    	}
+    	return ret;
+    }
     bool RunTest() {
     	int done = 0, succeeded = 0;
     	done++; cout << "TestGetReordering()" << endl; if(TestGetReordering()) succeeded++; else cout << "FAILED!!!" << endl;
@@ -311,6 +389,7 @@ public:
     	done++; cout << "TestAllActions()" << endl; if(TestAllActions()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestShift2()" << endl; if(TestShift2()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestShift3()" << endl; if(TestShift3()) succeeded++; else cout << "FAILED!!!" << endl;
+    	done++; cout << "TestFlatten()" << endl; if(TestFlatten()) succeeded++; else cout << "FAILED!!!" << endl;
     	cout << "#### TestShiftReduceParser Finished with "<<succeeded<<"/"<<done<<" tests succeeding ####"<<endl;
     	return done == succeeded;
     }

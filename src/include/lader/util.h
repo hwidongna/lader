@@ -207,6 +207,22 @@ inline const T & SafeReference(const T * ptr) {
 }
 
 
+inline std::string GetTokenWord(const std::string & str) {
+	std::ostringstream oss;
+    for(int i = 0; i < (int)str.length(); i++) {
+        switch (str[i]) {
+            case '(': oss << "-LRB-"; break;
+            case ')': oss << "-RRB-"; break;
+            case '[': oss << "-LSB-"; break;
+            case ']': oss << "-RSB-"; break;
+            case '{': oss << "-LCB-"; break;
+            case '}': oss << "-RCB-"; break;
+            default: oss << str[i]; break;
+        }
+    }
+    return oss.str();
+}
+
 }  // end namespace
 
 #endif

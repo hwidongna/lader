@@ -6,28 +6,12 @@
  */
 
 
-#include <hypothesis.h>
-#include <target-span.h>
-#include <sstream>
+#include <lader/hypothesis.h>
+#include <lader/target-span.h>
+#include <lader/util.h>
 
 using namespace std;
 using namespace lader;
-
-inline string GetTokenWord(const string & str) {
-    ostringstream oss;
-    for(int i = 0; i < (int)str.length(); i++) {
-        switch (str[i]) {
-            case '(': oss << "-LRB-"; break;
-            case ')': oss << "-RRB-"; break;
-            case '[': oss << "-LSB-"; break;
-            case ']': oss << "-RSB-"; break;
-            case '{': oss << "-LCB-"; break;
-            case '}': oss << "-RCB-"; break;
-            default: oss << str[i]; break;
-        }
-    }
-    return oss.str();
-}
 
 void Hypothesis::PrintChildren( std::ostream& out ) const{
 	if (left_child_ && left_child_->size() > 0){

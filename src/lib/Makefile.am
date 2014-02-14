@@ -8,11 +8,13 @@ LADERCPP = lader.cc hyper-graph.cc combined-alignment.cc alignment.cc \
 
 SRDPCPP = parser.cc dpstate.cc shift-reduce-trainer.cc
 
+RERANKERCPP = flat-tree.cc
+
 AM_CPPFLAGS = -I$(srcdir)/../include $(BOOST_CPPFLAGS)
 AM_LDFLAGS = $(BOOST_LDFLAGS)
 
 
 lib_LTLIBRARIES = liblader.la
 
-liblader_la_SOURCES = ${LADERCPP} ${SRDPCPP}
+liblader_la_SOURCES = ${LADERCPP} ${SRDPCPP} ${RERANKERCPP}
 liblader_la_LDFLAGS = -version-info 0:0:0

@@ -172,7 +172,7 @@ run "../src/bin/train-shift-reduce -cost 1e-3 -attach_null right \
 > output/fold$m/train.out 2> output/fold$m/kbest.log"
 
 run "../src/bin/shift-reduce-kbest -model output/fold$m/train.mod \
--out_format score,parse -threads $THREADS -beam $BEAM -max_state $MAX_STATE \
+-out_format score,flatten -threads $THREADS -beam $BEAM -max_state $MAX_STATE \
 -verbose $VERBOSE -source_in output/train.en.annot.$m \
 > output/fold$m/kbest.out 2> output/fold$m/kbest.log"
 

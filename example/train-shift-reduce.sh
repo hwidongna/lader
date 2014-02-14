@@ -23,6 +23,17 @@ UPDATE=max
 BEAM=10
 MAX_TERM=3
 
+# define helper function: run a command and print its exit code
+function run () {
+    echo -e "\nrun: $1\n-------------"
+    eval $1
+    local code=$?
+    if [ $code -ne 0 ]; then
+	run "Exit code: $code"
+	exit $code
+    fi
+}
+
 # This bash file provides an example of how to train a model for lader.
 # There are a couple steps, some of which are optional.
 #
@@ -48,10 +59,9 @@ MAX_TERM=3
 #   classes. For example, the following command will create a file with the
 #   words in data/train.en annotated with their classes in data/classes.en
 
-echo "../script/add-classes.pl data/classes.en < data/train.en > output/train.en.class"
-../script/add-classes.pl data/classes.en < data/train.en > output/train.en.class
+run "../script/add-classes.pl data/classes.en < data/train.en > output/train.en.class"
 
-#echo "../script/add-classes.pl data/classes.en < data/test.en > output/test.en.class"
+#run "../script/add-classes.pl data/classes.en < data/test.en > output/test.en.class"
 #../script/add-classes.pl data/classes.en < data/test.en > output/test.en.class
 
 #  b) POS tags
@@ -69,8 +79,7 @@ echo "../script/add-classes.pl data/classes.en < data/train.en > output/train.en
 #   only extracts phrases that appear more than once, which can be changed with
 #   the -discount option.)
 
-echo "../script/contiguous-extract.pl data/train.en data/train.ja $ALIGN_IN > output/train.en-ja.pt"
-../script/contiguous-extract.pl data/train.en data/train.ja $ALIGN_IN > output/train.en-ja.pt
+run "../script/contiguous-extract.pl data/train.en data/train.ja $ALIGN_IN > output/train.en-ja.pt"
 
 #############################################################################
 # 2. Combining annotations
@@ -80,10 +89,9 @@ echo "../script/contiguous-extract.pl data/train.en data/train.ja $ALIGN_IN > ou
 # that this, of course, does not apply to the phrase table. We will add this
 # later.
 
-echo "paste data/train.en output/train.en.class data/train.en.pos data/train.en.parse > $SOURCE_IN"
-paste data/train.en output/train.en.class data/train.en.pos data/train.en.parse > $SOURCE_IN
+run "paste data/train.en output/train.en.class data/train.en.pos data/train.en.parse > $SOURCE_IN"
 
-#echo "paste data/test.en output/test.en.class data/test.en.pos data/test.en.parse > $SOURCE_DEV"
+#run "paste data/test.en output/test.en.class data/test.en.pos data/test.en.parse > $SOURCE_DEV"
 #paste data/test.en output/test.en.class data/test.en.pos data/test.en.parse > $SOURCE_DEV
 #############################################################################
 # 3. Training
@@ -125,8 +133,7 @@ paste data/train.en output/train.en.class data/train.en.pos data/train.en.parse 
 # -threads ...	(the number of threads used for parallel feature generation, parallel cube pruning/growing at cell-level
 # -cube_growing ...	(default is false which uses a lazy search)
 
-echo "../src/bin/train-shift-reduce -cost 1e-3 -attach_null right -loss_profile '$LOSS_PROFILE' -feature_profile '$FEATURE_PROFILE' -iterations $ITERATION -threads $THREADS -shuffle $SHUFFLE -verbose $VERBOSE -model_in $MODEL_IN'' -model_out output/train.mod -source_in $SOURCE_IN -align_in $ALIGN_IN -update $UPDATE -source_dev '$SOURCE_DEV' -align_dev '$ALIGN_DEV' -beam $BEAM -max_state $MAX_STATE -max_term $MAX_TERM -verbose $VERBOSE -ratio_dev $RATIO_DEV"
-../src/bin/train-shift-reduce -cost 1e-3 -attach_null right -loss_profile $LOSS_PROFILE -feature_profile $FEATURE_PROFILE -iterations $ITERATION -threads $THREADS -shuffle $SHUFFLE -verbose $VERBOSE -model_in $MODEL_IN'' -model_out output/train.mod -source_in $SOURCE_IN -align_in $ALIGN_IN -update $UPDATE -source_dev $SOURCE_DEV'' -align_dev $ALIGN_DEV'' -beam $BEAM -max_state $MAX_STATE -max_term $MAX_TERM -verbose $VERBOSE -ratio_dev $RATIO_DEV
+run "../src/bin/train-shift-reduce -cost 1e-3 -attach_null right -loss_profile '$LOSS_PROFILE' -feature_profile '$FEATURE_PROFILE' -iterations $ITERATION -threads $THREADS -shuffle $SHUFFLE -verbose $VERBOSE -model_in $MODEL_IN'' -model_out output/train.mod -source_in $SOURCE_IN -align_in $ALIGN_IN -update $UPDATE -source_dev '$SOURCE_DEV' -align_dev '$ALIGN_DEV' -beam $BEAM -max_state $MAX_STATE -max_term $MAX_TERM -verbose $VERBOSE -ratio_dev $RATIO_DEV"
 
 # Once training finishes, a reordering model will be placed in output/train.mod.
 # This can be used in reordering, as described in run-reordering.sh

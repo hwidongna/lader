@@ -25,6 +25,7 @@ public:
         OUTPUT_HYPERGRAPH,
         OUTPUT_ORDER,
         OUTPUT_SCORE,
+        OUTPUT_FLATTEN,
     } OutputType;
 
     ReordererRunner(): model_(NULL), features_(NULL){ }

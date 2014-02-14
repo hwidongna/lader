@@ -12,6 +12,7 @@
 #include <lader/feature-set.h>
 #include <shift-reduce-dp/parser.h>
 #include <lader/feature-data-sequence.h>
+#include <reranker/flat-tree.h>
 
 using namespace std;
 namespace lader {
@@ -71,6 +72,10 @@ class ShiftReduceRunner : public ReordererRunner{
 		            }
 		        } else if(outputs_->at(i) == ReordererRunner::OUTPUT_SCORE) {
 		        	oss << result.score;
+		        } else if(outputs_->at(i) == ReordererRunner::OUTPUT_FLATTEN) {
+		        	reranker::DPStateNode dummy(0, words.size(), NULL, DPState::NOP);
+		        	reranker::DPStateNode * root = dummy.Flatten(p.GetBest());
+		        	root->PrintParse(words, oss);
 		        } else {
 		            THROW_ERROR("Unimplemented output format");
 		        }

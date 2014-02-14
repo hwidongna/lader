@@ -9,6 +9,7 @@
 #include <cstdlib>
 #include <boost/foreach.hpp>
 #include <lader/reorderer-model.h>
+#include <lader/util.h>
 using namespace std;
 
 namespace lader {
@@ -228,22 +229,6 @@ DPState * DPState::RightChild() const{
 	if (action_ == DPState::INIT || action_ == DPState::SHIFT)
 		return NULL;
 	return backptrs_[0].istate;
-}
-
-inline string GetTokenWord(const string & str) {
-    ostringstream oss;
-    for(int i = 0; i < (int)str.length(); i++) {
-        switch (str[i]) {
-            case '(': oss << "-LRB-"; break;
-            case ')': oss << "-RRB-"; break;
-            case '[': oss << "-LSB-"; break;
-            case ']': oss << "-RSB-"; break;
-            case '{': oss << "-LCB-"; break;
-            case '}': oss << "-RCB-"; break;
-            default: oss << str[i]; break;
-        }
-    }
-    return oss.str();
 }
 
 void DPState::PrintParse(const vector<string> & strs, ostream & out) const{

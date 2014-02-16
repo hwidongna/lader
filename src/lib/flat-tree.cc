@@ -88,9 +88,10 @@ void DPStateNode::PrintParse(const vector<string> & strs, ostream & out) const{
 		out << ")";
 		break;
 	case DPState::SHIFT:
-		if (left_ != right_)
-			THROW_ERROR("Invalid node: " << *this << endl)
-		out << "(" << action_ << " " << GetTokenWord(strs[left_]) <<")";
+		out << "(" << action_;
+		for(int i = GetLeft(); i < GetRight(); i++)
+			out << " " << GetTokenWord(strs[i]);
+		out << ")";
 		break;
 	}
 }

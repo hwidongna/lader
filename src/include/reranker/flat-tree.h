@@ -70,7 +70,7 @@ inline ostream& operator << ( ostream& out,
                                    const reranker::DPStateNode & rhs )
 {
     out << rhs.GetAction() << ":"
-    	<< "< " << rhs.GetLeft() << ", " << rhs.GetRight() << ">";
+    	<< "<" << rhs.GetLeft() << ", " << rhs.GetRight() << ">";
     return out;
 }
 
@@ -78,7 +78,7 @@ inline ostream& operator << ( ostream& out,
                                    const reranker::HypNode & rhs )
 {
     out << rhs.GetType() << ":"
-    	<< "< " << rhs.GetLeft() << ", " << rhs.GetRight() << ">";
+    	<< "<" << rhs.GetLeft() << ", " << rhs.GetRight() << ">";
     return out;
 }
 }

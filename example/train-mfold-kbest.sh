@@ -19,7 +19,7 @@ ITERATION=10
 VERBOSE=0
 UPDATE=max
 BEAM=10
-MAX_TERM=3
+MAX_TERM=1
 
 # define helper function: run a command and print its exit code
 function run () {
@@ -96,23 +96,26 @@ LINE_IN=$(wc -l output/train.en.annot | cut -f1 -d ' ')
 LINES=$(python -c "from math import ceil; print int(ceil($LINE_IN.0/$NUM_FOLD))")
 SUFFIX=$(echo $NUM_FOLD | wc -c)
 
+rm -rf output/tmp
+mkdir -p output/tmp
+
 for i in output/train.en.annot $SOURCE_IN $TARGET_IN $ALIGN_IN; do
 
 filename=$(basename "$i")
-rm -f $filename.0*
-split -l $LINES -d -a $SUFFIX $i output/$filename.
+
+split -l $LINES -d -a $SUFFIX $i output/tmp/$filename.
 
 done
 
 FOLD_END=$(echo $NUM_FOLD - 1 | bc)
 for m in $(seq -f "%0"$SUFFIX"g" 0 $FOLD_END); do
 	mkdir -p output/fold$m
-	rm -f output/fold$m/*
 	train=$(seq -f "%0"$SUFFIX"g" 0 $FOLD_END | sed "s/$m//g")
 	for i in output/train.en.annot $SOURCE_IN $TARGET_IN $ALIGN_IN; do
 		filename=$(basename "$i")
+		rm -f output/fold$m/$filename
 		for j in $train; do
-			cat output/$filename.$j >> output/fold$m/$filename
+			cat output/tmp/$filename.$j >> output/fold$m/$filename
 		done
 	done
 	run "../script/contiguous-extract.pl output/fold$m/train.en output/fold$m/train.ja \
@@ -168,12 +171,12 @@ run "../src/bin/train-shift-reduce -cost 1e-3 -attach_null right \
 -model_in $MODEL_IN'' -model_out output/fold$m/train.mod \
 -source_in output/fold$m/train.en.annot -align_in output/fold$m/train.en-ja.align \
 -update $UPDATE -beam $BEAM -max_state $MAX_STATE -max_term $MAX_TERM \
--source_dev output/train.en.annot.$m -align_dev output/train.en-ja.align.$m \
-> output/fold$m/train.out 2> output/fold$m/kbest.log"
+-source_dev output/tmp/train.en.annot.$m -align_dev output/tmp/train.en-ja.align.$m \
+> output/fold$m/train.out 2> output/fold$m/train.log"
 
 run "../src/bin/shift-reduce-kbest -model output/fold$m/train.mod \
 -out_format score,flatten -threads $THREADS -beam $BEAM -max_state $MAX_STATE \
--verbose $VERBOSE -source_in output/train.en.annot.$m \
+-verbose $VERBOSE -source_in output/tmp/train.en.annot.$m \
 > output/fold$m/kbest.out 2> output/fold$m/kbest.log"
 
 done

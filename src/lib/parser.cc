@@ -41,6 +41,7 @@ void Parser::Search(ReordererModel & model, const FeatureSet & feature_gen,
 
 	DPStateVector golds(maxStep, NULL);
 	golds[0] = beams_[0][0]; // initial state
+	DPState::Action actions[] = {DPState::SHIFT, DPState::STRAIGTH, DPState::INVERTED};
 	for (int step = 1 ; step < maxStep ; step++){
 		if (verbose_ >= 2)
 			cerr << "step " << step << endl;
@@ -52,14 +53,14 @@ void Parser::Search(ReordererModel & model, const FeatureSet & feature_gen,
 					cerr << " [" << span.first << ", " << span.second << "]";
 				cerr << endl;
 			}
-			// iterate over actions by abusing enum type
-			for (int action = DPState::SHIFT ; action < DPState::NOP ; action++){
+			// iterate over actions
+			BOOST_FOREACH(DPState::Action action, actions){
 				if (!old->Allow((DPState::Action)action, n))
 					continue;
 				bool actiongold = (refseq != NULL && action == (*refseq)[step-1]);
 				DPStateVector stateseq;
 				// take an action, see below shift-m
-				old->Take((DPState::Action) action, stateseq, actiongold, 1,
+				old->Take(action, stateseq, actiongold, 1,
 						&model, &feature_gen, &sent);
 				BOOST_FOREACH(DPState * next, stateseq){
 					next->SetSignature(max_state);

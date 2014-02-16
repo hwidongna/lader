@@ -44,7 +44,7 @@ DPStateNode * DPStateNode::Flatten(lader::DPState * root){
 HypNode * HypNode::Flatten(lader::Hypothesis * root){
 	if (!root) // just in case
 		return NULL;
-	HypNode * v = new HypNode(root->GetLeft(), root->GetRight(), this, root->GetEdgeType());
+	HypNode * v = new HypNode(root->GetLeft(), root->GetRight()+1, this, root->GetEdgeType());
 	if (!root->IsTerminal()){ // this is non-terminal
 		lader::Hypothesis * lchild = root->GetLeftHyp();
 		if (!lchild)
@@ -72,38 +72,14 @@ HypNode * HypNode::Flatten(lader::Hypothesis * root){
 	return v;
 }
 
-void DPStateNode::PrintParse(const vector<string> & strs, ostream & out) const{
-	switch(action_){
-	case DPState::INIT:
-		break;
-	case DPState::STRAIGTH:
-	case DPState::INVERTED:
-		out << "("<<action_;
-		BOOST_FOREACH(Node * child, children_){
-			if (!child)
-				THROW_ERROR("Invalid children for node " << *this << endl)
-			out << " ";
-			child->PrintParse(strs, out);
-		}
-		out << ")";
-		break;
-	case DPState::SHIFT:
-		out << "(" << action_;
-		for(int i = GetLeft(); i < GetRight(); i++)
-			out << " " << GetTokenWord(strs[i]);
-		out << ")";
-		break;
-	}
-}
-
-void HypNode::PrintParse(const vector<string> & strs, ostream & out) const{
-    if(type_ == HyperEdge::EDGE_FOR || type_ == HyperEdge::EDGE_BAC) {
-        out << "(" << (char)type_;
-        for(int i = GetLeft(); i <= GetRight(); i++)
+void Node::PrintParse(const vector<string> & strs, ostream & out) const{
+    if(IsTerminal()) {
+        out << "(" << GetLabel();
+        for(int i = GetLeft(); i < GetRight(); i++)
             out << " " << GetTokenWord(strs[i]);
         out << ")";
     } else {
-        out << "("<<(char)type_;
+    	out << "(" << GetLabel();
 		BOOST_FOREACH(Node * child, children_){
 			if (!child)
 				THROW_ERROR("Invalid children for node " << *this << endl)

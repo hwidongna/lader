@@ -27,12 +27,12 @@ typedef vector<DPState*> DPStateVector;
 typedef pair<int,int> Span;
 class DPState {
 public:
+	// compatible to the HyperEdge::Type
 	typedef enum{
-		INIT = -1, // do not use except for the initial state
-		SHIFT,
-		STRAIGTH,
-		INVERTED,
-		NOP, // for iteration end point
+		INIT = 'R', // do not use except for the initial state
+		SHIFT = 'F', // forward
+		STRAIGTH = 'S',
+		INVERTED = 'I',
 	} Action;
 
 	typedef struct {

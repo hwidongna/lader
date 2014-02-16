@@ -207,25 +207,25 @@ public:
     	exp[0].push_back(MakePair(syms.GetId("Q0||he",true),1));
     	exp[0].push_back(MakePair(syms.GetId("LL0||<s>",true),1));
     	exp[0].push_back(MakePair(syms.GetId("RR0||<s>",true),1));
-    	exp[0].push_back(MakePair(syms.GetId("T||0",true),1));
+    	exp[0].push_back(MakePair(syms.GetId("T||F",true),1));
     	exp[1].push_back(MakePair(syms.GetId("Q0||ate",true),1));
     	exp[1].push_back(MakePair(syms.GetId("LL0||he",true),1));
     	exp[1].push_back(MakePair(syms.GetId("RR0||he",true),1));
-    	exp[1].push_back(MakePair(syms.GetId("T||0",true),1));
+    	exp[1].push_back(MakePair(syms.GetId("T||F",true),1));
     	exp[2].push_back(MakePair(syms.GetId("Q0||rice",true),1));
 		exp[2].push_back(MakePair(syms.GetId("LL0||ate",true),1));
 		exp[2].push_back(MakePair(syms.GetId("RR0||ate",true),1));
-		exp[2].push_back(MakePair(syms.GetId("T||0",true),1));
+		exp[2].push_back(MakePair(syms.GetId("T||F",true),1));
     	exp[3].push_back(MakePair(syms.GetId("Q0||</s>",true),1));
 		exp[3].push_back(MakePair(syms.GetId("LL0||rice",true),1));
 		exp[3].push_back(MakePair(syms.GetId("RR0||rice",true),1));
-		exp[3].push_back(MakePair(syms.GetId("T||2",true),1));
+		exp[3].push_back(MakePair(syms.GetId("T||I",true),1));
     	exp[4].push_back(MakePair(syms.GetId("Q0||</s>",true),1));
 		exp[4].push_back(MakePair(syms.GetId("LL0||ate",true),1));
 		exp[4].push_back(MakePair(syms.GetId("RR0||rice",true),1));
 		exp[4].push_back(MakePair(syms.GetId("LR0||ate",true),1));
 		exp[4].push_back(MakePair(syms.GetId("RL0||rice",true),1));
-		exp[4].push_back(MakePair(syms.GetId("T||1",true),1));
+		exp[4].push_back(MakePair(syms.GetId("T||S",true),1));
 		vector<FeatureVectorInt> act(2*n, FeatureVectorInt());
     	DPStateVector stateseq;
     	vector<DPState::Action> refseq = cal.GetReference();
@@ -245,7 +245,7 @@ public:
     		delete state;
     	int ret = 1;
     	for (int step = 0 ; step < exp.size() ; step++){
-//    		cout << "step " << step << endl;
+    		cout << "step " << step << endl;
     		ret *= CheckVector(exp[step], act[step]);
     	}
     	return ret;

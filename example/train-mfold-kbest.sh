@@ -19,7 +19,7 @@ ITERATION=10
 VERBOSE=0
 UPDATE=max
 BEAM=10
-MAX_TERM=1
+MAX_TERM=3
 
 # define helper function: run a command and print its exit code
 function run () {

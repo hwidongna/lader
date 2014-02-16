@@ -7,7 +7,7 @@
 
 #ifndef FLAT_TREE_H_
 #define FLAT_TREE_H_
-#include <list>
+#include <vector>
 #include <shift-reduce-dp/dpstate.h>
 #include <lader/hypothesis.h>
 #include <sstream>
@@ -18,7 +18,7 @@ using namespace std;
 namespace reranker {
 
 class Node;
-typedef list<Node*> NodeList;
+typedef vector<Node*> NodeList;
 
 class Node{
 public:
@@ -33,53 +33,51 @@ public:
 	NodeList & GetChildren() { return children_; }
 	int GetLeft()  const { return left_; }
 	int GetRight() const { return right_; }
-	virtual void PrintParse(const vector<string> & strs, ostream & out) const = 0;
+	virtual char GetLabel() const = 0;
+	bool IsTerminal() const { return children_.empty(); }
+	void PrintParse(const vector<string> & strs, ostream & out) const;
 
 
 protected:
-	int left_, right_;
-	Node * parent_;
-	NodeList children_;
+	int left_, right_;	// left (inclusive) and right (exclusive) boundaries
+	Node * parent_;		// parent node
+	NodeList children_;	// children nodes (may be empty)
 };
 
 class DPStateNode : public Node{
+	typedef lader::DPState DPState;
 public:
-	DPStateNode(int left, int right, Node * parent, lader::DPState::Action action) :
+	DPStateNode(int left, int right, Node * parent, DPState::Action action) :
 		Node(left, right, parent), action_(action) { }
 	DPStateNode * Flatten(lader::DPState * root);
-	void PrintParse(const vector<string> & strs, ostream & out) const;
-	lader::DPState::Action GetAction() const { return action_; }
+	virtual char GetLabel() const { return (char)action_; }
+	DPState::Action GetAction() const { return action_; }
 private:
-	lader::DPState::Action action_;
+	DPState::Action action_;
 };
 
 class HypNode : public Node{
+	typedef lader::HyperEdge HyperEdge;
 public:
-	HypNode(int left, int right, Node * parent, lader::HyperEdge::Type type ) :
+	HypNode(int left, int right, Node * parent, HyperEdge::Type type ) :
 			Node(left, right, parent), type_(type) { }
 	HypNode * Flatten(lader::Hypothesis * root);
-	void PrintParse(const vector<string> & strs, ostream & out) const;
-	lader::HyperEdge::Type GetType() const { return type_; }
+	virtual char GetLabel() const { return (char)type_; }
+	HyperEdge::Type GetType() const { return type_; }
+
 private:
-	lader::HyperEdge::Type type_;
+	HyperEdge::Type type_;
 };
 }
 
 namespace std {
 inline ostream& operator << ( ostream& out,
-                                   const reranker::DPStateNode & rhs )
+                                   const reranker::Node & rhs )
 {
-    out << rhs.GetAction() << ":"
+    out << rhs.GetLabel() << ":"
     	<< "<" << rhs.GetLeft() << ", " << rhs.GetRight() << ">";
     return out;
 }
 
-inline ostream& operator << ( ostream& out,
-                                   const reranker::HypNode & rhs )
-{
-    out << rhs.GetType() << ":"
-    	<< "<" << rhs.GetLeft() << ", " << rhs.GetRight() << ">";
-    return out;
-}
 }
 #endif /* FLAT_TREE_H_ */

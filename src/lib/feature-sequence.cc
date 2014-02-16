@@ -315,7 +315,7 @@ void FeatureSequence::GenerateStateFeatures(
 					values << "||" << sent.GetElement(ptr_state->GetSrcR()-1);
 				break;
 			case 'a':
-				values << "||" << action;
+				values << "||" << (char)action;
 				break;
 	        default:
 	        	if (str.length() < 3)

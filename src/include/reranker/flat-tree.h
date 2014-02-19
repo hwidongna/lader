@@ -30,18 +30,33 @@ public:
 				delete node;
 	}
 	void AddChild(Node * child) { children_.push_back(child); }
+	Node * GetChild(int i) { return lader::SafeAccess(children_, i); }
 	NodeList & GetChildren() { return children_; }
 	int GetLeft()  const { return left_; }
 	int GetRight() const { return right_; }
+	Node * GetParent() const { return parent_; }
 	virtual char GetLabel() const = 0;
+	int size() const { return right_ - left_; }
 	bool IsTerminal() const { return children_.empty(); }
-	void PrintParse(const vector<string> & strs, ostream & out) const;
+	bool IsRoot() const { return GetLabel() == 'R'; }
 
+	void GetTerminals(NodeList & terminals) const;
+	void PrintParse(const vector<string> & strs, ostream & out) const;
+	inline void MergeChildren(Node * from);
 
 protected:
 	int left_, right_;	// left (inclusive) and right (exclusive) boundaries
 	Node * parent_;		// parent node
 	NodeList children_;	// children nodes (may be empty)
+};
+
+class GenericNode : public Node{
+public:
+	GenericNode(int left, int right, Node * parent, char label) :
+		Node(left, right, parent), label_(label) { }
+	virtual char GetLabel() const { return label_; }
+protected:
+	char label_;
 };
 
 class DPStateNode : public Node{

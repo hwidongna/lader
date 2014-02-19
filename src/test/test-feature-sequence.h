@@ -245,7 +245,7 @@ public:
     		delete state;
     	int ret = 1;
     	for (int step = 0 ; step < exp.size() ; step++){
-    		cout << "step " << step << endl;
+//    		cout << "step " << step << endl;
     		ret *= CheckVector(exp[step], act[step]);
     	}
     	return ret;

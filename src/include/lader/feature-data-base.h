@@ -23,7 +23,7 @@ public:
 
     // Accessors
     int GetNumWords() const { return sequence_.size(); }
-    const std::vector<std::string> & GetSequence() {
+    const std::vector<std::string> & GetSequence() const {
         return sequence_;
     }
     const std::string & GetElement(int i) const {

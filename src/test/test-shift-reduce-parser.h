@@ -16,6 +16,7 @@
 #include <reranker/flat-tree.h>
 #include <reranker/features.h>
 #include <fstream>
+#include <vector>
 using namespace reranker;
 
 namespace lader {
@@ -353,33 +354,44 @@ public:
     	NodeList & children = root->GetChildren();
     	if ( children.size() != 2 ){
     		cerr << "root node has " << children.size() << " children != 2" << endl;
-    		return 0;
+    		ret = 0;
     	}
-    	if ( root->GetAction() != DPState::INVERTED ){
-    		cerr << "root node has action " << root->GetAction() << " != " << DPState::INVERTED << endl;
+    	if ( root->GetLabel() != (char)DPState::INVERTED ){
+    		cerr << "root node " << root->GetAction() << " != " << (char)DPState::INVERTED << endl;
     		return 0;
     	}
 
-    	DPStateNode * lchild = dynamic_cast<DPStateNode*> (children.front());
-    	if ( lchild->GetAction() != DPState::STRAIGTH ){
-    		cerr << "lchild has action " << lchild->GetAction() << " != " << DPState::STRAIGTH << endl;
-    		return 0;
+    	Node * lchild = children.front();
+    	if ( lchild->GetLabel() != (char)DPState::STRAIGTH ){
+    		cerr << "lchild " << lchild->GetLabel() << " != " << (char)DPState::STRAIGTH << endl;
+    		ret = 0;
+    	}
+    	if ( lchild->GetParent() != root ){
+    		cerr << "incorrect lchild.parent " << *lchild->GetParent() << " != " << *root << endl;
+    		ret = 0;
     	}
     	if ( lchild->GetChildren().size() != 3 ){
-			cerr << "lchild has " << lchild->GetChildren().size() << " != 3" << endl;
-			return 0;
+			cerr << "lchild has " << lchild->GetChildren().size() << " != 3 children" << endl;
+			ret = 0;
 		}
     	BOOST_FOREACH(Node * node, lchild->GetChildren()){
-    		DPStateNode * dpnode = dynamic_cast<DPStateNode*> (node);
-			if ( dpnode->GetAction() != DPState::SHIFT ){
-				cerr << "node has action " << dpnode->GetAction() << " != " << DPState::SHIFT << endl;
-				return 0;
+    		if ( node->GetLabel() != (char)DPState::SHIFT ){
+				cerr << "node " << node->GetLabel() << " != " << (char)DPState::SHIFT << endl;
+				ret = 0;
 			}
+    		if ( node->GetParent() != lchild ){
+    			cerr << "incorrect node.parent " << *node->GetParent() << " != " << *lchild << endl;
+    			ret = 0;
+    		}
     	}
-    	DPStateNode * rchild = dynamic_cast<DPStateNode*> (children.back());
-    	if ( rchild->GetAction() != DPState::SHIFT ){
-    		cerr << "rchild has action " << rchild->GetAction() << " != " << DPState::SHIFT << endl;
-    		return 0;
+    	Node * rchild = children.back();
+    	if ( rchild->GetLabel() != (char)DPState::SHIFT ){
+    		cerr << "rchild " << rchild->GetLabel() << " != " << (char)DPState::SHIFT << endl;
+    		ret = 0;
+    	}
+    	if ( rchild->GetParent() != root ){
+    		cerr << "incorrect rchild.parent " << *rchild->GetParent() << " != " << *root << endl;
+    		ret = 0;
     	}
     	return ret;
     }
@@ -427,8 +439,66 @@ public:
 		}
     	DPStateNode dummy(0, n, NULL, DPState::INIT);
     	DPStateNode * root = dummy.Flatten(goal);
-    	Rule rfeature;
-    	rfeature.Extract(root, sent);
+    	Rule rule;
+    	rule.Extract(root, sent);
+    	if (rule.FeatureName() != "Rule:I-S.F"){
+    		cerr << "incorrect rule feature " << rule.FeatureName() << endl;
+    		ret = 0;
+    	}
+    	Rule parentlexrule;
+    	parentlexrule.SetLexicalized(true, false);
+    	parentlexrule.Extract(root, sent);
+    	if (parentlexrule.FeatureName() != "Rule:I(this,ambiguity)-S.F"){
+    		cerr << "incorrect parent lexicalized rule feature " << parentlexrule.FeatureName() << endl;
+    		ret = 0;
+    	}
+
+    	Rule childlexrule;
+		childlexrule.SetLexicalized(false, true);
+		childlexrule.Extract(root, sent);
+		if (childlexrule.FeatureName() != "Rule:I-S(this,spurious).F(ambiguity,ambiguity)"){
+			cerr << "incorrect child lexicalized rule feature " << childlexrule.FeatureName() << endl;
+			ret = 0;
+		}
+
+		Word word(3);
+		word.Extract(root, sent);
+		word.GetFeature();
+		vector<string> word_exp(4);
+		word_exp[0] = "(this)/S/I"; word_exp[1]="(has)/S/I";
+		word_exp[2]="(spurious)/S/I"; word_exp[3]="(ambiguity)/I/R";
+		ret = CheckVector(word_exp, word.GetFeature());
+		if (!ret)
+			cerr << "incorrect word feature " << endl;
+
+    	NGram ngram(2);
+    	ngram.Extract(root, sent);
+    	vector<string> ngram_exp(3);
+    	ngram_exp[0] = "I-[.S"; ngram_exp[1]="I-S.F"; ngram_exp[2]="I-F.]";
+    	ret = CheckVector(ngram_exp, ngram.GetFeature());
+    	if (!ret)
+    		cerr << "incorrect ngram feature " << ngram.FeatureName() << endl;
+
+    	NodeList terminals;
+    	root->GetTerminals(terminals);
+    	if (terminals.size() != sent.GetNumWords()){
+    		cerr << "incorrect # of terminals " << terminals.size() << " != " << sent.GetNumWords() << endl;
+    		ret = 0;
+    	}
+    	if (root->size() != sent.GetNumWords()){
+    		cerr << "incorect size of root " << root->size() << " != " << sent.GetNumWords() << endl;
+    		ret = 0;
+    	}
+    	NGramTree ngramtree(2);
+    	ngramtree.Extract(root, sent);
+    	vector<string> ngramtree_exp(3);
+    	ngramtree_exp[0] = "(S (F this) (F has))";
+    	ngramtree_exp[1] = "(S (F has) (F spurious))";
+    	ngramtree_exp[2] = "(I (S (F spurious)) (F ambiguity))";
+    	ret = CheckVector(ngramtree_exp, ngramtree.GetFeature());
+    	if (!ret)
+    		cerr << "incorrect ngramtree feature " << ngramtree.FeatureName() << endl;
+
     	return ret;
     }
 

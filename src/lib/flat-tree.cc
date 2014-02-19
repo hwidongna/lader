@@ -10,6 +10,14 @@
 using namespace reranker;
 using namespace lader;
 
+inline void Node::MergeChildren(Node * from){
+	BOOST_FOREACH(Node * node, from->children_){
+		node->parent_ = this;
+		children_.push_back(node);
+	}
+	from->children_.clear();
+	delete from;
+}
 DPStateNode * DPStateNode::Flatten(lader::DPState * root){
 	if (!root) // just in case
 		return NULL;
@@ -18,23 +26,17 @@ DPStateNode * DPStateNode::Flatten(lader::DPState * root){
 		lader::DPState * lchild = root->LeftChild();
 		if (!lchild)
 			THROW_ERROR("NULL left child ")
-			DPStateNode * l = v->Flatten(lchild);
-		if ( l->action_ == v->action_ ){
-			v->children_.insert(v->children_.end(), l->children_.begin(), l->children_.end());
-			l->children_.clear();
-			delete l;
-		}
+		DPStateNode * l = v->Flatten(lchild);
+		if ( l->action_ == v->action_ )
+			v->MergeChildren(l);
 		else
 			v->AddChild(l);
 		lader::DPState * rchild = root->RightChild();
 		if (!rchild)
 			THROW_ERROR("NULL right child")
 		DPStateNode * r = v->Flatten(rchild);
-		if (r->action_ == v->action_ ){
-			v->children_.insert(v->children_.end(), r->children_.begin(), r->children_.end());
-			r->children_.clear();
-			delete r;
-		}
+		if (r->action_ == v->action_ )
+			v->MergeChildren(r);
 		else
 			v->AddChild(r);
 	}
@@ -50,28 +52,30 @@ HypNode * HypNode::Flatten(lader::Hypothesis * root){
 		if (!lchild)
 			THROW_ERROR("NULL left child ")
 		HypNode * l = v->Flatten(lchild);
-		if ( l->type_ == v->type_ ){
-			v->children_.insert(v->children_.end(), l->children_.begin(), l->children_.end());
-			l->children_.clear();
-			delete l;
-		}
+		if ( l->type_ == v->type_ )
+			v->MergeChildren(l);
 		else
 			v->AddChild(l);
 		lader::Hypothesis * rchild = root->GetRightHyp();
 		if (!rchild && root->GetEdgeType())
 			THROW_ERROR("NULL right child")
 		HypNode * r = v->Flatten(rchild);
-		if (r->type_ == v->type_ ){
-			v->children_.insert(v->children_.end(), r->children_.begin(), r->children_.end());
-			r->children_.clear();
-			delete r;
-		}
+		if (r->type_ == v->type_ )
+			v->MergeChildren(r);
 		else
 			v->AddChild(r);
 	}
 	return v;
 }
 
+void Node::GetTerminals(NodeList & terminals) const{
+	BOOST_FOREACH(Node * child, children_){
+		if (child->IsTerminal())
+			terminals.push_back(child);
+		else
+			child->GetTerminals(terminals);
+	}
+}
 void Node::PrintParse(const vector<string> & strs, ostream & out) const{
     if(IsTerminal()) {
         out << "(" << GetLabel();

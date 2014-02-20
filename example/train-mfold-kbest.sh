@@ -179,6 +179,9 @@ run "../src/bin/shift-reduce-kbest -model output/fold$m/train.mod \
 -verbose $VERBOSE -source_in output/tmp/train.en.annot.$m \
 > output/fold$m/kbest.out 2> output/fold$m/kbest.log"
 
+run "../src/bin/train-reranker -threads $THREADS \
+-verbose $VERBOSE -source_in output/fold$m/kbest.out \
+> output/fold$m/features.out 2> output/fold$m/features.log"
 done
 
 # Once training finishes, a reordering model will be placed in output/train.mod.

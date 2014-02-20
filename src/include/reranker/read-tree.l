@@ -24,7 +24,12 @@
 
 using namespace reranker;
 
-#define YY_DECL static GenericNode* readtree_lex()
+typedef struct{
+GenericNode* root;  		/* tree's root node */
+vector<string> words;		/* word sequence at terminal nodes */
+} ReadTreeResult;
+
+#define YY_DECL static ReadTreeResult * readtree_lex()
 %}
 
 /* ROOT  - PTB-style tree root with no label
@@ -37,18 +42,19 @@ using namespace reranker;
 %%
 
 %{
-  GenericNode * root;    /* tree's root node */
   std::stack<GenericNode*> s;  /* stack of tree node ptrs */
-  int i = 0;
+  ReadTreeResult * result = NULL;
+  int i = 0;		
 %}
 
 <ROOT>"("[SIF]		{
 					assert(s.empty()); 
-					root = new GenericNode(readtreetext[1]);
-					s.push(root);
+					result = new ReadTreeResult;
+					result->root = new GenericNode(readtreetext[1]);
+					s.push(result->root);
 					BEGIN(CHILD);
 					}
-<ROOT><<EOF>>		assert(s.empty()); return NULL;
+<ROOT><<EOF>>		assert(s.empty()); return result;
 
 <CHILD>"("[SIF]		{
 					assert(!s.empty()); 
@@ -60,6 +66,7 @@ using namespace reranker;
 					assert(!s.empty());
 					s.top()->SetLeft(i++);
 					s.top()->SetRight(i);
+					result->words.push_back(readtreetext);
 					BEGIN(CHILD);
 					}
 					
@@ -72,23 +79,23 @@ using namespace reranker;
 					}
 					s.pop();
 					if (s.empty())
-						return root;
+						return result;
 					s.top()->AddChild(child);
 					BEGIN(CHILD);
 					}
-
+					
 [ \t]+				/* ignore spaces */
 .					std::cerr << "Unexpected character: " <<  readtreetext << endl;
 
 %%
 
-GenericNode * ParseInput(const string & line)
+ReadTreeResult * ParseInput(const string & line)
 {
 	BEGIN(ROOT);
 	YY_BUFFER_STATE buf = readtree_scan_string(line.c_str());
-	GenericNode * tree = readtree_lex();
+	ReadTreeResult * result = readtree_lex();
 	readtree_delete_buffer(buf);
-	return tree;
+	return result;
 }
 
 #endif

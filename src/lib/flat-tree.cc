@@ -75,6 +75,7 @@ void Node::GetTerminals(NodeList & terminals) const{
 			child->GetTerminals(terminals);
 	}
 }
+
 void Node::PrintParse(const vector<string> & strs, ostream & out) const{
     if(IsTerminal()) {
         out << "(" << GetLabel();
@@ -88,6 +89,24 @@ void Node::PrintParse(const vector<string> & strs, ostream & out) const{
 				THROW_ERROR("Invalid children for node " << *this << endl)
 			out << " ";
 			child->PrintParse(strs, out);
+		}
+		out << ")";
+    }
+}
+
+void Node::PrintParse(ostream & out) const{
+    if(IsTerminal()) {
+        out << "(" << GetLabel();
+        for(int i = GetLeft(); i < GetRight(); i++)
+            out << " " << i;
+        out << ")";
+    } else {
+    	out << "(" << GetLabel();
+		BOOST_FOREACH(Node * child, children_){
+			if (!child)
+				THROW_ERROR("Invalid children for node " << *this << endl)
+			out << " ";
+			child->PrintParse(out);
 		}
 		out << ")";
     }

@@ -23,7 +23,6 @@ protected:
 	Type feature_;
 };
 
-
 class NLogP: public FeatureBase<double>{
 public:
 	NLogP(double value) : value_(value) { }
@@ -41,21 +40,25 @@ private:
 };
 
 
-template <typename Type>
-class TreeFeature: public FeatureBase<Type>{
+class TreeFeature: public FeatureBase< vector<string> >{
 public:
 	TreeFeature() : parent_lexical_(false), child_lexical_(false) { }
 	virtual ~TreeFeature() { }
+	// prefix of feature name, see below
 	virtual string FeatureName() = 0;
-	virtual void Set(FeatureMapInt & feat, SymbolSet<int> & symbols) {
-		string key = FeatureName();
-		int id = symbols.GetId(key, true);
-		FeatureMapInt::iterator it = feat.find(id);
-		if (it == feat.end())
-			feat[id] = 1;
-		else
-			it->second += 1;
-
+	// possibly multiple features
+	virtual void Set(FeatureMapInt & feat, SymbolSet<int> & symbols){
+		ostringstream oss;
+		BOOST_FOREACH(string f, feature_){
+			oss << FeatureName() << ":" << f << std::ends; // using prefix
+			int id = symbols.GetId(oss.str().data(), true);
+			FeatureMapInt::iterator it = feat.find(id);
+			if (it == feat.end())
+				feat[id] = 1;
+			else
+				it->second++;
+			oss.seekp(0);
+		}
 	}
 	void SetLexicalized(bool parent, bool child) {
 		parent_lexical_ = parent;
@@ -66,55 +69,38 @@ protected:
 	bool parent_lexical_;	// whether include lexical information or not in parent
 	bool child_lexical_;	// whether include lexical information or not in child
 };
+
+typedef vector<TreeFeature*> TreeFeatureSet;
+
 // These features come from Charniak and Johnson (ACL-2005) and Collins and Koo (CL-2005)
-class Rule: public TreeFeature<string>{
+class Rule: public TreeFeature{
 	typedef string Feature;
 public:
-	virtual string FeatureName(){
+	virtual string FeatureName() { return "Rule";  }
+	virtual void Extract(Node * root, const lader::FeatureDataBase & sentence){
+		if (root->IsTerminal())
+			return;
 		ostringstream oss;
-		oss << "Rule:" << feature_;
-		return oss.str();
-	}
-	virtual void Extract(Node * node, const lader::FeatureDataBase & sentence){
-		ostringstream oss;
-		oss << node->GetLabel();
+		oss << root->GetLabel();
 		if (parent_lexical_)
-			oss << "(" << sentence.GetElement(node->GetLeft())
-				<< "," << sentence.GetElement(node->GetRight()-1) << ")";
+			oss << "(" << sentence.GetElement(root->GetLeft())
+				<< "," << sentence.GetElement(root->GetRight()-1) << ")";
 		oss << "-";
 		int i = 0;
-		NodeList & children = node->GetChildren();
+		NodeList & children = root->GetChildren();
 		BOOST_FOREACH(Node * child, children){
+			Extract(child, sentence);
 			if (i++ != 0) oss << ".";
 			oss << child->GetLabel();
 			if (child_lexical_)
 				oss << "(" << sentence.GetElement(child->GetLeft())
 					<< "," << sentence.GetElement(child->GetRight()-1) << ")";
 		}
-		feature_ = oss.str();
+		feature_.push_back(oss.str());
 	}
 };
 
-class TreeSequence : public TreeFeature< vector<string> >{
-public:
-	// prefix of feature name, see below
-	virtual string FeatureName() = 0;
-	// possibly multiple features
-	virtual void Set(FeatureMapInt & feat, SymbolSet<int> & symbols){
-		ostringstream oss;
-		BOOST_FOREACH(string f, feature_){
-			oss << FeatureName() << f << std::ends; // using prefix
-			int id = symbols.GetId(oss.str().data(), true);
-			FeatureMapInt::iterator it = feat.find(id);
-			if (it == feat.end())
-				feat[id] = 1;
-			else
-				it->second += 1;
-			oss.seekp(0);
-		}
-	}
-};
-class Word: public TreeSequence{
+class Word: public TreeFeature{
 public:
 	Word(int level) : level_(level) { }
 	virtual string FeatureName() { return "Word"; }
@@ -146,7 +132,7 @@ private:
 	int level_;
 };
 
-class NGram: public TreeSequence{
+class NGram: public TreeFeature{
 public:
 	NGram(int order) : order_(order) { }
 	virtual string FeatureName() { return "NGram"; }

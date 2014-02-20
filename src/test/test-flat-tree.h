@@ -119,36 +119,44 @@ public:
     	return ret;
     }
 
-    int TestFeatures() {
+    int TestExtract() {
     	int ret = 1;
 		int n = sent.GetNumWords();
 		DPStateNode dummy(0, n, NULL, DPState::INIT);
     	DPStateNode * root = dummy.Flatten(goal);
+
     	Rule rule;
     	rule.Extract(root, sent);
-    	if (rule.FeatureName() != "Rule:I-S.F"){
-    		cerr << "incorrect rule feature " << rule.FeatureName() << endl;
-    		ret = 0;
-    	}
+    	vector<string> rule_exp(2);
+    	// postorder traversal
+    	rule_exp[0] = "S-F.F.F";
+    	rule_exp[1] = "I-S.F";
+    	ret = CheckVector(rule_exp, rule.GetFeature());
+    	if (!ret)
+    		cerr << "incorrect rule feature" << endl;
+
     	Rule parentlexrule;
     	parentlexrule.SetLexicalized(true, false);
     	parentlexrule.Extract(root, sent);
-    	if (parentlexrule.FeatureName() != "Rule:I(this,ambiguity)-S.F"){
-    		cerr << "incorrect parent lexicalized rule feature " << parentlexrule.FeatureName() << endl;
-    		ret = 0;
-    	}
+    	vector<string> parent_exp(2);
+    	parent_exp[0] = "S(this,spurious)-F.F.F";
+    	parent_exp[1] = "I(this,ambiguity)-S.F";
+    	ret = CheckVector(parent_exp, parentlexrule.GetFeature());
+    	if (!ret)
+    		cerr << "incorrect parent lexicalized rule" << endl;
 
     	Rule childlexrule;
 		childlexrule.SetLexicalized(false, true);
 		childlexrule.Extract(root, sent);
-		if (childlexrule.FeatureName() != "Rule:I-S(this,spurious).F(ambiguity,ambiguity)"){
-			cerr << "incorrect child lexicalized rule feature " << childlexrule.FeatureName() << endl;
-			ret = 0;
-		}
+		vector<string> child_exp(2);
+		child_exp[0] = "S-F(this,this).F(has,has).F(spurious,spurious)";
+		child_exp[1] = "I-S(this,spurious).F(ambiguity,ambiguity)";
+    	ret = CheckVector(child_exp, childlexrule.GetFeature());
+		if (!ret)
+			cerr << "incorrect child lexicalized rule" << childlexrule.FeatureName() << endl;
 
 		Word word(3);
 		word.Extract(root, sent);
-		word.GetFeature();
 		vector<string> word_exp(4);
 		word_exp[0] = "(this)/S/I"; word_exp[1]="(has)/S/I";
 		word_exp[2]="(spurious)/S/I"; word_exp[3]="(ambiguity)/I/R";
@@ -192,22 +200,81 @@ public:
     	int ret = 1;
     	string line = "(I (S (F this) (F has) (F spurious)) (F ambiguity))";
     	GenericNode dummy('R');
-    	GenericNode * root = ParseInput(line);
-    	dummy.AddChild(root);
+    	ReadTreeResult * result = ParseInput(line);
+    	dummy.AddChild(result->root);
     	ostringstream oss;
-    	root->PrintParse(sent.GetSequence(), oss);
+    	result->root->PrintParse(sent.GetSequence(), oss);
     	if (line != oss.str()){
     		cerr << "ParseInput fails: " << oss.str() << endl;
     		ret = 0;
     	}
+    	ret = CheckVector(sent.GetSequence(), result->words);
+    	if (!ret){
+    		cerr << "ParseWord fails:";
+    		BOOST_FOREACH(string word, result->words)
+    			cerr << " " << word;
+    		cerr << endl;
+    	}
+
+    	string iline = "(I (S (F 0) (F 1) (F 2)) (F 3))";
+    	oss.seekp(0);
+    	result->root->PrintParse(oss);
+    	oss << std::ends;
+    	if (iline != oss.str().data()){
+			cerr << "ParseInput fails: " << oss.str().data() << endl;
+			ret = 0;
+		}
+    	delete result;
     	return ret;
     }
 
+    int TestSet(){
+		int ret = 1;
+		string line = "(I (S (F this) (F has) (F spurious)) (F ambiguity))";
+		GenericNode dummy('R');
+		ReadTreeResult * result = ParseInput(line);
+		dummy.AddChild(result->root);
+
+		Rule rule;
+		rule.Extract(result->root, sent);
+    	vector<string> rule_exp(2);
+    	// postorder traversal
+    	rule_exp[0] = "S-F.F.F";
+    	rule_exp[1] = "I-S.F";
+    	ret = CheckVector(rule_exp, rule.GetFeature());
+    	if (!ret)
+    		cerr << "incorrect rule feature" << endl;
+
+		FeatureMapInt feat;
+		SymbolSet<int> symbols;
+		rule.Set(feat, symbols);
+		if (feat.size() != 2){
+			cerr << "fail to set feature map: size " << feat.size() << " != " << 2 << endl;
+			ret = 0;
+		}
+		FeatureVectorInt feat_exp(2);
+		feat_exp[0] = MakePair(symbols.GetId("Rule:S-F.F.F", true), 1);
+		feat_exp[1] = MakePair(symbols.GetId("Rule:I-S.F", true), 1);
+		BOOST_FOREACH(FeaturePairInt fp, feat_exp){
+			FeatureMapInt::iterator it = feat.find(fp.first);
+			if (it == feat.end()){
+				cerr << "incorrect feature key " << symbols.GetSymbol(fp.first) << endl;
+				ret = 0;
+			}
+			else if (it->second != fp.second){
+				cerr << "incorrect feature value " << fp.second << "!=" << it->second << endl;
+				ret = 0;
+			}
+		}
+		delete result;
+		return ret;
+	}
     bool RunTest() {
     	int done = 0, succeeded = 0;
     	done++; cout << "TestFlatten()" << endl; if(TestFlatten()) succeeded++; else cout << "FAILED!!!" << endl;
-    	done++; cout << "TestFeatures()" << endl; if(TestFeatures()) succeeded++; else cout << "FAILED!!!" << endl;
+    	done++; cout << "TestExtract()" << endl; if(TestExtract()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestParseInput()" << endl; if(TestParseInput()) succeeded++; else cout << "FAILED!!!" << endl;
+    	done++; cout << "TestSet()" << endl; if(TestSet()) succeeded++; else cout << "FAILED!!!" << endl;
     	cout << "#### TestFlatTree Finished with "<<succeeded<<"/"<<done<<" tests succeeding ####"<<endl;
     	return done == succeeded;
     }

@@ -13,6 +13,8 @@ namespace lader {
 class FeatureDataBase {
 public:
     FeatureDataBase() { }
+    FeatureDataBase(std::vector<std::string> sequence) : sequence_(sequence) { }
+
     virtual ~FeatureDataBase() { }
  
     // Reorder the data according to the input vector

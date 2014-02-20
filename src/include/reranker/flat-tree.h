@@ -46,6 +46,7 @@ public:
 
 	void GetTerminals(NodeList & terminals) const;
 	void PrintParse(const vector<string> & strs, ostream & out) const;
+	void PrintParse(ostream & out) const;
 	inline void MergeChildren(Node * from);
 
 protected:

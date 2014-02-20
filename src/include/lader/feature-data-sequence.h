@@ -19,6 +19,7 @@ namespace lader {
 class FeatureDataSequence : public FeatureDataBase {
 public:
     FeatureDataSequence() : FeatureDataBase() { }
+    FeatureDataSequence(std::vector<std::string> sequence) : FeatureDataBase(sequence) { }
     virtual ~FeatureDataSequence() { }
 
     void FromString(const std::string & str) {

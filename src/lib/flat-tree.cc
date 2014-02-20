@@ -11,9 +11,8 @@ using namespace reranker;
 using namespace lader;
 
 inline void Node::MergeChildren(Node * from){
-	BOOST_FOREACH(Node * node, from->children_){
-		node->parent_ = this;
-		children_.push_back(node);
+	BOOST_FOREACH(Node * child, from->children_){
+		AddChild(child);
 	}
 	from->children_.clear();
 	delete from;

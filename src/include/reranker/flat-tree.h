@@ -22,6 +22,7 @@ typedef vector<Node*> NodeList;
 
 class Node{
 public:
+	Node() : left_(0), right_(-1), parent_(NULL) { }
 	Node(int left, int right, Node * parent) :
 		left_(left), right_(right), parent_(parent) { }
 	virtual ~Node(){
@@ -29,12 +30,15 @@ public:
 			if (node)
 				delete node;
 	}
-	void AddChild(Node * child) { children_.push_back(child); }
+	void AddChild(Node * child) { child->parent_ = this; children_.push_back(child); }
 	Node * GetChild(int i) { return lader::SafeAccess(children_, i); }
 	NodeList & GetChildren() { return children_; }
 	int GetLeft()  const { return left_; }
 	int GetRight() const { return right_; }
+	void SetLeft(int left) { left_ = left; }
+	void SetRight(int right) { right_ = right; }
 	Node * GetParent() const { return parent_; }
+	void SetParent(Node * parent) { parent_ = parent; }
 	virtual char GetLabel() const = 0;
 	int size() const { return right_ - left_; }
 	bool IsTerminal() const { return children_.empty(); }
@@ -52,9 +56,11 @@ protected:
 
 class GenericNode : public Node{
 public:
+	GenericNode(char label) : Node(), label_(label) { }
 	GenericNode(int left, int right, Node * parent, char label) :
 		Node(left, right, parent), label_(label) { }
 	virtual char GetLabel() const { return label_; }
+	void SetLabel(char label) { label_ = label; }
 protected:
 	char label_;
 };

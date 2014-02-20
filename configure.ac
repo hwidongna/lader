@@ -66,4 +66,11 @@ AC_CHECK_HEADERS([ext/hash_map])
 # Checks for library functions.
 AC_CHECK_FUNCS([gettimeofday pow sqrt])
 
+# Sometimes Flex is installed as Lex, e.g., NetBSD.
+AC_CHECK_PROG([FLEX], [flex lex], [flex])
+# Force the use of `missing' to wrap Flex invocations.
+AM_MISSING_PROG([LEX], [$FLEX])
+# Perform all the tests Automake and Autoconf need.
+AM_PROG_LEX
+
 AC_OUTPUT

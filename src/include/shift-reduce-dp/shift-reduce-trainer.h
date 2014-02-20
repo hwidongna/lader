@@ -85,11 +85,6 @@ class ShiftReduceTrainer {
 public:
 	ShiftReduceTrainer();
 	virtual ~ShiftReduceTrainer();
-	struct Result{
-		double similarity;
-		FeatureVectorInt deltafeats;
-		int steps;
-	};
 
 	// Initialize the model
 	void InitializeModel(const ConfigTrainer & config);

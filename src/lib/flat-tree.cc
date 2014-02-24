@@ -6,6 +6,7 @@
  */
 #include <reranker/flat-tree.h>
 #include <lader/util.h>
+#include <stack>
 
 using namespace reranker;
 using namespace lader;
@@ -26,7 +27,7 @@ DPStateNode * DPStateNode::Flatten(lader::DPState * root){
 		if (!lchild)
 			THROW_ERROR("NULL left child ")
 		DPStateNode * l = v->Flatten(lchild);
-		if ( l->action_ == v->action_ )
+		if ( l->label_ == v->label_ )
 			v->MergeChildren(l);
 		else
 			v->AddChild(l);
@@ -34,7 +35,7 @@ DPStateNode * DPStateNode::Flatten(lader::DPState * root){
 		if (!rchild)
 			THROW_ERROR("NULL right child")
 		DPStateNode * r = v->Flatten(rchild);
-		if (r->action_ == v->action_ )
+		if (r->label_ == v->label_ )
 			v->MergeChildren(r);
 		else
 			v->AddChild(r);
@@ -51,7 +52,7 @@ HypNode * HypNode::Flatten(lader::Hypothesis * root){
 		if (!lchild)
 			THROW_ERROR("NULL left child ")
 		HypNode * l = v->Flatten(lchild);
-		if ( l->type_ == v->type_ )
+		if ( l->label_ == v->label_ )
 			v->MergeChildren(l);
 		else
 			v->AddChild(l);
@@ -59,7 +60,7 @@ HypNode * HypNode::Flatten(lader::Hypothesis * root){
 		if (!rchild && root->GetEdgeType())
 			THROW_ERROR("NULL right child")
 		HypNode * r = v->Flatten(rchild);
-		if (r->type_ == v->type_ )
+		if (r->label_ == v->label_ )
 			v->MergeChildren(r);
 		else
 			v->AddChild(r);
@@ -110,4 +111,52 @@ void Node::PrintParse(ostream & out) const{
 		}
 		out << ")";
     }
+}
+
+
+GenericNode::ParseResult * GenericNode::ParseInput(const string & line){
+	stack<GenericNode*> s;
+	const char * str = line.c_str();
+	int i = 0;
+	ParseResult * result = NULL;
+	int n = line.size();
+	int begin;
+	for (begin = 0 ; begin < n ;){
+		if (str[begin] == '(' && begin+1 < n
+		&& (str[begin+1] == 'S' || str[begin+1] == 'I' || str[begin+1] == 'F')){
+			GenericNode * root = new GenericNode(str[begin+1]);
+			if (!result){
+				result = new ParseResult;
+				result->root = root;
+			}
+			s.push(root);
+			begin += 2;
+		}
+		else if (str[begin] == ')'){
+			begin++;
+			GenericNode * child = s.top();
+			if (!child->IsTerminal()){
+				child->SetLeft(child->GetChildren().front()->GetLeft());
+				child->SetRight(child->GetChildren().back()->GetRight());
+			}
+			s.pop();
+			if (s.empty())
+				break;
+			s.top()->AddChild(child);
+		}
+		else if (str[begin] != ' '){
+			s.top()->SetLeft(i++);
+			s.top()->SetRight(i);
+			int length = line.find(")", begin)-begin;
+			result->words.push_back(line.substr(begin, length));
+			begin += length;
+		}
+		else if (str[begin] == ' ')
+			begin++;
+		else
+			THROW_ERROR("Unexpected input: " << line << endl);
+	}
+	if (begin < n || !s.empty())
+		THROW_ERROR("Unexpected input: " << line << endl);
+	return result;
 }

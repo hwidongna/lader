@@ -11,7 +11,7 @@
 #include <reranker/config-trainer.h>
 #include <reranker/reranker-trainer.h>
 
-using namespace lader;
+using namespace reranker;
 using namespace std;
 
 int main(int argc, char** argv) {

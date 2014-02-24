@@ -55,40 +55,35 @@ protected:
 	NodeList children_;	// children nodes (may be empty)
 };
 
+
 class GenericNode : public Node{
 public:
+	typedef struct{
+		GenericNode* root;  		/* tree's root node */
+		vector<string> words;		/* word sequence at terminal nodes */
+	} ParseResult;
 	GenericNode(char label) : Node(), label_(label) { }
 	GenericNode(int left, int right, Node * parent, char label) :
 		Node(left, right, parent), label_(label) { }
 	virtual char GetLabel() const { return label_; }
 	void SetLabel(char label) { label_ = label; }
+	ParseResult * ParseInput(const string & line);
 protected:
 	char label_;
 };
 
-class DPStateNode : public Node{
-	typedef lader::DPState DPState;
+class DPStateNode : public GenericNode{
 public:
-	DPStateNode(int left, int right, Node * parent, DPState::Action action) :
-		Node(left, right, parent), action_(action) { }
+	DPStateNode(int left, int right, Node * parent, lader::DPState::Action action) :
+		GenericNode(left, right, parent, (char)action) { }
 	DPStateNode * Flatten(lader::DPState * root);
-	virtual char GetLabel() const { return (char)action_; }
-	DPState::Action GetAction() const { return action_; }
-private:
-	DPState::Action action_;
 };
 
-class HypNode : public Node{
-	typedef lader::HyperEdge HyperEdge;
+class HypNode : public GenericNode{
 public:
-	HypNode(int left, int right, Node * parent, HyperEdge::Type type ) :
-			Node(left, right, parent), type_(type) { }
+	HypNode(int left, int right, Node * parent, lader::HyperEdge::Type type ) :
+		GenericNode(left, right, parent, (char)type) { }
 	HypNode * Flatten(lader::Hypothesis * root);
-	virtual char GetLabel() const { return (char)type_; }
-	HyperEdge::Type GetType() const { return type_; }
-
-private:
-	HyperEdge::Type type_;
 };
 }
 

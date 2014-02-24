@@ -165,24 +165,24 @@ done
 for m in $(seq -f "%0"$SUFFIX"g" 0 $FOLD_END); do
 
 
-run "../src/bin/train-shift-reduce -cost 1e-3 -attach_null right \
--loss_profile '$LOSS_PROFILE' -feature_profile '$FEATURE_PROFILE' \
--iterations $ITERATION -threads $THREADS -shuffle $SHUFFLE -verbose $VERBOSE \
--model_in $MODEL_IN'' -model_out output/fold$m/train.mod \
--source_in output/fold$m/train.en.annot -align_in output/fold$m/train.en-ja.align \
--update $UPDATE -beam $BEAM -max_state $MAX_STATE -max_term $MAX_TERM \
--source_dev output/tmp/train.en.annot.$m -align_dev output/tmp/train.en-ja.align.$m \
-> output/fold$m/train.out 2> output/fold$m/train.log"
+#run "../src/bin/train-shift-reduce -cost 1e-3 -attach_null right \
+#-loss_profile '$LOSS_PROFILE' -feature_profile '$FEATURE_PROFILE' \
+#-iterations $ITERATION -threads $THREADS -shuffle $SHUFFLE -verbose $VERBOSE \
+#-model_in $MODEL_IN'' -model_out output/fold$m/train.mod \
+#-source_in output/fold$m/train.en.annot -align_in output/fold$m/train.en-ja.align \
+#-update $UPDATE -beam $BEAM -max_state $MAX_STATE -max_term $MAX_TERM \
+#-source_dev output/tmp/train.en.annot.$m -align_dev output/tmp/train.en-ja.align.$m \
+#> output/fold$m/train.out 2> output/fold$m/train.log"
 
 run "../src/bin/shift-reduce-kbest -model output/fold$m/train.mod \
 -out_format score,flatten -threads $THREADS -beam $BEAM -max_state $MAX_STATE \
 -verbose $VERBOSE -source_in output/tmp/train.en.annot.$m \
 > output/fold$m/kbest.out 2> output/fold$m/kbest.log"
 
-run "../src/bin/train-reranker -threads $THREADS \
--verbose $VERBOSE -source_in output/fold$m/kbest.out \
-> output/fold$m/features.out 2> output/fold$m/features.log"
 done
 
+run "cat output/fold*/kbest.out | \
+../src/bin/train-reranker -threads $THREADS -verbose $VERBOSE \
+> output/features.out 2> output/features.log"
 # Once training finishes, a reordering model will be placed in output/train.mod.
 # This can be used in reordering, as described in run-reordering.sh

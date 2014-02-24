@@ -156,10 +156,10 @@ public:
 							<< "," << sentence.GetElement(child->GetRight()-1) << ")";
 				}
 			}
-			Node * child = children[i];
 			if ( i == children.size() )
 				oss <<  "]";
 			else{
+				Node * child = children[i];
 				oss << child->GetLabel();
 				if (child_lexical_)
 					oss << "(" << sentence.GetElement(child->GetLeft())

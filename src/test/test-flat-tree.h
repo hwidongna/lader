@@ -15,7 +15,6 @@
 #include <lader/feature-set.h>
 #include <reranker/flat-tree.h>
 #include <reranker/features.h>
-#include <reranker/read-tree.h>
 #include <fstream>
 #include <vector>
 using namespace reranker;
@@ -80,7 +79,7 @@ public:
     		ret = 0;
     	}
     	if ( root->GetLabel() != (char)DPState::INVERTED ){
-    		cerr << "root node " << root->GetAction() << " != " << (char)DPState::INVERTED << endl;
+    		cerr << "root node " << root->GetLabel() << " != " << (char)DPState::INVERTED << endl;
     		return 0;
     	}
 
@@ -200,7 +199,7 @@ public:
     	int ret = 1;
     	string line = "(I (S (F this) (F has) (F spurious)) (F ambiguity))";
     	GenericNode dummy('R');
-    	ReadTreeResult * result = ParseInput(line);
+    	GenericNode::ParseResult * result = dummy.ParseInput(line);
     	dummy.AddChild(result->root);
     	ostringstream oss;
     	result->root->PrintParse(sent.GetSequence(), oss);
@@ -232,7 +231,7 @@ public:
 		int ret = 1;
 		string line = "(I (S (F this) (F has) (F spurious)) (F ambiguity))";
 		GenericNode dummy('R');
-		ReadTreeResult * result = ParseInput(line);
+		GenericNode::ParseResult * result = dummy.ParseInput(line);
 		dummy.AddChild(result->root);
 
 		Rule rule;

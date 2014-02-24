@@ -135,7 +135,7 @@ public:
     		cerr << "incorrect rule feature" << endl;
 
     	Rule parentlexrule;
-    	parentlexrule.SetLexicalized(true, false);
+    	parentlexrule.SetLexical(true, false);
     	parentlexrule.Extract(root, sent);
     	vector<string> parent_exp(2);
     	parent_exp[0] = "S(this,spurious)-F.F.F";
@@ -145,7 +145,7 @@ public:
     		cerr << "incorrect parent lexicalized rule" << endl;
 
     	Rule childlexrule;
-		childlexrule.SetLexicalized(false, true);
+		childlexrule.SetLexical(false, true);
 		childlexrule.Extract(root, sent);
 		vector<string> child_exp(2);
 		child_exp[0] = "S-F(this,this).F(has,has).F(spurious,spurious)";
@@ -245,15 +245,16 @@ public:
     		cerr << "incorrect rule feature" << endl;
 
 		FeatureMapInt feat;
-		SymbolSet<int> symbols;
-		rule.Set(feat, symbols);
+		RerankerModel model;
+		rule.Set(feat, model);
 		if (feat.size() != 2){
 			cerr << "fail to set feature map: size " << feat.size() << " != " << 2 << endl;
 			ret = 0;
 		}
+		SymbolSet<int> & symbols = model.GetFeatureIds();
 		FeatureVectorInt feat_exp(2);
-		feat_exp[0] = MakePair(symbols.GetId("Rule:S-F.F.F", true), 1);
-		feat_exp[1] = MakePair(symbols.GetId("Rule:I-S.F", true), 1);
+		feat_exp[0] = MakePair(symbols.GetId("Rule:S-F.F.F"), 1);
+		feat_exp[1] = MakePair(symbols.GetId("Rule:I-S.F"), 1);
 		BOOST_FOREACH(FeaturePairInt fp, feat_exp){
 			FeatureMapInt::iterator it = feat.find(fp.first);
 			if (it == feat.end()){
@@ -263,6 +264,9 @@ public:
 			else if (it->second != fp.second){
 				cerr << "incorrect feature value " << fp.second << "!=" << it->second << endl;
 				ret = 0;
+			}
+			else if (model.GetCount(it->first) != 1){
+				cerr << "incorrect feature count for key " << symbols.GetSymbol(fp.first) << endl;
 			}
 		}
 		delete result;

@@ -180,9 +180,5 @@ run "../src/bin/shift-reduce-kbest -model output/fold$m/train.mod \
 > output/fold$m/kbest.out 2> output/fold$m/kbest.log"
 
 done
-
-run "cat output/fold*/kbest.out | \
-../src/bin/train-reranker -threads $THREADS -verbose $VERBOSE \
-> output/features.out 2> output/features.log"
 # Once training finishes, a reordering model will be placed in output/train.mod.
 # This can be used in reordering, as described in run-reordering.sh

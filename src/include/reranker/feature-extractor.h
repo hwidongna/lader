@@ -14,7 +14,8 @@
 #include <lader/feature-data-sequence.h>
 #include <lader/output-collector.h>
 #include <reranker/features.h>
-#include <reranker/config-trainer.h>
+#include <reranker/config-extractor.h>
+#include <reranker/reranker-model.h>
 #include <boost/algorithm/string.hpp>
 #include <fstream>
 using namespace std;
@@ -22,16 +23,16 @@ using namespace boost;
 
 namespace reranker{
 
-class RerankerTrainer{
+class FeatureExtractor{
 	// A task
 	class ExtractFeatureTask : public Task {
 	public:
 	    ExtractFeatureTask(int id, const string & line,
-	                  const ConfigTrainer& config,
-	                  SymbolSet<int> & symbols,
+	                  const ConfigExtractor& config,
+	                  RerankerModel & model,
 	                  OutputCollector & collector) :
 	        id_(id), line_(line), config_(config),
-	        symbols_(symbols), collector_(collector) { }
+	        model_(model), collector_(collector) { }
 	    void Run(){
     		ostringstream oss, ess;
 	    	int verbose = config_.GetInt("verbose");
@@ -58,16 +59,16 @@ class RerankerTrainer{
 		    // Extract and set features
 		    FeatureMapInt featmap;
 		    NLogP f0(score);
-		    f0.Set(featmap, symbols_);
+		    f0.Set(featmap, model_);
 	    	TreeFeatureSet features;
 	    	features.push_back(new Rule);
 	    	features.push_back(new Word(config_.GetInt("level")));
 	    	features.push_back(new NGram(config_.GetInt("order")));
 	    	features.push_back(new NGramTree(config_.GetInt("order")));
 		    BOOST_FOREACH(TreeFeature * f, features){
-		    	f->SetLexicalized(config_.GetBool("lexicalize-parent"), config_.GetBool("lexicalize-child"));
+		    	f->SetLexical(config_.GetBool("lexicalize-parent"), config_.GetBool("lexicalize-child"));
 		    	f->Extract(result->root, sent);
-		    	f->Set(featmap, symbols_);
+		    	f->Set(featmap, model_);
 		    }
 		    int i = 0;
 		    BOOST_FOREACH(FeaturePairInt fp, featmap){
@@ -83,13 +84,13 @@ class RerankerTrainer{
 	protected:
 	    int id_;
 	    const string line_;
-	    const ConfigTrainer& config_;
-	    SymbolSet<int> & symbols_;
+	    const ConfigExtractor& config_;
+	    RerankerModel & model_;
 	    OutputCollector & collector_;
 	};
 public:
     // Run the model
-    void Run(const ConfigTrainer & config) {
+    void Run(const ConfigExtractor & config) {
     	// Create the thread pool
     	ThreadPool pool(config.GetInt("threads"), 1000);
     	OutputCollector collector;
@@ -100,17 +101,22 @@ public:
     	if (!sin)
     		cerr << "use stdin for source_in" << endl;
     	int id = 0;
-    	SymbolSet<int> symbols;
+    	RerankerModel model;
     	int done = 0;
     	while(getline(sin != NULL? sin : cin, line)) {
-        	if(++done % 100 == 0) cerr << ".";
-        	if(done % (100*10) == 0) cerr << done << endl;
+        	if(++done % 1000 == 0) cerr << ".";
+        	if(done % (1000*10) == 0) cerr << done << endl;
     		ExtractFeatureTask *task = new ExtractFeatureTask(
-    				id++, line, config, symbols, collector);
+    				id++, line, config, model, collector);
     		pool.Submit(task);
     	}
     	if (sin) sin.close();
     	pool.Stop(true);
+
+    	string model_out = config.GetString("model_out");
+    	ofstream out(model_out.c_str());
+    	model.ToStream(out, config.GetInt("threshold"));
+    	out.close();
     }
 };
 

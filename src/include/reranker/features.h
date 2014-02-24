@@ -9,6 +9,7 @@
 #define FEATURES_H_
 #include <reranker/flat-tree.h>
 #include <boost/foreach.hpp>
+#include <reranker/reranker-model.h>
 using namespace lader;
 
 namespace reranker{
@@ -16,7 +17,7 @@ namespace reranker{
 template <typename Type>
 class FeatureBase{
 public:
-	virtual void Set(FeatureMapInt & feat, SymbolSet<int> & symbols) = 0;
+	virtual void Set(FeatureMapInt & feat, RerankerModel & model) = 0;
 	virtual ~FeatureBase() { }
 	Type & GetFeature() { return feature_; }
 protected:
@@ -26,8 +27,8 @@ protected:
 class NLogP: public FeatureBase<double>{
 public:
 	NLogP(double value) : value_(value) { }
-	virtual void Set(FeatureMapInt & feat, SymbolSet<int> & symbols) {
-		int id = symbols.GetId("NLogP", true);
+	virtual void Set(FeatureMapInt & feat, RerankerModel & model) {
+		int id = model.GetId("NLogP", true);
 		FeatureMapInt::iterator it = feat.find(id);
 		if (it == feat.end())
 			feat[id] = value_;
@@ -47,11 +48,11 @@ public:
 	// prefix of feature name, see below
 	virtual string FeatureName() = 0;
 	// possibly multiple features
-	virtual void Set(FeatureMapInt & feat, SymbolSet<int> & symbols){
+	virtual void Set(FeatureMapInt & feat, RerankerModel & model){
 		ostringstream oss;
 		BOOST_FOREACH(string f, feature_){
 			oss << FeatureName() << ":" << f << std::ends; // using prefix
-			int id = symbols.GetId(oss.str().data(), true);
+			int id = model.GetId(oss.str().data(), true);
 			FeatureMapInt::iterator it = feat.find(id);
 			if (it == feat.end())
 				feat[id] = 1;
@@ -60,7 +61,7 @@ public:
 			oss.seekp(0);
 		}
 	}
-	void SetLexicalized(bool parent, bool child) {
+	void SetLexical(bool parent, bool child) {
 		parent_lexical_ = parent;
 		child_lexical_ = child;
 	}

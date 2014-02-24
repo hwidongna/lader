@@ -8,17 +8,17 @@
 
 
 
-#include <reranker/config-trainer.h>
-#include <reranker/reranker-trainer.h>
+#include <reranker/config-extractor.h>
+#include <reranker/feature-extractor.h>
 
 using namespace reranker;
 using namespace std;
 
 int main(int argc, char** argv) {
     // load the arguments
-    ConfigTrainer conf;
+    ConfigExtractor conf;
     vector<string> args = conf.loadConfig(argc,argv);
     // train the reranker
-    RerankerTrainer runner;
+    FeatureExtractor runner;
     runner.Run(conf);
 }

@@ -69,6 +69,13 @@ public:
     T GetId(const std::string & sym) const {
         return const_cast< SymbolSet<T>* >(this)->GetId(sym,false);
     }
+    void SetId(T id, const std::string & sym) {
+    	map_.insert(MakePair(sym, id));
+    	if (vocab_.size() <= id)
+    		vocab_.resize(id+1, new std::string(sym));
+    	else
+    		vocab_[id] = new std::string(sym);
+    }
     size_t size() const { return vocab_.size() - reuse_.size(); }
     size_t capacity() const { return vocab_.size(); }
     size_t hashCapacity() const { return map_.size(); }

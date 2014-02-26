@@ -5,8 +5,8 @@
  *      Author: leona
  */
 
-#ifndef PERCEPTRON_H_
-#define PERCEPTRON_H_
+#ifndef SHIFT_REDUCE_TRAINER_H_
+#define SHIFT_REDUCE_TRAINER_H_
 
 #include <lader/feature-vector.h>
 #include <shift-reduce-dp/config-trainer.h>
@@ -23,16 +23,17 @@
 #include <lader/thread-pool.h>
 #include <lader/output-collector.h>
 #include <shift-reduce-dp/parser.h>
+#include <lader/reorderer-trainer.h>
 using namespace std;
 
 namespace lader {
 
-class ShiftReduceTrainer {
+class ShiftReduceTrainer : public ReordererTrainer {
 	// A task
 	class ShiftReduceTask : public Task {
 	public:
 		ShiftReduceTask(int id, const Sentence & data, const Ranks & ranks,
-				ReordererModel * model, FeatureSet * features, const ConfigTrainer& config,
+				ReordererModel * model, FeatureSet * features, const ConfigBase& config,
 				Parser::Result & result, OutputCollector & collector, vector<Parser::Result> & kbest) :
 					id_(id), data_(data), ranks_(ranks), model_(model), features_(features), config_(config),
 					collector_(collector), result_(result), kbest_(kbest) { }
@@ -77,54 +78,34 @@ class ShiftReduceTrainer {
 		const Ranks & ranks_;
 		ReordererModel * model_; // The model
 		FeatureSet * features_;  // The mapping on feature ids and which to use
-		const ConfigTrainer& config_;
+		const ConfigBase& config_;
 		Parser::Result & result_;
 		OutputCollector & collector_;
 		vector<Parser::Result> & kbest_;
 	};
 public:
-	ShiftReduceTrainer();
-	virtual ~ShiftReduceTrainer();
+	ShiftReduceTrainer() { }
+	virtual ~ShiftReduceTrainer() {
+	    BOOST_FOREACH(Sentence * vec, dev_data_)
+			if (vec){
+				BOOST_FOREACH(FeatureDataBase* ptr, *vec)
+					delete ptr;
+				delete vec;
+			}
+	    BOOST_FOREACH(Ranks * ranks, dev_ranks_)
+			if (ranks)
+				delete ranks;
+	}
 
-	// Initialize the model
-	void InitializeModel(const ConfigTrainer & config);
-
-	// Read in the data
-	void ReadData(const std::string & source_in, std::vector<Sentence*> & datas);
-
-	// Read in the alignments
-	void ReadAlignments(const std::string & align_in,
-			std::vector<Ranks*> & ranks, std::vector<Sentence*> & datas);
-
-	// Read in the parses
-	void ReadParses(const std::string & align_in);
     // Train the reorderer incrementally, building they hypergraph each time
     // we parse
-    void TrainIncremental(const ConfigTrainer & config);
-
-    // Write the model to a file
-    void WriteModel(const std::string & str) {
-        std::ofstream out(str.c_str());
-        if(!out) THROW_ERROR("Couldn't write model to file " << str);
-        features_->ToStream(out);
-        model_->ToStream(out);
-    }
+    void TrainIncremental(const ConfigBase & config);
 
 private:
-	double learning_rate_;
-	std::vector<Ranks*> train_ranks_; // The alignments to use in training
 	std::vector<Ranks*> dev_ranks_; // The alignments to use in development
-	std::vector<FeatureDataParse> parses_; // The parses to use in training
-	std::vector<LossBase*> losses_; // The loss functions
-	std::vector<Sentence*> train_data_; // The training data
 	std::vector<Sentence*> dev_data_; // The development data
-	FeatureSet* features_;  // The mapping on feature ids and which to use
-	ReordererModel* model_; // The model
-	CombinedAlign::NullHandler attach_; // Where to attach nulls
-	CombinedAlign::BlockHandler combine_; // Whether to combine blocks
-	CombinedAlign::BracketHandler bracket_; // Whether to handle brackets
 
 };
 
 } /* namespace lader */
-#endif /* PERCEPTRON_H_ */
+#endif /* SHIFT_REDUCE_TRAINER_H_ */

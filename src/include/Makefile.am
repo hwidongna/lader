@@ -12,4 +12,5 @@ lader/util.h lader/config.h lader/thread-pool.h lader/output-collector.h \
 shift-reduce-dp/dpstate.h shift-reduce-dp/parser.h shift-reduce-dp/shift-reduce-trainer.h \
 shift-reduce-dp/config-trainer.h shift-reduce-dp/config-runner.h \
 shift-reduce-dp/shift-reduce-runner.h shift-reduce-dp/shift-reduce-kbest.h \
-reranker/flat-tree.h reranker/features.h reranker/feature-extractor.h
+reranker/flat-tree.h reranker/features.h reranker/feature-extractor.h \
+reranker/gold-tree.h

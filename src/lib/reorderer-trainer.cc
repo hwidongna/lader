@@ -13,7 +13,7 @@ namespace fs = ::boost::filesystem;
 
 #define MAX_NUM 0xFF
 
-inline fs::path GetFeaturePath(const ConfigTrainer & config, int sent_num)
+inline fs::path GetFeaturePath(const ConfigBase & config, int sent_num)
 {
     fs::path full_path(config.GetString("features_dir"));
     if (!fs::exists(full_path))
@@ -32,11 +32,11 @@ inline fs::path GetFeaturePath(const ConfigTrainer & config, int sent_num)
     return full_path;
 }
 
-void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
+void ReordererTrainer::TrainIncremental(const ConfigBase & config) {
     InitializeModel(config);
-    ReadData(config.GetString("source_in"));
+    ReadData(config.GetString("source_in"), data_);
     if(config.GetString("align_in").length())
-        ReadAlignments(config.GetString("align_in"));
+        ReadAlignments(config.GetString("align_in"), ranks_, data_);
     if(config.GetString("parse_in").length())
         ReadParses(config.GetString("parse_in"));
     int verbose = config.GetInt("verbose");
@@ -80,15 +80,15 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
             // generate features in parallel
             if (iter == 0 || !config.GetBool("save_features")){
             	clock_gettime(CLOCK_MONOTONIC, &tstart);
-            	ptr_graph->SetAllStacks(data_[sent][0]->GetNumWords());
-            	ptr_graph->SaveAllEdgeFeatures(*model_, *features_, data_[sent]);
+            	ptr_graph->SetAllStacks((*data_[sent])[0]->GetNumWords());
+            	ptr_graph->SaveAllEdgeFeatures(*model_, *features_, (*data_[sent]));
             	clock_gettime(CLOCK_MONOTONIC, &tend);
             	generate.tv_sec += tend.tv_sec - tstart.tv_sec;
             	generate.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
             }
             // stack was cleared if the features are stored on disk
             else if (!config.GetString("features_dir").empty()){
-            	ptr_graph->SetAllStacks(data_[sent][0]->GetNumWords());
+            	ptr_graph->SetAllStacks((*data_[sent])[0]->GetNumWords());
             	clock_gettime(CLOCK_MONOTONIC, &tstart);
             	ifstream in(GetFeaturePath(config, sent).c_str());
             	ptr_graph->FeaturesFromStream(in);
@@ -102,21 +102,21 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
             // Make the hypergraph using cube pruning/growing
 			ptr_graph->BuildHyperGraph(*model_,
                                         *features_,
-                                        data_[sent]);
+                                        (*data_[sent]));
 			clock_gettime(CLOCK_MONOTONIC, &tend);
 			build.tv_sec += tend.tv_sec - tstart.tv_sec;
 			build.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
 			// Add losses to the hypotheses in the hypergraph
 			BOOST_FOREACH(LossBase * loss, losses_)
 				ptr_graph->AddLoss(loss,
-					sent < (int)ranks_.size() ? &ranks_[sent] : NULL,
+					sent < (int)ranks_.size() ? ranks_[sent] : NULL,
 					sent < (int)parses_.size() ? &parses_[sent] : NULL);
 			// Parse the hypergraph, penalizing loss heavily (oracle)
 			clock_gettime(CLOCK_MONOTONIC, &tstart);
 			oracle_score = ptr_graph->Rescore(*model_, -1e6);
 			feat_map.clear();
 			ptr_graph->AccumulateFeatures(feat_map, *model_, *features_,
-							data_[sent],
+							(*data_[sent]),
 							ptr_graph->GetRoot());
 			oracle_features.clear();
 			ClearAndSet(oracle_features, feat_map);
@@ -133,7 +133,7 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 			model_score -= model_loss * 1;
 			feat_map.clear();
 			ptr_graph->AccumulateFeatures(feat_map, *model_, *features_,
-							data_[sent],
+							(*data_[sent]),
 							ptr_graph->GetRoot());
 			ClearAndSet(model_features, feat_map);
 			clock_gettime(CLOCK_MONOTONIC, &tend);
@@ -150,22 +150,22 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
 				}
 				cout << endl;
 				for(int i = 0; i < (int)order.size(); i++) {
-					if(i != 0) cout << " "; cout << data_[sent][0]->GetElement(order[i]);
+					if(i != 0) cout << " "; cout << (*data_[sent])[0]->GetElement(order[i]);
 				}
 				cout << endl;
 				for(int i = 0; i < (int)order.size(); i++) {
-					if(i != 0) cout << " "; cout << ranks_[sent][i];
+					if(i != 0) cout << " "; cout << (*ranks_[sent])[i];
 				}
 				cout << endl;
 				// --- DEBUG: check both losses match ---
 				double sent_loss = 0;
 				BOOST_FOREACH(LossBase * loss, losses_)
 					sent_loss += loss->CalculateSentenceLoss(order,
-									sent < (int)ranks_.size() ? &ranks_[sent] : NULL,
+									sent < (int)ranks_.size() ? ranks_[sent] : NULL,
 									sent < (int)parses_.size() ? &parses_[sent] : NULL).first;
 				if(sent_loss != model_loss){
 					ostringstream out;
-					vector<string> words = ((FeatureDataSequence*)data_[sent][0])->GetSequence();
+					vector<string> words = ((FeatureDataSequence*)(*data_[sent])[0])->GetSequence();
 		            ptr_graph->GetBest()->PrintParse(words, out);
 					cerr << "sent=" << sent << " sent_loss="<< sent_loss <<" != model_loss="<<model_loss << endl;
 		            cerr << out.str() << endl;
@@ -226,7 +226,7 @@ void ReordererTrainer::TrainIncremental(const ConfigTrainer & config) {
     }
 }
 
-void ReordererTrainer::InitializeModel(const ConfigTrainer & config) {
+void ReordererTrainer::InitializeModel(const ConfigBase & config) {
     srand(time(NULL));
     ofstream model_out(config.GetString("model_out").c_str());
     if(!model_out)
@@ -253,6 +253,9 @@ void ReordererTrainer::InitializeModel(const ConfigTrainer & config) {
     combine_ = config.GetBool("combine_blocks") ? 
                 CombinedAlign::COMBINE_BLOCKS :
                 CombinedAlign::LEAVE_BLOCKS_AS_IS;
+    bracket_ = config.GetBool("combine_brackets") ?
+    			CombinedAlign::ALIGN_BRACKET_SPANS :
+    			CombinedAlign::LEAVE_BRACKETS_AS_IS;
     model_->SetCost(config.GetDouble("cost"));
     std::vector<std::string> losses, first_last;
     algorithm::split(
@@ -269,18 +272,31 @@ void ReordererTrainer::InitializeModel(const ConfigTrainer & config) {
     }
 }
 
-void ReordererTrainer::ReadAlignments(const std::string & align_in) {
+void ReordererTrainer::ReadData(const std::string & source_in,
+		std::vector<Sentence*> & datas){
+	std::ifstream in(source_in.c_str());
+	if(!in) THROW_ERROR("Could not open source file: "
+			<<source_in);
+	std::string line;
+	datas.clear();
+	while(getline(in, line))
+		datas.push_back(new Sentence(features_->ParseInput(line)));
+}
+
+void ReordererTrainer::ReadAlignments(const std::string & align_in,
+		std::vector<Ranks*> & ranks, std::vector<Sentence*> & datas) {
     std::ifstream in(align_in.c_str());
-    if(!in) THROW_ERROR("Could not open alignment file (-align_in): "
+    if(!in) THROW_ERROR("Could not open alignment file: "
                             <<align_in);
     std::string line;
     int i = 0;
     while(getline(in, line))
-        ranks_.push_back(
-            Ranks(CombinedAlign(SafeAccess(data_,i++)[0]->GetSequence(),
+        ranks.push_back(new
+            Ranks(CombinedAlign((*SafeAccess(datas,i++))[0]->GetSequence(),
                                 Alignment::FromString(line),
                                 attach_, combine_, bracket_)));
 }
+
 
 void ReordererTrainer::ReadParses(const std::string & parse_in) {
     std::ifstream in(parse_in.c_str());

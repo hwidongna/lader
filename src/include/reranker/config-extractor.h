@@ -26,6 +26,7 @@ public:
 );
 
         AddConfigEntry("source_in", "", "The input file for the source sentences");
+        AddConfigEntry("gold_in", "", "The gold-standard file for the source sentences");
         AddConfigEntry("model_out", "", "An output file for the model");
         AddConfigEntry("lexicalize-parent", "false", "Whether to lexicalize parent node");
         AddConfigEntry("lexicalize-child", "false", "Whether to lexicalize child node");

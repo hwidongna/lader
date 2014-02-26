@@ -76,9 +76,9 @@ public:
 				}
 				// for a complete tree
 				DPState * goal = stateseq.back();
-				DPStateNode dummy(0, n, NULL, DPState::INIT);
-				dummy.AddChild(dummy.Flatten(goal));
-				dummy.PrintParse((*data_[sent])[0]->GetSequence(), cout);
+				DPStateNode root(0, n, NULL, DPState::INIT);
+				root.AddChild(root.Flatten(goal));
+				root.PrintParse((*data_[sent])[0]->GetSequence(), cout);
 			}
 			cout << endl;
 		}

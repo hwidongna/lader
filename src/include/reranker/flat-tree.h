@@ -44,16 +44,25 @@ public:
 	bool IsTerminal() const { return children_.empty(); }
 	bool IsRoot() const { return GetLabel() == 'R'; }
 
-	void GetTerminals(NodeList & terminals) const;
+	void GetTerminals(NodeList & result) const;
+	void GetNonTerminals(NodeList & result) ;
 	void PrintParse(const vector<string> & strs, ostream & out) const;
 	void PrintParse(ostream & out) const;
 	inline void MergeChildren(Node * from);
+	int NumEdges();
 
+	virtual bool operator==(const Node & rhs) const{
+		return left_ == rhs.left_ && right_ == rhs.right_;
+	}
+
+	static int Intersection(Node * t1, Node * t2);
 protected:
 	int left_, right_;	// left (inclusive) and right (exclusive) boundaries
 	Node * parent_;		// parent node
 	NodeList children_;	// children nodes (may be empty)
 };
+
+
 
 
 class GenericNode : public Node{
@@ -67,7 +76,11 @@ public:
 		Node(left, right, parent), label_(label) { }
 	virtual char GetLabel() const { return label_; }
 	void SetLabel(char label) { label_ = label; }
-	ParseResult * ParseInput(const string & line);
+	static ParseResult * ParseInput(const string & line);
+	virtual bool operator==(const Node & rhs) const {
+		const GenericNode * gnode = dynamic_cast<const GenericNode*>(&rhs);
+		return Node::operator ==(rhs) && gnode && label_ == gnode->label_;
+	}
 protected:
 	char label_;
 };

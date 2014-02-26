@@ -5,6 +5,9 @@ SOURCE_IN=data/train.en
 TARGET_IN=data/train.ja
 ALIGN_IN=data/train.en-ja.align
 
+SOURCE_DEV=output/test.en.annot
+ALIGN_DEV=data/test.en-ja.align
+
 THRESHOLD=5
 THREADS=4
 VERBOSE=0
@@ -21,7 +24,9 @@ function run () {
 }
 
 
+run "cat output/fold*/gold.out > output/gold.out"
 run "cat output/fold*/kbest.out | \
 ../src/bin/extract-feature -threads $THREADS -verbose $VERBOSE \
--model_out output/feature.model -threshold $THRESHOLD \
+-gold_in output/gold.out -model_out output/feature.model \
+-threshold $THRESHOLD \
 > output/features.out 2> output/features.log"

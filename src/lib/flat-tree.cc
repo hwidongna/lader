@@ -18,6 +18,15 @@ inline void Node::MergeChildren(Node * from){
 	from->children_.clear();
 	delete from;
 }
+
+int Node::NumEdges(){
+	int count = children_.empty() ? 0 : 1;
+	BOOST_FOREACH(Node * child, children_){
+		count += child->NumEdges();
+	}
+	return count;
+
+}
 DPStateNode * DPStateNode::Flatten(lader::DPState * root){
 	if (!root) // just in case
 		return NULL;
@@ -68,13 +77,42 @@ HypNode * HypNode::Flatten(lader::Hypothesis * root){
 	return v;
 }
 
-void Node::GetTerminals(NodeList & terminals) const{
+void Node::GetTerminals(NodeList & result) const{
 	BOOST_FOREACH(Node * child, children_){
 		if (child->IsTerminal())
-			terminals.push_back(child);
+			result.push_back(child);
 		else
-			child->GetTerminals(terminals);
+			child->GetTerminals(result);
 	}
+}
+
+void Node::GetNonTerminals(NodeList & result) {
+	result.push_back(this);
+	BOOST_FOREACH(Node * child, children_){
+		if (!child->IsTerminal()){
+			child->GetNonTerminals(result);
+		}
+	}
+}
+
+int Node::Intersection(Node * t1, Node * t2){
+	int count = 0;
+	NodeList e1, e2;
+	t1->GetNonTerminals(e1); t2->GetNonTerminals(e2);
+	NodeList::iterator v1 = e1.begin(), v2 = e2.begin();
+	while (v1 != e1.end() && v2 != e2.end()){
+		const Node & n1 = SafeReference(*v1);
+		const Node & n2 = SafeReference(*v2);
+		if (n1 == n2){
+			count++;
+			v1++; v2++;
+		}
+		else if (n1.GetLeft() < n2.GetLeft())
+			v1++;
+		else
+			v2++;
+	}
+	return count;
 }
 
 void Node::PrintParse(const vector<string> & strs, ostream & out) const{
@@ -123,7 +161,7 @@ GenericNode::ParseResult * GenericNode::ParseInput(const string & line){
 	int begin;
 	for (begin = 0 ; begin < n ;){
 		if (str[begin] == '(' && begin+1 < n
-		&& (str[begin+1] == 'S' || str[begin+1] == 'I' || str[begin+1] == 'F')){
+		&& (str[begin+1] == 'R' || str[begin+1] == 'S' || str[begin+1] == 'I' || str[begin+1] == 'F')){
 			GenericNode * root = new GenericNode(str[begin+1]);
 			if (!result){
 				result = new ParseResult;

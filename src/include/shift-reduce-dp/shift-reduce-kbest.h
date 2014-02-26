@@ -77,9 +77,9 @@ class ShiftReduceKbest : public ReordererRunner{
 					} else if(outputs_->at(i) == ReordererRunner::OUTPUT_SCORE) {
 						oss << result.score;
 					} else if(outputs_->at(i) == ReordererRunner::OUTPUT_FLATTEN) {
-						reranker::DPStateNode dummy(0, words.size(), NULL, DPState::INIT);
-						reranker::DPStateNode * root = dummy.Flatten(p.GetKthBest(k));
-						root->PrintParse(words, oss);
+						reranker::DPStateNode root(0, words.size(), NULL, DPState::INIT);
+						root.AddChild(root.Flatten(p.GetKthBest(k)));
+						root.PrintParse(words, oss);
 					} else {
 						THROW_ERROR("Unimplemented output format");
 					}

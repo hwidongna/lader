@@ -198,9 +198,7 @@ public:
     int TestParseInput(){
     	int ret = 1;
     	string line = "(I (S (F this) (F has) (F spurious)) (F ambiguity))";
-    	GenericNode dummy('R');
-    	GenericNode::ParseResult * result = dummy.ParseInput(line);
-    	dummy.AddChild(result->root);
+    	GenericNode::ParseResult * result = GenericNode::ParseInput(line);
     	ostringstream oss;
     	result->root->PrintParse(sent.GetSequence(), oss);
     	if (line != oss.str()){
@@ -223,6 +221,7 @@ public:
 			cerr << "ParseInput fails: " << oss.str().data() << endl;
 			ret = 0;
 		}
+    	delete result->root;
     	delete result;
     	return ret;
     }
@@ -230,9 +229,7 @@ public:
     int TestSet(){
 		int ret = 1;
 		string line = "(I (S (F this) (F has) (F spurious)) (F ambiguity))";
-		GenericNode dummy('R');
-		GenericNode::ParseResult * result = dummy.ParseInput(line);
-		dummy.AddChild(result->root);
+		GenericNode::ParseResult * result = GenericNode::ParseInput(line);
 
 		Rule rule;
 		rule.Extract(result->root, sent);
@@ -269,15 +266,46 @@ public:
 				cerr << "incorrect feature count for key " << symbols.GetSymbol(fp.first) << endl;
 			}
 		}
+		delete result->root;
 		delete result;
 		return ret;
 	}
+
+    int TestIntersection(){
+    	int ret = 1, count;
+		string line1 = "(I (S (F this) (F has) (F spurious)) (F ambiguity))";
+		GenericNode::ParseResult * result1 = GenericNode::ParseInput(line1);
+		NodeList nonterminals;
+		result1->root->GetNonTerminals(nonterminals);
+		if (nonterminals.size() != result1->root->NumEdges()){
+			cerr << "different # nonteriminals: " << nonterminals.size() << " != " << result1->root->NumEdges();
+			ret = 0;
+		}
+		count = Node::Intersection(result1->root, result1->root);
+		if (count != result1->root->NumEdges()){
+			cerr << "incorrect intersection: " << count << " != " << result1->root->NumEdges();
+			ret= 0;
+		}
+//		string line2 = "(S (S (F this) (F has) (F spurious)) (F ambiguity))"; // one label is different
+//		GenericNode::ParseResult * result2 = GenericNode::ParseInput(line2);
+//		if (result1->root->NumEdges() != result2->root->NumEdges()){
+//			cerr << "different # edges: " << result1->root->NumEdges() << " != " << result2->root->NumEdges();
+//			ret = 0;
+//		}
+//		count = Intersection(result1->root, result2->root);
+//		if (count != result2->root->NumEdges()-1){
+//			cerr << "incorrect intersection: " << count << " != " << result2->root->NumEdges()-1;
+//			ret= 0;
+//		}
+		return ret;
+    }
     bool RunTest() {
     	int done = 0, succeeded = 0;
     	done++; cout << "TestFlatten()" << endl; if(TestFlatten()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestExtract()" << endl; if(TestExtract()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestParseInput()" << endl; if(TestParseInput()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestSet()" << endl; if(TestSet()) succeeded++; else cout << "FAILED!!!" << endl;
+    	done++; cout << "TestIntersection()" << endl; if(TestIntersection()) succeeded++; else cout << "FAILED!!!" << endl;
     	cout << "#### TestFlatTree Finished with "<<succeeded<<"/"<<done<<" tests succeeding ####"<<endl;
     	return done == succeeded;
     }

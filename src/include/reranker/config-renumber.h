@@ -24,7 +24,7 @@ public:
 "~~~ train-reranker ~~~\n"
 "  by Hwidong Na\n"
 "\n"
-"Trains a discriminative model for machine translation reordering using shift-reduce algorithm.\n"
+"Renumber the feature ids and discard features with occurence below threshold\n"
 );
 
         AddConfigEntry("source_in", "", "The input file for the source sentences");

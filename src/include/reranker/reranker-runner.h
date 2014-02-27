@@ -1,12 +1,12 @@
 /*
- * feature-extractor.h
+ * reranker-runner.h
  *
- *  Created on: Feb 19, 2014
+ *  Created on: Feb 27, 2014
  *      Author: leona
  */
 
-#ifndef FEATURE_EXTRACTOR_H_
-#define FEATURE_EXTRACTOR_H_
+#ifndef RERANKER_RUNNER_H_
+#define RERANKER_RUNNER_H_
 
 #include <lader/feature-data-sequence.h>
 #include <reranker/features.h>
@@ -22,15 +22,21 @@ using namespace boost;
 
 namespace reranker{
 
-class FeatureExtractor{
+class RerankerResult {
 public:
-	virtual ~FeatureExtractor(){
-		BOOST_FOREACH(Node * node, golds_)
-			if (node)
-				delete node;
+	double score;
+	GenericNode::ParseResult * parse;
+	bool operator < (const RerankerResult & rhs) const{
+		return score < rhs.score;
+	}
+};
+
+class RerankerRunner{
+
+public:
+	virtual ~RerankerRunner(){
 		delete model_;
 	}
-    // Run the model
     void Run(const ConfigBase & config) {
     	string line;
     	string source_in = config.GetString("source_in");
@@ -39,25 +45,16 @@ public:
     		cerr << "use stdin for source_in" << endl;
     	int verbose = config.GetInt("verbose");
 
-    	ReadModel(config.GetString("model_in"));
-    	int count = ReadGold(config.GetString("gold_in"));
-    	cout << "S=" << count << endl;
-    	int id = 0;
+    	ReadModelAndWeights(config.GetString("model_in"), config.GetString("weights"));
     	for (int sent = 0 ; getline(sin != NULL? sin : cin, line) ; sent++){
         	if(sent && sent % 1000 == 0) cerr << ".";
         	if(sent && sent % (1000*10) == 0) cerr << sent << endl;
         	int numParses;
         	istringstream iss(line);
         	iss >> numParses;
-        	Node * gold = golds_[sent];
-    		if (!gold){
-				if (verbose >= 1)
-					cerr << "Fail to get correct reference sequence, skip " << sent << endl;
-				for (int i = 0 ; i < numParses ; i++)
-					getline(sin != NULL? sin : cin, line);
-				continue;
-    		}
-        	cout << "G=" << gold->NumEdges() << " N=" << numParses;
+        	if (verbose >= 1)
+        		cerr << "Sentence " << sent << ": " << numParses << " parses" << endl;
+        	vector<RerankerResult> buf(numParses);
     		for (int i = 0 ; i < numParses ; i++) {
     			getline(sin != NULL? sin : cin, line);
     			if (line.empty())
@@ -70,8 +67,8 @@ public:
     			// Load the data
     			double score = atof(columns[0].c_str());
     			GenericNode::ParseResult * result = GenericNode::ParseInput(columns[1].c_str());
-    			cout << " P=" << result->root->NumEdges() << " W=" << Node::Intersection(gold, result->root) << " ";
     			FeatureDataSequence sent(result->words);
+    			buf[i].parse = result;
     			// Extract and set features
     			FeatureMapInt featmap;
     			NLogP f0(score);
@@ -86,67 +83,57 @@ public:
     				f->Extract(result->root, sent);
     				f->Set(featmap, *model_);
     			}
-    			int i = 0;
-    			BOOST_FOREACH(FeaturePairInt fp, featmap){
-    				if (i++ != 0) cout << " ";
-    				if (fp.second != 1)
-    					cout << fp.first << "=" << fp.second;
-    				else
-    					cout << fp.first;
-    			}
-    			cout << ",";
-    			delete result->root;
-    			delete result;
+    			buf[i].score = model_->GetScore(featmap);
     			BOOST_FOREACH(TreeFeature * f, features){
     				delete f;
     			}
     		}
-    		cout << endl;
+    		BOOST_FOREACH(RerankerResult r, buf){
+    			if (verbose >= 1){
+    				cerr << r.score << "\t";
+    				r.parse->root->PrintParse(r.parse->words, cerr);
+    				cerr << endl;
+    			}
+    		}
+    		sort(buf.begin(), buf.end());
+    		RerankerResult & best = buf.back();
+    		GenericNode::ParseResult * tree = best.parse;
+    		FeatureDataSequence sent(tree->words);
+    		vector<int> order;
+    		tree->root->GetOrder(order);
+    		sent.Reorder(order);
+    		int i = 0;
+    		BOOST_FOREACH(int o, order){
+    			if (i++ != 0) cout << " ";
+    			cout << o;
+    		}
+    		cout << "\t" << sent.ToString() << "\t" << best.score << endl;
+    		BOOST_FOREACH(RerankerResult r, buf){
+    			delete r.parse->root;
+    			delete r.parse;
+    		}
     	}
     	if (sin) sin.close();
-
-    	if (config.GetString("model_out").length()){
-    		string model_out = config.GetString("model_out");
-    		ofstream out(model_out.c_str());
-    		model_->ToStream(out, config.GetInt("threshold"));
-    		out.close();
-    	}
     }
 
-    int ReadGold(string  gold_in){
-    	std::ifstream in(gold_in.c_str());
-		if(!in) THROW_ERROR("Could not open gold file: " <<gold_in);
-		std::string line;
-		golds_.clear();
-		int count = 0;
-		while(getline(in, line)){
-			GenericNode::ParseResult * result = GenericNode::ParseInput(line);
-			if (result){
-				golds_.push_back(result->root);
-				count++;
-			}
-			else
-				golds_.push_back(NULL);
-		}
-		return count;
-    }
-
-    void ReadModel(string  model_in){
-    	if (model_in.empty()) // for training
-    		model_ = new RerankerModel;
-    	else{ // otherwise
-    		std::ifstream in(model_in.c_str());
-    		if(!in) THROW_ERROR("Could not open model file: " <<model_in);
-    		model_ = RerankerModel::FromStream(in);
-    		in.close();
-    	}
+    void ReadModelAndWeights(string  model_in, string weights){
+		std::ifstream in(model_in.c_str());
+		if(!in) THROW_ERROR("Could not open model file: " <<model_in);
+		model_ = RerankerModel::FromStream(in);
+		model_->SetAdd(false);
+		std::ifstream win(weights.c_str());
+		if(!win) THROW_ERROR("Could not open weight file: " <<weights);
+		model_->SetWeightsFromStream(win);
+		if (model_->GetWeights().size() != model_->GetFeatureIds().size())
+			THROW_ERROR("Different size weights " << model_->GetWeights().size()
+					<< " and features " << model_->GetFeatureIds().size() << endl);
+		win.close();
     }
 private:
-    vector<Node*> golds_;
     RerankerModel * model_;
 };
 
 }
 
 
-#endif /* FEATURE_EXTRACTOR_H_ */
+#endif /* RERANKER_RUNNER_H_ */

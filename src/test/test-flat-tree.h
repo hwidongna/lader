@@ -278,7 +278,7 @@ public:
 		cNodeList nonterminals;
 		result1->root->GetNonTerminals(nonterminals);
 		if (nonterminals.size() != result1->root->NumEdges()){
-			cerr << "different # nonteriminals: " << nonterminals.size() << " != " << result1->root->NumEdges();
+			cerr << "different # nonteriminals: " << nonterminals.size() << " != " << result1->root->NumEdges() << endl;
 			ret = 0;
 		}
 		count = Node::Intersection(result1->root, result1->root);
@@ -286,19 +286,46 @@ public:
 			cerr << "incorrect intersection: " << count << " != " << result1->root->NumEdges();
 			ret= 0;
 		}
-//		string line2 = "(S (S (F this) (F has) (F spurious)) (F ambiguity))"; // one label is different
-//		GenericNode::ParseResult * result2 = GenericNode::ParseInput(line2);
-//		if (result1->root->NumEdges() != result2->root->NumEdges()){
-//			cerr << "different # edges: " << result1->root->NumEdges() << " != " << result2->root->NumEdges();
-//			ret = 0;
-//		}
-//		count = Intersection(result1->root, result2->root);
-//		if (count != result2->root->NumEdges()-1){
-//			cerr << "incorrect intersection: " << count << " != " << result2->root->NumEdges()-1;
-//			ret= 0;
-//		}
+		string line2 = "(S (S (F this) (F has) (F spurious)) (F ambiguity))"; // one label is different
+		GenericNode::ParseResult * result2 = GenericNode::ParseInput(line2);
+		if (result1->root->NumEdges() != result2->root->NumEdges()){
+			cerr << "different # edges: " << result1->root->NumEdges() << " != " << result2->root->NumEdges() << endl;
+			ret = 0;
+		}
+		count = Node::Intersection(result1->root, result2->root);
+		if (count != result2->root->NumEdges()-1){
+			cerr << "incorrect intersection: " << count << " != " << result2->root->NumEdges()-1 << endl;
+			ret= 0;
+		}
+
+		string line3 = "(I (S (F this) (I (F has) (F spurious))) (F ambiguity))"; // one more bracket
+		GenericNode::ParseResult * result3 = GenericNode::ParseInput(line3);
+		count = Node::Intersection(result1->root, result3->root);
+		if (count != result3->root->NumEdges()-1){
+			cerr << "incorrect intersection: " << count << " != " << result3->root->NumEdges()-1 << endl;;
+			ret= 0;
+		}
+		vector<int> act;
+		result3->root->GetOrder(act);
+		vector<int> exp(4);
+		exp[0]=3; exp[1]=0; exp[2]=2; exp[3]=1;
+		ret = CheckVector(exp, act);
+
+		string line4 = "(R (S (F this) (I (F has) (F spurious))) (F ambiguity))"; // one more bracket, one different label
+		GenericNode::ParseResult * result4 = GenericNode::ParseInput(line4);
+		count = Node::Intersection(result1->root, result4->root);
+		if (count != result4->root->NumEdges()-2){
+			cerr << "incorrect intersection: " << count << " != " << result4->root->NumEdges()-2 << endl;;
+			ret= 0;
+		}
+
+		act.clear();
+		result4->root->GetOrder(act);
+		exp[0]=0; exp[1]=2; exp[2]=1; exp[3]=3;
+		ret = CheckVector(exp, act);
 		return ret;
     }
+
     bool RunTest() {
     	int done = 0, succeeded = 0;
     	done++; cout << "TestFlatten()" << endl; if(TestFlatten()) succeeded++; else cout << "FAILED!!!" << endl;

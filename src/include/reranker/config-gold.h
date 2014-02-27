@@ -31,7 +31,7 @@ public:
 "~~~ gold-tree ~~~\n"
 "  by Hwidong Na\n"
 "\n"
-"Trains a model discriminative model for machine translation reordering.\n"
+"Produce the gold-standard ITG tree from an word-aligned corpus\n"
 );
 
         AddConfigEntry("align_in", "", "The input file for the alignments");

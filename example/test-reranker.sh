@@ -1,0 +1,72 @@
+#!/bin/bash
+set -e
+
+BLLIP=~/git/bllip-parser/second-stage/programs
+TEST_IN=test.en
+SOURCE_IN=output/test.en.annot
+TARGET_IN=data/test.ja
+ALIGN_IN=data/test.en-ja.align
+MODEL_IN=output/train.mod
+FEATURE_IN=output/features.renumber
+WEIGHTS=output/features.train.weights
+OUTPUT=output/test.en.reordered
+MAX_STATE=3
+THREADS=2
+BEAM=10
+VERBOSE=0
+
+# define helper function: run a command and print its exit code
+function run () {
+    echo -e "\nrun: $1\n-------------"
+    eval $1
+    local code=$?
+    if [ $code -ne 0 ]; then
+	run "Exit code: $code"
+	exit $code
+    fi
+}
+# This bash file provides an example of how to run lader and evaluate its
+# accuracy. Before using this file, you must run train-model.sh to create
+# the model to be used.
+
+#############################################################################
+# 1. Creating/combining annotations
+#  Like train-model.sh, we need to create annotations for our input sentence.
+#  This is the same as before, so read train-model.sh for more details.
+
+run "../script/add-classes.pl data/classes.en < data/$TEST_IN > output/$TEST_IN.class"
+
+run "paste data/$TEST_IN output/$TEST_IN.class data/$TEST_IN.pos data/$TEST_IN.parse > $SOURCE_IN"
+#############################################################################
+# 3. Running the reranker
+
+# Extract features for dev
+run "../src/bin/gold-tree -verbose $VERBOSE \
+-source_in data/$TEST_IN -align_in $ALIGN_IN > output/gold.dev"
+run "../src/bin/shift-reduce-kbest -model $MODEL_IN \
+-out_format score,flatten -threads $THREADS \
+-beam $BEAM -max_state $MAX_STATE \
+-verbose $VERBOSE -source_in $SOURCE_IN \
+> output/kbest.dev 2> output/kbest.dev.log"
+run "../src/bin/extract-feature -verbose $VERBOSE -model_in $FEATURE_IN \
+-source_in output/kbest.dev -gold_in output/gold.dev | \
+../src/bin/renumber-feature -model_in output/features.model \
+-model_out output/features.renumber | sed 's/[ ][ ]*/ /g' | \
+gzip -c > output/features.dev.gz 2> output/features.dev.log"
+
+# Evaluate weights
+run "grep ^[0-9] $FEATURE_IN | cut -f1,2 |  gzip -c > output/features.gz"
+run "cat $WEIGHTS | \
+$BLLIP/eval-weights/eval-weights \
+-a output/features.gz output/features.dev.gz > output/weights-eval"
+
+# Run reranker
+run "../src/bin/reranker -model_in $FEATURE_IN -weights $WEIGHTS \
+-source_in output/kbest.dev > output/$TEST_IN.reranker"
+
+
+# Evaluate reranker result
+run "../src/bin/evaluate-lader -attach_null right $ALIGN_IN output/$TEST_IN.reranker data/$TEST_IN $TARGET_IN'' > output/$TEST_IN.reranker.grade"
+
+tail -n3 output/$TEST_IN.reranker.grade
+	

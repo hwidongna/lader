@@ -1,20 +1,22 @@
-#ifndef CONFIG_TRAINER_H__
-#define CONFIG_TRAINER_H__
+/*
+ * config-runner.h
+ *
+ *  Created on: Feb 27, 2014
+ *      Author: leona
+ */
 
-#include <string>
-#include <vector>
-#include <cstdlib>
-#include <sstream>
-#include <lader/util.h>
+#ifndef CONFIG_RUNNER_H_
+#define CONFIG_RUNNER_H_
+
 #include <lader/config-base.h>
 
 namespace reranker {
 
-class ConfigExtractor : public lader::ConfigBase {
+class ConfigRunner : public lader::ConfigBase {
 
 public:
 
-    ConfigExtractor() : ConfigBase() {
+    ConfigRunner() : ConfigBase() {
         minArgs_ = 0;
         maxArgs_ = 0;
 
@@ -22,24 +24,23 @@ public:
 "~~~ train-reranker ~~~\n"
 "  by Hwidong Na\n"
 "\n"
-"Extract features from k-best parses in bllip-parser format\n"
+"Reranker for k-best output using reranking model and weights\n"
 );
 
         AddConfigEntry("source_in", "", "The input file for the source sentences");
-        AddConfigEntry("gold_in", "", "The gold-standard file for the source sentences");
-        AddConfigEntry("model_out", "", "An output file for the model");
         AddConfigEntry("model_in", "", "An input file for the model");
+        AddConfigEntry("weights", "", "An input file for the model weights");
         AddConfigEntry("lexicalize-parent", "false", "Whether to lexicalize parent node");
         AddConfigEntry("lexicalize-child", "false", "Whether to lexicalize child node");
         AddConfigEntry("level", "2", "The number of level to use in word feature");
         AddConfigEntry("order", "2", "The order of n-gram to use in n-gram* feature");
-        AddConfigEntry("threshold", "5", "The minimum number of feature counts for the reranker model");
         AddConfigEntry("threads", "1", "The number of threads to use");
-        AddConfigEntry("verbose", "0", "The level of debugging output to print 1: {model,oracle}{loss,score} 2: detail for building and rescoring");
+        AddConfigEntry("verbose", "0", "The level of debugging output to print");
     }
-	
+
 };
 
 }
 
-#endif
+
+#endif /* CONFIG_RUNNER_H_ */

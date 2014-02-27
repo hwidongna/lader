@@ -53,6 +53,8 @@ public:
 		BOOST_FOREACH(string f, feature_){
 			oss << FeatureName() << ":" << f << std::ends; // using prefix
 			int id = model.GetId(oss.str().data(), model.GetAdd());
+			if (id < 0)
+				continue;
 			FeatureMapInt::iterator it = feat.find(id);
 			if (it == feat.end())
 				feat[id] = 1;

@@ -43,11 +43,15 @@ public:
 	int size() const { return right_ - left_; }
 	bool IsTerminal() const { return children_.empty(); }
 	bool IsRoot() const { return GetLabel() == 'R'; }
+	bool IsStraight() const { return GetLabel() == 'S'; }
+	bool IsInverted() const { return GetLabel() == 'I'; }
 
 	void GetTerminals(cNodeList & result) const;
 	void GetNonTerminals(cNodeList & result) const;
 	void PrintParse(const vector<string> & strs, ostream & out) const;
 	void PrintParse(ostream & out) const;
+	void PrintString(const vector<string> & strs, ostream & out) const;
+	void GetOrder(vector<int> & result);
 	inline void MergeChildren(Node * from);
 	int NumEdges();
 

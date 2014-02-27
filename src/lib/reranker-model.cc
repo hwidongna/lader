@@ -7,6 +7,7 @@
 
 #include <reranker/reranker-model.h>
 #include <boost/algorithm/string.hpp>
+#include <cstdio>
 
 using namespace std;
 using namespace reranker;
@@ -37,4 +38,16 @@ RerankerModel * RerankerModel::FromStream(std::istream & in, bool renumber) {
         ret->SetCount(id, columns[1], count, renumber);
     }
     return ret;
+}
+
+void RerankerModel::SetWeightsFromStream(std::istream & in) {
+	std::string line;
+	int idx;
+	double w;
+	while(std::getline(in, line) && line.length()) {
+		sscanf(line.c_str(), "%d=%lf", &idx, &w);
+		if((int)v_.size() <= idx)
+			v_.resize(idx+1,0.0);
+		v_[idx] = w;
+	}
 }

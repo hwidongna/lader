@@ -103,8 +103,9 @@ int Node::Intersection(const Node * t1, const Node * t2){
 	while (v1 != e1.end() && v2 != e2.end()){
 		const Node & n1 = SafeReference(*v1);
 		const Node & n2 = SafeReference(*v2);
-		if (n1 == n2){
-			count++;
+		if (n1.GetLeft() == n2.GetLeft() && n1.GetRight() == n2.GetRight()){
+			if (n1.GetLabel() == n2.GetLabel())
+				count++;
 			v1++; v2++;
 		}
 		else if (n1.GetLeft() < n2.GetLeft())
@@ -151,6 +152,30 @@ void Node::PrintParse(ostream & out) const{
     }
 }
 
+
+void Node::PrintString(const vector<string> & strs, ostream & out) const{
+    if(IsTerminal())
+        for(int i = GetLeft(); i < GetRight(); i++)
+            out << strs[i] << " ";
+    else if (IsStraight() || IsRoot())
+		BOOST_FOREACH(Node * child, children_)
+			child->PrintString(strs, out);
+    else if (IsInverted())
+		BOOST_REVERSE_FOREACH(Node * child, children_)
+			child->PrintString(strs, out);
+}
+
+void Node::GetOrder(vector<int> & result) {
+    if(IsTerminal())
+        for(int i = GetLeft(); i < GetRight(); i++)
+            result.push_back(i);
+    else if (IsStraight() || IsRoot())
+		BOOST_FOREACH(Node * child, children_)
+			child->GetOrder(result);
+    else if (IsInverted())
+		BOOST_REVERSE_FOREACH(Node * child, children_)
+			child->GetOrder(result);
+}
 
 GenericNode::ParseResult * GenericNode::ParseInput(const string & line){
 	stack<GenericNode*> s;

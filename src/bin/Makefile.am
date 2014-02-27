@@ -3,7 +3,7 @@ AM_CPPFLAGS = -I$(srcdir)/../include $(BOOST_CPPFLAGS)
 AM_LDFLAGS = $(BOOST_LDFLAGS)
 
 
-bin_PROGRAMS = train-lader lader evaluate-lader label-ranking train-shift-reduce shift-reduce shift-reduce-kbest extract-feature gold-tree
+bin_PROGRAMS = train-lader lader evaluate-lader label-ranking train-shift-reduce shift-reduce shift-reduce-kbest extract-feature gold-tree renumber-feature
 
 train_lader_SOURCES = train-lader.cc
 train_lader_LDADD = ../lib/liblader.la -lboost_regex-mt -lboost_thread-mt -lboost_filesystem -lboost_system -lrt
@@ -31,3 +31,6 @@ extract_feature_LDADD = ../lib/liblader.la -lboost_regex-mt -lboost_thread-mt -l
 
 gold_tree_SOURCES = gold-tree.cc
 gold_tree_LDADD = ../lib/liblader.la -lboost_regex-mt -lboost_thread-mt -lboost_filesystem -lboost_system -lrt
+
+renumber_feature_SOURCES = renumber-feature.cc
+renumber_feature_LDADD = ../lib/liblader.la -lboost_regex-mt -lboost_thread-mt -lboost_filesystem -lboost_system -lrt

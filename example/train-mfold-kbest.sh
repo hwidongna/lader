@@ -150,13 +150,3 @@ run "../src/bin/gold-tree -verbose $VERBOSE \
 > output/fold$m/gold.out 2> output/fold$m/gold.log"
 
 done
-
-# Extract features from the m * k trees
-
-run "cat output/fold*/gold.out > output/gold.out"
-run "cat output/fold*/kbest.out | \
-../src/bin/extract-feature -verbose $VERBOSE \
--gold_in output/gold.out -model_out output/features.model \
-> output/features.out 2> output/features.log"
-
-

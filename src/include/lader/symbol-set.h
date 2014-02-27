@@ -72,9 +72,8 @@ public:
     void SetId(T id, const std::string & sym) {
     	map_.insert(MakePair(sym, id));
     	if (vocab_.size() <= id)
-    		vocab_.resize(id+1, new std::string(sym));
-    	else
-    		vocab_[id] = new std::string(sym);
+    		vocab_.resize(id+1, NULL);
+    	vocab_[id] = new std::string(sym);
     }
     size_t size() const { return vocab_.size() - reuse_.size(); }
     size_t capacity() const { return vocab_.size(); }

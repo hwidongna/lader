@@ -19,7 +19,7 @@ namespace reranker {
 
 class Node;
 typedef vector<Node*> NodeList;
-
+typedef vector<const Node*> cNodeList;
 class Node{
 public:
 	Node() : left_(0), right_(-1), parent_(NULL) { }
@@ -31,8 +31,8 @@ public:
 				delete node;
 	}
 	void AddChild(Node * child) { child->parent_ = this; children_.push_back(child); }
-	Node * GetChild(int i) { return lader::SafeAccess(children_, i); }
-	NodeList & GetChildren() { return children_; }
+	Node * GetChild(int i) const { return lader::SafeAccess(children_, i); }
+	NodeList GetChildren() const { return children_; }
 	int GetLeft()  const { return left_; }
 	int GetRight() const { return right_; }
 	void SetLeft(int left) { left_ = left; }
@@ -44,8 +44,8 @@ public:
 	bool IsTerminal() const { return children_.empty(); }
 	bool IsRoot() const { return GetLabel() == 'R'; }
 
-	void GetTerminals(NodeList & result) const;
-	void GetNonTerminals(NodeList & result) ;
+	void GetTerminals(cNodeList & result) const;
+	void GetNonTerminals(cNodeList & result) const;
 	void PrintParse(const vector<string> & strs, ostream & out) const;
 	void PrintParse(ostream & out) const;
 	inline void MergeChildren(Node * from);
@@ -55,7 +55,7 @@ public:
 		return left_ == rhs.left_ && right_ == rhs.right_;
 	}
 
-	static int Intersection(Node * t1, Node * t2);
+	static int Intersection(const Node * t1, const Node * t2);
 protected:
 	int left_, right_;	// left (inclusive) and right (exclusive) boundaries
 	Node * parent_;		// parent node

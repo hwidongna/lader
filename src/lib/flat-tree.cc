@@ -77,7 +77,7 @@ HypNode * HypNode::Flatten(lader::Hypothesis * root){
 	return v;
 }
 
-void Node::GetTerminals(NodeList & result) const{
+void Node::GetTerminals(cNodeList & result) const{
 	BOOST_FOREACH(Node * child, children_){
 		if (child->IsTerminal())
 			result.push_back(child);
@@ -86,7 +86,7 @@ void Node::GetTerminals(NodeList & result) const{
 	}
 }
 
-void Node::GetNonTerminals(NodeList & result) {
+void Node::GetNonTerminals(cNodeList & result) const{
 	result.push_back(this);
 	BOOST_FOREACH(Node * child, children_){
 		if (!child->IsTerminal()){
@@ -95,11 +95,11 @@ void Node::GetNonTerminals(NodeList & result) {
 	}
 }
 
-int Node::Intersection(Node * t1, Node * t2){
+int Node::Intersection(const Node * t1, const Node * t2){
 	int count = 0;
-	NodeList e1, e2;
+	cNodeList e1, e2;
 	t1->GetNonTerminals(e1); t2->GetNonTerminals(e2);
-	NodeList::iterator v1 = e1.begin(), v2 = e2.begin();
+	cNodeList::iterator v1 = e1.begin(), v2 = e2.begin();
 	while (v1 != e1.end() && v2 != e2.end()){
 		const Node & n1 = SafeReference(*v1);
 		const Node & n2 = SafeReference(*v2);

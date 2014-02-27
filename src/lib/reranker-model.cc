@@ -20,7 +20,7 @@ void RerankerModel::ToStream(std::ostream & out, int threshold) {
             out << i << "\t" << feature_ids_.GetSymbol(i) << "\t" << counts_[i] << endl;
     out << endl;
 }
-RerankerModel * RerankerModel::FromStream(std::istream & in) {
+RerankerModel * RerankerModel::FromStream(std::istream & in, bool renumber) {
     std::string line;
     RerankerModel * ret = new RerankerModel;
     GetlineEquals(in, "reranker_model");
@@ -34,7 +34,7 @@ RerankerModel * RerankerModel::FromStream(std::istream & in) {
         iss >> id;
         std::istringstream iss2(columns[2]);
         iss2 >> count;
-        ret->SetCount(id, columns[1], count);
+        ret->SetCount(id, columns[1], count, renumber);
     }
     return ret;
 }

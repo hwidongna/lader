@@ -73,7 +73,7 @@ public:
 		int n = sent.GetNumWords();
     	DPStateNode dummy(0, n, NULL, DPState::INIT);
     	DPStateNode * root = dummy.Flatten(goal);
-    	NodeList & children = root->GetChildren();
+    	NodeList children = root->GetChildren();
     	if ( children.size() != 2 ){
     		cerr << "root node has " << children.size() << " children != 2" << endl;
     		ret = 0;
@@ -171,7 +171,7 @@ public:
     	if (!ret)
     		cerr << "incorrect ngram feature " << ngram.FeatureName() << endl;
 
-    	NodeList terminals;
+    	cNodeList terminals;
     	root->GetTerminals(terminals);
     	if (terminals.size() != sent.GetNumWords()){
     		cerr << "incorrect # of terminals " << terminals.size() << " != " << sent.GetNumWords() << endl;
@@ -275,7 +275,7 @@ public:
     	int ret = 1, count;
 		string line1 = "(I (S (F this) (F has) (F spurious)) (F ambiguity))";
 		GenericNode::ParseResult * result1 = GenericNode::ParseInput(line1);
-		NodeList nonterminals;
+		cNodeList nonterminals;
 		result1->root->GetNonTerminals(nonterminals);
 		if (nonterminals.size() != result1->root->NumEdges()){
 			cerr << "different # nonteriminals: " << nonterminals.size() << " != " << result1->root->NumEdges();

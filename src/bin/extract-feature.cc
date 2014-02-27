@@ -18,7 +18,7 @@ int main(int argc, char** argv) {
     // load the arguments
     ConfigExtractor conf;
     vector<string> args = conf.loadConfig(argc,argv);
-    // train the reranker
+    // extract features for reranker
     FeatureExtractor runner;
     runner.Run(conf);
 }

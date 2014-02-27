@@ -28,7 +28,7 @@ class NLogP: public FeatureBase<double>{
 public:
 	NLogP(double value) : value_(value) { }
 	virtual void Set(FeatureMapInt & feat, RerankerModel & model) {
-		int id = model.GetId("NLogP", true);
+		int id = model.GetId("NLogP", model.GetAdd());
 		FeatureMapInt::iterator it = feat.find(id);
 		if (it == feat.end())
 			feat[id] = value_;
@@ -52,7 +52,7 @@ public:
 		ostringstream oss;
 		BOOST_FOREACH(string f, feature_){
 			oss << FeatureName() << ":" << f << std::ends; // using prefix
-			int id = model.GetId(oss.str().data(), true);
+			int id = model.GetId(oss.str().data(), model.GetAdd());
 			FeatureMapInt::iterator it = feat.find(id);
 			if (it == feat.end())
 				feat[id] = 1;
@@ -88,8 +88,7 @@ public:
 				<< "," << sentence.GetElement(root->GetRight()-1) << ")";
 		oss << "-";
 		int i = 0;
-		NodeList & children = root->GetChildren();
-		BOOST_FOREACH(Node * child, children){
+		BOOST_FOREACH(Node * child, root->GetChildren()){
 			Extract(child, sentence);
 			if (i++ != 0) oss << ".";
 			oss << child->GetLabel();
@@ -106,10 +105,10 @@ public:
 	Word(int level) : level_(level) { }
 	virtual string FeatureName() { return "Word"; }
 	virtual void Extract(Node * root, const lader::FeatureDataBase & sentence){
-		NodeList terminals;
+		cNodeList terminals;
 		root->GetTerminals(terminals);
 		ostringstream oss;
-		BOOST_FOREACH(Node * node, terminals){
+		BOOST_FOREACH(const Node * node, terminals){
 			oss << "(";
 			for (int i = node->GetLeft() ; i < node->GetRight() ; i++){
 				if (i != node->GetLeft()) oss << ",";
@@ -138,7 +137,7 @@ public:
 	NGram(int order) : order_(order) { }
 	virtual string FeatureName() { return "NGram"; }
 	virtual void Extract(Node * node, const lader::FeatureDataBase & sentence){
-		NodeList & children = node->GetChildren();
+		NodeList children = node->GetChildren();
 		ostringstream oss;
 		for (int i = 0 ; i <= children.size() ; i++){
 			oss << node->GetLabel();
@@ -181,11 +180,11 @@ public:
 	NGramTree(int order) : NGram(order) { }
 	virtual string FeatureName() { return "NGramTree"; }
 	virtual void Extract(Node * root, const lader::FeatureDataBase & sentence){
-		NodeList terminals;
+		cNodeList terminals;
 		root->GetTerminals(terminals);
 		ostringstream oss;
 		for (int i = 0 ; i+order_ <= root->size() ; i++){
-			Node * lca = terminals[i];
+			const Node * lca = terminals[i];
 			int l = lca->GetLeft();
 			while(lca && !lca->IsRoot() && lca->GetRight() < l+order_){
 				lca = lca->GetParent();
@@ -198,7 +197,7 @@ public:
 			oss.seekp(0);
 		}
 	}
-	Node * SelectiveCopy(Node * lca, Node * parent, int left, int right){
+	Node * SelectiveCopy(const Node * lca, Node * parent, int left, int right){
 		Node * node = new GenericNode(left, right, parent, lca->GetLabel());
 		BOOST_FOREACH(Node * child, lca->GetChildren()){
 			if (child->GetRight() <= left ) // left exclusive

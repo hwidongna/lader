@@ -19,6 +19,7 @@ namespace reranker {
 
 // A reorderer model that contains the weights and the feature set
 class RerankerModel {
+	typedef std::tr1::unordered_map<int,int> ConversionTable;
 public:
 
     // Initialize the reranker model
@@ -60,7 +61,7 @@ public:
 
     // IO Functions
     void ToStream(std::ostream & out, int thresold = 5);
-    static RerankerModel * FromStream(std::istream & in);
+    static RerankerModel * FromStream(std::istream & in, bool renumber=false);
 
     // Comparators
     bool operator==(const RerankerModel & rhs) const {
@@ -107,8 +108,17 @@ public:
     	return id >= 0 && id < (int)counts_.size() ? counts_[id]: 0;
     }
     // Set the count appropriately
-    void SetCount(int idx, const std::string & name, int c) {
-    	feature_ids_.SetId(idx, name);
+    void SetCount(int idx, const std::string & name, int c, bool renumber) {
+    	if (renumber){
+    		int newidx = feature_ids_.GetId(name, true);
+    		ConversionTable::iterator it = conversion_.find(idx);
+    		if (it != conversion_.end())
+    			THROW_ERROR(idx << " already indicates " << it->second);
+    		conversion_[idx] = newidx;
+    		idx = newidx;
+    	}
+    	else
+    		feature_ids_.SetId(idx, name);
     	if((int)counts_.size() <= idx)
     		counts_.resize(idx+1, 0);
     	counts_[idx] = c;
@@ -127,6 +137,13 @@ public:
     	}
     	return id;
     }
+
+    int GetConvertion(int idx){
+    	ConversionTable::iterator it = conversion_.find(idx);
+    	if (it == conversion_.end())
+    		return -1;
+    	return it->second;
+    }
 private:
     boost::mutex mutex_;
     // The number of times for each feature appears
@@ -140,6 +157,7 @@ private:
     // Feature name values
     SymbolSet<int> feature_ids_; // Feature names and IDs
     bool add_features_; // Whether to allow the adding of new features
+    ConversionTable conversion_; // Before and After conversion
 };
 
 }

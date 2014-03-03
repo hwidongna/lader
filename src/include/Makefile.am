@@ -15,4 +15,4 @@ shift-reduce-dp/shift-reduce-runner.h shift-reduce-dp/shift-reduce-kbest.h \
 reranker/flat-tree.h reranker/features.h reranker/feature-extractor.h \
 reranker/gold-tree.h reranker/reranker-model.h reranker/reranker-runner.h \
 reranker/config-extractor.h reranker/config-gold.h reranker/config-renumber.h \
-reranker/config-runner.h
+reranker/config-runner.h reranker/reranker-oracle.h reranker/config-oracle.h

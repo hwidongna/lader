@@ -77,3 +77,6 @@ run "../src/bin/reranker -model_in $FEATURE_IN -weights $WEIGHTS \
 run "../src/bin/evaluate-lader -attach_null right $ALIGN_IN output/$TEST_IN.1best data/$TEST_IN $TARGET_IN'' > output/$TEST_IN.1best.grade" 
 
 tail -n3 output/$TEST_IN.reranker.grade
+
+# Evaluate reranker oracle
+run "cat output/kbest.dev | ../src/bin/reranker-oracle -attach_null right $ALIGN_IN data/$TEST_IN $TARGET_IN'' > output/kbest.oracle.grade" 

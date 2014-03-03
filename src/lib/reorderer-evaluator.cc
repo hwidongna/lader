@@ -38,7 +38,7 @@ void ReordererEvaluator::Evaluate(const ConfigEvaluator & config) {
     }
     if(args.size() > 3) {
         trg_in = new ifstream(SafeAccess(args, 3).c_str());
-        if(!*trg_in) THROW_ERROR("Couldn't find source file " << args[3]);
+        if(!*trg_in) THROW_ERROR("Couldn't find target file " << args[3]);
     }
     string data, align, src, trg;
     // Read them one-by-one and run the evaluator

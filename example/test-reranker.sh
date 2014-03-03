@@ -64,9 +64,16 @@ $BLLIP/eval-weights/eval-weights \
 run "../src/bin/reranker -model_in $FEATURE_IN -weights $WEIGHTS \
 -source_in output/kbest.dev > output/$TEST_IN.reranker"
 
-
 # Evaluate reranker result
 run "../src/bin/evaluate-lader -attach_null right $ALIGN_IN output/$TEST_IN.reranker data/$TEST_IN $TARGET_IN'' > output/$TEST_IN.reranker.grade"
 
 tail -n3 output/$TEST_IN.reranker.grade
 	
+# Run 1-best for comparison
+run "../src/bin/reranker -model_in $FEATURE_IN -weights $WEIGHTS \
+-source_in output/kbest.dev -trees 1 > output/$TEST_IN.1best"
+
+# Evaluate 1-best result
+run "../src/bin/evaluate-lader -attach_null right $ALIGN_IN output/$TEST_IN.1best data/$TEST_IN $TARGET_IN'' > output/$TEST_IN.1best.grade" 
+
+tail -n3 output/$TEST_IN.reranker.grade

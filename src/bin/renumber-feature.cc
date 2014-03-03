@@ -37,6 +37,8 @@ int main(int argc, char** argv) {
 	cout << line << endl;
 	int numSent = atoi(line.substr(2).c_str()); // "S="
 	for (int sent = 0 ; sent < numSent ; sent++){
+    	if(sent && sent % 1000 == 0) cerr << ".";
+    	if(sent && sent % (1000*10) == 0) cerr << sent << endl;
 		getline(sin != NULL? sin : cin, line);
 		vector<string> parses;
 		algorithm::split(parses, line, is_any_of(","));
@@ -65,8 +67,6 @@ int main(int argc, char** argv) {
 				cout << ",";
 		}
 		cout << endl;
-    	if(sent % 1000 == 0) cerr << ".";
-    	if(sent % (1000*10) == 0) cerr << sent << endl;
 	}
 	if (config.GetString("model_out").length()){
 		string model_out = config.GetString("model_out");

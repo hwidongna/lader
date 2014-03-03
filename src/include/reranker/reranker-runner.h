@@ -44,6 +44,7 @@ public:
     	if (!sin)
     		cerr << "use stdin for source_in" << endl;
     	int verbose = config.GetInt("verbose");
+    	int K = config.GetInt("trees");
 
     	ReadModelAndWeights(config.GetString("model_in"), config.GetString("weights"));
     	for (int sent = 0 ; getline(sin != NULL? sin : cin, line) ; sent++){
@@ -88,16 +89,22 @@ public:
     				delete f;
     			}
     		}
-    		BOOST_FOREACH(RerankerResult r, buf){
-    			if (verbose >= 1){
+    		if (verbose >= 1){
+    			BOOST_FOREACH(RerankerResult r, buf){
     				cerr << r.score << "\t";
     				r.parse->root->PrintParse(r.parse->words, cerr);
     				cerr << endl;
     			}
     		}
-    		sort(buf.begin(), buf.end());
-    		RerankerResult & best = buf.back();
-    		GenericNode::ParseResult * tree = best.parse;
+    		RerankerResult * best;
+    		if (K > 0 && K < numParses){
+    			sort(buf.begin(), buf.begin()+K);
+    			best = &buf[K-1];
+    		}else{
+    			sort(buf.begin(), buf.end());
+    			best = &buf.back();
+    		}
+    		GenericNode::ParseResult * tree = best->parse;
     		FeatureDataSequence sent(tree->words);
     		vector<int> order;
     		tree->root->GetOrder(order);
@@ -107,7 +114,7 @@ public:
     			if (i++ != 0) cout << " ";
     			cout << o;
     		}
-    		cout << "\t" << sent.ToString() << "\t" << best.score << endl;
+    		cout << "\t" << sent.ToString() << "\t" << best->score << endl;
     		BOOST_FOREACH(RerankerResult r, buf){
     			delete r.parse->root;
     			delete r.parse;

@@ -34,7 +34,7 @@ public:
         AddConfigEntry("lexicalize-child", "false", "Whether to lexicalize child node");
         AddConfigEntry("level", "2", "The number of level to use in word feature");
         AddConfigEntry("order", "2", "The order of n-gram to use in n-gram* feature");
-        AddConfigEntry("threads", "1", "The number of threads to use");
+        AddConfigEntry("trees", "0", "The number of trees to use, (default is 0, which means use all possible trees)");
         AddConfigEntry("verbose", "0", "The level of debugging output to print");
     }
 

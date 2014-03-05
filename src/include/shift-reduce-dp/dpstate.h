@@ -68,6 +68,7 @@ public:
 	double GetInside() const { return inside_; }
 	int GetSrcL() const { return src_l_; }
 	int GetSrcR() const { return src_r_; }
+	virtual int GetSrcREnd() const { return src_r_; }
 	int GetSrcC() const { return src_c_; }
 	int GetTrgL() const { return trg_l_; }
 	int GetTrgR() const { return trg_r_; }

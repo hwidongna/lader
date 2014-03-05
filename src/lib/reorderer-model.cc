@@ -50,8 +50,6 @@ void ReordererModel::AdjustWeightsPegasos(const FeatureVectorInt & feats) {
     t_++;
 }
 
-#define MINIMUM_WEIGHT 1e-10
-
 // IO Functions
 void ReordererModel::ToStream(std::ostream & out) {
     out << "max_term " << max_term_ << endl;

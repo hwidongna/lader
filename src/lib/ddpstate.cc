@@ -74,7 +74,7 @@ void DDPState::Take(Action action, DPStateVector & result, bool actiongold,
 			reduced->score_ = next->score_ + shiftcost + reducecost;
 			delete shifted; delete next; // intermidiate states, c++ syntax sucks!
 			next = reduced;
-			next->action_ = DDPState::SHIFT; // it is actuall a shifted state
+			next->action_ = SHIFT; // it is actuall a shifted state
 		}
 		shiftcost_ = actioncost;
 		next->gold_ = gold_ && actiongold;
@@ -114,8 +114,8 @@ void DDPState::Take(Action action, DPStateVector & result, bool actiongold,
 		BackPtr back;
 		back.action = action;
 		back.cost = actioncost;
-		back.leftstate = LeftChild();
-		back.istate = RightChild();
+		back.leftstate = NULL;
+		back.istate = this;
 		next->backptrs_.push_back(back);
 		result.push_back(next);
 	}
@@ -155,43 +155,72 @@ DPState * DDPState::Shift(){
 	return next;
 }
 
+#define CCC (lstate->IsContinuous() && IsContinuous() && lstate->src_r_ == src_l_)
+#define CCD (lstate->IsContinuous() && IsContinuous() && lstate->src_r_ < src_l_)
+#define CDD (lstate->IsContinuous() && !IsContinuous() && lstate->src_r_ == src_l_)
+#define DCD (!lstate->IsContinuous() && IsContinuous() && lstate->src_r2_ == src_l_)
+#define DDC (!lstate->IsContinuous() && !IsContinuous() && lstate->src_r_ == src_l_ && src_r_ == lstate->src_l2_ && lstate->src_r2_ == src_l2_)
+
 // a reduced state, possibly discontiuous
 DPState * DDPState::Reduce(DPState * leftstate, Action action){
+	DDPState * lstate = dynamic_cast<DDPState*>(leftstate);
+	if (!lstate)
+		THROW_ERROR("left state is NULL" << endl);
 	DDPState * next;
 	// continuous + continuous = continuous
-	if (leftstate->IsContinuous() && IsContinuous() && leftstate->src_r_ == src_l_){
-		next = new DDPState(step_+1, leftstate->src_l_, src_r_, action);
-		next->src_c_ = src_l_;
-	}
-	// continuous + continuous = discontinuous
-	else if (leftstate->IsContinuous() && IsContinuous()){
-		next = new DDPState(step_+1, leftstate->src_l_, leftstate->src_r_, action, src_l_, src_r_);
-		next->src_c_ = -1;
-	}
-	// continuous + discontinuos = discontinuous
-	else if (leftstate->IsContinuous()){
-		next = new DDPState(step_+1, leftstate->src_l_, src_r_, action, src_l2_, src_r2_);
-		next->src_c_ = src_l_;
-	}
-	// discontinuous + continuous = discontinuous
-	else if (IsContinuous()){
-		DDPState * lstate = dynamic_cast<DDPState*>(leftstate);
-		next = new DDPState(step_+1, lstate->src_l_, lstate->src_r_, action, lstate->src_l2_, src_r2_);
-		next->src_c_ = src_l_;
-	}
-	// discontinuous + discontinuous = continuous
-	else{
-		DDPState * lstate = dynamic_cast<DDPState*>(leftstate);
+	if (CCC){
 		next = new DDPState(step_+1, lstate->src_l_, src_r_, action);
 		next->src_c_ = src_l_;
 	}
+	// continuous + continuous = discontinuous
+	else if (CCD){
+		next = new DDPState(step_+1, lstate->src_l_, lstate->src_r_, action, src_l_, src_r_);
+		next->src_c_ = -1;
+	}
+//	// continuous + continuous = discontinuous
+//	else if (lstate->IsContinuous() && IsContinuous() && src_r_ < lstate->src_l_){ // swaped
+//		next = new DDPState(step_+1, src_l_, src_r_, action, lstate->src_l_, lstate->src_r_);
+//		next->src_c_ = -1;
+//	}
+	// continuous + discontinuos = discontinuous
+	else if (CDD){
+		next = new DDPState(step_+1, lstate->src_l_, src_r_, action, src_l2_, src_r2_);
+		next->src_c_ = src_l_;
+	}
+//	// continuous + discontinuos = discontinuous
+//	else if (IsContinuous() && src_r_ == lstate->src_l_){ // swaped
+//		next = new DDPState(step_+1, src_l_, lstate->src_r_, action, lstate->src_l2_, lstate->src_r2_);
+//		next->src_c_ = lstate->src_l_;
+//	}
+	// discontinuous + continuous = discontinuous
+	else if (DCD){
+		next = new DDPState(step_+1, lstate->src_l_, lstate->src_r_, action, lstate->src_l2_, src_r_);
+		next->src_c_ = src_l_;
+	}
+//	// discontinuous + continuous = discontinuous
+//	else if (lstate->IsContinuous() && src_r2_ == lstate->src_l_){ // swaped
+//		next = new DDPState(step_+1, src_l_, src_r_, action, src_l2_, lstate->src_2_);
+//		next->src_c_ = lstate->src_l_;
+//	}
+	// discontinuous + discontinuous = continuous
+	else if (DDC){
+		next = new DDPState(step_+1, lstate->src_l_, src_r2_, action);
+		next->src_c_ = src_l_;
+	}
+//	// discontinuous + discontinuous = continuous
+//	else if (src_r_ == lstate->src_l_ && lstate->src_r_ == src_l2_ && src_r2_ == lstate->src_l2_){ // swaped
+//		next = new DDPState(step_+1, src_l_, lstate->src_r2_, action);
+//		next->src_c_ = lstate->src_l_;
+//	}
+	else
+		THROW_ERROR("reduce fails: " << endl << *lstate << endl << *this << endl);
 	next->src_rend_ = src_rend_;
 	next->swaped_.insert(next->swaped_.begin(), swaped_.begin(), swaped_.end());
 	if (action == STRAIGTH){
-		next->trg_l_ = leftstate->trg_l_;		next->trg_r_ = trg_r_;
+		next->trg_l_ = lstate->trg_l_;		next->trg_r_ = trg_r_;
 	}
 	else if (action == INVERTED){
-		next->trg_l_ = trg_l_;		next->trg_r_ = leftstate->trg_r_;
+		next->trg_l_ = trg_l_;		next->trg_r_ = lstate->trg_r_;
 	}
 	return next;
 }
@@ -220,13 +249,11 @@ bool DDPState::Allow(const Action & action, const int n){
 	if (action == SHIFT)
 		return src_rend_ < n || !swaped_.empty();
 	else if (action == SWAP)
-		return lstate && lstate->action_ != INIT
-				&& lstate->IsContinuous() && IsContinuous() && lstate->src_l_ < src_l_;
+		return lstate && lstate->GetLeftState() && lstate->GetLeftState()->action_ != INIT
+				&& lstate->IsContinuous() && IsContinuous() && lstate->src_l_ < src_l_  && src_r_ < n;
 	else if (action == IDLE)
 		return src_l_ == 0 && src_r_ == n && IsContinuous();
-	return lstate && lstate->action_ != INIT
-			&& (lstate->src_r_ == src_l_
-				|| (lstate->IsContinuous() && IsContinuous()));
+	return lstate && lstate->action_ != INIT && (CCC || CCD || CDD || DCD || DDC);
 }
 
 } /* namespace lader */

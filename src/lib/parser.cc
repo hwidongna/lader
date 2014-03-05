@@ -26,23 +26,25 @@ Parser::~Parser() {
 			delete state;
 }
 
-void Parser::Search(ReordererModel & model, const FeatureSet & feature_gen,
-		const Sentence & sent, Result & result, int max_state,
-		vector<DPState::Action> * refseq, string * update) {
+void Parser::Search(ShiftReduceModel & model,
+		const FeatureSet & feature_gen, const Sentence & sent,
+		Result * result, const vector<DPState::Action> * refseq,
+		const string * update) {
 	DPStateVector golds(2*sent[0]->GetNumWords(), NULL);
-	DynamicProgramming(golds, model, feature_gen, sent, max_state, refseq);
-	DPStateVector simgolds;
-	if (refseq)
+	DynamicProgramming(golds, model, feature_gen, sent, refseq);
+	if (result && refseq){
+		DPStateVector simgolds;
 		CompleteGolds(simgolds, golds, model, feature_gen, sent, refseq);
-	Update(golds, result, refseq, update);
-	// clean-up the rest gold items using refseq
-	BOOST_FOREACH(DPState * gold, simgolds)
-		delete gold;
+		Update(golds, result, refseq, update);
+		// clean-up the rest gold items using refseq
+		BOOST_FOREACH(DPState * gold, simgolds)
+			delete gold;
+	}
 }
 
-void Parser::DynamicProgramming(DPStateVector & golds, ReordererModel & model,
+void Parser::DynamicProgramming(DPStateVector & golds, ShiftReduceModel & model,
 		const FeatureSet & feature_gen, const Sentence & sent,
-		int max_state, vector<DPState::Action> * refseq) {
+		const vector<DPState::Action> * refseq) {
 	int n = sent[0]->GetNumWords();
 	int max_step = golds.size();
 	beams_.resize(max_step, DPStateVector());
@@ -56,14 +58,15 @@ void Parser::DynamicProgramming(DPStateVector & golds, ReordererModel & model,
 		DPStateQueue q;
 		BOOST_FOREACH(DPState * old, beams_[step-1]){
 			if (verbose_ >= 2){
-				cerr << "OLD: " << *old;
+				DDPState * dold = dynamic_cast<DDPState*>(old);
+				cerr << "OLD: " << (dold ? *dold : *old);
 				BOOST_FOREACH(Span span, old->GetSignature())
 					cerr << " [" << span.first << ", " << span.second << "]";
 				cerr << endl;
 			}
 			// iterate over actions
 			BOOST_FOREACH(DPState::Action action, actions_){
-				if (!old->Allow((DPState::Action)action, n))
+				if (!old->Allow(action, n))
 					continue;
 				bool actiongold = (refseq != NULL && action == (*refseq)[step-1]);
 				DPStateVector stateseq;
@@ -71,7 +74,7 @@ void Parser::DynamicProgramming(DPStateVector & golds, ReordererModel & model,
 				old->Take(action, stateseq, actiongold, 1,
 						&model, &feature_gen, &sent);
 				BOOST_FOREACH(DPState * next, stateseq){
-					next->SetSignature(max_state);
+					next->SetSignature(model.GetMaxState());
 					q.push(next);
 					if (verbose_ >= 2){
 						cerr << "  NEW: " << *next;
@@ -91,10 +94,11 @@ void Parser::DynamicProgramming(DPStateVector & golds, ReordererModel & model,
 			// from the proper previous step
 			int oldstep = step-2*m-1;
 			BOOST_FOREACH(DPState * old, beams_[oldstep]){
-				if (old->GetSrcR()+m >= n)
+				if (old->GetSrcREnd()+m >= n)
 					continue;
 				if (verbose_ >= 2){
-					cerr << "OLD: " << *old;
+					DDPState * dold = dynamic_cast<DDPState*>(old);
+					cerr << "OLD: " << (dold ? *dold : *old);
 					BOOST_FOREACH(Span span, old->GetSignature())
 						cerr << " [" << span.first << ", " << span.second << "]";
 					cerr << endl;
@@ -112,7 +116,7 @@ void Parser::DynamicProgramming(DPStateVector & golds, ReordererModel & model,
 				if (stateseq.size() > 1)
 					THROW_ERROR("shift-" << m+1 << " produces more than one next state")
 				DPState * next = stateseq.back(); // only one item
-				next->SetSignature(max_state);
+				next->SetSignature(model.GetMaxState());
 				q.push(next);
 				if (verbose_ >= 2){
 					cerr << "  NEW: " << *next;
@@ -166,13 +170,13 @@ void Parser::DynamicProgramming(DPStateVector & golds, ReordererModel & model,
 }
 
 void Parser::CompleteGolds(DPStateVector & simgolds, DPStateVector & golds,
-		ReordererModel & model, const FeatureSet & feature_gen,
-		const Sentence & sent, vector<DPState::Action> * refseq) {
+		ShiftReduceModel & model, const FeatureSet & feature_gen,
+		const Sentence & sent, const vector<DPState::Action> * refseq) {
 	int n = sent[0]->GetNumWords();
 	if (verbose_ >= 2){
 		cerr << "Reference:";
 		BOOST_FOREACH(DPState::Action action, *refseq)
-			cerr << " " << action;
+			cerr << " " << (char) action;
 		cerr << endl;
 	}
 	// complete the rest gold items using refseq
@@ -197,8 +201,8 @@ void Parser::CompleteGolds(DPStateVector & simgolds, DPStateVector & golds,
 	}
 }
 // support naive, early, max update for perceptron
-void Parser::Update(DPStateVector & golds, Result & result,
-		vector<DPState::Action> * refseq, string * update) {
+void Parser::Update(DPStateVector & golds, Result * result,
+		const vector<DPState::Action> * refseq, const string * update) {
 	if (update && *update != "naive"){
 		if (verbose_ >= 2){
 			cerr << "update strategy: " << *update << endl;
@@ -216,9 +220,9 @@ void Parser::Update(DPStateVector & golds, Result & result,
 			}
 			if (golds[step]->GetRank() < 0){
 				if (*update == "early"){ // fall-off
-					best->AllActions(result.actions);
-					result.step = step;
-					result.score = 0;
+					best->AllActions(result->actions);
+					result->step = step;
+					result->score = 0;
 					if (verbose_ >= 2)
 						cerr << "Early update " << result;
 					return;
@@ -235,9 +239,9 @@ void Parser::Update(DPStateVector & golds, Result & result,
 			}
 		}
 		if (*update == "max" && maxpos > 0){
-			beams_[maxpos][0]->AllActions(result.actions);
-			result.step = maxpos;
-			result.score = 0;
+			beams_[maxpos][0]->AllActions(result->actions);
+			result->step = maxpos;
+			result->score = 0;
 			if (verbose_ >= 2)
 				cerr << "Max update " << result;
 			return;
@@ -246,22 +250,22 @@ void Parser::Update(DPStateVector & golds, Result & result,
 	SetResult(result, beams_.back()[0]);
 }
 
-void Parser::SetResult(Result & result, DPState * goal){
-	goal->GetReordering(result.order);
-	result.step = goal->GetStep();
-	goal->AllActions(result.actions);
-	result.score = goal->GetScore();
+void Parser::SetResult(Result * result, DPState * goal){
+	goal->GetReordering(result->order);
+	result->step = goal->GetStep();
+	goal->AllActions(result->actions);
+	result->score = goal->GetScore();
 }
 void Parser::GetKbestResult(vector<Result> & kbest){
 	int i = 0;
 	BOOST_FOREACH(DPState * state, beams_.back())
 		if (state){
 			Result result;
-			SetResult(result, state);
+			SetResult(&result, state);
 			kbest.push_back(result);
 		}
 }
-void Parser::Simulate(ReordererModel & model, const FeatureSet & feature_gen,
+void Parser::Simulate(ShiftReduceModel & model, const FeatureSet & feature_gen,
 		const vector<DPState::Action> & actions, const Sentence & sent,
 		const int firstdiff, FeatureMapInt & featmap, double c) {
 	int n = sent[0]->GetNumWords();

@@ -37,6 +37,7 @@ public:
         AddConfigEntry("iterations", "15", "The number of iterations of training to perform.");
         AddConfigEntry("loss_profile", "chunk=1", "Which loss functions to use");
         AddConfigEntry("max_term", "5", "The maximum length of a terminal ");
+        AddConfigEntry("max_swap", "0", "The maximum number of swap actions");
         AddConfigEntry("max_state", "1", "The maximum numer of states in equality checking");
         AddConfigEntry("model_in", "", "Can read in a model and use it as the starting point for training");
         AddConfigEntry("model_out", "", "An output file for the model");

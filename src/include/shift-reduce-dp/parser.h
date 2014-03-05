@@ -8,7 +8,8 @@
 #ifndef PARSER_H_
 #define PARSER_H_
 
-#include <shift-reduce-dp/dpstate.h>
+#include <shift-reduce-dp/ddpstate.h>
+#include <shift-reduce-dp/shift-reduce-model.h>
 #include <lader/feature-data-base.h>
 #include <lader/feature-vector.h>
 #include <boost/foreach.hpp>
@@ -28,13 +29,14 @@ public:
 		int step;
 	} Result;
 
-	void SetResult(Result & result, DPState * goal);
+	void SetResult(Result * result, DPState * goal);
 	virtual DPState * InitialState() { return new DPState(); }
-	virtual void Search(ReordererModel & model, const FeatureSet & feature_gen,
-			const Sentence & sent, Result & result, int max_state = 0,
-			vector<DPState::Action> * refseq = NULL, string * update = NULL);
+	virtual void Search(ShiftReduceModel & model,
+			const FeatureSet & feature_gen, const Sentence & sent,
+			Result * result = NULL, const vector<DPState::Action> * refseq = NULL,
+			const string * update = NULL);
 	void GetKbestResult(vector<Parser::Result> & kbest);
-	void Simulate(ReordererModel & model, const FeatureSet & feature_gen,
+	void Simulate(ShiftReduceModel & model, const FeatureSet & feature_gen,
 			const vector<DPState::Action> & actions, const Sentence & sent,
 			const int firstdiff, std::tr1::unordered_map<int,double> & featmap, double c);
 	void SetBeamSize(int beamsize) { beamsize_ = beamsize; }
@@ -48,17 +50,19 @@ public:
 	DPState * GetKthBest(int k) const {
 		if (beams_.empty() || beams_.back().empty())
 			THROW_ERROR("Search result is empty!")
-			return beams_.back()[k];
+		if (k >= beams_.back().size())
+			return NULL;
+		return beams_.back()[k];
 	}
 protected:
-	void DynamicProgramming(DPStateVector & golds, ReordererModel & model,
+	void DynamicProgramming(DPStateVector & golds, ShiftReduceModel & model,
 			const FeatureSet & feature_gen, const Sentence & sent,
-			int max_state = 0, vector<DPState::Action> * refseq = NULL);
+			const vector<DPState::Action> * refseq = NULL);
 	void CompleteGolds(DPStateVector & simgolds, DPStateVector & golds,
-			ReordererModel & model, const FeatureSet & feature_gen,
-			const Sentence & sent, vector<DPState::Action> * refseq);
-	void Update(DPStateVector & golds, Result & result,
-			vector<DPState::Action> * refseq = NULL, string * update = NULL);
+			ShiftReduceModel & model, const FeatureSet & feature_gen,
+			const Sentence & sent, const vector<DPState::Action> * refseq);
+	void Update(DPStateVector & golds, Result * result,
+			const vector<DPState::Action> * refseq, const string * update);
 	vector< DPStateVector > beams_;
 	int beamsize_;
 	int nstates_, nedges_, nuniq_;

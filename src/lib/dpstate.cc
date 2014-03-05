@@ -162,9 +162,12 @@ void DPState::InsideActions(vector<Action> & result){
 	case INVERTED:
 	case SWAP:
 		LeftChild()->InsideActions(result);
+		// intentionally skip break
+	case IDLE:
 		RightChild()->InsideActions(result);
 		result.push_back(action_);
 		break;
+
 	}
 }
 
@@ -191,6 +194,7 @@ void DPState::GetReordering(vector<int> & result){
 		LeftChild()->GetReordering(result);
 		break;
 	case SWAP:
+	case IDLE:
 		RightChild()->GetReordering(result);
 		break;
 	case SHIFT:
@@ -241,14 +245,20 @@ void DPState::PrintParse(const vector<string> & strs, ostream & out) const{
 		break;
 	case STRAIGTH:
 	case INVERTED:
-		out << "("<<action_<<" ";
+		out << "("<<(char) action_<<" ";
 		LeftChild()->PrintParse(strs, out);
 		out << " ";
 		RightChild()->PrintParse(strs, out);
 		out << ")";
 		break;
+	case SWAP:
+	case IDLE:
+		out << "("<<(char) action_<<" ";
+		RightChild()->PrintParse(strs, out);
+		out << ")";
+		break;
 	case SHIFT:
-		out << "(" << action_ << " " << GetTokenWord(strs[GetSrcL()]) <<")";
+		out << "(" <<(char)  action_ << " " << GetTokenWord(strs[GetSrcL()]) <<")";
 		break;
 	}
 }

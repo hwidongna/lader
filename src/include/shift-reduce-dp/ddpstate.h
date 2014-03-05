@@ -25,9 +25,9 @@ public:
 			const Sentence * sent = NULL);
 	virtual bool Allow(const Action & action, const int n);
 	virtual bool IsContinuous() { return src_l2_ < 0 && src_r2_ < 0; }
+	virtual int GetSrcREnd() const { return src_rend_; }
 	int GetSrcL2() const { return src_l2_; }
 	int GetSrcR2() const { return src_r2_; }
-	int GetSrcREnd() const { return src_rend_; }
 	DPStateVector GetSwaped() const { return swaped_; }
 
 	// compare signature
@@ -47,7 +47,7 @@ protected:
 	DPState * Swap(DPState * leftstate);
 	DPState * Idle();
 	int src_l2_, src_r2_;	// discontinuous source span
-	int src_rend_;			// source index for next shift
+	int src_rend_;			// source index for the next buffer front
 	DPStateVector swaped_;	// swaped states
 };
 

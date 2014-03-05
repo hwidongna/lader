@@ -6,6 +6,7 @@
  */
 
 #include "shift-reduce-dp/shift-reduce-trainer.h"
+#include "shift-reduce-dp/shift-reduce-model.h"
 #include "shift-reduce-dp/parser.h"
 #include <boost/foreach.hpp>
 #include <boost/algorithm/string.hpp>
@@ -45,6 +46,55 @@ void Merge(vector<T> & to, vector<T> & from){
 		}
 }
 
+void ShiftReduceTrainer::InitializeModel(const ConfigBase & config) {
+    srand(time(NULL));
+    ofstream model_out(config.GetString("model_out").c_str());
+    if(!model_out)
+        THROW_ERROR("Must specify a valid model output with -model_out ('"
+                        <<config.GetString("model_out")<<"')");
+    // Load the model from  a file if it exists, otherwise note features
+    if(config.GetString("model_in").length() != 0) {
+        std::ifstream in(config.GetString("model_in").c_str());
+        if(!in) THROW_ERROR("Couldn't read model from file (-model_in '"
+                            << config.GetString("model_in") << "')");
+        features_ = FeatureSet::FromStream(in);
+        model_ = ShiftReduceModel::FromStream(in);
+    } else {
+        ShiftReduceModel * model = new ShiftReduceModel;
+        model->SetMaxTerm(config.GetInt("max_term"));
+        model->SetMaxState(config.GetInt("max_state"));
+        model->SetMaxSwap(config.GetInt("max_swap"));
+        model->SetUseReverse(config.GetBool("use_reverse"));
+        model_ = model;
+        features_ = new FeatureSet;
+        features_->ParseConfiguration(config.GetString("feature_profile"));
+    }
+    // Load the other config
+    attach_ = config.GetString("attach_null") == "left" ?
+                CombinedAlign::ATTACH_NULL_LEFT :
+                CombinedAlign::ATTACH_NULL_RIGHT;
+    combine_ = config.GetBool("combine_blocks") ?
+                CombinedAlign::COMBINE_BLOCKS :
+                CombinedAlign::LEAVE_BLOCKS_AS_IS;
+    bracket_ = config.GetBool("combine_brackets") ?
+    			CombinedAlign::ALIGN_BRACKET_SPANS :
+    			CombinedAlign::LEAVE_BRACKETS_AS_IS;
+    model_->SetCost(config.GetDouble("cost"));
+    std::vector<std::string> losses, first_last;
+    algorithm::split(
+        losses, config.GetString("loss_profile"), is_any_of("|"));
+    BOOST_FOREACH(string s, losses) {
+        algorithm::split(first_last, s, is_any_of("="));
+        if(first_last.size() != 2) THROW_ERROR("Bad loss: " << s);
+        LossBase * loss = LossBase::CreateNew(first_last[0]);
+        double dub;
+        istringstream iss(first_last[1]);
+        iss >> dub;
+        loss->SetWeight(dub);
+        losses_.push_back(loss);
+    }
+}
+
 void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
     InitializeModel(config);
     ReadData(config.GetString("source_in"), data_);
@@ -57,6 +107,7 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
     if(config.GetString("parse_in").length())
         ReadParses(config.GetString("parse_in"));
     int verbose = config.GetInt("verbose");
+    int m = config.GetInt("max_swap");
     vector<int> sent_order(data_.size());
 	for(int i = 0 ; i < (int)sent_order.size(); i++)
 		sent_order[i] = i;
@@ -67,22 +118,22 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
     struct timespec tstart={0,0}, tend={0,0};
     double best_prec = 0;
     int best_iter, best_wlen;
+    // Split train and dev set
+    if(!(config.GetString("source_dev").length() && config.GetString("align_dev").length())){
+    	int count1, count2;
+    	do{
+    		Merge(data_, dev_data_);
+    		Merge(ranks_, dev_ranks_);
+    		count1 = MoveRandom(data_, dev_data_, config.GetDouble("ratio_dev"));
+    		count2 = MoveRandom(ranks_, dev_ranks_, config.GetDouble("ratio_dev"));
+    	} while(count1 != count2 || count1 == data_.size());
+    	cerr << "Split " << data_.size() << " train set into "
+    			<< data_.size()-count1 << " train and " << count1 << " dev set" << endl;
+    }
     for(int iter = 0; iter < config.GetInt("iterations"); iter++) {
         // Shuffle
         if(config.GetBool("shuffle"))
         	random_shuffle(sent_order.begin(), sent_order.end());
-        // Split train and dev set for each iteration
-        if(!(config.GetString("source_dev").length() && config.GetString("align_dev").length())){
-        	int count1, count2;
-        	do{
-        		Merge(data_, dev_data_);
-        		Merge(ranks_, dev_ranks_);
-        		count1 = MoveRandom(data_, dev_data_, config.GetDouble("ratio_dev"));
-        		count2 = MoveRandom(ranks_, dev_ranks_, config.GetDouble("ratio_dev"));
-        	} while(count1 != count2 || count1 == data_.size());
-			cerr << "Split " << data_.size() << " train set into "
-					<< data_.size()-count1 << " train and " << count1 << " dev set" << endl;
-        }
 
         int done = 0;
         double iter_nedge = 0, iter_nstate = 0;
@@ -102,26 +153,33 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
         			cerr << " " << rank;
         		cerr << endl;
         	}
-        	vector<DPState::Action> refseq = ranks_[sent]->GetReference();
+        	vector<DPState::Action> refseq = ranks_[sent]->GetReference(m);
         	if (verbose >= 1){
         		cerr << "Reference:";
         		BOOST_FOREACH(DPState::Action action, refseq)
-        			cerr << " " << action;
+        			cerr << " " << (char)action;
         		cerr << endl;
         	}
-        	if (refseq.size() < (*data_[sent])[0]->GetNumWords()*2 - 1){
+        	int n = (*data_[sent])[0]->GetNumWords();
+        	if (refseq.size() < 2*(n + m) - 1){
         		if (verbose >= 1)
         			cerr << "Fail to get correct reference sequence, skip it" << endl;
         		continue;
         	}
 
-            Parser p;
-            p.SetBeamSize(config.GetInt("beam"));
-            p.SetVerbose(verbose);
+            Parser * p;
+            if (m > 0)
+            	p = new DParser(m);
+            else
+            	p = new Parser();
+            p->SetBeamSize(config.GetInt("beam"));
+            p->SetVerbose(verbose);
         	Parser::Result result;
+        	ShiftReduceModel * model = dynamic_cast<ShiftReduceModel*>(model_);
         	clock_gettime(CLOCK_MONOTONIC, &tstart);
-        	p.Search(*model_, *features_, *data_[sent], result, config.GetInt("max_state"),
-        			&refseq, update.empty() ? NULL : &update);
+        	p->Search(*model, *features_, *data_[sent],	// obligatory
+        			&result, &refseq, &update);			// optional
+        	// do not need to set result
         	clock_gettime(CLOCK_MONOTONIC, &tend);
         	search.tv_sec += tend.tv_sec - tstart.tv_sec;
         	search.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
@@ -130,8 +188,8 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
 
         	if (verbose >= 1){
         		cerr << "Result:   ";
-				for (int step = 0 ; step < (const int)result.actions.size() ; step++)
-					cerr << " " << result.actions[step];
+				for (int step = 0 ; step < result.actions.size() ; step++)
+					cerr << " " << (char) result.actions[step];
 				cerr << endl;
         	}
         	if (result.step < refseq.size())
@@ -145,8 +203,8 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
         		cerr << "Result step " << result.step << ", update from " << step << endl;
         	clock_gettime(CLOCK_MONOTONIC, &tstart);
         	FeatureMapInt feat_map;
-        	p.Simulate(*model_, *features_, refseq, *data_[sent], step, feat_map, +1); // positive examples
-        	p.Simulate(*model_, *features_, result.actions, *data_[sent], step, feat_map, -1); // negative examples
+        	p->Simulate(*model, *features_, refseq, *data_[sent], step, feat_map, +1); // positive examples
+        	p->Simulate(*model, *features_, result.actions, *data_[sent], step, feat_map, -1); // negative examples
         	clock_gettime(CLOCK_MONOTONIC, &tend);
         	simulate.tv_sec += tend.tv_sec - tstart.tv_sec;
 			simulate.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
@@ -166,8 +224,9 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
         			cerr << "Bad update at step " << result.step << endl;
         	}
         	model_->AdjustWeightsPerceptron(deltafeats);
-        	iter_nedge += p.GetNumEdges();
-        	iter_nstate += p.GetNumStates();
+        	iter_nedge += p->GetNumEdges();
+        	iter_nstate += p->GetNumStates();
+        	delete p;
         }
         cerr << "Running time on average: "
         		<< "searh " << ((double)search.tv_sec + 1.0e-9*search.tv_nsec) / (iter+1) << "s"

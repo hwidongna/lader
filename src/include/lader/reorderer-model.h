@@ -5,6 +5,8 @@
 #include <lader/feature-set.h>
 #include <lader/feature-vector.h>
 
+#define MINIMUM_WEIGHT 1e-10
+
 namespace lader {
 
 // A reorderer model that contains the weights and the feature set
@@ -16,11 +18,7 @@ public:
     ReordererModel() 
         : t_(1), alpha_(1), v_squared_norm_(0), lambda_(1e-5), add_features_(true),
           max_term_(0), use_reverse_(true) { }
-
-    // Calculate the scores of each single edge and node in a hypergraph
-    //  The loss_factor indicates the multiplier of the loss term compared
-    //  to the weight term (0 by default = don't consider loss in scoring)
-    void ScoreGraph(HyperGraph & graph, double loss_factor = 0);
+    virtual ~ReordererModel() { }
 
     // Calculate the score of a feature vector
     double ScoreFeatureVector(const FeatureVectorInt & vec) const {
@@ -60,7 +58,7 @@ public:
     }
 
     // IO Functions
-    void ToStream(std::ostream & out);
+    virtual void ToStream(std::ostream & out);
     static ReordererModel * FromStream(std::istream & in);
 
     // Comparators
@@ -114,7 +112,7 @@ public:
     void SetMaxTerm(int max_term) { max_term_ = max_term; }
     void SetUseReverse(bool use_reverse) { use_reverse_ = use_reverse; }
 
-private:
+protected:
     // Weights over features and weights over losses
     std::vector<double> v_;
     // Parameters for the pegasos algorithm

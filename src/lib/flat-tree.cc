@@ -11,12 +11,12 @@
 using namespace reranker;
 using namespace lader;
 
-inline void Node::MergeChildren(Node * from){
-	BOOST_FOREACH(Node * child, from->children_){
+inline void Node::MergeChildrenAndDelete(Node * v){
+	BOOST_FOREACH(Node * child, v->children_){
 		AddChild(child);
 	}
-	from->children_.clear();
-	delete from;
+	v->children_.clear();
+	delete v;
 }
 
 int Node::NumEdges(){
@@ -37,7 +37,7 @@ DPStateNode * DPStateNode::Flatten(lader::DPState * root){
 			THROW_ERROR("NULL left child ")
 		DPStateNode * l = v->Flatten(lchild);
 		if ( l->label_ == v->label_ )
-			v->MergeChildren(l);
+			v->MergeChildrenAndDelete(l);
 		else
 			v->AddChild(l);
 		lader::DPState * rchild = root->RightChild();
@@ -45,7 +45,43 @@ DPStateNode * DPStateNode::Flatten(lader::DPState * root){
 			THROW_ERROR("NULL right child")
 		DPStateNode * r = v->Flatten(rchild);
 		if (r->label_ == v->label_ )
-			v->MergeChildren(r);
+			v->MergeChildrenAndDelete(r);
+		else
+			v->AddChild(r);
+	}
+	return v;
+}
+
+DPStateNode * DDPStateNode::Flatten(lader::DPState * root){
+	if (!root) // just in case
+		return NULL;
+	DPStateNode * v = new DDPStateNode(root->GetSrcL(), root->GetSrcR(), this, root->GetAction());
+	if (root->GetAction() == lader::DPState::SWAP){ // only have one child
+		lader::DPState * rchild = root->RightChild();
+		DPStateNode * r = v->Flatten(rchild);
+		v->AddChild(r);
+	}
+	else if (root->GetAction() == lader::DPState::IDLE){ // only have one child
+		lader::DPState * rchild = root->RightChild();
+		DPStateNode * r = v->Flatten(rchild);
+		v->SetLabel(r->GetLabel()); // does not affect the tree structure
+		v->MergeChildrenAndDelete(r);
+	}
+	else if (root->GetAction() != lader::DPState::SHIFT){ // this is non-terminal
+		lader::DPState * lchild = root->LeftChild();
+		if (!lchild)
+			THROW_ERROR("NULL left child ")
+		DPStateNode * l = v->Flatten(lchild);
+		if ( l->GetLabel() == v->GetLabel() )
+			v->MergeChildrenAndDelete(l);
+		else
+			v->AddChild(l);
+		lader::DPState * rchild = root->RightChild();
+		if (!rchild)
+			THROW_ERROR("NULL right child")
+		DPStateNode * r = v->Flatten(rchild);
+		if (r->GetLabel() == v->GetLabel() )
+			v->MergeChildrenAndDelete(r);
 		else
 			v->AddChild(r);
 	}
@@ -62,7 +98,7 @@ HypNode * HypNode::Flatten(lader::Hypothesis * root){
 			THROW_ERROR("NULL left child ")
 		HypNode * l = v->Flatten(lchild);
 		if ( l->label_ == v->label_ )
-			v->MergeChildren(l);
+			v->MergeChildrenAndDelete(l);
 		else
 			v->AddChild(l);
 		lader::Hypothesis * rchild = root->GetRightHyp();
@@ -70,7 +106,7 @@ HypNode * HypNode::Flatten(lader::Hypothesis * root){
 			THROW_ERROR("NULL right child")
 		HypNode * r = v->Flatten(rchild);
 		if (r->label_ == v->label_ )
-			v->MergeChildren(r);
+			v->MergeChildrenAndDelete(r);
 		else
 			v->AddChild(r);
 	}

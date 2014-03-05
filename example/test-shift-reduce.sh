@@ -7,7 +7,6 @@ TARGET_IN=data/test.ja
 ALIGN_IN=data/test.en-ja.align
 MODEL_IN=output/train.mod
 OUTPUT=output/test.en.reordered
-MAX_STATE=3
 THREADS=2
 BEAM=10
 VERBOSE=1
@@ -45,7 +44,7 @@ run "paste data/$TEST_IN output/$TEST_IN.class data/$TEST_IN.pos data/$TEST_IN.p
 # of the reordered words in the original sentence. Let's output all of them
 # for now.
 
-run "../src/bin/shift-reduce -model $MODEL_IN -out_format order,string,flatten -threads $THREADS -beam $BEAM -max_state $MAX_STATE -verbose $VERBOSE -source_in $SOURCE_IN > $OUTPUT 2> $OUTPUT.log"
+run "../src/bin/shift-reduce -model $MODEL_IN -out_format order,string,flatten,action -threads $THREADS -beam $BEAM -verbose $VERBOSE -source_in $SOURCE_IN > $OUTPUT 2> $OUTPUT.log"
 
 #############################################################################
 # 4. Evaluating the reordered output

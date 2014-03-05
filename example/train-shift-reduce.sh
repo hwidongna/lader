@@ -18,10 +18,11 @@ MAX_STATE=3
 THREADS=4
 SHUFFLE=false
 ITERATION=10
-VERBOSE=0
+VERBOSE=1
 UPDATE=max
 BEAM=10
-MAX_TERM=3
+MAX_TERM=1
+MAX_SWAP=1
 
 # define helper function: run a command and print its exit code
 function run () {
@@ -133,7 +134,7 @@ run "paste data/train.en output/train.en.class data/train.en.pos data/train.en.p
 # -threads ...	(the number of threads used for parallel feature generation, parallel cube pruning/growing at cell-level
 # -cube_growing ...	(default is false which uses a lazy search)
 
-run "../src/bin/train-shift-reduce -cost 1e-3 -attach_null right -loss_profile '$LOSS_PROFILE' -feature_profile '$FEATURE_PROFILE' -iterations $ITERATION -threads $THREADS -shuffle $SHUFFLE -verbose $VERBOSE -model_in $MODEL_IN'' -model_out output/train.mod -source_in $SOURCE_IN -align_in $ALIGN_IN -update $UPDATE -source_dev '$SOURCE_DEV' -align_dev '$ALIGN_DEV' -beam $BEAM -max_state $MAX_STATE -max_term $MAX_TERM -verbose $VERBOSE -ratio_dev $RATIO_DEV"
+run "../src/bin/train-shift-reduce -cost 1e-3 -attach_null right -loss_profile '$LOSS_PROFILE' -feature_profile '$FEATURE_PROFILE' -iterations $ITERATION -threads $THREADS -shuffle $SHUFFLE -verbose $VERBOSE -model_in $MODEL_IN'' -model_out output/train.mod -source_in $SOURCE_IN -align_in $ALIGN_IN -update $UPDATE -source_dev '$SOURCE_DEV' -align_dev '$ALIGN_DEV' -beam $BEAM -max_state $MAX_STATE -max_term $MAX_TERM -verbose $VERBOSE -ratio_dev $RATIO_DEV -max_swap $MAX_SWAP"
 
 # Once training finishes, a reordering model will be placed in output/train.mod.
 # This can be used in reordering, as described in run-reordering.sh

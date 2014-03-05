@@ -40,33 +40,7 @@ void Ranks::SetRanks(const std::vector<int> & order) {
 	max_rank_ = order.size()-1;
 }
 
-std::vector<DPState::Action> Ranks::GetReference() const{
-	std::vector<DPState::Action> reference;
-	DPStateVector stateseq;
-	DPState * state = new DPState();
-	stateseq.push_back(state);
-	int n = ranks_.size();
-	for (int step = 1 ; step < 2*n ; step++){
-		DPState * leftstate = state->GetLeftState();
-		DPState::Action action;
-		if (state->Allow(DPState::STRAIGTH, n) && IsStraight(leftstate, state))
-			action = DPState::STRAIGTH;
-		else if (state->Allow(DPState::INVERTED, n) && IsInverted(leftstate, state))
-			action = DPState::INVERTED;
-		else if (state->Allow(DPState::SHIFT, n))
-			action = DPState::SHIFT;
-		else // fail to get reference
-			break;
-		reference.push_back(action);
-		state->Take(action, stateseq, true); // only one item
-		state = stateseq.back();
-	}
-	BOOST_FOREACH(DPState * state, stateseq)
-		delete state;
-	return reference;
-}
-
-std::vector<DPState::Action> Ranks::GetDReference(int m) const{
+std::vector<DPState::Action> Ranks::GetReference(int m) const{
 	std::vector<DPState::Action> reference;
 	DPStateVector stateseq;
 	DPState * state = new DDPState();
@@ -77,10 +51,12 @@ std::vector<DPState::Action> Ranks::GetDReference(int m) const{
 		DPState::Action action;
 		if (state->Allow(DPState::STRAIGTH, n) && IsStraight(leftstate, state))
 			action = DPState::STRAIGTH;
-		else if (state->Allow(DPState::INVERTED, n) && IsInverted(leftstate, state))
+		else if (state->Allow(DPState::INVERTED, n) && IsInverted(leftstate, state) && !HasTie(state))
 			action = DPState::INVERTED;
-		else if (state->Allow(DPState::SWAP, n) && HasContinuous(state))
+		else if (m > 0 && state->Allow(DPState::SWAP, n) && !HasTie(state) && HasContinuous(state))
 			action = DPState::SWAP;
+		else if (state->Allow(DPState::IDLE, n))
+			action = DPState::IDLE;
 		else if (state->Allow(DPState::SHIFT, n))
 			action = DPState::SHIFT;
 		else // fail to get reference
@@ -103,8 +79,14 @@ bool Ranks::IsStraight(DPState * leftstate, DPState * state) const{
 bool Ranks::IsInverted(DPState * leftstate, DPState * state) const{
 	if (!leftstate)
 		return false;
-	return 	Ranks::IsStepOneUp(ranks_[state->GetTrgR()-1], ranks_[leftstate->GetTrgL()]);// avoid tie ranks
+	return 	Ranks::IsStepOneUp(ranks_[state->GetTrgR()-1], ranks_[leftstate->GetTrgL()]); // strictly step-one up
 }
+
+bool Ranks::HasTie(DPState * state) const{
+	return 	state->GetSrcREnd() < ranks_.size()	// state->GetSrcREnd() will be the next buffer item
+			&& ranks_[state->GetTrgR()-1] == ranks_[state->GetSrcREnd()];// avoid tie ranks in buffer
+}
+
 
 bool Ranks::HasContinuous(DPState * state) const {
 	DPState * leftstate = state->GetLeftState();

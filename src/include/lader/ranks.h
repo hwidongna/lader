@@ -29,6 +29,10 @@ public:
     int GetSrcLen() const { return ranks_.size(); }
     void SetRanks(const std::vector<int> & order);
     std::vector<DPState::Action> GetReference() const;
+    std::vector<DPState::Action> GetDReference(int m) const;
+    bool IsStraight(DPState * leftstate, DPState * state) const;
+    bool IsInverted(DPState * leftstate, DPState * state) const;
+    bool HasContinuous(DPState * state) const;
 
 private:
     std::vector<int> ranks_;

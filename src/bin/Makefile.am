@@ -3,7 +3,9 @@ AM_CPPFLAGS = -I$(srcdir)/../include $(BOOST_CPPFLAGS)
 AM_LDFLAGS = $(BOOST_LDFLAGS)
 
 
-bin_PROGRAMS = train-lader lader evaluate-lader label-ranking train-shift-reduce shift-reduce shift-reduce-kbest extract-feature gold-tree renumber-feature reranker reranker-oracle
+bin_PROGRAMS = train-lader lader evaluate-lader label-ranking \
+				train-shift-reduce shift-reduce shift-reduce-kbest \
+				extract-feature gold-tree renumber-feature reranker reranker-oracle
 
 train_lader_SOURCES = train-lader.cc
 train_lader_LDADD = ../lib/liblader.la -lboost_regex-mt -lboost_thread-mt -lboost_filesystem -lboost_system -lrt

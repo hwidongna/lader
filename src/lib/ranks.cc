@@ -3,6 +3,7 @@
 #include <boost/foreach.hpp>
 #include <map>
 #include <iostream>
+#include <shift-reduce-dp/ddpstate.h>
 
 using namespace std;
 using namespace lader;
@@ -48,13 +49,9 @@ std::vector<DPState::Action> Ranks::GetReference() const{
 	for (int step = 1 ; step < 2*n ; step++){
 		DPState * leftstate = state->GetLeftState();
 		DPState::Action action;
-		if (state->Allow(DPState::STRAIGTH, n) &&
-				Ranks::IsContiguous(ranks_[leftstate->GetTrgR()-1], ranks_[state->GetTrgL()]))
+		if (state->Allow(DPState::STRAIGTH, n) && IsStraight(leftstate, state))
 			action = DPState::STRAIGTH;
-		else if (state->Allow(DPState::INVERTED, n) &&
-				Ranks::IsContiguous(ranks_[state->GetTrgR()-1], ranks_[leftstate->GetTrgL()]) &&
-				(state->GetSrcR() >= n
-				|| !Ranks::IsContiguous(ranks_[state->GetTrgR()-1], ranks_[state->GetSrcR()])))// avoid tie ranks in buffer
+		else if (state->Allow(DPState::INVERTED, n) && IsInverted(leftstate, state))
 			action = DPState::INVERTED;
 		else if (state->Allow(DPState::SHIFT, n))
 			action = DPState::SHIFT;
@@ -67,4 +64,54 @@ std::vector<DPState::Action> Ranks::GetReference() const{
 	BOOST_FOREACH(DPState * state, stateseq)
 		delete state;
 	return reference;
+}
+
+std::vector<DPState::Action> Ranks::GetDReference(int m) const{
+	std::vector<DPState::Action> reference;
+	DPStateVector stateseq;
+	DPState * state = new DDPState();
+	stateseq.push_back(state);
+	int n = ranks_.size();
+	for (int step = 1 ; step < 2*(n+m) ; step++){
+		DPState * leftstate = state->GetLeftState();
+		DPState::Action action;
+		if (state->Allow(DPState::STRAIGTH, n) && IsStraight(leftstate, state))
+			action = DPState::STRAIGTH;
+		else if (state->Allow(DPState::INVERTED, n) && IsInverted(leftstate, state))
+			action = DPState::INVERTED;
+		else if (state->Allow(DPState::SWAP, n) && HasContinuous(state))
+			action = DPState::SWAP;
+		else if (state->Allow(DPState::SHIFT, n))
+			action = DPState::SHIFT;
+		else // fail to get reference
+			break;
+		reference.push_back(action);
+		state->Take(action, stateseq, true); // only one item
+		state = stateseq.back();
+	}
+	BOOST_FOREACH(DPState * state, stateseq)
+		delete state;
+	return reference;
+}
+
+bool Ranks::IsStraight(DPState * leftstate, DPState * state) const{
+	if (!leftstate)
+		return false;
+	return Ranks::IsContiguous(ranks_[leftstate->GetTrgR()-1], ranks_[state->GetTrgL()]);
+}
+
+bool Ranks::IsInverted(DPState * leftstate, DPState * state) const{
+	if (!leftstate)
+		return false;
+	return 	Ranks::IsStepOneUp(ranks_[state->GetTrgR()-1], ranks_[leftstate->GetTrgL()]);// avoid tie ranks
+}
+
+bool Ranks::HasContinuous(DPState * state) const {
+	DPState * leftstate = state->GetLeftState();
+	while (leftstate){
+		if (IsStraight(leftstate, state) || IsInverted(leftstate, state))
+			return true;
+		leftstate = leftstate->GetLeftState();
+	}
+	return false;
 }

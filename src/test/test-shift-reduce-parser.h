@@ -13,6 +13,7 @@
 #include <lader/feature-sequence.h>
 #include <lader/feature-data-sequence.h>
 #include <lader/feature-set.h>
+#include <shift-reduce-dp/ddpstate.h>
 #include <fstream>
 #include <vector>
 
@@ -305,7 +306,80 @@ public:
     	return ret;
     }
 
+    int TestInsideOut() {
+    	// Create a combined alignment
+		//  .x..
+		//  ...x
+		//  x...
+    	//  ..x.
+    	vector<string> words(4, "x");
+    	Alignment al(MakePair(4,4));
+    	al.AddAlignment(MakePair(0,1));
+    	al.AddAlignment(MakePair(1,3));
+    	al.AddAlignment(MakePair(2,0));
+    	al.AddAlignment(MakePair(3,2));
+    	Ranks cal;
+    	FeatureDataSequence sent;
+    	cal = Ranks(CombinedAlign(words,al));
+    	// Create a sentence
+    	string str = "1 2 3 4";
+    	sent.FromString(str);
+    	int n = sent.GetNumWords();
+    	vector<DPState::Action> refseq = cal.GetDReference(1);
+		vector<DPState::Action> exp(2*n+1, DPState::SHIFT);
+		exp[3]=DPState::SWAP; exp[4]=DPState::INVERTED;
+		exp[7]=DPState::INVERTED; exp[8]=DPState::STRAIGTH;
+		int ret = 1;
+		ret *= CheckVector(exp, refseq);
+		if (!ret){
+			cerr << "incorrect reference sequence" << endl;
+			return 0;
+		}
 
+    	DPStateVector stateseq;
+		stateseq.push_back(new DDPState());
+		for (int i = 0 ; i < exp.size() ; i++){
+			DPState * state = stateseq.back();
+			if (state->Allow(exp[i], n))
+				state->Take(exp[i], stateseq, true);
+			else{
+				ret = 0;
+				cerr << "action " << (char)exp[i] << "is not allowed at step " << i+1 << endl;
+				break;
+			}
+		}
+		DPState * goal = stateseq.back();
+		if (!goal->IsGold()){
+			cerr << *goal << endl;
+			return 0;
+		}
+		vector<DPState::Action> act;
+		goal->AllActions(act);
+		if (act.size() != 2*n+1){
+			cerr << "incomplete all actions: size " << act.size() << endl;
+			return 0;
+		}
+		ret *= CheckVector(refseq, act);
+		if (!ret){
+			cerr << "incorrect all actions" << endl;
+			return 0;
+		}
+
+    	{ // check reordering
+    		vector<int> act;
+			goal->GetReordering(act);
+			vector<int> exp(n);
+			exp[0]=2, exp[1]=0, exp[2]=3, exp[3]=1;
+			ret *= CheckVector(exp, act);
+			if (!ret){
+				cerr << "incorrect get reordering" << endl;
+				return 0;
+			}
+    	}
+    	BOOST_FOREACH(DPState * state, stateseq)
+    		delete state;
+    	return ret;
+    }
 
     bool RunTest() {
     	int done = 0, succeeded = 0;
@@ -314,6 +388,7 @@ public:
     	done++; cout << "TestAllActions()" << endl; if(TestAllActions()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestShift2()" << endl; if(TestShift2()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestShift3()" << endl; if(TestShift3()) succeeded++; else cout << "FAILED!!!" << endl;
+    	done++; cout << "TestInsideOut()" << endl; if(TestInsideOut()) succeeded++; else cout << "FAILED!!!" << endl;
     	cout << "#### TestShiftReduceParser Finished with "<<succeeded<<"/"<<done<<" tests succeeding ####"<<endl;
     	return done == succeeded;
     }

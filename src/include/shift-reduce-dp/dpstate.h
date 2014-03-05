@@ -26,6 +26,7 @@ class DPState;
 typedef vector<DPState*> DPStateVector;
 typedef pair<int,int> Span;
 class DPState {
+	friend class DDPState;
 public:
 	// compatible to the HyperEdge::Type
 	typedef enum{
@@ -33,6 +34,7 @@ public:
 		SHIFT = 'F', // forward
 		STRAIGTH = 'S',
 		INVERTED = 'I',
+		SWAP = 'W',		// for DDPState
 	} Action;
 
 	typedef struct {
@@ -50,10 +52,11 @@ public:
 	void SetRank(int rank) { rank_ = rank; }
 	int GetRank() const { return rank_; }
 	void MergeWith(DPState * other);
-	void Take(Action action, DPStateVector & result, bool actiongold = false,
+	virtual void Take(Action action, DPStateVector & result, bool actiongold = false,
 			int maxterm = 1, ReordererModel * model = NULL, const FeatureSet * feature_gen = NULL,
 			const Sentence * sent = NULL);
-	bool Allow(const Action & action, const int n);
+	virtual bool Allow(const Action & action, const int n);
+	virtual bool IsContinuous() { return false; }
 	void InsideActions(vector<Action> & result);
 	void AllActions(vector <Action> & result);
 	DPState * Previous();
@@ -71,7 +74,7 @@ public:
 	Action GetAction() const { return action_; }
 	Span GetSrcSpan() const { return MakePair(src_l_, src_r_-1); }
 	Span GetTrgSpan() const { return MakePair(trg_l_, trg_r_-1); }
-	vector<DPState*> GetLeftPtrs() const { return leftptrs_; }
+	DPStateVector GetLeftPtrs() const { return leftptrs_; }
 	void GetReordering(vector <int> & result);
 	void SetSignature(int max);
 	vector<Span> GetSignature() const { return signature_; }
@@ -89,9 +92,9 @@ public:
 		return score_ < other.score_ || (score_ == other.score_ && inside_ < other.inside_);
 	}
 	void PrintParse(const vector<string> & strs, ostream & out) const;
-private:
-	DPState * Shift();
-	DPState * Reduce(DPState * leftstate, Action action);
+protected:
+	virtual DPState * Shift();
+	virtual DPState * Reduce(DPState * leftstate, Action action);
 	double score_, inside_, shiftcost_;
 	int step_;
 	int src_l_, src_r_;	// source span
@@ -126,7 +129,7 @@ inline ostream& operator << ( ostream& out,
                                    const lader::DPState & rhs )
 {
     out << (rhs.IsGold() ? "*" : " ") << rhs.GetStep() << "("
-    	<< rhs.GetAction() << ", " << rhs.GetRank() << "):"
+    	<< (char)rhs.GetAction() << ", " << rhs.GetRank() << "):"
     	<< "< " << rhs.GetSrcL() << ", " << rhs.GetSrcR()-1 << ", "
 		<< rhs.GetTrgL() << ", " << rhs.GetTrgR()-1 << " > :: "
 		<< rhs.GetScore() << ", " << rhs.GetInside() << ": left " << rhs.GetLeftPtrs().size();

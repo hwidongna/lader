@@ -22,16 +22,16 @@ DPState::DPState() {
 	src_c_ = -1;
 	trg_l_ = 0; trg_r_ = 0;
 	rank_ = -1;
-	action_ = DPState::INIT;
+	action_ = INIT;
 	gold_ = true;
 }
 
 // new state
 // set src_c_, trg_l_ and trg_r_ latter
 DPState::DPState(int step, int i, int j, Action action) {
-	score_ = 0, inside_ = 0, shiftcost_ = 0;
+	score_ = 0; inside_ = 0; shiftcost_ = 0;
 	step_ = step;
-	src_l_ = i, src_r_ = j;
+	src_l_ = i; src_r_ = j;
 	rank_ = -1;
 	action_ = action;
 	gold_ = false;
@@ -41,7 +41,7 @@ DPState::~DPState() {
 }
 
 void DPState::MergeWith(DPState * other){
-	if (action_ == DPState::SHIFT)
+	if (action_ == SHIFT)
 		leftptrs_.push_back(other->leftptrs_[0]);
 	else // reduce
 		if (keep_alternatives_)
@@ -57,7 +57,7 @@ void DPState::Take(Action action, DPStateVector & result, bool actiongold,
 		actioncost = model->ScoreFeatureVector(*fvi);
 		delete fvi;
 	}
-	if (action == DPState::SHIFT){
+	if (action == SHIFT){
 		DPState * next = Shift();
 		next->inside_ = 0;
 		next->score_ = score_ + actioncost;
@@ -68,19 +68,19 @@ void DPState::Take(Action action, DPStateVector & result, bool actiongold,
 				next->leftptrs_.push_back(this);
 				// TODO: reflect the maxterm information for feature generation
 				const FeatureVectorInt * fvi = feature_gen->MakeStateFeatures(*sent,
-						*next, DPState::SHIFT, model->GetFeatureIds(), model->GetAdd());
+						*next, SHIFT, model->GetFeatureIds(), model->GetAdd());
 				shiftcost = model->ScoreFeatureVector(*fvi);
 				delete fvi;
 			}
 			// shifted->inside_ = 0;
 			shifted->score_ = next->score_ + shiftcost;
-			DPState * reduced = shifted->Reduce(next, DPState::STRAIGTH);
+			DPState * reduced = shifted->Reduce(next, STRAIGTH);
 			double reducecost = 0;
 			if (model != NULL && feature_gen != NULL && sent != NULL){
 				shifted->leftptrs_.push_back(next);
 				// TODO: reflect the maxterm information for feature generation?
 				const FeatureVectorInt * fvi = feature_gen->MakeStateFeatures(*sent,
-						*shifted, DPState::STRAIGTH, model->GetFeatureIds(), model->GetAdd());
+						*shifted, STRAIGTH, model->GetFeatureIds(), model->GetAdd());
 				reducecost = model->ScoreFeatureVector(*fvi);
 				delete fvi;
 			}
@@ -89,7 +89,7 @@ void DPState::Take(Action action, DPStateVector & result, bool actiongold,
 			reduced->score_ = next->score_ + shiftcost + reducecost;
 			delete shifted; delete next; // intermidiate states, c++ syntax sucks!
 			next = reduced;
-			next->action_ = DPState::SHIFT; // it is actuall a shifted state
+			next->action_ = SHIFT; // it is actuall a shifted state
 		}
 		shiftcost_ = actioncost;
 		next->gold_ = gold_ && actiongold;
@@ -122,7 +122,7 @@ void DPState::Take(Action action, DPStateVector & result, bool actiongold,
 
 
 DPState * DPState::Shift(){
-	DPState * next = new DPState(step_+1, src_r_, src_r_+1, DPState::SHIFT);
+	DPState * next = new DPState(step_+1, src_r_, src_r_+1, SHIFT);
 	next->trg_l_ = src_r_; next->trg_r_ = src_r_+1;
 	next->src_c_ = -1;
 	return next;
@@ -140,26 +140,27 @@ DPState * DPState::Reduce(DPState * leftstate, Action action){
 }
 
 bool DPState::Allow(const Action & action, const int n){
-	if (action == DPState::SHIFT)
+	if (action == SHIFT)
 		return src_r_ < n;
 	DPState * leftstate = GetLeftState();
 	return leftstate && leftstate->action_ != INIT
-			&& (leftstate->src_r_ == src_l_ || src_r_ == leftstate->src_l_);
+			&& (leftstate->src_r_ == src_l_);
 }
 
 void DPState::InsideActions(vector<Action> & result){
 	switch(action_){
-	case DPState::INIT:
+	case INIT:
 		break;
-	case DPState::SHIFT:
-		result.push_back(DPState::SHIFT);
+	case SHIFT:
+		result.push_back(SHIFT);
 		for (int i = src_l_+1 ; i < src_r_ ; i++){ // for shift-m > 1
-			result.push_back(DPState::SHIFT);
-			result.push_back(DPState::STRAIGTH);
+			result.push_back(SHIFT);
+			result.push_back(STRAIGTH);
 		}
 		break;
-	case DPState::STRAIGTH:
-	case DPState::INVERTED:
+	case STRAIGTH:
+	case INVERTED:
+	case SWAP:
 		LeftChild()->InsideActions(result);
 		RightChild()->InsideActions(result);
 		result.push_back(action_);
@@ -179,17 +180,20 @@ void DPState::AllActions(vector<Action> & result){
 
 void DPState::GetReordering(vector<int> & result){
 	switch(action_){
-	case DPState::INIT:
+	case INIT:
 		break;
-	case DPState::STRAIGTH:
+	case STRAIGTH:
 		LeftChild()->GetReordering(result);
 		RightChild()->GetReordering(result);
 		break;
-	case DPState::INVERTED:
+	case INVERTED:
 		RightChild()->GetReordering(result);
 		LeftChild()->GetReordering(result);
 		break;
-	case DPState::SHIFT:
+	case SWAP:
+		RightChild()->GetReordering(result);
+		break;
+	case SHIFT:
 		for (int i = src_l_ ; i < src_r_ ; i++)
 			result.push_back(i);
 		break;
@@ -200,50 +204,50 @@ void DPState::SetSignature(int max){
 	if (!signature_.empty())
 		THROW_ERROR("Signature exists!" << *this)
 	DPState * leftstate = this;
-	for (int i = 0 ; i < max && leftstate->action_ != DPState::INIT ; i++){
+	for (int i = 0 ; i < max && leftstate->action_ != INIT ; i++){
 		signature_.push_back(leftstate->GetTrgSpan());
 		leftstate = leftstate->GetLeftState();
 	}
 }
 DPState * DPState::Previous(){
-	if (action_ == DPState::INIT)
+	if (action_ == INIT)
 		return NULL;
-	else if (action_ == DPState::SHIFT)
+	else if (action_ == SHIFT)
 		return leftptrs_[0];
 	return RightChild();
 }
 
 DPState * DPState::GetLeftState() const{
-	if (action_ == DPState::INIT)
+	if (action_ == INIT)
 		return NULL;
 	return leftptrs_[0];
 }
 
 DPState * DPState::LeftChild() const{
-	if (action_ == DPState::INIT || action_ == DPState::SHIFT)
+	if (action_ == INIT || action_ == SHIFT)
 		return NULL;
 	return backptrs_[0].leftstate;
 }
 
 DPState * DPState::RightChild() const{
-	if (action_ == DPState::INIT || action_ == DPState::SHIFT)
+	if (action_ == INIT || action_ == SHIFT)
 		return NULL;
 	return backptrs_[0].istate;
 }
 
 void DPState::PrintParse(const vector<string> & strs, ostream & out) const{
 	switch(action_){
-	case DPState::INIT:
+	case INIT:
 		break;
-	case DPState::STRAIGTH:
-	case DPState::INVERTED:
+	case STRAIGTH:
+	case INVERTED:
 		out << "("<<action_<<" ";
 		LeftChild()->PrintParse(strs, out);
 		out << " ";
 		RightChild()->PrintParse(strs, out);
 		out << ")";
 		break;
-	case DPState::SHIFT:
+	case SHIFT:
 		out << "(" << action_ << " " << GetTokenWord(strs[GetSrcL()]) <<")";
 		break;
 	}

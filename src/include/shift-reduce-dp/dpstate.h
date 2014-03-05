@@ -34,7 +34,8 @@ public:
 		SHIFT = 'F', // forward
 		STRAIGTH = 'S',
 		INVERTED = 'I',
-		SWAP = 'W',		// for DDPState
+		SWAP = 'D',		// for DDPState
+		IDLE = 'E'		// for DDPState
 	} Action;
 
 	typedef struct {
@@ -82,7 +83,7 @@ public:
 	// a simple hash function
 	size_t hash() const { return trg_l_ * MULTI_K + trg_r_; }
 	// compare signature
-	bool operator == (const DPState & other) const {
+	virtual bool operator == (const DPState & other) const {
 		if (signature_.size() != other.signature_.size())
 			return false;
 		return std::equal(signature_.begin(), signature_.end(), other.signature_.begin())

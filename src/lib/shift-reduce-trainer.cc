@@ -62,9 +62,6 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
 		sent_order[i] = i;
 
     cerr << "(\".\" == 100 sentences)" << endl;
-    Parser p;
-    p.SetBeamSize(config.GetInt("beam"));
-    p.SetVerbose(verbose);
     string update = config.GetString("update");
     struct timespec search={0,0}, simulate={0,0};
     struct timespec tstart={0,0}, tend={0,0};
@@ -118,6 +115,9 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
         		continue;
         	}
 
+            Parser p;
+            p.SetBeamSize(config.GetInt("beam"));
+            p.SetVerbose(verbose);
         	Parser::Result result;
         	clock_gettime(CLOCK_MONOTONIC, &tstart);
         	p.Search(*model_, *features_, *data_[sent], result, config.GetInt("max_state"),

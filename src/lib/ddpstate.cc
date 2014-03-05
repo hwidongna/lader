@@ -104,6 +104,21 @@ void DDPState::Take(Action action, DPStateVector & result, bool actiongold,
 			result.push_back(next);
 		}
 	}
+	else if (action == IDLE){
+		DPState * next = Idle();
+		next->shiftcost_ = shiftcost_;
+		next->inside_ = inside_ + actioncost;
+		next->score_ = score_ + actioncost;
+		next->gold_ = gold_;
+		next->leftptrs_ = leftptrs_;
+		BackPtr back;
+		back.action = action;
+		back.cost = actioncost;
+		back.leftstate = LeftChild();
+		back.istate = RightChild();
+		next->backptrs_.push_back(back);
+		result.push_back(next);
+	}
 	else{ // reduce
 		BOOST_FOREACH(DPState * leftstate, leftptrs_){
 			DPState * next = Reduce(leftstate, action);
@@ -189,8 +204,17 @@ DPState * DDPState::Swap(DPState * leftstate){
 	next->src_c_ = src_c_; next->src_rend_ = src_rend_;
 	next->trg_l_ = trg_l_;	next->trg_r_ = trg_r_;
 	return next;
-
 }
+
+// an idle state, only change step count
+DPState * DDPState::Idle(){
+	DDPState * next = new DDPState(step_+1, src_l_, src_r_, IDLE);
+	next->swaped_.insert(next->swaped_.begin(), swaped_.begin(), swaped_.end());
+	next->src_c_ = src_c_; next->src_rend_ = src_rend_;
+	next->trg_l_ = trg_l_;	next->trg_r_ = trg_r_;
+	return next;
+}
+
 bool DDPState::Allow(const Action & action, const int n){
 	DDPState * lstate = dynamic_cast<DDPState*>(GetLeftState());
 	if (action == SHIFT)
@@ -198,6 +222,8 @@ bool DDPState::Allow(const Action & action, const int n){
 	else if (action == SWAP)
 		return lstate && lstate->action_ != INIT
 				&& lstate->IsContinuous() && IsContinuous() && lstate->src_l_ < src_l_;
+	else if (action == IDLE)
+		return src_l_ == 0 && src_r_ == n && IsContinuous();
 	return lstate && lstate->action_ != INIT
 			&& (lstate->src_r_ == src_l_
 				|| (lstate->IsContinuous() && IsContinuous()));

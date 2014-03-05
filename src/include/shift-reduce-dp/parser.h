@@ -21,7 +21,6 @@ class Parser {
 public:
 	Parser();
 	virtual ~Parser();
-	void Clear();
 	typedef struct {
 		vector<int> order;
 		vector<DPState::Action> actions;
@@ -30,7 +29,8 @@ public:
 	} Result;
 
 	void SetResult(Result & result, DPState * goal);
-	void Search(ReordererModel & model, const FeatureSet & feature_gen,
+	virtual DPState * InitialState() { return new DPState(); }
+	virtual void Search(ReordererModel & model, const FeatureSet & feature_gen,
 			const Sentence & sent, Result & result, int max_state = 0,
 			vector<DPState::Action> * refseq = NULL, string * update = NULL);
 	void GetKbestResult(vector<Parser::Result> & kbest);
@@ -50,14 +50,20 @@ public:
 			THROW_ERROR("Search result is empty!")
 			return beams_.back()[k];
 	}
-private:
-	void Update(vector< DPStateVector > & beams, DPStateVector & golds,
-			Result & result, vector<DPState::Action> * refseq = NULL,
-			string * update = NULL);
+protected:
+	void DynamicProgramming(DPStateVector & golds, ReordererModel & model,
+			const FeatureSet & feature_gen, const Sentence & sent,
+			int max_state = 0, vector<DPState::Action> * refseq = NULL);
+	void CompleteGolds(DPStateVector & simgolds, DPStateVector & golds,
+			ReordererModel & model, const FeatureSet & feature_gen,
+			const Sentence & sent, vector<DPState::Action> * refseq);
+	void Update(DPStateVector & golds, Result & result,
+			vector<DPState::Action> * refseq = NULL, string * update = NULL);
 	vector< DPStateVector > beams_;
 	int beamsize_;
 	int nstates_, nedges_, nuniq_;
 	int verbose_;
+	vector<DPState::Action> actions_;
 };
 
 
@@ -68,10 +74,12 @@ namespace std {
 inline ostream& operator << ( ostream& out,
                                    const lader::Parser::Result & rhs )
 {
-    out << rhs.step << ": " << rhs.score << " ::";
+    out << "Step " << rhs.step << ": " << rhs.score << " ::";
     BOOST_FOREACH(lader::DPState::Action action, rhs.actions)
-    	out << " " << action;
-    out << endl;
+    	out << " " << (char)action;
+    out << " ::";
+    BOOST_FOREACH(int i, rhs.order)
+        out << " " << i;
     return out;
 }
 }

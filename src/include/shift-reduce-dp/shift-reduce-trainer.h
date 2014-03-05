@@ -42,18 +42,18 @@ class ShiftReduceTrainer : public ReordererTrainer {
 			int sent = id_;
 			ostringstream err;
 			if (verbose >= 1){
-				cerr << endl << "Sentence " << sent << endl;
-				cerr << "Rank: ";
+				err << endl << "Sentence " << sent << endl;
+				err << "Rank: ";
 				BOOST_FOREACH(int rank, ranks_.GetRanks())
-					cerr << rank << " ";
-				cerr << endl;
+					err << rank << " ";
+				err << endl;
 			}
 			vector<DPState::Action> refseq = ranks_.GetReference();
 			if (verbose >= 1){
-				cerr << "Reference: ";
+				err << "Reference: ";
 				BOOST_FOREACH(DPState::Action action, refseq)
-					cerr << action << " ";
-				cerr << endl;
+					err << action << " ";
+				err << endl;
 			}
 			Parser p;
 			p.SetBeamSize(config_.GetInt("beam"));
@@ -61,14 +61,14 @@ class ShiftReduceTrainer : public ReordererTrainer {
 			p.Search(*model_, *features_, data_, result_, config_.GetInt("max_state"));
 			p.GetKbestResult(kbest_);
 			if (verbose >= 1){
-				cerr << "Result:   ";
+				err << "Result:   ";
 				for (int step = 0 ; step < (const int)result_.actions.size() ; step++)
-					cerr << " " << result_.actions[step];
-				cerr << endl;
-				cerr << "Purmutation:";
+					err << " " << result_.actions[step];
+				err << endl;
+				err << "Purmutation:";
 				BOOST_FOREACH(int order, result_.order)
-					cerr << " " << order;
-				cerr << endl;
+					err << " " << order;
+				err << endl;
 			}
 			collector_.Write(id_, "", err.str());
 		}

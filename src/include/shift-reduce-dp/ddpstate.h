@@ -29,10 +29,23 @@ public:
 	int GetSrcR2() const { return src_r2_; }
 	int GetSrcREnd() const { return src_rend_; }
 	DPStateVector GetSwaped() const { return swaped_; }
+
+	// compare signature
+	virtual bool operator == (const DPState & other) const {
+		if (GetAction() == DPState::SWAP){
+			const DDPState * dstate = dynamic_cast<const DDPState*>(&other);
+			if (!dstate || swaped_.size() != dstate->swaped_.size())
+				return false;
+			return std::equal(swaped_.begin(), swaped_.end(), dstate->swaped_.begin())
+			&& src_l2_ == dstate->src_l2_ && DPState::operator ==(other);
+		}
+		return DPState::operator ==(other);
+	}
 protected:
 	virtual DPState * Shift();
 	virtual DPState * Reduce(DPState * leftstate, Action action);
 	DPState * Swap(DPState * leftstate);
+	DPState * Idle();
 	int src_l2_, src_r2_;	// discontinuous source span
 	int src_rend_;			// source index for next shift
 	DPStateVector swaped_;	// swaped states

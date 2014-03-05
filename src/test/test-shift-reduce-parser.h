@@ -14,6 +14,7 @@
 #include <lader/feature-data-sequence.h>
 #include <lader/feature-set.h>
 #include <shift-reduce-dp/ddpstate.h>
+#include <shift-reduce-dp/dparser.h>
 #include <fstream>
 #include <vector>
 
@@ -151,6 +152,28 @@ public:
     	}
     	BOOST_FOREACH(DPState * state, stateseq)
     		delete state;
+    	return ret;
+    }
+
+    int TestSearch() {
+    	DPStateVector stateseq;
+    	int n = sent.GetNumWords();
+    	vector<DPState::Action> refseq = cal.GetReference();
+    	ReordererModel model;
+    	FeatureSet set;
+        set.AddFeatureGenerator(new FeatureSequence);
+        Sentence datas;
+        datas.push_back(&sent);
+        Parser::Result result;
+    	Parser p;
+    	p.Search(model, set, datas, result, 3);
+    	vector<Parser::Result> kbest;
+    	p.GetKbestResult(kbest);
+    	int ret = 1;
+    	if (kbest.size() != 4*3){ // 0-1 1-0 0-2 2-0 0-3 3-0 1-2 2-1 1-3 3-1 2-3 3-2
+    		cerr << "kbest size " << kbest.size() << " != " << 4*3 << endl;
+    		return 0;
+    	}
     	return ret;
     }
 
@@ -381,14 +404,61 @@ public:
     	return ret;
     }
 
+    int TestInsideOutSearch() {
+    	// Create a combined alignment
+		//  .x..
+		//  ...x
+		//  x...
+    	//  ..x.
+    	vector<string> words(4, "x");
+    	Alignment al(MakePair(4,4));
+    	al.AddAlignment(MakePair(0,1));
+    	al.AddAlignment(MakePair(1,3));
+    	al.AddAlignment(MakePair(2,0));
+    	al.AddAlignment(MakePair(3,2));
+    	Ranks cal;
+    	FeatureDataSequence sent;
+    	cal = Ranks(CombinedAlign(words,al));
+    	// Create a sentence
+    	string str = "1 2 3 4";
+    	sent.FromString(str);
+    	int n = sent.GetNumWords();
+    	vector<DPState::Action> refseq = cal.GetDReference(1);
+		vector<DPState::Action> exp(2*n+1, DPState::SHIFT);
+		exp[3]=DPState::SWAP; exp[4]=DPState::INVERTED;
+		exp[7]=DPState::INVERTED; exp[8]=DPState::STRAIGTH;
+
+    	ReordererModel model;
+    	FeatureSet set;
+        set.AddFeatureGenerator(new FeatureSequence);
+        Sentence datas;
+        datas.push_back(&sent);
+        Parser::Result result;
+    	DParser p(1);
+    	p.Search(model, set, datas, result);
+    	vector<Parser::Result> kbest;
+    	p.GetKbestResult(kbest);
+    	int ret = 1;
+    	for (int k = 0 ; k < kbest.size() ; k++){
+    		DPState * goal = p.GetKthBest(k);
+    		if (goal->GetStep() != refseq.size()){
+        		cerr << "Goal step " << *goal << " != " << refseq.size() << endl;
+        		ret = 0;
+    		}
+    	}
+    	return ret;
+    }
+
     bool RunTest() {
     	int done = 0, succeeded = 0;
     	done++; cout << "TestGetReordering()" << endl; if(TestGetReordering()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestSetSignature()" << endl; if(TestSetSignature()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestAllActions()" << endl; if(TestAllActions()) succeeded++; else cout << "FAILED!!!" << endl;
+    	done++; cout << "TestSearch()" << endl; if(TestSearch()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestShift2()" << endl; if(TestShift2()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestShift3()" << endl; if(TestShift3()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestInsideOut()" << endl; if(TestInsideOut()) succeeded++; else cout << "FAILED!!!" << endl;
+    	done++; cout << "TestInsideOutSearch()" << endl; if(TestInsideOutSearch()) succeeded++; else cout << "FAILED!!!" << endl;
     	cout << "#### TestShiftReduceParser Finished with "<<succeeded<<"/"<<done<<" tests succeeding ####"<<endl;
     	return done == succeeded;
     }

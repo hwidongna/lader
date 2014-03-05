@@ -14,35 +14,43 @@ using namespace std;
 
 namespace lader {
 
-Parser::Parser(): nstates_(0), nedges_(0), nuniq_(0)  {
-
+Parser::Parser(): nstates_(0), nedges_(0), nuniq_(0), beamsize_(0), verbose_(0)  {
+	actions_.push_back(DPState::SHIFT);
+	actions_.push_back(DPState::STRAIGTH);
+	actions_.push_back(DPState::INVERTED);
 }
 
 Parser::~Parser() {
-	Clear();
-}
-
-void Parser::Clear() {
 	BOOST_FOREACH(DPStateVector & b, beams_)
 		BOOST_FOREACH(DPState * state, b)
 			delete state;
-	beams_.clear();
 }
 
 void Parser::Search(ReordererModel & model, const FeatureSet & feature_gen,
 		const Sentence & sent, Result & result, int max_state,
 		vector<DPState::Action> * refseq, string * update) {
+	DPStateVector golds(2*sent[0]->GetNumWords(), NULL);
+	DynamicProgramming(golds, model, feature_gen, sent, max_state, refseq);
+	DPStateVector simgolds;
+	if (refseq)
+		CompleteGolds(simgolds, golds, model, feature_gen, sent, refseq);
+	Update(golds, result, refseq, update);
+	// clean-up the rest gold items using refseq
+	BOOST_FOREACH(DPState * gold, simgolds)
+		delete gold;
+}
+
+void Parser::DynamicProgramming(DPStateVector & golds, ReordererModel & model,
+		const FeatureSet & feature_gen, const Sentence & sent,
+		int max_state, vector<DPState::Action> * refseq) {
 	int n = sent[0]->GetNumWords();
-	int maxStep = 2*n;
-	Clear();
-	beams_.resize(maxStep, DPStateVector());
-	DPState * state = new DPState();
+	int max_step = golds.size();
+	beams_.resize(max_step, DPStateVector());
+	DPState * state = InitialState();
 	beams_[0].push_back(state); // initial state
 
-	DPStateVector golds(maxStep, NULL);
 	golds[0] = beams_[0][0]; // initial state
-	DPState::Action actions[] = {DPState::SHIFT, DPState::STRAIGTH, DPState::INVERTED};
-	for (int step = 1 ; step < maxStep ; step++){
+	for (int step = 1 ; step < max_step ; step++){
 		if (verbose_ >= 2)
 			cerr << "step " << step << endl;
 		DPStateQueue q;
@@ -54,7 +62,7 @@ void Parser::Search(ReordererModel & model, const FeatureSet & feature_gen,
 				cerr << endl;
 			}
 			// iterate over actions
-			BOOST_FOREACH(DPState::Action action, actions){
+			BOOST_FOREACH(DPState::Action action, actions_){
 				if (!old->Allow((DPState::Action)action, n))
 					continue;
 				bool actiongold = (refseq != NULL && action == (*refseq)[step-1]);
@@ -120,9 +128,9 @@ void Parser::Search(ReordererModel & model, const FeatureSet & feature_gen,
 
 		DPStateMap tmp;
 		int rank = 0;
-		for (int k = 0 ; !q.empty() && k < beamsize_ ; k++){
+		for (int k = 0 ; !q.empty() && (!beamsize_ || k < beamsize_) ; k++){
 			DPState * top = q.top(); q.pop();
-			DPStateMap::iterator it = tmp.find(*top);
+			DPStateMap::iterator it = tmp.find(*top); // utilize hash() and operator==()
 			if (it == tmp.end()){
 				tmp[*top] = top;
 				beams_[step].push_back(top);
@@ -155,55 +163,53 @@ void Parser::Search(ReordererModel & model, const FeatureSet & feature_gen,
 			delete q.top(); q.pop();
 		}
 	}
-	DPStateVector simgolds;
-	if (refseq){
-		if (verbose_ >= 2){
-			cerr << "Reference:";
-			BOOST_FOREACH(DPState::Action action, *refseq)
-				cerr << " " << action;
-			cerr << endl;
-		}
-		// complete the rest gold items using refseq
-		for (int step = 1 ; step <= (int)refseq->size() ; step++){
-			if (golds[step] == NULL){
-				DPState::Action action = (*refseq)[step-1];
-				DPStateVector tmp;
-				if (golds[step-1]->Allow(action, n)) // take an action for golds
-					golds[step-1]->Take(action, tmp, true, 1,
-							&model, &feature_gen, &sent);
-				else
-					THROW_ERROR("Bad reference seq! " << endl);
-				simgolds.push_back(tmp[0]);
-				for (int i = 1 ; i < tmp.size() ; i++)
-					delete tmp[i];
-				golds[step] = simgolds.back(); // only one next item
-				if (verbose_ >= 2)
-					cerr << "SIMGOLD: " << *golds[step] << endl;
-			}
-			else if (verbose_ >= 2)
-				cerr << "GOLD: " << *golds[step] << endl;
-		}
-	}
-	Update(beams_, golds, result, refseq, update);
-	// clean-up the rest gold items using refseq
-	BOOST_FOREACH(DPState * gold, simgolds)
-		delete gold;
 }
 
+void Parser::CompleteGolds(DPStateVector & simgolds, DPStateVector & golds,
+		ReordererModel & model, const FeatureSet & feature_gen,
+		const Sentence & sent, vector<DPState::Action> * refseq) {
+	int n = sent[0]->GetNumWords();
+	if (verbose_ >= 2){
+		cerr << "Reference:";
+		BOOST_FOREACH(DPState::Action action, *refseq)
+			cerr << " " << action;
+		cerr << endl;
+	}
+	// complete the rest gold items using refseq
+	for (int step = 1 ; step <= (int)refseq->size() ; step++){
+		if (golds[step] == NULL){
+			DPState::Action action = (*refseq)[step-1];
+			DPStateVector tmp;
+			if (golds[step-1]->Allow(action, n)) // take an action for golds
+				golds[step-1]->Take(action, tmp, true, 1,
+						&model, &feature_gen, &sent);
+			else
+				THROW_ERROR("Bad reference seq! " << endl);
+			simgolds.push_back(tmp[0]);
+			for (int i = 1 ; i < tmp.size() ; i++)
+				delete tmp[i];
+			golds[step] = simgolds.back(); // only one next item
+			if (verbose_ >= 2)
+				cerr << "SIMGOLD: " << *golds[step] << endl;
+		}
+		else if (verbose_ >= 2)
+			cerr << "GOLD: " << *golds[step] << endl;
+	}
+}
 // support naive, early, max update for perceptron
-void Parser::Update(vector< DPStateVector > & beams, DPStateVector & golds,
-		Result & result, vector<DPState::Action> * refseq, string * update) {
+void Parser::Update(DPStateVector & golds, Result & result,
+		vector<DPState::Action> * refseq, string * update) {
 	if (update && *update != "naive"){
 		if (verbose_ >= 2){
 			cerr << "update strategy: " << *update << endl;
-			cerr << "gold size: " << golds.size() << ", beam size: " << beams.size() << endl;
+			cerr << "gold size: " << golds.size() << ", beam size: " << beams_.size() << endl;
 		}
 		int earlypos = -1, latepos, largepos, maxpos = -1;
 		double maxdiff = 0;
-		if (golds.size() != beams.size())
-			THROW_ERROR("gold size " << golds.size() << " != beam size" << beams.size() << endl);
-		for (int step = 1 ; step < (int)beams.size() ; step++){
-			DPState * best = beams[step][0]; // update against best
+		if (golds.size() != beams_.size())
+			THROW_ERROR("gold size " << golds.size() << " != beam size" << beams_.size() << endl);
+		for (int step = 1 ; step < (int)beams_.size() ; step++){
+			DPState * best = beams_[step][0]; // update against best
 			if (verbose_ >= 2){
 				cerr << "BEST: " << *best << endl;
 				cerr << "GOLD: " << *golds[step] << endl;
@@ -229,7 +235,7 @@ void Parser::Update(vector< DPStateVector > & beams, DPStateVector & golds,
 			}
 		}
 		if (*update == "max" && maxpos > 0){
-			beams[maxpos][0]->AllActions(result.actions);
+			beams_[maxpos][0]->AllActions(result.actions);
 			result.step = maxpos;
 			result.score = 0;
 			if (verbose_ >= 2)
@@ -237,7 +243,7 @@ void Parser::Update(vector< DPStateVector > & beams, DPStateVector & golds,
 			return;
 		}
 	}
-	SetResult(result, beams.back()[0]);
+	SetResult(result, beams_.back()[0]);
 }
 
 void Parser::SetResult(Result & result, DPState * goal){
@@ -260,7 +266,7 @@ void Parser::Simulate(ReordererModel & model, const FeatureSet & feature_gen,
 		const int firstdiff, FeatureMapInt & featmap, double c) {
 	int n = sent[0]->GetNumWords();
 	DPStateVector stateseq;
-	DPState * state = new DPState();
+	DPState * state = InitialState();
 	stateseq.push_back(state);
 	if (verbose_ >= 2){
 		cerr << "Simulate actions:";

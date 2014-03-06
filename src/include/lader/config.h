@@ -69,7 +69,7 @@
 #define PACKAGE "lader"
 
 /* Define to the address where bug reports for this package should be sent. */
-#define PACKAGE_BUGREPORT "neubig@gmail.com"
+#define PACKAGE_BUGREPORT "neubig@gmail.com,leona@postech.ac.kr"
 
 /* Define to the full name of this package. */
 #define PACKAGE_NAME "lader"

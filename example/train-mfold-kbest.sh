@@ -140,7 +140,7 @@ fi
 
 # Produce k-best ITG trees for this fold
 run "../src/bin/shift-reduce-kbest -model output/fold$m/train.mod \
--out_format score,flatten -threads $THREADS -beam $BEAM -max_state $MAX_STATE \
+-out_format score,flatten -threads $THREADS -beam $BEAM \
 -verbose $VERBOSE -source_in output/tmp/train.en.annot.$m \
 > output/fold$m/kbest.out 2> output/fold$m/kbest.log"
 

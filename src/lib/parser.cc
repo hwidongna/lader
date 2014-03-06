@@ -224,7 +224,7 @@ void Parser::Update(DPStateVector & golds, Result * result,
 					result->step = step;
 					result->score = 0;
 					if (verbose_ >= 2)
-						cerr << "Early update " << result;
+						cerr << "Early update " << *result;
 					return;
 				}
 				if (earlypos < 0)
@@ -243,7 +243,7 @@ void Parser::Update(DPStateVector & golds, Result * result,
 			result->step = maxpos;
 			result->score = 0;
 			if (verbose_ >= 2)
-				cerr << "Max update " << result;
+				cerr << "Max update " << *result;
 			return;
 		}
 	}

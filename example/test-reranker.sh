@@ -45,8 +45,7 @@ run "../src/bin/gold-tree -verbose $VERBOSE \
 -source_in data/$TEST_IN -align_in $ALIGN_IN > output/gold.dev"
 run "../src/bin/shift-reduce-kbest -model $MODEL_IN \
 -out_format score,flatten -threads $THREADS \
--beam $BEAM -max_state $MAX_STATE \
--verbose $VERBOSE -source_in $SOURCE_IN \
+-beam $BEAM -verbose $VERBOSE -source_in $SOURCE_IN \
 > output/kbest.dev 2> output/kbest.dev.log"
 run "../src/bin/extract-feature -verbose $VERBOSE -model_in $FEATURE_IN \
 -source_in output/kbest.dev -gold_in output/gold.dev | \

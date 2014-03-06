@@ -44,15 +44,19 @@ public:
 
 	int GetNumStates() const { return nstates_; }
 	int GetNumEdges() const { return nedges_; }
-	DPState * GetBest() const {
-		return GetKthBest(0);
-	}
+	DPState * GetBest() const { return GetKthBest(0); }
 	DPState * GetKthBest(int k) const {
-		if (beams_.empty() || beams_.back().empty())
+		if (beams_.empty())
 			THROW_ERROR("Search result is empty!")
 		if (k >= beams_.back().size())
 			return NULL;
 		return beams_.back()[k];
+	}
+	DPState * GetBeamBest(int step) const {
+		const DPStateVector & b = SafeAccess(beams_, step);
+		if (b.empty())
+			return NULL;
+		return b[0];
 	}
 protected:
 	void DynamicProgramming(DPStateVector & golds, ShiftReduceModel & model,

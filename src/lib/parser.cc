@@ -203,51 +203,55 @@ void Parser::CompleteGolds(DPStateVector & simgolds, DPStateVector & golds,
 // support naive, early, max update for perceptron
 void Parser::Update(DPStateVector & golds, Result * result,
 		const vector<DPState::Action> * refseq, const string * update) {
-	if (update && *update != "naive"){
+	int earlypos = -1, latepos, largepos, maxpos = -1, naivepos;
+	if (verbose_ >= 2){
+		cerr << "update strategy: " << *update << endl;
+		cerr << "gold size: " << golds.size() << ", beam size: " << beams_.size() << endl;
+	}
+	double maxdiff = 0;
+	if (golds.size() != beams_.size())
+		THROW_ERROR("gold size " << golds.size() << " != beam size" << beams_.size() << endl);
+	for (int step = 1 ; step < (int)beams_.size() ; step++){
+		if (beams_[step].empty()){
+			if (verbose_ >= 1)
+				cerr << "step " << step << " is empty " << endl;
+			continue;
+		}
+		naivepos = step;
+		DPState * best = beams_[step][0]; // update against best
 		if (verbose_ >= 2){
-			cerr << "update strategy: " << *update << endl;
-			cerr << "gold size: " << golds.size() << ", beam size: " << beams_.size() << endl;
+			cerr << "BEST: " << *best << endl;
+			cerr << "GOLD: " << *golds[step] << endl;
 		}
-		int earlypos = -1, latepos, largepos, maxpos = -1;
-		double maxdiff = 0;
-		if (golds.size() != beams_.size())
-			THROW_ERROR("gold size " << golds.size() << " != beam size" << beams_.size() << endl);
-		for (int step = 1 ; step < (int)beams_.size() ; step++){
-			DPState * best = beams_[step][0]; // update against best
-			if (verbose_ >= 2){
-				cerr << "BEST: " << *best << endl;
-				cerr << "GOLD: " << *golds[step] << endl;
+		if (golds[step]->GetRank() < 0){
+			if (*update == "early"){ // fall-off
+				best->AllActions(result->actions);
+				result->step = step;
+				result->score = 0;
+				if (verbose_ >= 2)
+					cerr << "Early update at step " << result->step << endl;
+				return;
 			}
-			if (golds[step]->GetRank() < 0){
-				if (*update == "early"){ // fall-off
-					best->AllActions(result->actions);
-					result->step = step;
-					result->score = 0;
-					if (verbose_ >= 2)
-						cerr << "Early update " << *result;
-					return;
-				}
-				if (earlypos < 0)
-					earlypos = step;
-			}
-			if (*update == "max"){
-				double mdiff = best->GetScore() - golds[step]->GetScore();
-				if (mdiff >= maxdiff){
-					maxdiff = mdiff;
-					maxpos = step;
-				}
-			}
+			if (earlypos < 0)
+				earlypos = step;
 		}
-		if (*update == "max" && maxpos > 0){
-			beams_[maxpos][0]->AllActions(result->actions);
-			result->step = maxpos;
-			result->score = 0;
-			if (verbose_ >= 2)
-				cerr << "Max update " << *result;
-			return;
+		if (*update == "max"){
+			double mdiff = best->GetScore() - golds[step]->GetScore();
+			if (mdiff >= maxdiff){
+				maxdiff = mdiff;
+				maxpos = step;
+			}
 		}
 	}
-	SetResult(result, beams_.back()[0]);
+	if (*update == "max" && maxpos > 0){
+		beams_[maxpos][0]->AllActions(result->actions);
+		result->step = maxpos;
+		result->score = 0;
+		if (verbose_ >= 2)
+			cerr << "Max update at step " << result->step << endl;
+		return;
+	}
+	SetResult(result, beams_[naivepos][0]);
 }
 
 void Parser::SetResult(Result * result, DPState * goal){
@@ -257,7 +261,6 @@ void Parser::SetResult(Result * result, DPState * goal){
 	result->score = goal->GetScore();
 }
 void Parser::GetKbestResult(vector<Result> & kbest){
-	int i = 0;
 	BOOST_FOREACH(DPState * state, beams_.back())
 		if (state){
 			Result result;
@@ -274,8 +277,8 @@ void Parser::Simulate(ShiftReduceModel & model, const FeatureSet & feature_gen,
 	stateseq.push_back(state);
 	if (verbose_ >= 2){
 		cerr << "Simulate actions:";
-		for (int step = 0 ; step < (const int)actions.size() ; step++)
-			cerr << " " << actions[step];
+		for (int step = 0 ; step < actions.size() ; step++)
+			cerr << " " << (char) actions[step];
 		cerr << endl;
 	}
 
@@ -305,8 +308,10 @@ void Parser::Simulate(ShiftReduceModel & model, const FeatureSet & feature_gen,
 			state->Take(action, stateseq); // only one item
 			state = stateseq.back();
 		}
-		else
-			THROW_ERROR("Bad action! " << *state << ", action " << action << endl);
+		else{
+			state->PrintTrace(cerr);
+			THROW_ERROR("Bad action! " << (char) action << endl);
+		}
 	}
 	// clean-up states
 	BOOST_FOREACH(DPState * state, stateseq)

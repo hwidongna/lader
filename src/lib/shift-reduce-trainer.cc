@@ -183,15 +183,17 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
         	clock_gettime(CLOCK_MONOTONIC, &tend);
         	search.tv_sec += tend.tv_sec - tstart.tv_sec;
         	search.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
-        	if (result.step != result.actions.size())
-        		THROW_ERROR(result << endl);
-
         	if (verbose >= 1){
         		cerr << "Result:   ";
 				for (int step = 0 ; step < result.actions.size() ; step++)
 					cerr << " " << (char) result.actions[step];
 				cerr << endl;
+        		DPState * best = p->GetBeamBest(result.step);
+        		cerr << "Beam trace:" << endl;
+        		best->PrintTrace(cerr);
         	}
+        	if (result.step != result.actions.size())
+        		THROW_ERROR("Result step " << result.step << " != action size " << result.actions.size() << endl);
         	if (result.step < refseq.size())
         		early_update++;
         	refseq.resize(result.step);

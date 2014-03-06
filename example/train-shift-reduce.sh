@@ -22,7 +22,7 @@ VERBOSE=1
 UPDATE=max
 BEAM=10
 MAX_TERM=1
-MAX_SWAP=3
+MAX_SWAP=1
 
 # define helper function: run a command and print its exit code
 function run () {

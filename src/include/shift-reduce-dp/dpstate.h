@@ -38,6 +38,7 @@ public:
 		IDLE = 'E'		// for DDPState
 	} Action;
 
+	static vector<Action> ActionFromString(const string & line);
 	typedef struct {
 		DPState * leftstate;
 		DPState * istate;
@@ -58,7 +59,7 @@ public:
 			const Sentence * sent = NULL);
 	virtual bool Allow(const Action & action, const int n);
 	virtual bool IsContinuous() { return false; }
-	void InsideActions(vector<Action> & result);
+	virtual void InsideActions(vector<Action> & result);
 	void AllActions(vector <Action> & result);
 	DPState * Previous();
 	DPState * GetLeftState() const;
@@ -77,7 +78,7 @@ public:
 	Span GetSrcSpan() const { return MakePair(src_l_, src_r_-1); }
 	Span GetTrgSpan() const { return MakePair(trg_l_, trg_r_-1); }
 	DPStateVector GetLeftPtrs() const { return leftptrs_; }
-	void GetReordering(vector <int> & result);
+	virtual void GetReordering(vector <int> & result);
 	void SetSignature(int max);
 	vector<Span> GetSignature() const { return signature_; }
 
@@ -93,7 +94,8 @@ public:
 	bool operator < (const DPState & other) const {
 		return score_ < other.score_ || (score_ == other.score_ && inside_ < other.inside_);
 	}
-	void PrintParse(const vector<string> & strs, ostream & out) const;
+	virtual void PrintParse(const vector<string> & strs, ostream & out) const;
+	void PrintTrace(ostream & out);
 protected:
 	virtual DPState * Shift();
 	virtual DPState * Reduce(DPState * leftstate, Action action);

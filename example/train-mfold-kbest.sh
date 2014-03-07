@@ -127,7 +127,6 @@ Q0%q0%aT,LL0%s0L%aT,RR0%s0R%aT,LR0%l0R%aT,RL0%r0L%aT,O0%s0L%s0R%aT,I0%l0R%r0L%aT
 |cfg=LP0%l0%aT,RP0%r0%aT,SP0%s0%aT,TP0%s0%l0%r0%aT,LP1%l1%aT,RP1%r1%aT,SP1%s1%aT,TP0%s1%l1%r1%aT,SP2%s2%aT"
 
 # Train a model for this fold 
-if [ ! -s output/fold$m/train.mod ]; then
 run "../src/bin/train-shift-reduce -cost 1e-3 -attach_null right \
 -loss_profile '$LOSS_PROFILE' -feature_profile '$FEATURE_PROFILE' \
 -iterations $ITERATION -threads $THREADS -shuffle $SHUFFLE -verbose $VERBOSE \
@@ -136,7 +135,6 @@ run "../src/bin/train-shift-reduce -cost 1e-3 -attach_null right \
 -update $UPDATE -beam $BEAM -max_state $MAX_STATE -max_term $MAX_TERM \
 -source_dev output/tmp/train.en.annot.$m -align_dev output/tmp/train.en-ja.align.$m \
 > output/fold$m/train.out 2> output/fold$m/train.log"
-fi
 
 # Produce k-best ITG trees for this fold
 run "../src/bin/shift-reduce-kbest -model output/fold$m/train.mod \

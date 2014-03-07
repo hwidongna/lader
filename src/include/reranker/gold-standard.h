@@ -99,7 +99,7 @@ public:
 				DPState * goal = stateseq.back();
 				// Reorder
 				Parser::Result result;
-				SetResult(result, goal);
+				SetResult(&result, goal);
 				std::vector<int> & reordering = result.order;
 				datas[0]->Reorder(reordering);
 				std::vector<DPState::Action> & actions = result.actions;

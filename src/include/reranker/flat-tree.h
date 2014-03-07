@@ -52,7 +52,7 @@ public:
 	void PrintParse(ostream & out) const;
 	void PrintString(const vector<string> & strs, ostream & out) const;
 	void GetOrder(vector<int> & result);
-	inline void MergeChildren(Node * from);
+	inline void MergeChildrenAndDelete(Node * from);
 	int NumEdges();
 
 	virtual bool operator==(const Node & rhs) const{
@@ -93,7 +93,14 @@ class DPStateNode : public GenericNode{
 public:
 	DPStateNode(int left, int right, Node * parent, lader::DPState::Action action) :
 		GenericNode(left, right, parent, (char)action) { }
-	DPStateNode * Flatten(lader::DPState * root);
+	virtual DPStateNode * Flatten(lader::DPState * root);
+};
+
+class DDPStateNode : public DPStateNode{
+public:
+	DDPStateNode(int left, int right, Node * parent, lader::DPState::Action action) :
+		DPStateNode(left, right, parent, action) { }
+	virtual DPStateNode * Flatten(lader::DPState * root);
 };
 
 class HypNode : public GenericNode{

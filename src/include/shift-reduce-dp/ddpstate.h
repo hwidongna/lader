@@ -24,17 +24,33 @@ public:
 			int maxterm = 1, ReordererModel * model = NULL, const FeatureSet * feature_gen = NULL,
 			const Sentence * sent = NULL);
 	virtual bool Allow(const Action & action, const int n);
+	virtual void InsideActions(vector<Action> & result);
+	virtual void GetReordering(vector <int> & result);
 	virtual bool IsContinuous() { return src_l2_ < 0 && src_r2_ < 0; }
+	virtual int GetSrcREnd() const { return src_rend_; }
 	int GetSrcL2() const { return src_l2_; }
 	int GetSrcR2() const { return src_r2_; }
-	int GetSrcREnd() const { return src_rend_; }
 	DPStateVector GetSwaped() const { return swaped_; }
+
+	// compare signature
+	virtual bool operator == (const DPState & other) const {
+		if (GetAction() == DPState::SWAP){
+			const DDPState * dstate = dynamic_cast<const DDPState*>(&other);
+			if (!dstate || swaped_.size() != dstate->swaped_.size() || dstate->GetAction() != DPState::SWAP)
+				return false;
+			return std::equal(swaped_.begin(), swaped_.end(), dstate->swaped_.begin())
+			&& src_l2_ == dstate->src_l2_ && DPState::operator ==(other);
+		}
+		return DPState::operator ==(other);
+	}
+	virtual void PrintParse(const vector<string> & strs, ostream & out) const;
 protected:
 	virtual DPState * Shift();
 	virtual DPState * Reduce(DPState * leftstate, Action action);
 	DPState * Swap(DPState * leftstate);
+	DPState * Idle();
 	int src_l2_, src_r2_;	// discontinuous source span
-	int src_rend_;			// source index for next shift
+	int src_rend_;			// source index for the next buffer front
 	DPStateVector swaped_;	// swaped states
 };
 

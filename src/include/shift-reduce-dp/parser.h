@@ -8,7 +8,8 @@
 #ifndef PARSER_H_
 #define PARSER_H_
 
-#include <shift-reduce-dp/dpstate.h>
+#include <shift-reduce-dp/ddpstate.h>
+#include <shift-reduce-dp/shift-reduce-model.h>
 #include <lader/feature-data-base.h>
 #include <lader/feature-vector.h>
 #include <boost/foreach.hpp>
@@ -21,7 +22,6 @@ class Parser {
 public:
 	Parser();
 	virtual ~Parser();
-	void Clear();
 	typedef struct {
 		vector<int> order;
 		vector<DPState::Action> actions;
@@ -29,11 +29,13 @@ public:
 		int step;
 	} Result;
 
-	void Search(ReordererModel & model, const FeatureSet & feature_gen,
-			const Sentence & sent, Result & result, int max_state = 0,
-			vector<DPState::Action> * refseq = NULL, string * update = NULL);
+	virtual DPState * InitialState() { return new DPState(); }
+	virtual void Search(ShiftReduceModel & model,
+			const FeatureSet & feature_gen, const Sentence & sent,
+			Result * result = NULL, const vector<DPState::Action> * refseq = NULL,
+			const string * update = NULL);
 	void GetKbestResult(vector<Parser::Result> & kbest);
-	void Simulate(ReordererModel & model, const FeatureSet & feature_gen,
+	void Simulate(ShiftReduceModel & model, const FeatureSet & feature_gen,
 			const vector<DPState::Action> & actions, const Sentence & sent,
 			const int firstdiff, std::tr1::unordered_map<int,double> & featmap, double c);
 	void SetBeamSize(int beamsize) { beamsize_ = beamsize; }
@@ -41,24 +43,36 @@ public:
 
 	int GetNumStates() const { return nstates_; }
 	int GetNumEdges() const { return nedges_; }
-	DPState * GetBest() const {
-		return GetKthBest(0);
-	}
+	DPState * GetBest() const { return GetKthBest(0); }
 	DPState * GetKthBest(int k) const {
-		if (beams_.empty() || beams_.back().empty())
+		if (beams_.empty())
 			THROW_ERROR("Search result is empty!")
-			return beams_.back()[k];
+		if (k >= beams_.back().size())
+			return NULL;
+		return beams_.back()[k];
 	}
-private:
-	void Update(vector< DPStateVector > & beams, DPStateVector & golds,
-			Result & result, vector<DPState::Action> * refseq = NULL,
-			string * update = NULL);
+	DPState * GetBeamBest(int step) const {
+		const DPStateVector & b = SafeAccess(beams_, step);
+		if (b.empty())
+			return NULL;
+		return b[0];
+	}
+protected:
+	void DynamicProgramming(DPStateVector & golds, ShiftReduceModel & model,
+			const FeatureSet & feature_gen, const Sentence & sent,
+			const vector<DPState::Action> * refseq = NULL);
+	void CompleteGolds(DPStateVector & simgolds, DPStateVector & golds,
+			ShiftReduceModel & model, const FeatureSet & feature_gen,
+			const Sentence & sent, const vector<DPState::Action> * refseq);
+	void Update(DPStateVector & golds, Result * result,
+			const vector<DPState::Action> * refseq, const string * update);
 	vector< DPStateVector > beams_;
 	int beamsize_;
 	int nstates_, nedges_, nuniq_;
 	int verbose_;
+	vector<DPState::Action> actions_;
 };
-void SetResult(Parser::Result & result, DPState * goal);
+void SetResult(Parser::Result * result, DPState * goal);
 
 
 } /* namespace lader */
@@ -68,10 +82,12 @@ namespace std {
 inline ostream& operator << ( ostream& out,
                                    const lader::Parser::Result & rhs )
 {
-    out << rhs.step << ": " << rhs.score << " ::";
+    out << "Step " << rhs.step << ": " << rhs.score << " ::";
     BOOST_FOREACH(lader::DPState::Action action, rhs.actions)
-    	out << " " << action;
-    out << endl;
+    	out << " " << (char)action;
+    out << " ::";
+    BOOST_FOREACH(int i, rhs.order)
+        out << " " << i;
     return out;
 }
 }

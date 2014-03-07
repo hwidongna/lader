@@ -6,9 +6,6 @@ SOURCE_IN=data/train.en
 TARGET_IN=data/train.ja
 ALIGN_IN=data/train.en-ja.align
 
-SOURCE_DEV=data/test.en
-ALIGN_DEV=data/test.en-ja.align
-
 THRESHOLD=5
 THREADS=4
 VERBOSE=0

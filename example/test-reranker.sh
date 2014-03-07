@@ -45,8 +45,7 @@ run "../src/bin/gold-tree -verbose $VERBOSE \
 -source_in data/$TEST_IN -align_in $ALIGN_IN > output/gold.dev"
 run "../src/bin/shift-reduce-kbest -model $MODEL_IN \
 -out_format score,flatten -threads $THREADS \
--beam $BEAM -max_state $MAX_STATE \
--verbose $VERBOSE -source_in $SOURCE_IN \
+-beam $BEAM -verbose $VERBOSE -source_in $SOURCE_IN \
 > output/kbest.dev 2> output/kbest.dev.log"
 run "../src/bin/extract-feature -verbose $VERBOSE -model_in $FEATURE_IN \
 -source_in output/kbest.dev -gold_in output/gold.dev | \
@@ -76,7 +75,9 @@ run "../src/bin/reranker -model_in $FEATURE_IN -weights $WEIGHTS \
 # Evaluate 1-best result
 run "../src/bin/evaluate-lader -attach_null right $ALIGN_IN output/$TEST_IN.1best data/$TEST_IN $TARGET_IN'' > output/$TEST_IN.1best.grade" 
 
-tail -n3 output/$TEST_IN.reranker.grade
+tail -n3 output/$TEST_IN.1best.grade
 
 # Evaluate reranker oracle
-run "cat output/kbest.dev | ../src/bin/reranker-oracle -attach_null right $ALIGN_IN data/$TEST_IN $TARGET_IN'' > output/kbest.oracle.grade" 
+run "cat output/kbest.dev | ../src/bin/reranker-oracle -attach_null right $ALIGN_IN data/$TEST_IN $TARGET_IN'' > output/$TEST_IN.oracle.grade" 
+
+tail -n3 output/$TEST_IN.oracle.grade

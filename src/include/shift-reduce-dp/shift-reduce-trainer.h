@@ -22,11 +22,12 @@
 #include <lader/loss-base.h>
 #include <lader/thread-pool.h>
 #include <lader/output-collector.h>
-#include <shift-reduce-dp/parser.h>
+#include <shift-reduce-dp/dparser.h>
 #include <lader/reorderer-trainer.h>
 using namespace std;
 
 namespace lader {
+
 
 class ShiftReduceTrainer : public ReordererTrainer {
 	// A task
@@ -39,38 +40,45 @@ class ShiftReduceTrainer : public ReordererTrainer {
 					collector_(collector), result_(result), kbest_(kbest) { }
 		void Run(){
 			int verbose = config_.GetInt("verbose");
+			int m = config_.GetInt("max_swap");
 			int sent = id_;
 			ostringstream err;
 			if (verbose >= 1){
-				cerr << endl << "Sentence " << sent << endl;
-				cerr << "Rank: ";
+				err << endl << "Sentence " << sent << endl;
+				err << "Rank: ";
 				BOOST_FOREACH(int rank, ranks_.GetRanks())
-					cerr << rank << " ";
-				cerr << endl;
+				err << rank << " ";
+				err << endl;
 			}
-			vector<DPState::Action> refseq = ranks_.GetReference();
+			vector<DPState::Action> refseq = ranks_.GetReference(m);
 			if (verbose >= 1){
-				cerr << "Reference: ";
+				err << "Reference: ";
 				BOOST_FOREACH(DPState::Action action, refseq)
-					cerr << action << " ";
-				cerr << endl;
+				err << (char)action << " ";
+				err << endl;
 			}
-			Parser p;
-			p.SetBeamSize(config_.GetInt("beam"));
-			p.SetVerbose(config_.GetInt("verbose"));
-			p.Search(*model_, *features_, data_, result_, config_.GetInt("max_state"));
-			p.GetKbestResult(kbest_);
+			Parser * p;
+			if (m > 0)
+				p = new DParser(m);
+			else
+				p = new Parser();
+			p->SetBeamSize(config_.GetInt("beam"));
+			p->SetVerbose(config_.GetInt("verbose"));
+			p->Search(*dynamic_cast<ShiftReduceModel*>(model_), *features_, data_);
+			p->GetKbestResult(kbest_);
+			SetResult(&result_, p->GetBest());
 			if (verbose >= 1){
-				cerr << "Result:   ";
-				for (int step = 0 ; step < (const int)result_.actions.size() ; step++)
-					cerr << " " << result_.actions[step];
-				cerr << endl;
-				cerr << "Purmutation:";
+				err << "Result:   ";
+				for (int step = 0 ; step < result_.actions.size() ; step++)
+					err << " " << (char) result_.actions[step];
+				err << endl;
+				err << "Purmutation:";
 				BOOST_FOREACH(int order, result_.order)
-					cerr << " " << order;
-				cerr << endl;
+				err << " " << order;
+				err << endl;
 			}
 			collector_.Write(id_, "", err.str());
+			delete p;
 		}
 	protected:
 		int id_;
@@ -96,7 +104,8 @@ public:
 			if (ranks)
 				delete ranks;
 	}
-
+	// Initialize the model
+	virtual void InitializeModel(const ConfigBase & config);
     // Train the reorderer incrementally, building they hypergraph each time
     // we parse
     void TrainIncremental(const ConfigBase & config);

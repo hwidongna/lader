@@ -241,7 +241,7 @@ void FeatureParse::GenerateStateFeatures(
 					values << "||" << tree.GetSpanLabel(ptr_state->GetSrcC(), ptr_state->GetSrcR()-1);
 				break;
 			case 'a':
-				values << "||" << action;
+				values << "||" << (char)action;
 				break;
 			}
 		}

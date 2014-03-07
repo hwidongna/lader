@@ -34,9 +34,11 @@ public:
 		SHIFT = 'F', // forward
 		STRAIGTH = 'S',
 		INVERTED = 'I',
-		SWAP = 'W',		// for DDPState
+		SWAP = 'D',		// for DDPState
+		IDLE = 'E'		// for DDPState
 	} Action;
 
+	static vector<Action> ActionFromString(const string & line);
 	typedef struct {
 		DPState * leftstate;
 		DPState * istate;
@@ -57,7 +59,7 @@ public:
 			const Sentence * sent = NULL);
 	virtual bool Allow(const Action & action, const int n);
 	virtual bool IsContinuous() { return false; }
-	void InsideActions(vector<Action> & result);
+	virtual void InsideActions(vector<Action> & result);
 	void AllActions(vector <Action> & result);
 	DPState * Previous();
 	DPState * GetLeftState() const;
@@ -67,6 +69,7 @@ public:
 	double GetInside() const { return inside_; }
 	int GetSrcL() const { return src_l_; }
 	int GetSrcR() const { return src_r_; }
+	virtual int GetSrcREnd() const { return src_r_; }
 	int GetSrcC() const { return src_c_; }
 	int GetTrgL() const { return trg_l_; }
 	int GetTrgR() const { return trg_r_; }
@@ -75,14 +78,14 @@ public:
 	Span GetSrcSpan() const { return MakePair(src_l_, src_r_-1); }
 	Span GetTrgSpan() const { return MakePair(trg_l_, trg_r_-1); }
 	DPStateVector GetLeftPtrs() const { return leftptrs_; }
-	void GetReordering(vector <int> & result);
+	virtual void GetReordering(vector <int> & result);
 	void SetSignature(int max);
 	vector<Span> GetSignature() const { return signature_; }
 
 	// a simple hash function
 	size_t hash() const { return trg_l_ * MULTI_K + trg_r_; }
 	// compare signature
-	bool operator == (const DPState & other) const {
+	virtual bool operator == (const DPState & other) const {
 		if (signature_.size() != other.signature_.size())
 			return false;
 		return std::equal(signature_.begin(), signature_.end(), other.signature_.begin())
@@ -91,7 +94,8 @@ public:
 	bool operator < (const DPState & other) const {
 		return score_ < other.score_ || (score_ == other.score_ && inside_ < other.inside_);
 	}
-	void PrintParse(const vector<string> & strs, ostream & out) const;
+	virtual void PrintParse(const vector<string> & strs, ostream & out) const;
+	void PrintTrace(ostream & out);
 protected:
 	virtual DPState * Shift();
 	virtual DPState * Reduce(DPState * leftstate, Action action);

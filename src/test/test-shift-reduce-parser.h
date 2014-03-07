@@ -14,6 +14,7 @@
 #include <lader/feature-data-sequence.h>
 #include <lader/feature-set.h>
 #include <shift-reduce-dp/ddpstate.h>
+#include <shift-reduce-dp/dparser.h>
 #include <fstream>
 #include <vector>
 
@@ -39,8 +40,6 @@ public:
 		// Create a sentence
 		string str = "he ate rice .";
 		sent.FromString(str);
-        string str_pos = "PRP VBD NN .";
-        sent_pos.FromString(str_pos);
     }
     ~TestShiftReduceParser() { }
 
@@ -134,12 +133,12 @@ public:
     	goal->AllActions(act);
     	if (act.size() != 2*n-1){
     		cerr << "incomplete all actions: size " << act.size() << endl;
-    		return 0;
+    		ret = 0;
     	}
     	ret *= CheckVector(refseq, act);
     	if (!ret){
     		cerr << "incorrect all actions" << endl;
-    		return 0;
+    		ret = 0;
     	}
     	// for an incomplete tree
     	act.clear();
@@ -147,10 +146,108 @@ public:
     	goal->AllActions(act);
     	if (act.size() != 2*n-2){
     		cerr << "incomplete all actions: size " << act.size() << endl;
-    		return 0;
+    		ret = 0;
     	}
     	BOOST_FOREACH(DPState * state, stateseq)
     		delete state;
+    	return ret;
+    }
+
+    int TestSearch() {
+    	DPStateVector stateseq;
+    	int n = sent.GetNumWords();
+    	vector<DPState::Action> refseq = cal.GetReference();
+    	ShiftReduceModel model;
+    	model.SetMaxState(3);
+    	FeatureSet set;
+        set.AddFeatureGenerator(new FeatureSequence);
+        Sentence datas;
+        datas.push_back(&sent);
+    	Parser p;
+    	p.Search(model, set, datas);
+    	vector<Parser::Result> kbest;
+    	p.GetKbestResult(kbest);
+    	int ret = 1;
+    	if (kbest.size() != n*(n-1)){ // 0-1 1-0 0-2 2-0 0-3 3-0 1-2 2-1 1-3 3-1 2-3 3-2
+    		cerr << "kbest size " << kbest.size() << " != " << n*(n-1) << endl;
+    		ret = 0;
+    	}
+    	for (int k = 0 ; k < kbest.size() ; k++){
+    		DPState * goal = p.GetKthBest(k);
+    		if (goal->GetStep() != refseq.size()){
+    			cerr << "Goal step " << *goal << " != " << refseq.size() << endl;
+    			ret = 0;
+    		}
+    		vector<DPState::Action> act;
+    		goal->AllActions(act);
+    		if (act.size() != refseq.size()){
+    			cerr << "incomplete all actions: size " << act.size() << " != " << refseq.size() << endl;
+    			ret = 0;
+    		}
+    	}
+    	return ret;
+    }
+
+    int TestSearch2() {
+    	// Create a combined alignment
+		//  x......
+		//  ....xx.
+		//  .......
+    	//  ..x....
+    	//  ......x
+    	vector<string> words(5, "x");
+    	Alignment al(MakePair(5,7));
+    	al.AddAlignment(MakePair(0,0));
+    	al.AddAlignment(MakePair(1,4));
+    	al.AddAlignment(MakePair(1,5));
+    	al.AddAlignment(MakePair(3,2));
+    	al.AddAlignment(MakePair(4,6));
+    	Ranks cal;
+    	FeatureDataSequence sent;
+    	cal = Ranks(CombinedAlign(words,al, CombinedAlign::ATTACH_NULL_RIGHT));
+    	// Create a sentence
+    	string str = "she threw the ball .";
+    	sent.FromString(str);
+    	int n = sent.GetNumWords();
+    	vector<DPState::Action> refseq = cal.GetReference();
+		vector<DPState::Action> exp(2*n-1, DPState::SHIFT);
+		exp[4]=DPState::STRAIGTH; exp[5]=DPState::INVERTED;
+		exp[6]=DPState::STRAIGTH; exp[8]=DPState::STRAIGTH;
+		int ret = 1;
+		ret *= CheckVector(exp, refseq);
+		if (!ret){
+			cerr << "incorrect reference sequence" << endl;
+			return 0;
+		}
+
+    	ShiftReduceModel model;
+    	model.SetMaxState(3);
+    	FeatureSet set;
+    	set.AddFeatureGenerator(new FeatureSequence);
+    	Sentence datas;
+    	datas.push_back(&sent);
+    	Parser p;
+    	p.Search(model, set, datas);
+    	vector<Parser::Result> kbest;
+    	p.GetKbestResult(kbest);
+    	if (kbest.size() != n*(n-1)){ // 0-1 1-0 0-2 2-0 0-3 3-0 1-2 2-1 1-3 3-1 2-3 3-2
+    		cerr << "kbest size " << kbest.size() << " != " << n*(n-1) << endl;
+    		ret = 0;
+    	}
+
+		for (int k = 0 ; k < kbest.size() ; k++){
+			DPState * goal = p.GetKthBest(k);
+			if (goal->GetStep() != refseq.size()){
+				cerr << "Goal step " << *goal << " != " << refseq.size() << endl;
+				ret = 0;
+			}
+			vector<DPState::Action> act;
+			goal->AllActions(act);
+			if (act.size() != refseq.size()){
+				cerr << "incomplete all actions: size " << act.size() << " != " << refseq.size() << endl;
+				ret = 0;
+			}
+		}
     	return ret;
     }
 
@@ -167,7 +264,7 @@ public:
     	al.AddAlignment(MakePair(2,0));
     	al.AddAlignment(MakePair(3,1));
     	Ranks cal;
-    	FeatureDataSequence sent, sent_pos;
+    	FeatureDataSequence sent;
     	cal = Ranks(CombinedAlign(words,al));
     	// Create a sentence
     	string str = "this block is swapped";
@@ -192,18 +289,18 @@ public:
     	DPState * goal = stateseq.back();
     	if (!goal->IsGold()){
     		cerr << *goal << endl;
-    		return 0;
+    		ret = 0;
     	}
     	vector<DPState::Action> act;
     	goal->AllActions(act);
-    	if (act.size() != 2*n-1){
-    		cerr << "incomplete all actions: size " << act.size() << endl;
-    		return 0;
+    	if (act.size() != refseq.size()){
+    		cerr << "incomplete all actions: size " << act.size() << " != " << refseq.size() << endl;
+    		ret = 0;
     	}
     	ret *= CheckVector(refseq, act);
     	if (!ret){
     		cerr << "incorrect all actions" << endl;
-    		return 0;
+    		ret = 0;
     	}
     	{ // check reordering
     		vector<int> act;
@@ -213,7 +310,7 @@ public:
 			ret *= CheckVector(exp, act);
 			if (!ret){
 				cerr << "incorrect get reordering" << endl;
-				return 0;
+				ret = 0;
 			}
     	}
 
@@ -223,7 +320,7 @@ public:
     	goal->AllActions(act);
     	if (act.size() != 2*n-2){
     		cerr << "incomplete all actions: size " << act.size() << endl;
-    		return 0;
+    		ret = 0;
     	}
     	BOOST_FOREACH(DPState * state, stateseq)
     		delete state;
@@ -243,7 +340,7 @@ public:
     	al.AddAlignment(MakePair(2,3));
     	al.AddAlignment(MakePair(3,0));
     	Ranks cal;
-    	FeatureDataSequence sent, sent_pos;
+    	FeatureDataSequence sent;
     	cal = Ranks(CombinedAlign(words,al));
     	// Create a sentence
     	string str = "let's shift 3 words";
@@ -268,18 +365,18 @@ public:
     	DPState * goal = stateseq.back();
     	if (!goal->IsGold()){
     		cerr << *goal << endl;
-    		return 0;
+    		ret = 0;
     	}
     	vector<DPState::Action> act;
     	goal->AllActions(act);
-    	if (act.size() != 2*n-1){
-    		cerr << "incomplete all actions: size " << act.size() << endl;
-    		return 0;
+    	if (act.size() != refseq.size()){
+    		cerr << "incomplete all actions: size " << act.size() << " != " << refseq.size() << endl;
+    		ret = 0;
     	}
     	ret *= CheckVector(refseq, act);
     	if (!ret){
     		cerr << "incorrect all actions" << endl;
-    		return 0;
+    		ret = 0;
     	}
     	{ // check reordering
     		vector<int> act;
@@ -289,7 +386,7 @@ public:
 			ret *= CheckVector(exp, act);
 			if (!ret){
 				cerr << "incorrect get reordering" << endl;
-				return 0;
+				ret = 0;
 			}
     	}
 
@@ -299,7 +396,7 @@ public:
     	goal->AllActions(act);
     	if (act.size() != 2*n-2){
     		cerr << "incomplete all actions: size " << act.size() << endl;
-    		return 0;
+    		ret = 0;
     	}
     	BOOST_FOREACH(DPState * state, stateseq)
     		delete state;
@@ -325,7 +422,7 @@ public:
     	string str = "1 2 3 4";
     	sent.FromString(str);
     	int n = sent.GetNumWords();
-    	vector<DPState::Action> refseq = cal.GetDReference(1);
+    	vector<DPState::Action> refseq = cal.GetReference(1);
 		vector<DPState::Action> exp(2*n+1, DPState::SHIFT);
 		exp[3]=DPState::SWAP; exp[4]=DPState::INVERTED;
 		exp[7]=DPState::INVERTED; exp[8]=DPState::STRAIGTH;
@@ -344,25 +441,25 @@ public:
 				state->Take(exp[i], stateseq, true);
 			else{
 				ret = 0;
-				cerr << "action " << (char)exp[i] << "is not allowed at step " << i+1 << endl;
+				cerr << "action " << (char)exp[i] << " is not allowed at step " << i+1 << endl;
 				break;
 			}
 		}
 		DPState * goal = stateseq.back();
 		if (!goal->IsGold()){
 			cerr << *goal << endl;
-			return 0;
+			ret = 0;
 		}
 		vector<DPState::Action> act;
 		goal->AllActions(act);
-		if (act.size() != 2*n+1){
-			cerr << "incomplete all actions: size " << act.size() << endl;
-			return 0;
-		}
-		ret *= CheckVector(refseq, act);
+    	if (act.size() != refseq.size()){
+    		cerr << "incomplete all actions: size " << act.size() << " != " << refseq.size() << endl;
+    		ret = 0;
+    	}
+    	ret *= CheckVector(refseq, act);
 		if (!ret){
 			cerr << "incorrect all actions" << endl;
-			return 0;
+			ret = 0;
 		}
 
     	{ // check reordering
@@ -373,7 +470,7 @@ public:
 			ret *= CheckVector(exp, act);
 			if (!ret){
 				cerr << "incorrect get reordering" << endl;
-				return 0;
+				ret = 0;
 			}
     	}
     	BOOST_FOREACH(DPState * state, stateseq)
@@ -381,20 +478,260 @@ public:
     	return ret;
     }
 
+    int TestInsideOutSearch() {
+    	// Create a combined alignment
+		//  .x..
+		//  ...x
+		//  x...
+    	//  ..x.
+    	vector<string> words(4, "x");
+    	Alignment al(MakePair(4,4));
+    	al.AddAlignment(MakePair(0,1));
+    	al.AddAlignment(MakePair(1,3));
+    	al.AddAlignment(MakePair(2,0));
+    	al.AddAlignment(MakePair(3,2));
+    	Ranks cal;
+    	FeatureDataSequence sent;
+    	cal = Ranks(CombinedAlign(words,al));
+    	// Create a sentence
+    	string str = "1 2 3 4";
+    	sent.FromString(str);
+    	int n = sent.GetNumWords();
+    	vector<DPState::Action> refseq = cal.GetReference(1);
+		vector<DPState::Action> exp(2*n+1, DPState::SHIFT);
+		exp[3]=DPState::SWAP; exp[4]=DPState::INVERTED;
+		exp[7]=DPState::INVERTED; exp[8]=DPState::STRAIGTH;
+
+    	ShiftReduceModel model;
+    	model.SetMaxState(3);
+    	FeatureSet set;
+        set.AddFeatureGenerator(new FeatureSequence);
+        Sentence datas;
+        datas.push_back(&sent);
+    	DParser p(1);
+    	p.Search(model, set, datas);
+    	vector<Parser::Result> kbest;
+    	p.GetKbestResult(kbest);
+    	int ret = 1;
+    	for (int k = 0 ; k < kbest.size() ; k++){
+    		DPState * goal = p.GetKthBest(k);
+    		if (goal->GetStep() != refseq.size()){
+        		cerr << "Goal step " << *goal << " != " << refseq.size() << endl;
+        		ret = 0;
+    		}
+    		vector<DPState::Action> act;
+    		goal->AllActions(act);
+    		if (act.size() != refseq.size()){
+    			cerr << "incomplete all actions: size " << act.size() << " != " << refseq.size() << endl;
+//    			BOOST_FOREACH(DPState::Action action, act)
+//    				cerr << (char) action << " ";
+//    			cerr << endl;
+//    			goal->PrintParse(sent.GetSequence(), cerr);
+//    			cerr << endl;
+    			ret = 0;
+    			break;
+    		}
+    	}
+    	return ret;
+    }
+
+    int TestSwapAfterReduce(){
+    	string str = "1 2 3 4 5";
+    	FeatureDataSequence sent;
+		sent.FromString(str);
+		int n = sent.GetNumWords();
+		vector<DPState::Action> exp(2*n+1, DPState::SHIFT);
+		exp[3]=DPState::STRAIGTH; exp[5]=DPState::SWAP; // swap after reduce
+		exp[6]=DPState::STRAIGTH; exp[9]=DPState::STRAIGTH; exp[10]=DPState::STRAIGTH;
+		int ret = 1;
+    	DPStateVector stateseq;
+		stateseq.push_back(new DDPState());
+		for (int i = 0 ; i < exp.size() ; i++){
+			DPState * state = stateseq.back();
+			if (state->Allow(exp[i], n))
+				state->Take(exp[i], stateseq, true);
+			else{
+				ret = 0;
+				cerr << "action " << (char)exp[i] << " is not allowed at step " << i+1 << endl;
+				break;
+			}
+		}
+		DPState * goal = stateseq.back();
+		{
+		DPState * rchild = goal->RightChild();
+		vector<DPState::Action> act;
+		rchild->InsideActions(act);
+		if (act.size() != 3){
+			ret = 0;
+			cerr << "rchild action size " << act.size() << " != 3" << endl;
+		}
+		}
+		vector<DPState::Action> act;
+		goal->AllActions(act);
+		if (goal->GetStep() != act.size()){
+			ret = 0;
+			cerr << "step " << goal->GetStep() << " != action size " << act.size() << endl;
+		}
+		ret *= CheckVector(exp, act);
+    	BOOST_FOREACH(DPState * state, stateseq)
+    		delete state;
+		return ret;
+    }
+
+    int TestAllow(){
+    	string str = "1 2 3 4";
+		FeatureDataSequence sent;
+		sent.FromString(str);
+		int n = sent.GetNumWords();
+		int ret = 1;
+    	DPStateVector stateseq;
+		stateseq.push_back(new DDPState());
+		DPState * state = stateseq.back();
+		state->Take(DPState::SHIFT, stateseq, true);	// 1
+		state = stateseq.back();
+		state->Take(DPState::SHIFT, stateseq, true);	// 1 2
+		state = stateseq.back();
+		if (state->Allow(DPState::SWAP, n)){
+			ret = 0;
+			cerr << "action " << (char)DPState::SWAP << " is not allowed at step " << state->GetStep() << endl;
+		}
+		state->Take(DPState::SHIFT, stateseq, true);	// 1 2 3
+		state = stateseq.back();
+		state->Take(DPState::SWAP, stateseq, true);		// 1 3
+		state = stateseq.back();
+		if (state->Allow(DPState::SHIFT, n)){
+			ret = 0;
+			cerr << "action " << (char)DPState::SHIFT << " is not allowed at step " << state->GetStep() << endl;
+		}
+		state->Take(DPState::STRAIGTH, stateseq, true);		// 1-3
+		state = stateseq.back();
+		if (state->Allow(DPState::STRAIGTH, n)){
+			ret = 0;
+			cerr << "action " << (char)DPState::STRAIGTH << " is not allowed at step " << state->GetStep() << endl;
+		}
+		BOOST_FOREACH(DPState * state, stateseq)
+			delete state;
+
+		return ret;
+    }
+
+    int TestAllowConsecutiveSwap(){
+    	int n = 9;
+		vector<DPState::Action> exp = DPState::ActionFromString("F F F F I F F F S D D D S F F F S F I");
+		int ret = 1;
+		DPStateVector stateseq;
+		stateseq.push_back(new DDPState());
+		for (int i = 0 ; i < exp.size() ; i++){
+			DPState * state = stateseq.back();
+			if (state->Allow(exp[i], n))
+				state->Take(exp[i], stateseq, true);
+			else{
+				ret = 0;
+				cerr << "action " << (char)exp[i] << " is not allowed at step " << i+1 << endl;
+				break;
+			}
+		}
+		DPState * goal = stateseq.back();
+		vector<DPState::Action> act;
+		goal->AllActions(act);
+		if (goal->GetStep() != act.size()){
+			ret = 0;
+			cerr << "step " << goal->GetStep() << " != action size " << act.size() << endl;
+		}
+		ret *= CheckVector(exp, act);
+		BOOST_FOREACH(DPState * state, stateseq)
+			delete state;
+		return ret;
+    }
+
+    int TestTakeAfterMerge(){
+    	int n = 10;
+    	// this transition sequence represents: 0-4, 5-6, 7, 8
+		vector<DPState::Action> t1 = DPState::ActionFromString("F F S F F D S F F S S F F S F F");
+		int ret = 1;
+		DPStateVector stateseq1;
+		stateseq1.push_back(new DDPState());
+		for (int i = 0 ; i < t1.size() ; i++){
+			DPState * state = stateseq1.back();
+			if (state->Allow(t1[i], n))
+				state->Take(t1[i], stateseq1, true);
+			else{
+				ret = 0;
+				cerr << "action " << (char)t1[i] << " is not allowed at step " << i+1 << endl;
+				break;
+			}
+		}
+		// this transition sequence represents: 0-1:4, 2-3:5-6, 7, 8
+		vector<DPState::Action> t2 = DPState::ActionFromString("F F S F F I F D S F F I F S F F");
+		DPStateVector stateseq2;
+		stateseq2.push_back(new DDPState());
+		for (int i = 0 ; i < t2.size() ; i++){
+			DPState * state = stateseq2.back();
+			if (state->Allow(t2[i], n))
+				state->Take(t2[i], stateseq2, true);
+			else{
+				ret = 0;
+				cerr << "action " << (char)t2[i] << " is not allowed at step " << i+1 << endl;
+				break;
+			}
+		}
+
+		DPState * s1 = stateseq1.back();
+		DPState * s2 = stateseq2.back();
+		if (!(*s1 == *s2)){
+			ret = 0;
+			cerr << *s1 << " != " << *s2 << endl;
+		}
+		// push the left state of s2 to that of s1
+		s1->MergeWith(s2);
+		if (s1->GetLeftPtrs().size() != 2){
+			ret = 0;
+			cerr << "left ptr size " << s1->GetLeftPtrs().size() << " != 2 " << endl;
+		}
+		DPStateVector result;
+		if (!s1->Allow(DPState::SWAP, n)){
+			ret = 0;
+			cerr << "action " << (char)DPState::SWAP << " is not allowed at step " << s1->GetStep() << endl;
+		}
+		s1->Take(DPState::SWAP, result, true);
+		if (result.size() != 2-1){ //
+			ret = 0;
+			cerr << "action " << (char)DPState::SWAP << " result size " << result.size() << " != 1 " << endl;
+		}
+		BOOST_FOREACH(DPState * state, result)
+			if (!state->GetLeftState() || !state->GetLeftState()->IsContinuous()){
+				ret = 0;
+				cerr << "incorrect left state " << endl;
+			}
+		BOOST_FOREACH(DPState * state, stateseq1)
+			delete state;
+		BOOST_FOREACH(DPState * state, stateseq2)
+			delete state;
+		BOOST_FOREACH(DPState * state, result)
+			delete state;
+		return ret;
+    }
     bool RunTest() {
     	int done = 0, succeeded = 0;
     	done++; cout << "TestGetReordering()" << endl; if(TestGetReordering()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestSetSignature()" << endl; if(TestSetSignature()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestAllActions()" << endl; if(TestAllActions()) succeeded++; else cout << "FAILED!!!" << endl;
+    	done++; cout << "TestSearch()" << endl; if(TestSearch()) succeeded++; else cout << "FAILED!!!" << endl;
+    	done++; cout << "TestSearch2()" << endl; if(TestSearch2()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestShift2()" << endl; if(TestShift2()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestShift3()" << endl; if(TestShift3()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestInsideOut()" << endl; if(TestInsideOut()) succeeded++; else cout << "FAILED!!!" << endl;
+    	done++; cout << "TestInsideOutSearch()" << endl; if(TestInsideOutSearch()) succeeded++; else cout << "FAILED!!!" << endl;
+    	done++; cout << "TestSwapAfterReduce()" << endl; if(TestSwapAfterReduce()) succeeded++; else cout << "FAILED!!!" << endl;
+    	done++; cout << "TestAllow()" << endl; if(TestAllow()) succeeded++; else cout << "FAILED!!!" << endl;
+    	done++; cout << "TestAllowConsecutiveSwap()" << endl; if(TestAllowConsecutiveSwap()) succeeded++; else cout << "FAILED!!!" << endl;
+    	done++; cout << "TestTakeAfterMerge()" << endl; if(TestTakeAfterMerge()) succeeded++; else cout << "FAILED!!!" << endl;
     	cout << "#### TestShiftReduceParser Finished with "<<succeeded<<"/"<<done<<" tests succeeding ####"<<endl;
     	return done == succeeded;
     }
 private:
     Ranks cal;
-    FeatureDataSequence sent, sent_pos;
+    FeatureDataSequence sent;
 };
 }
 #endif /* TEST_SHIFT_REDUCE_PARSER_H_ */

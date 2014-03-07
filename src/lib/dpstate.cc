@@ -5,15 +5,24 @@
  *      Author: leona
  */
 
-#include "shift-reduce-dp/dpstate.h"
+#include "shift-reduce-dp/ddpstate.h"
 #include <cstdlib>
 #include <boost/foreach.hpp>
 #include <lader/reorderer-model.h>
 #include <lader/util.h>
+#include <sstream>
 using namespace std;
 
 namespace lader {
 
+vector<DPState::Action> DPState::ActionFromString(const string & line){
+	istringstream iss(line);
+	char action;
+	vector<Action> result;
+	while (iss >> action)
+		result.push_back((Action)action);
+	return result;
+}
 // initial state
 DPState::DPState() {
 	score_ = 0; inside_ = 0; shiftcost_ = 0;
@@ -24,6 +33,7 @@ DPState::DPState() {
 	rank_ = -1;
 	action_ = INIT;
 	gold_ = true;
+	keep_alternatives_ = false;
 }
 
 // new state
@@ -35,6 +45,7 @@ DPState::DPState(int step, int i, int j, Action action) {
 	rank_ = -1;
 	action_ = action;
 	gold_ = false;
+	keep_alternatives_ = false;
 }
 
 DPState::~DPState() {
@@ -143,8 +154,7 @@ bool DPState::Allow(const Action & action, const int n){
 	if (action == SHIFT)
 		return src_r_ < n;
 	DPState * leftstate = GetLeftState();
-	return leftstate && leftstate->action_ != INIT
-			&& (leftstate->src_r_ == src_l_);
+	return leftstate && leftstate->action_ != INIT && leftstate->src_r_ == src_l_;
 }
 
 void DPState::InsideActions(vector<Action> & result){
@@ -160,10 +170,12 @@ void DPState::InsideActions(vector<Action> & result){
 		break;
 	case STRAIGTH:
 	case INVERTED:
-	case SWAP:
 		LeftChild()->InsideActions(result);
 		RightChild()->InsideActions(result);
 		result.push_back(action_);
+		break;
+	default:
+		THROW_ERROR("Do not support action " << (char) action_ << endl);
 		break;
 	}
 }
@@ -189,9 +201,6 @@ void DPState::GetReordering(vector<int> & result){
 	case INVERTED:
 		RightChild()->GetReordering(result);
 		LeftChild()->GetReordering(result);
-		break;
-	case SWAP:
-		RightChild()->GetReordering(result);
 		break;
 	case SHIFT:
 		for (int i = src_l_ ; i < src_r_ ; i++)
@@ -241,15 +250,25 @@ void DPState::PrintParse(const vector<string> & strs, ostream & out) const{
 		break;
 	case STRAIGTH:
 	case INVERTED:
-		out << "("<<action_<<" ";
+		out << "("<<(char) action_<<" ";
 		LeftChild()->PrintParse(strs, out);
 		out << " ";
 		RightChild()->PrintParse(strs, out);
 		out << ")";
 		break;
 	case SHIFT:
-		out << "(" << action_ << " " << GetTokenWord(strs[GetSrcL()]) <<")";
+		out << "(" <<(char)  action_ << " " << GetTokenWord(strs[GetSrcL()]) <<")";
 		break;
 	}
 }
+
+void DPState::PrintTrace(ostream & out) {
+	DPState * state = this;
+	while (state){
+		DDPState * dstate = dynamic_cast<DDPState*>(state);
+		out << (dstate? *dstate : *state) << endl;
+		state = state->Previous();
+	}
+}
+
 } /* namespace lader */

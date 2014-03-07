@@ -2,7 +2,7 @@
 # Process this file with autoconf to produce a configure script.
 
 AC_PREREQ([2.59])
-AC_INIT([lader], [0.1.5], [neubig@gmail.com])
+AC_INIT([lader], [0.1.5], [neubig@gmail.com,leona@postech.ac.kr])
 AC_CONFIG_SRCDIR(src/lib/lader.cc)
 AC_CONFIG_HEADERS([src/include/lader/config.h])
 AC_CONFIG_FILES([
@@ -65,12 +65,5 @@ AC_CHECK_HEADERS([ext/hash_map])
 
 # Checks for library functions.
 AC_CHECK_FUNCS([gettimeofday pow sqrt])
-
-# Sometimes Flex is installed as Lex, e.g., NetBSD.
-AC_CHECK_PROG([FLEX], [flex lex], [flex])
-# Force the use of `missing' to wrap Flex invocations.
-AM_MISSING_PROG([LEX], [$FLEX])
-# Perform all the tests Automake and Autoconf need.
-AM_PROG_LEX
 
 AC_OUTPUT

@@ -16,4 +16,4 @@ reranker/flat-tree.h reranker/features.h reranker/feature-extractor.h \
 reranker/gold-standard.h reranker/reranker-model.h reranker/reranker-runner.h \
 reranker/config-extractor.h reranker/config-gold.h reranker/config-renumber.h \
 reranker/config-runner.h reranker/reranker-oracle.h reranker/config-oracle.h \
- shift-reduce-dp/ddpstate.h
+ shift-reduce-dp/ddpstate.h shift-reduce-dp/dparser.h shift-reduce-dp/shift-reduce-model.h

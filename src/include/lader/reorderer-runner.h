@@ -26,7 +26,7 @@ public:
         OUTPUT_ORDER,
         OUTPUT_SCORE,
         OUTPUT_FLATTEN,
-        OUTPUT_ACTION,
+        OUTPUT_ACTION, // only for shift-reduce parser
     } OutputType;
 
     ReordererRunner(): model_(NULL), features_(NULL){ }
@@ -36,10 +36,10 @@ public:
     }
 
     // Initialize the model
-    void InitializeModel(const ConfigRunner & config);
+    virtual void InitializeModel(const ConfigBase & config);
     
     // Run the model
-    virtual void Run(const ConfigRunner & config);
+    virtual void Run(const ConfigBase & config);
 
     // Write the model to a file
     void ReadModel(const string & str) {
@@ -55,6 +55,7 @@ protected:
     ReordererModel * model_; // The model
     FeatureSet * features_;  // The mapping on feature ids and which to use
     vector<OutputType> outputs_;
+    OutputCollector collector_;
 
 };
 
@@ -64,7 +65,7 @@ public:
     ReordererTask(int id, const string & line,
                   ReordererModel * model, FeatureSet * features,
                   vector<ReordererRunner::OutputType> * outputs,
-                  const ConfigRunner& config, HyperGraph * hyper_graph,
+                  const ConfigBase& config, HyperGraph * hyper_graph,
                   OutputCollector * collector) :
         id_(id), line_(line), model_(model), features_(features), 
         outputs_(outputs), collector_(collector), config_(config), graph_(hyper_graph) { }
@@ -76,7 +77,7 @@ protected:
     FeatureSet * features_;  // The mapping on feature ids and which to use
     vector<ReordererRunner::OutputType> * outputs_;
     OutputCollector * collector_;
-    const ConfigRunner& config_;
+    const ConfigBase& config_;
     HyperGraph * graph_;
 };
 

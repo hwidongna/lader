@@ -58,11 +58,10 @@ void ReordererTask::Run() {
 }
 
 // Run the model
-void ReordererRunner::Run(const ConfigRunner & config) {
+void ReordererRunner::Run(const ConfigBase & config) {
     InitializeModel(config);
     // Create the thread pool
     ThreadPool pool(config.GetInt("threads"), 1000);
-    OutputCollector collector;
 
     std::string line;
     std::string source_in = config.GetString("source_in");
@@ -77,7 +76,7 @@ void ReordererRunner::Run(const ConfigRunner & config) {
     while(std::getline(sin != NULL? sin : std::cin, line)) {
     	ReordererTask *task = new ReordererTask(id++, line, model_, features_,
     		 	&outputs_, config, graph.Clone(),
-				&collector);
+				&collector_);
 		pool.Submit(task);
     }
     if (sin) sin.close();
@@ -85,7 +84,7 @@ void ReordererRunner::Run(const ConfigRunner & config) {
 }
 
 // Initialize the model
-void ReordererRunner::InitializeModel(const ConfigRunner & config) {
+void ReordererRunner::InitializeModel(const ConfigBase & config) {
 	std::ifstream in(config.GetString("model").c_str());
 	if(!in) THROW_ERROR("Couldn't read model from file (-model '"
 						<< config.GetString("model") << "')");

@@ -25,7 +25,7 @@ public:
 "Reorders a text according to a discriminative model using shift-reduce algorithm.\n"
 );
 
-        AddConfigEntry("out_format", "string", "A comma seperated list of outputs (string/parse/order)");
+        AddConfigEntry("out_format", "string", "A comma seperated list of outputs (string/parse/order/score/flatten/action)");
         AddConfigEntry("model", "", "A model to be used in reordering");
         AddConfigEntry("beam", "20", "The maximum beam size");
         AddConfigEntry("max_state", "1", "The maximum numer of states in equality checking");

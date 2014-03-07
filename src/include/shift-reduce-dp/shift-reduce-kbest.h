@@ -62,6 +62,7 @@ class ShiftReduceKbest : public ReordererRunner{
 				// Reorder
 				std::vector<int> & reordering = result.order;
 				datas[0]->Reorder(reordering);
+				std::vector<DPState::Action> & actions = result.actions;
 				// Print the string
 				for(int i = 0; i < (int)outputs_->size(); i++) {
 					if(i != 0) oss << "\t";
@@ -80,6 +81,11 @@ class ShiftReduceKbest : public ReordererRunner{
 						reranker::DPStateNode root(0, words.size(), NULL, DPState::INIT);
 						root.AddChild(root.Flatten(p.GetKthBest(k)));
 						root.PrintParse(words, oss);
+					} else if(outputs_->at(i) == ReordererRunner::OUTPUT_ACTION) {
+						for(int j = 0; j < (int)actions.size(); j++) {
+							if(j != 0) cout << " ";
+							cout << (char) actions[j];
+						}
 					} else {
 						THROW_ERROR("Unimplemented output format");
 					}

@@ -140,12 +140,14 @@ fi
 
 # Produce k-best ITG trees for this fold
 run "../src/bin/shift-reduce-kbest -model output/fold$m/train.mod \
--out_format score,flatten -threads $THREADS -beam $BEAM -max_state $MAX_STATE \
+-out_format order,string,score,action,flatten \
+-threads $THREADS -beam $BEAM -max_state $MAX_STATE \
 -verbose $VERBOSE -source_in output/tmp/train.en.annot.$m \
 > output/fold$m/kbest.out 2> output/fold$m/kbest.log"
 
 # Generate the gold-standard tree for this fold
-run "../src/bin/gold-tree -verbose $VERBOSE \
+run "../src/bin/gold-standard -verbose $VERBOSE \
+-out_format order,string,action,flatten \
 -source_in output/tmp/train.en.$m -align_in output/tmp/train.en-ja.align.$m \
 > output/fold$m/gold.out 2> output/fold$m/gold.log"
 

@@ -26,7 +26,7 @@ public:
 "\n"
 "Reranker for k-best output using reranking model and weights\n"
 );
-
+        AddConfigEntry("out_format", "string", "A comma seperated list of outputs (string/parse/order/scoreflatten/action)");
         AddConfigEntry("source_in", "", "The input file for the source sentences");
         AddConfigEntry("model_in", "", "An input file for the model");
         AddConfigEntry("weights", "", "An input file for the model weights");

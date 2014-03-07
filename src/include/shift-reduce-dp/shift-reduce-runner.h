@@ -57,6 +57,7 @@ class ShiftReduceRunner : public ReordererRunner{
 		    // Reorder
 		    std::vector<int> & reordering = result.order;
 		    datas[0]->Reorder(reordering);
+		    std::vector<DPState::Action> & actions = result.actions;
 		    // Print the string
 		    ostringstream oss;
 		    for(int i = 0; i < (int)outputs_->size(); i++) {
@@ -76,6 +77,11 @@ class ShiftReduceRunner : public ReordererRunner{
 		        	reranker::DPStateNode dummy(0, words.size(), NULL, DPState::INIT);
 		        	reranker::DPStateNode * root = dummy.Flatten(p.GetBest());
 		        	root->PrintParse(words, oss);
+				} else if(outputs_->at(i) == ReordererRunner::OUTPUT_ACTION) {
+					for(int j = 0; j < (int)actions.size(); j++) {
+						if(j != 0) cout << " ";
+						cout << (char) actions[j];
+					}
 		        } else {
 		            THROW_ERROR("Unimplemented output format");
 		        }

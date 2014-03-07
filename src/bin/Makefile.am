@@ -5,7 +5,7 @@ AM_LDFLAGS = $(BOOST_LDFLAGS)
 
 bin_PROGRAMS = train-lader lader evaluate-lader label-ranking \
 				train-shift-reduce shift-reduce shift-reduce-kbest \
-				extract-feature gold-tree renumber-feature reranker reranker-oracle
+				extract-feature gold-standard renumber-feature reranker reranker-oracle
 
 train_lader_SOURCES = train-lader.cc
 train_lader_LDADD = ../lib/liblader.la -lboost_regex-mt -lboost_thread-mt -lboost_filesystem -lboost_system -lrt
@@ -31,8 +31,8 @@ shift_reduce_kbest_LDADD = ../lib/liblader.la -lboost_regex-mt -lboost_thread-mt
 extract_feature_SOURCES = extract-feature.cc
 extract_feature_LDADD = ../lib/liblader.la -lboost_regex-mt -lboost_thread-mt -lboost_filesystem -lboost_system -lrt
 
-gold_tree_SOURCES = gold-tree.cc
-gold_tree_LDADD = ../lib/liblader.la -lboost_regex-mt -lboost_thread-mt -lboost_filesystem -lboost_system -lrt
+gold_standard_SOURCES = gold-standard.cc
+gold_standard_LDADD = ../lib/liblader.la -lboost_regex-mt -lboost_thread-mt -lboost_filesystem -lboost_system -lrt
 
 renumber_feature_SOURCES = renumber-feature.cc
 renumber_feature_LDADD = ../lib/liblader.la -lboost_regex-mt -lboost_thread-mt -lboost_filesystem -lboost_system -lrt

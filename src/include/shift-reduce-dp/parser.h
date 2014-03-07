@@ -29,7 +29,6 @@ public:
 		int step;
 	} Result;
 
-	void SetResult(Result & result, DPState * goal);
 	void Search(ReordererModel & model, const FeatureSet & feature_gen,
 			const Sentence & sent, Result & result, int max_state = 0,
 			vector<DPState::Action> * refseq = NULL, string * update = NULL);
@@ -59,6 +58,7 @@ private:
 	int nstates_, nedges_, nuniq_;
 	int verbose_;
 };
+void SetResult(Parser::Result & result, DPState * goal);
 
 
 } /* namespace lader */

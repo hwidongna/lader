@@ -107,6 +107,8 @@ void ReordererRunner::InitializeModel(const ConfigRunner & config) {
         	outputs_.push_back(OUTPUT_SCORE);
         else if(str == "flatten")
         	outputs_.push_back(OUTPUT_FLATTEN);
+        else if(str == "action")
+        	outputs_.push_back(OUTPUT_ACTION);
         else
             THROW_ERROR("Bad output format '" << str <<"'");
     }

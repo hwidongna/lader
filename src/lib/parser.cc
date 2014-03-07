@@ -240,7 +240,7 @@ void Parser::Update(vector< DPStateVector > & beams, DPStateVector & golds,
 	SetResult(result, beams.back()[0]);
 }
 
-void Parser::SetResult(Result & result, DPState * goal){
+void SetResult(Parser::Result & result, DPState * goal){
 	goal->GetReordering(result.order);
 	result.step = goal->GetStep();
 	goal->AllActions(result.actions);

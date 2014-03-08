@@ -523,11 +523,6 @@ public:
     		goal->AllActions(act);
     		if (act.size() != refseq.size()){
     			cerr << "incomplete all actions: size " << act.size() << " != " << refseq.size() << endl;
-//    			BOOST_FOREACH(DPState::Action action, act)
-//    				cerr << (char) action << " ";
-//    			cerr << endl;
-//    			goal->PrintParse(sent.GetSequence(), cerr);
-//    			cerr << endl;
     			ret = 0;
     			break;
     		}
@@ -536,26 +531,22 @@ public:
     }
 
     int TestSwapAfterReduce(){
-    	string str = "1 2 3 4 5";
-    	FeatureDataSequence sent;
-		sent.FromString(str);
-		int n = sent.GetNumWords();
-		vector<DPState::Action> exp(2*n+1, DPState::SHIFT);
-		exp[3]=DPState::STRAIGTH; exp[5]=DPState::SWAP; // swap after reduce
-		exp[6]=DPState::STRAIGTH; exp[9]=DPState::STRAIGTH; exp[10]=DPState::STRAIGTH;
-		int ret = 1;
+    	int n = 5;
+    	int ret = 1;
+    	// 3 0 4 1 2
+    	vector<DPState::Action> exp = DPState::ActionFromString("F F F S F D I F F I S");
     	DPStateVector stateseq;
-		stateseq.push_back(new DDPState());
-		for (int i = 0 ; i < exp.size() ; i++){
-			DPState * state = stateseq.back();
-			if (state->Allow(exp[i], n))
-				state->Take(exp[i], stateseq, true);
-			else{
-				ret = 0;
-				cerr << "action " << (char)exp[i] << " is not allowed at step " << i+1 << endl;
-				break;
-			}
-		}
+    	stateseq.push_back(new DDPState());
+    	for (int i = 0 ; i < exp.size() ; i++){
+    		DPState * state = stateseq.back();
+    		if (state->Allow(exp[i], n))
+    			state->Take(exp[i], stateseq, true);
+    		else{
+    			ret = 0;
+    			cerr << "action " << (char)exp[i] << "is not allowed at step " << i+1 << endl;
+    			break;
+    		}
+    	}
 		DPState * goal = stateseq.back();
 		{
 		DPState * rchild = goal->RightChild();
@@ -573,11 +564,59 @@ public:
 			cerr << "step " << goal->GetStep() << " != action size " << act.size() << endl;
 		}
 		ret *= CheckVector(exp, act);
+
+    	{ // check reordering
+    		vector<int> act;
+			goal->GetReordering(act);
+			vector<int> exp(n);
+			exp[0]=3, exp[1]=0, exp[2]=4, exp[3]=1, exp[4]=2;
+			ret *= CheckVector(exp, act);
+			if (!ret){
+				cerr << "incorrect get reordering" << endl;
+				ret = 0;
+			}
+    	}
     	BOOST_FOREACH(DPState * state, stateseq)
     		delete state;
 		return ret;
     }
 
+    int TestInsideOut2(){
+    	int n = 7;
+    	int ret = 1;
+    	// 1 2 4 0 5 3 6
+    	vector<DPState::Action> exp = DPState::ActionFromString("F F F S F F D S I F F I S F S");
+    	DPStateVector stateseq;
+    	stateseq.push_back(new DDPState());
+    	for (int i = 0 ; i < exp.size() ; i++){
+    		DPState * state = stateseq.back();
+    		if (state->Allow(exp[i], n))
+    			state->Take(exp[i], stateseq, true);
+    		else{
+    			ret = 0;
+    			cerr << "action " << (char)exp[i] << "is not allowed at step " << i+1 << endl;
+    			break;
+    		}
+    	}
+		DPState * goal = stateseq.back();
+    	{ // check reordering
+
+	    	Parser::Result result;
+	    	SetResult(&result, goal);
+    		vector<int> & act = result.order;
+			vector<int> exp(n);
+			exp[0]=1, exp[1]=2, exp[2]=4, exp[3]=0;
+			exp[4]=5, exp[5]=3, exp[6]=6;
+			ret *= CheckVector(exp, act);
+			if (!ret){
+				cerr << "incorrect get reordering" << endl;
+				ret = 0;
+			}
+    	}
+    	BOOST_FOREACH(DPState * state, stateseq)
+    		delete state;
+		return ret;
+    }
     int TestAllow(){
     	string str = "1 2 3 4";
 		FeatureDataSequence sent;
@@ -723,6 +762,7 @@ public:
     	done++; cout << "TestInsideOut()" << endl; if(TestInsideOut()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestInsideOutSearch()" << endl; if(TestInsideOutSearch()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestSwapAfterReduce()" << endl; if(TestSwapAfterReduce()) succeeded++; else cout << "FAILED!!!" << endl;
+    	done++; cout << "TestInsideOut2()" << endl; if(TestInsideOut2()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestAllow()" << endl; if(TestAllow()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestAllowConsecutiveSwap()" << endl; if(TestAllowConsecutiveSwap()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestTakeAfterMerge()" << endl; if(TestTakeAfterMerge()) succeeded++; else cout << "FAILED!!!" << endl;

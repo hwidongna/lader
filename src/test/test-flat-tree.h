@@ -210,6 +210,73 @@ public:
     	}
     	return ret;
     }
+    int TestFlattenSwapAfterReduce() {
+    	int n = 5;
+    	int ret = 1;
+    	// 3 0 4 1 2
+    	vector<DPState::Action> exp = DPState::ActionFromString("F F F S F D I F F I S");
+    	DPStateVector stateseq;
+		stateseq.push_back(new DDPState());
+		for (int i = 0 ; i < exp.size() ; i++){
+			DPState * state = stateseq.back();
+			if (state->Allow(exp[i], n))
+				state->Take(exp[i], stateseq, true);
+			else{
+				ret = 0;
+				cerr << "action " << (char)exp[i] << "is not allowed at step " << i+1 << endl;
+				break;
+			}
+		}
+		DPState * goal = stateseq.back();
+		if (!goal->IsGold()){
+			cerr << *goal << endl;
+			ret = 0;
+		}
+    	DDPStateNode dummy(0, n, NULL, DPState::INIT);
+    	DPStateNode * root = dummy.Flatten(goal);
+    	NodeList children = root->GetChildren();
+    	if ( children.size() != 2 ){
+    		cerr << "root node has " << children.size() << " children != 2" << endl;
+    		ret = 0;
+    	}
+    	if ( root->GetLabel() != (char)DPState::STRAIGTH ){
+    		cerr << "root node " << root->GetLabel() << " != " << (char)DPState::STRAIGTH << endl;
+    		return 0;
+    	}
+
+    	Node * lchild = children.front();
+    	if ( lchild->GetLabel() != (char)DPState::INVERTED ){
+    		cerr << "lchild " << lchild->GetLabel() << " != " << (char)DPState::INVERTED << endl;
+    		ret = 0;
+    	}
+    	if ( lchild->GetParent() != root ){
+    		cerr << "incorrect lchild.parent " << *lchild->GetParent() << " != " << *root << endl;
+    		ret = 0;
+    	}
+    	if ( lchild->GetChildren().size() != 2 ){
+			cerr << "lchild has " << lchild->GetChildren().size() << " != 2 children" << endl;
+			ret = 0;
+		}
+    	Node * lrchild = lchild->GetChildren().back();
+    	if ( lrchild->GetLabel() != (char)DPState::SWAP ){
+    		cerr << "lrchild " << lrchild->GetLabel() << " != " << (char)DPState::SWAP << endl;
+    		ret = 0;
+    	}
+    	Node * rchild = children.back();
+    	if ( rchild->GetLabel() != (char)DPState::INVERTED ){
+    		cerr << "rchild " << rchild->GetLabel() << " != " << (char)DPState::INVERTED << endl;
+    		ret = 0;
+    	}
+    	if ( rchild->GetParent() != root ){
+    		cerr << "incorrect rchild.parent " << *rchild->GetParent() << " != " << *root << endl;
+    		ret = 0;
+    	}
+    	if ( rchild->GetChildren().size() != 2 ){
+    		cerr << "lchild has " << rchild->GetChildren().size() << " != 2 children" << endl;
+    		ret = 0;
+    	}
+    	return ret;
+    }
     int TestExtract() {
     	int ret = 1;
 		int n = sent.GetNumWords();
@@ -422,6 +489,7 @@ public:
     	int done = 0, succeeded = 0;
     	done++; cout << "TestFlatten()" << endl; if(TestFlatten()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestFlattenInsideOut()" << endl; if(TestFlattenInsideOut()) succeeded++; else cout << "FAILED!!!" << endl;
+    	done++; cout << "TestFlattenSwapAfterReduce()" << endl; if(TestFlattenSwapAfterReduce()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestExtract()" << endl; if(TestExtract()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestParseInput()" << endl; if(TestParseInput()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestSet()" << endl; if(TestSet()) succeeded++; else cout << "FAILED!!!" << endl;

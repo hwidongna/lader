@@ -49,6 +49,7 @@ public:
 		if(config.GetString("align_in").length())
 			ReadAlignments(config.GetString("align_in"), ranks_, data_);
 		int verbose = config.GetInt("verbose");
+		int m = config.GetInt("max_swap");
 		vector<ReordererRunner::OutputType> outputs;
 		tokenizer<char_separator<char> > outs(config.GetString("out_format"),
 				char_separator<char>(","));
@@ -75,25 +76,28 @@ public:
 				cerr << " " << rank;
 				cerr << endl;
 			}
-			vector<DPState::Action> refseq = ranks_[sent]->GetReference();
+			vector<DPState::Action> refseq = ranks_[sent]->GetReference(m);
 			if (verbose >= 1){
 				cerr << "Reference:";
 				BOOST_FOREACH(DPState::Action action, refseq)
-				cerr << " " << action;
+				cerr << " " << (char) action;
 				cerr << endl;
 			}
 			Sentence & datas = (*data_[sent]);
 			int n = datas[0]->GetNumWords();
 			vector<string> words = ((FeatureDataSequence*)datas[0])->GetSequence();
-			if (refseq.size() < 2*n - 1){
+			if (refseq.size() < 2*(n+m) - 1){
 				if (verbose >= 1)
 					cerr << "Fail to get correct reference sequence, skip it" << endl;
 			} else{
 				DPStateVector stateseq;
-				stateseq.push_back(new DPState());
-				for (int step = 1 ; step < 2*n ; step++){
+				if (m > 0)
+					stateseq.push_back(new DDPState());
+				else
+					stateseq.push_back(new DPState());
+				BOOST_FOREACH(DPState::Action action, refseq){
 					DPState * state = stateseq.back();
-					state->Take(refseq[step-1], stateseq, true);
+					state->Take(action, stateseq, true);
 				}
 				// for a complete tree
 				DPState * goal = stateseq.back();
@@ -115,7 +119,7 @@ public:
 							cout << reordering[j];
 						}
 					} else if(outputs.at(i) == ReordererRunner::OUTPUT_FLATTEN) {
-						DPStateNode root(0, n, NULL, DPState::INIT);
+						DDPStateNode root(0, n, NULL, DPState::INIT);
 						root.AddChild(root.Flatten(goal));
 						root.PrintParse(words, cout);
 					} else if(outputs.at(i) == ReordererRunner::OUTPUT_ACTION) {

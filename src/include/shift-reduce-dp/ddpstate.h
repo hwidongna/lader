@@ -25,12 +25,15 @@ public:
 			const Sentence * sent = NULL);
 	virtual bool Allow(const Action & action, const int n);
 	virtual void InsideActions(vector<Action> & result);
+	virtual DPState * LeftChild() const;
+	virtual DPState * RightChild() const;
 	virtual void GetReordering(vector <int> & result);
 	virtual bool IsContinuous() { return src_l2_ < 0 && src_r2_ < 0; }
 	virtual int GetSrcREnd() const { return src_rend_; }
 	int GetSrcL2() const { return src_l2_; }
 	int GetSrcR2() const { return src_r2_; }
 	DPStateVector GetSwaped() const { return swaped_; }
+	int GetNumSwap() const { return nswap_; }
 
 	// compare signature
 	virtual bool operator == (const DPState & other) const {
@@ -52,6 +55,8 @@ protected:
 	int src_l2_, src_r2_;	// discontinuous source span
 	int src_rend_;			// source index for the next buffer front
 	DPStateVector swaped_;	// swaped states
+	DPState * trace_;		// the actual state, if this is a swaped one
+	int nswap_;				// the number of swap actions taken so far
 };
 
 }

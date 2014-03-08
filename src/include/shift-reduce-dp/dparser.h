@@ -38,6 +38,13 @@ public:
 				delete gold;
 		}
 	}
+protected:
+	virtual bool Allow(DPState * old, DPState::Action action, int n) {
+		DDPState * dold = dynamic_cast<DDPState*>(old);
+		if (!dold)
+			THROW_ERROR("DDPState::Allow fails" << *old << endl)
+		return old->Allow(action, n) && dold->GetNumSwap() < m_;
+	}
 private:
 	int m_;		// the maximum number of swap actions
 };

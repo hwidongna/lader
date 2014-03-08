@@ -66,7 +66,7 @@ void Parser::DynamicProgramming(DPStateVector & golds, ShiftReduceModel & model,
 			}
 			// iterate over actions
 			BOOST_FOREACH(DPState::Action action, actions_){
-				if (!old->Allow(action, n))
+				if (!Allow(old, action, n))
 					continue;
 				bool actiongold = (refseq != NULL && action == (*refseq)[step-1]);
 				DPStateVector stateseq;

@@ -63,8 +63,8 @@ public:
 	void AllActions(vector <Action> & result);
 	DPState * Previous();
 	DPState * GetLeftState() const;
-	DPState * LeftChild() const;
-	DPState * RightChild() const;
+	virtual DPState * LeftChild() const;
+	virtual DPState * RightChild() const;
 	double GetScore() const { return score_; }
 	double GetInside() const { return inside_; }
 	int GetSrcL() const { return src_l_; }

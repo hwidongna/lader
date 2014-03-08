@@ -41,6 +41,7 @@ public:
         AddConfigEntry("feature_profile", "seq=X", "Which features to use (meaningless) ");
         AddConfigEntry("source_in", "", "The input file for the source sentences");
         AddConfigEntry("verbose", "0", "The level of debugging output to print");
+        AddConfigEntry("max_swap", "0", "The maximum number of swap actions");
     }
 
 };

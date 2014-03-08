@@ -20,6 +20,8 @@ namespace lader {
 // initial state
 DDPState::DDPState() : DPState(){
 	src_l2_ = src_r2_ = src_rend_ = 0;
+	trace_ = NULL;
+	nswap_ = 0;
 }
 
 // new state
@@ -27,6 +29,7 @@ DDPState::DDPState() : DPState(){
 DDPState::DDPState(int step, int i, int j, Action action, int i2, int j2) :
 		DPState(step, i, j, action) {
 	src_l2_ = i2; src_r2_ = src_rend_ = j2;
+	trace_ = NULL;
 }
 
 DDPState::~DDPState() {
@@ -165,10 +168,12 @@ DPState * DDPState::Shift(){
 	else{
 		DPState * top = swaped_.back();
 		next = new DDPState(step_+1, top->src_l_, top->src_r_, top->action_); // restore the swaped state
+		next->trace_ = top;	// this is useful for later stage
 		next->swaped_.insert(next->swaped_.begin(), swaped_.begin(), swaped_.end()-1);
 		next->trg_l_ = top->trg_l_; next->trg_r_ = top->trg_r_;
 		next->src_c_ = -1; next->src_rend_ = src_rend_;
 	}
+	next->nswap_ = nswap_;
 	return next;
 }
 
@@ -212,6 +217,7 @@ DPState * DDPState::Reduce(DPState * leftstate, Action action){
 	}
 	next->src_rend_ = src_rend_;
 	next->swaped_.insert(next->swaped_.begin(), swaped_.begin(), swaped_.end());
+	next->nswap_ = nswap_;
 	if (action == STRAIGTH){
 		next->trg_l_ = lstate->trg_l_;		next->trg_r_ = trg_r_;
 	}
@@ -228,6 +234,7 @@ DPState * DDPState::Swap(DPState * leftstate){
 	next->swaped_.push_back(leftstate);
 	next->src_c_ = src_c_; next->src_rend_ = src_rend_;
 	next->trg_l_ = trg_l_;	next->trg_r_ = trg_r_;
+	next->nswap_ = nswap_ + 1;
 	return next;
 }
 
@@ -237,6 +244,7 @@ DPState * DDPState::Idle(){
 	next->swaped_.insert(next->swaped_.begin(), swaped_.begin(), swaped_.end());
 	next->src_c_ = src_c_; next->src_rend_ = src_rend_;
 	next->trg_l_ = trg_l_;	next->trg_r_ = trg_r_;
+	next->nswap_ = nswap_;
 	return next;
 }
 
@@ -270,11 +278,11 @@ void DDPState::InsideActions(vector<Action> & result){
 	case INVERTED:
 	case SWAP:
 	case IDLE:
-		if (LeftChild())
-			LeftChild()->InsideActions(result);
-		if (RightChild())
-			RightChild()->InsideActions(result);
-		if (LeftChild() || RightChild())
+		if (DPState::LeftChild())
+			DPState::LeftChild()->InsideActions(result);
+		if (DPState::RightChild())
+			DPState::RightChild()->InsideActions(result);
+		if (DPState::LeftChild() || DPState::RightChild())
 			result.push_back(action_);
 		else // this is a swaped state, where the action is shift
 			result.push_back(SHIFT);
@@ -285,21 +293,30 @@ void DDPState::InsideActions(vector<Action> & result){
 	}
 }
 
+// if this is a swaped state, use trace
+DPState * DDPState::LeftChild() const{
+	if (trace_ != NULL)
+		return trace_->LeftChild();
+	return DPState::LeftChild();
+}
+
+DPState * DDPState::RightChild() const{
+	if (trace_ != NULL)
+		return trace_->RightChild();
+	return DPState::RightChild();
+}
+
 void DDPState::GetReordering(vector<int> & result){
 	switch(action_){
 	case INIT:
 		break;
 	case STRAIGTH:
-		if (LeftChild() && RightChild()){ // may be NULL if swaped
-			LeftChild()->GetReordering(result);
-			RightChild()->GetReordering(result);
-		}
+		LeftChild()->GetReordering(result);
+		RightChild()->GetReordering(result);
 		break;
 	case INVERTED:
-		if (LeftChild() && RightChild()){ // may be NULL if swaped
-			RightChild()->GetReordering(result);
-			LeftChild()->GetReordering(result);
-		}
+		RightChild()->GetReordering(result);
+		LeftChild()->GetReordering(result);
 		break;
 	case SWAP:
 	case IDLE:
@@ -318,19 +335,19 @@ void DDPState::PrintParse(const vector<string> & strs, ostream & out) const{
 		break;
 	case STRAIGTH:
 	case INVERTED:
-		if (LeftChild() && RightChild()){ // may be NULL if swaped
-			out << "("<<(char) action_<<" ";
-			LeftChild()->PrintParse(strs, out);
-			out << " ";
-			RightChild()->PrintParse(strs, out);
-			out << ")";
-		}
+		out << "("<<(char) action_<<" ";
+		LeftChild()->PrintParse(strs, out);
+		out << " ";
+		RightChild()->PrintParse(strs, out);
+		out << ")";
 		break;
 	case SWAP:
-	case IDLE:
 		out << "("<<(char) action_<<" ";
 		RightChild()->PrintParse(strs, out);
 		out << ")";
+		break;
+	case IDLE:
+		RightChild()->PrintParse(strs, out);
 		break;
 	case SHIFT:
 		out << "(" <<(char)  action_ << " " << GetTokenWord(strs[GetSrcL()]) <<")";

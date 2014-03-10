@@ -24,7 +24,7 @@ public:
 	DDPState(); // for initial state
 	virtual ~DDPState();
 	DDPState(int step, int i, int j, Action action, int i2=-1, int j2=-1);
-
+	virtual void MergeWith(DPState * other);
 	virtual void Take(Action action, DPStateVector & result, bool actiongold = false,
 			int maxterm = 1, ReordererModel * model = NULL, const FeatureSet * feature_gen = NULL,
 			const Sentence * sent = NULL);

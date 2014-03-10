@@ -36,6 +36,14 @@ DDPState::DDPState(int step, int i, int j, Action action, int i2, int j2) :
 DDPState::~DDPState() {
 }
 
+void DDPState::MergeWith(DPState * other){
+	DPState::MergeWith(other);
+	DDPState * lstate = dynamic_cast<DDPState*>(other);
+	// prevent parsing failure
+	if (lstate && lstate->nswap_ > nswap_)
+		nswap_ = lstate->nswap_;
+}
+
 #define CCC (lstate->IsContinuous() && IsContinuous() && lstate->src_r_ == src_l_)
 #define CCD (lstate->IsContinuous() && IsContinuous() && lstate->src_r_ < src_l_)
 #define CDD (lstate->IsContinuous() && !IsContinuous() && lstate->src_r_ == src_l_)
@@ -218,7 +226,7 @@ DPState * DDPState::Reduce(DPState * leftstate, Action action){
 	}
 	next->src_rend_ = src_rend_;
 	next->swaped_.insert(next->swaped_.begin(), swaped_.begin(), swaped_.end());
-	next->nswap_ = nswap_;
+	next->nswap_ = lstate->nswap_ + nswap_;
 	if (action == STRAIGTH){
 		next->trg_l_ = lstate->trg_l_;		next->trg_r_ = trg_r_;
 	}

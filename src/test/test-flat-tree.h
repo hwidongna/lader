@@ -54,24 +54,18 @@ public:
 			cerr << "incorrect reference sequence" << endl;
 			return;
 		}
-
-		stateseq.push_back(new DPState());
-		for (int step = 1 ; step < 2*n ; step++){
-			DPState * state = stateseq.back();
-			state->Take(refseq[step-1], stateseq, true);
-		}
-		// for a complete tree
-		goal = stateseq.back();
-		if (!goal->IsGold()){
-			cerr << *goal << endl;
-			return;
-		}
     }
     ~TestFlatTree() { }
 
     int TestFlatten() {
     	int ret = 1;
 		int n = sent.GetNumWords();
+		Parser p;
+		DPState * goal = p.GuidedSearch(cal.GetReference(), n);
+		// for a complete tree
+		if (!goal->IsGold()){
+			cerr << *goal << endl;
+		}
     	DPStateNode dummy(0, n, NULL, DPState::INIT);
     	DPStateNode * root = dummy.Flatten(goal);
     	NodeList children = root->GetChildren();
@@ -148,19 +142,8 @@ public:
 			return 0;
 		}
 
-    	DPStateVector stateseq;
-		stateseq.push_back(new DDPState());
-		for (int i = 0 ; i < exp.size() ; i++){
-			DPState * state = stateseq.back();
-			if (state->Allow(exp[i], n))
-				state->Take(exp[i], stateseq, true);
-			else{
-				ret = 0;
-				cerr << "action " << (char)exp[i] << "is not allowed at step " << i+1 << endl;
-				break;
-			}
-		}
-		DPState * goal = stateseq.back();
+		DParser p(1);
+		DPState * goal = p.GuidedSearch(exp, n);
 		if (!goal->IsGold()){
 			cerr << *goal << endl;
 			ret = 0;
@@ -215,19 +198,8 @@ public:
     	int ret = 1;
     	// 3 0 4 1 2
     	vector<DPState::Action> exp = DPState::ActionFromString("F F F S F D I F F I S");
-    	DPStateVector stateseq;
-		stateseq.push_back(new DDPState());
-		for (int i = 0 ; i < exp.size() ; i++){
-			DPState * state = stateseq.back();
-			if (state->Allow(exp[i], n))
-				state->Take(exp[i], stateseq, true);
-			else{
-				ret = 0;
-				cerr << "action " << (char)exp[i] << "is not allowed at step " << i+1 << endl;
-				break;
-			}
-		}
-		DPState * goal = stateseq.back();
+    	DParser p(1);
+    	DPState * goal = p.GuidedSearch(exp, n);
 		if (!goal->IsGold()){
 			cerr << *goal << endl;
 			ret = 0;
@@ -280,6 +252,8 @@ public:
     int TestExtract() {
     	int ret = 1;
 		int n = sent.GetNumWords();
+		Parser p;
+		DPState * goal = p.GuidedSearch(cal.GetReference(), n);
 		DPStateNode dummy(0, n, NULL, DPState::INIT);
     	DPStateNode * root = dummy.Flatten(goal);
 
@@ -500,7 +474,6 @@ public:
 private:
     Ranks cal;
     FeatureDataSequence sent;
-    DPState * goal;
 };
 }
 #endif /* TEST_FLAT_TREE_H_ */

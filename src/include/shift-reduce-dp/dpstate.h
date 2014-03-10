@@ -16,6 +16,10 @@
 #include <tr1/unordered_map>
 using namespace std;
 
+namespace reranker{
+class DPStateNode;
+}
+
 namespace lader {
 
 #define MULTI_K 0xFFFF
@@ -59,9 +63,9 @@ public:
 			const Sentence * sent = NULL);
 	virtual bool Allow(const Action & action, const int n);
 	virtual bool IsContinuous() { return false; }
-	virtual void InsideActions(vector<Action> & result);
-	void AllActions(vector <Action> & result);
-	DPState * Previous();
+	virtual void InsideActions(vector<Action> & result) const;
+	void AllActions(vector <Action> & result) const;
+	DPState * Previous() const;
 	DPState * GetLeftState() const;
 	virtual DPState * LeftChild() const;
 	virtual DPState * RightChild() const;
@@ -78,7 +82,7 @@ public:
 	Span GetSrcSpan() const { return MakePair(src_l_, src_r_-1); }
 	Span GetTrgSpan() const { return MakePair(trg_l_, trg_r_-1); }
 	DPStateVector GetLeftPtrs() const { return leftptrs_; }
-	virtual void GetReordering(vector <int> & result);
+	virtual void GetReordering(vector <int> & result) const;
 	void SetSignature(int max);
 	vector<Span> GetSignature() const { return signature_; }
 
@@ -95,7 +99,8 @@ public:
 		return score_ < other.score_ || (score_ == other.score_ && inside_ < other.inside_);
 	}
 	virtual void PrintParse(const vector<string> & strs, ostream & out) const;
-	void PrintTrace(ostream & out);
+	void PrintTrace(ostream & out) const;
+	virtual reranker::DPStateNode * ToFlatTree();
 protected:
 	virtual DPState * Shift();
 	virtual DPState * Reduce(DPState * leftstate, Action action);

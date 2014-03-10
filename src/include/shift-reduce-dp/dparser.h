@@ -18,8 +18,8 @@ namespace lader {
 class DParser : public Parser{
 public:
 	DParser(int m=1) : m_(m) {
-		actions_.push_back(DPState::SWAP);
 		actions_.push_back(DPState::IDLE);
+		actions_.push_back(DPState::SWAP);
 	}
 	virtual ~DParser() { }
 	virtual DPState * InitialState() { return new DDPState(); }
@@ -29,6 +29,18 @@ public:
 			const string * update = NULL) {
 		DPStateVector golds(2*(sent[0]->GetNumWords() + m_), NULL);
 		DynamicProgramming(golds, model, feature_gen, sent, refseq);
+		if (!GetBest()){ // SWAP may result parsing fail with limited beam size
+			BOOST_FOREACH(DPStateVector & b, beams_){
+				BOOST_FOREACH(DPState * state, b)
+					delete state;
+				b.clear();
+			}
+			beams_.clear();
+			actions_.pop_back(); // try ITG parsing instead
+			golds.clear();
+			golds.resize(2*(sent[0]->GetNumWords() + m_), NULL);
+			DynamicProgramming(golds, model, feature_gen, sent, refseq);
+		}
 		if (result && refseq){
 			DPStateVector simgolds;
 			CompleteGolds(simgolds, golds, model, feature_gen, sent, refseq);
@@ -43,7 +55,7 @@ protected:
 		DDPState * dold = dynamic_cast<DDPState*>(old);
 		if (!dold)
 			THROW_ERROR("DDPState::Allow fails" << *old << endl)
-		return old->Allow(action, n) && dold->GetNumSwap() < m_;
+		return old->Allow(action, n) && (action != DPState::SWAP || dold->GetNumSwap() < m_);
 	}
 private:
 	int m_;		// the maximum number of swap actions

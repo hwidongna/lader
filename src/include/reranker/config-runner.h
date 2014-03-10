@@ -28,6 +28,7 @@ public:
 );
         AddConfigEntry("out_format", "string", "A comma seperated list of outputs (string/parse/order/scoreflatten/action)");
         AddConfigEntry("source_in", "", "The input file for the source sentences");
+        AddConfigEntry("kbest_in", "", "The input file for the kbest parses");
         AddConfigEntry("model_in", "", "An input file for the model");
         AddConfigEntry("weights", "", "An input file for the model weights");
         AddConfigEntry("lexicalize-parent", "false", "Whether to lexicalize parent node");

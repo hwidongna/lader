@@ -28,8 +28,10 @@ public:
 			const ConfigBase& config, OutputCollector * collector) :
 				id_(id), line_(line), model_(model), features_(features),
 				outputs_(outputs), collector_(collector), config_(config) { }
-	void Output(Parser::Result & result, Sentence & datas, DPState *best)
+	void Output(const Sentence & datas, const DPState *best)
     {
+        Parser::Result result;
+        SetResult(&result, best);
         if (config_.GetInt("verbose") >= 1){
 			ess << "Result:   ";
 			for (int step = 0 ; step < (const int)result.actions.size() ; step++)
@@ -41,14 +43,22 @@ public:
 			ess << endl;
 		}
         // Reorder
-        std::vector<int> & reordering = result.order;
-        datas[0]->Reorder(reordering);
+        const std::vector<int> & reordering = result.order;
         // Print the string
         vector<string> words = ((FeatureDataSequence*)(datas[0]))->GetSequence();
+        if (result.order.size() != words.size()){
+        	ess << "Invalid parsing result " << endl;
+        	best->PrintTrace(ess);
+        	oss << endl;
+        	return;
+        }
         for(int i = 0; i < (int)outputs_->size(); i++) {
 			if(i != 0) oss << "\t";
 			if(outputs_->at(i) == ReordererRunner::OUTPUT_STRING) {
-				oss << datas[0]->ToString();
+				for(int j = 0; j < (int)reordering.size(); j++) {
+					if(j != 0) oss << " ";
+					oss << words[reordering[j]];
+				}
 			} else if(outputs_->at(i) == ReordererRunner::OUTPUT_PARSE) {
 				best->PrintParse(words, oss);
 			} else if(outputs_->at(i) == ReordererRunner::OUTPUT_ORDER) {
@@ -95,9 +105,7 @@ public:
         p->SetVerbose(config_.GetInt("verbose"));
         p->Search(*model_, *features_, datas);
         DPState *best = p->GetBest();
-        Parser::Result result;
-        SetResult(&result, best);
-        Output(result, datas, best);
+        Output(datas, best);
 		collector_->Write(id_, oss.str(), ess.str());
 		// Clean up the data
 		BOOST_FOREACH(FeatureDataBase* data, datas){

@@ -27,7 +27,7 @@ int Node::NumEdges(){
 	return count;
 
 }
-DPStateNode * DPStateNode::Flatten(lader::DPState * root){
+DPStateNode * DPStateNode::Flatten(const lader::DPState * root){
 	if (!root) // just in case
 		return NULL;
 	DPStateNode * v = new DPStateNode(root->GetSrcL(), root->GetSrcR(), this, root->GetAction());
@@ -52,7 +52,7 @@ DPStateNode * DPStateNode::Flatten(lader::DPState * root){
 	return v;
 }
 
-DPStateNode * DDPStateNode::Flatten(lader::DPState * root){
+DPStateNode * DDPStateNode::Flatten(const lader::DPState * root){
 	if (!root) // just in case
 		return NULL;
 	DPStateNode * v = new DDPStateNode(root->GetSrcL(), root->GetSrcR(), this, root->GetAction());
@@ -221,8 +221,7 @@ GenericNode::ParseResult * GenericNode::ParseInput(const string & line){
 	int n = line.size();
 	int begin;
 	for (begin = 0 ; begin < n ;){
-		if (str[begin] == '(' && begin+1 < n
-		&& (str[begin+1] == 'R' || str[begin+1] == 'S' || str[begin+1] == 'I' || str[begin+1] == 'F')){
+		if (str[begin] == '(' && begin+1 < n){
 			GenericNode * root = new GenericNode(str[begin+1]);
 			if (!result){
 				result = new ParseResult;

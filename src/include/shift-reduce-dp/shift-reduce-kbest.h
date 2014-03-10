@@ -43,11 +43,9 @@ public:
 		p->SetBeamSize(config_.GetInt("beam"));
 		p->SetVerbose(config_.GetInt("verbose"));
 		p->Search(*model_, *features_, datas);
-		vector<Parser::Result> kbest;
-		p->GetKbestResult(kbest);
-		oss << kbest.size() << endl;
-		for (int k = 0 ; k < kbest.size() ; k++){
-			Output(kbest[k], datas, p->GetKthBest(k));
+		oss << p->GetNumParses() << endl;
+		for (int k = 0 ; k < p->GetNumParses() ; k++){
+			Output(datas, p->GetKthBest(k));
 		}
 		collector_->Write(id_, oss.str(), ess.str());
 		// Clean up the data

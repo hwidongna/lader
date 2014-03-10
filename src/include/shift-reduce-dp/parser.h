@@ -30,6 +30,7 @@ public:
 	} Result;
 
 	virtual DPState * InitialState() { return new DPState(); }
+	DPState * GuidedSearch(const vector<DPState::Action> & refseq, int n);
 	virtual void Search(ShiftReduceModel & model,
 			const FeatureSet & feature_gen, const Sentence & sent,
 			Result * result = NULL, const vector<DPState::Action> * refseq = NULL,
@@ -43,6 +44,12 @@ public:
 
 	int GetNumStates() const { return nstates_; }
 	int GetNumEdges() const { return nedges_; }
+	int GetNumParses() const {
+		int k;
+		for (k = 0 ; GetKthBest(k) != NULL ; k++)
+			;
+		return k;
+	}
 	DPState * GetBest() const { return GetKthBest(0); }
 	DPState * GetKthBest(int k) const {
 		if (beams_.empty())
@@ -75,7 +82,7 @@ protected:
 	int verbose_;
 	vector<DPState::Action> actions_;
 };
-void SetResult(Parser::Result * result, DPState * goal);
+void SetResult(Parser::Result * result, const DPState * goal);
 
 
 } /* namespace lader */

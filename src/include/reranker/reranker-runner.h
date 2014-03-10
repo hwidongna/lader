@@ -14,6 +14,7 @@
 #include <reranker/reranker-model.h>
 #include <reranker/flat-tree.h>
 #include <boost/algorithm/string.hpp>
+#include <shift-reduce-dp/dparser.h>
 #include <fstream>
 #include <vector>
 
@@ -25,7 +26,7 @@ namespace reranker{
 class RerankerResult {
 public:
 	double score;
-	GenericNode::ParseResult * parse;
+	GenericNode * tree;
 	bool operator < (const RerankerResult & rhs) const{
 		return score < rhs.score;
 	}
@@ -41,13 +42,16 @@ public:
     	string line;
     	string source_in = config.GetString("source_in");
     	ifstream sin(source_in.c_str());
-    	if (!sin)
-    		cerr << "use stdin for source_in" << endl;
+
+    	string kbest_in = config.GetString("kbest_in");
+    	ifstream kin(kbest_in.c_str());
+    	if (!kin)
+    		cerr << "use stdin for kbest_in" << endl;
     	int verbose = config.GetInt("verbose");
     	int K = config.GetInt("trees");
 
     	ReadModelAndWeights(config.GetString("model_in"), config.GetString("weights"));
-    	for (int sent = 0 ; getline(sin != NULL? sin : cin, line) ; sent++){
+    	for (int sent = 0 ; getline(kin != NULL? kin : cin, line) ; sent++){
         	if(sent && sent % 1000 == 0) cerr << ".";
         	if(sent && sent % (1000*10) == 0) cerr << sent << endl;
         	int numParses;
@@ -55,21 +59,31 @@ public:
         	iss >> numParses;
         	if (verbose >= 1)
         		cerr << "Sentence " << sent << ": " << numParses << " parses" << endl;
+        	getline(sin, line);
+    		FeatureDataSequence words;
+    		words.FromString(line);
         	vector<RerankerResult> buf(numParses);
     		for (int i = 0 ; i < numParses ; i++) {
-    			getline(sin != NULL? sin : cin, line);
-    			if (line.empty())
-    				THROW_ERROR("Less than " << numParses << " trees" << endl);
-    			// Load the data
-    			vector<string> columns;
-    			algorithm::split(columns, line, is_any_of("\t"));
-    			if (columns.size() != 2)
-    				THROW_ERROR("Expect score<TAB>flatten, get: " << line << endl);
+    			getline(kin != NULL? kin : cin, line);
+				if (line.empty())
+					THROW_ERROR("Less than " << numParses << " trees" << endl);
+				// Load the data
+				vector<string> columns;
+				algorithm::split(columns, line, is_any_of("\t"));
+				if (columns.size() != 2)
+					THROW_ERROR("Expect score<TAB>kbest, get: " << line << endl);
     			// Load the data
     			double score = atof(columns[0].c_str());
-    			GenericNode::ParseResult * result = GenericNode::ParseInput(columns[1].c_str());
-    			FeatureDataSequence sent(result->words);
-    			buf[i].parse = result;
+    			vector<DPState::Action> refseq = DPState::ActionFromString(columns[1].c_str());
+				Parser * p;
+				if (model_->GetMaxSwap() > 0)
+					p = new DParser(model_->GetMaxSwap());
+				else
+					p = new DParser;
+				DPState * goal = p->GuidedSearch(refseq, words.GetNumWords());
+				DPStateNode * root = goal->ToFlatTree();
+				delete p;
+    			buf[i].tree = root;
     			// Extract and set features
     			FeatureMapInt featmap;
     			NLogP f0(score);
@@ -81,7 +95,7 @@ public:
     			features.push_back(new NGramTree(config.GetInt("order")));
     			BOOST_FOREACH(TreeFeature * f, features){
     				f->SetLexical(config.GetBool("lexicalize-parent"), config.GetBool("lexicalize-child"));
-    				f->Extract(result->root, sent);
+    				f->Extract(root, words);
     				f->Set(featmap, *model_);
     			}
     			buf[i].score = model_->GetScore(featmap);
@@ -92,10 +106,11 @@ public:
     		if (verbose >= 1){
     			BOOST_FOREACH(RerankerResult r, buf){
     				cerr << r.score << "\t";
-    				r.parse->root->PrintParse(r.parse->words, cerr);
+    				r.tree->PrintParse(words.GetSequence(), cerr);
     				cerr << endl;
     			}
     		}
+    		// Get the reranking result
     		RerankerResult * best;
     		if (K > 0 && K < numParses){
     			sort(buf.begin(), buf.begin()+K);
@@ -104,20 +119,17 @@ public:
     			sort(buf.begin(), buf.end());
     			best = &buf.back();
     		}
-    		GenericNode::ParseResult * tree = best->parse;
-    		FeatureDataSequence sent(tree->words);
     		vector<int> order;
-    		tree->root->GetOrder(order);
-    		sent.Reorder(order);
+    		best->tree->GetOrder(order);
+    		words.Reorder(order);
     		int i = 0;
     		BOOST_FOREACH(int o, order){
     			if (i++ != 0) cout << " ";
     			cout << o;
     		}
-    		cout << "\t" << sent.ToString() << "\t" << best->score << endl;
+    		cout << "\t" << words.ToString() << "\t" << best->score << endl;
     		BOOST_FOREACH(RerankerResult r, buf){
-    			delete r.parse->root;
-    			delete r.parse;
+    			delete r.tree;
     		}
     	}
     	if (sin) sin.close();

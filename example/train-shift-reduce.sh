@@ -4,8 +4,8 @@ set -e
 SOURCE_IN=output/train.en.annot
 TARGET_IN=data/train.ja
 ALIGN_IN=data/train.en-ja.align
-#SOURCE_DEV=output/test.en.annot
-#ALIGN_DEV=data/test.en-ja.align
+SOURCE_DEV=output/test.en.annot
+ALIGN_DEV=data/test.en-ja.align
 RATIO_DEV=0.5
 LOSS_PROFILE="chunk=0.5|tau=0.5"
 FEATURE_PROFILE="\
@@ -18,7 +18,7 @@ MAX_STATE=3
 THREADS=4
 SHUFFLE=false
 ITERATION=10
-VERBOSE=1
+VERBOSE=0
 UPDATE=max
 BEAM=10
 MAX_TERM=1

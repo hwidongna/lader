@@ -93,14 +93,14 @@ class DPStateNode : public GenericNode{
 public:
 	DPStateNode(int left, int right, Node * parent, lader::DPState::Action action) :
 		GenericNode(left, right, parent, (char)action) { }
-	virtual DPStateNode * Flatten(lader::DPState * root);
+	virtual DPStateNode * Flatten(const lader::DPState * root);
 };
 
 class DDPStateNode : public DPStateNode{
 public:
 	DDPStateNode(int left, int right, Node * parent, lader::DPState::Action action) :
 		DPStateNode(left, right, parent, action) { }
-	virtual DPStateNode * Flatten(lader::DPState * root);
+	virtual DPStateNode * Flatten(const lader::DPState * root);
 };
 
 class HypNode : public GenericNode{

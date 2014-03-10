@@ -32,6 +32,7 @@ public:
     bool IsStraight(DPState * leftstate, DPState * state) const;
     bool IsInverted(DPState * leftstate, DPState * state) const;
     bool HasTie(DPState * state) const;
+    bool HasReducible(DPState * state) const;
     bool HasContinuous(DPState * state) const;
 private:
     std::vector<int> ranks_;

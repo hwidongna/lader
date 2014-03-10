@@ -9,6 +9,7 @@
 
 
 #include "shift-reduce-dp/ddpstate.h"
+#include "reranker/flat-tree.h"
 #include <cstdlib>
 #include <boost/foreach.hpp>
 #include <lader/reorderer-model.h>
@@ -263,7 +264,7 @@ bool DDPState::Allow(const Action & action, const int n){
 }
 
 
-void DDPState::InsideActions(vector<Action> & result){
+void DDPState::InsideActions(vector<Action> & result) const{
 	switch(action_){
 	case INIT:
 		break;
@@ -306,7 +307,7 @@ DPState * DDPState::RightChild() const{
 	return DPState::RightChild();
 }
 
-void DDPState::GetReordering(vector<int> & result){
+void DDPState::GetReordering(vector<int> & result) const{
 	switch(action_){
 	case INIT:
 		break;
@@ -353,6 +354,12 @@ void DDPState::PrintParse(const vector<string> & strs, ostream & out) const{
 		out << "(" <<(char)  action_ << " " << GetTokenWord(strs[GetSrcL()]) <<")";
 		break;
 	}
+}
+
+reranker::DPStateNode * DDPState::ToFlatTree(){
+	reranker::DPStateNode * root = new reranker::DDPStateNode(0, src_r_, NULL, DPState::INIT);
+	root->AddChild(root->Flatten(this));
+	return root;
 }
 
 } /* namespace lader */

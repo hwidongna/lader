@@ -1,0 +1,15 @@
+# Running scripts for lader, shift-reduce-dp, and reranker
+
+# lader
+./train-model.sh
+./test-model.sh
+
+# shift-reduce-dp
+./train-shift-reduce.sh
+./test-shift-reduce.sh
+./test-shift-reduce-kbest.sh
+
+# reranker
+./train-mfold-kbest.sh
+./train-reranker.sh
+./test-reranker.sh

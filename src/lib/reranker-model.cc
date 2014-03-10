@@ -15,6 +15,7 @@ using namespace boost;
 
 // IO Functions
 void RerankerModel::ToStream(std::ostream & out, int threshold) {
+	out << "max_swap " << max_swap_ << endl;
     out << "reranker_model" << std::endl;
     for(int i = 0; i < (int)counts_.size(); i++)
         if(counts_[i] >= threshold)
@@ -24,6 +25,8 @@ void RerankerModel::ToStream(std::ostream & out, int threshold) {
 RerankerModel * RerankerModel::FromStream(std::istream & in, bool renumber) {
     std::string line;
     RerankerModel * ret = new RerankerModel;
+    GetConfigLine(in, "max_swap", line);
+    ret->SetMaxSwap(atoi(line.c_str()));
     GetlineEquals(in, "reranker_model");
     while(std::getline(in, line) && line.length()) {
         vector<string> columns;

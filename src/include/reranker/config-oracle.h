@@ -35,7 +35,7 @@ public:
         AddConfigEntry("attach_null", "right", "Whether to attach null alignments to the left or right");
         AddConfigEntry("combine_blocks", "true", "Whether to attach the blocks together");
         AddConfigEntry("verbose", "0", "The level of debugging output to print");
-
+        AddConfigEntry("max_swap", "0", "The maximum number of swap actions");
     }
 	
 };

@@ -33,7 +33,8 @@ public:
     }
     void Reorder(const std::vector<int> & order) {
         if(order.size() != sequence_.size())
-            THROW_ERROR("Vector sizes in Reorder don't match");
+            THROW_ERROR("Vector sizes in Reorder don't match: "
+            			<< "order " << order.size() << " != " << sequence_.size() << std::endl);
         std::vector<std::string> old_seq = sequence_;
         for(int i = 0; i < (int) order.size(); i++)
             sequence_[i] = old_seq[order[i]];

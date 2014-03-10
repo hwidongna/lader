@@ -26,6 +26,23 @@ Parser::~Parser() {
 			delete state;
 }
 
+DPState * Parser::GuidedSearch(const vector<DPState::Action> & refseq, int n){
+	int max_step = refseq.size() + 1;
+	beams_.resize(max_step, DPStateVector());
+	DPState * state = InitialState();
+	beams_[0].push_back(state); // initial state
+	for (int step = 1 ; step < max_step ; step++){
+		DPState::Action action = refseq[step-1];
+		if (Allow(state, action, n))
+			state->Take(action, beams_[step], true);
+		else{
+			state->PrintTrace(cerr);
+			THROW_ERROR("Bad action! " << (char) action << endl);
+		}
+		state = beams_[step][0];
+	}
+	return state;
+}
 void Parser::Search(ShiftReduceModel & model,
 		const FeatureSet & feature_gen, const Sentence & sent,
 		Result * result, const vector<DPState::Action> * refseq,
@@ -218,7 +235,7 @@ void Parser::Update(DPStateVector & golds, Result * result,
 			continue;
 		}
 		naivepos = step;
-		DPState * best = beams_[step][0]; // update against best
+		const DPState * best = beams_[step][0]; // update against best
 		if (verbose_ >= 2){
 			cerr << "BEST: " << *best << endl;
 			cerr << "GOLD: " << *golds[step] << endl;
@@ -254,7 +271,9 @@ void Parser::Update(DPStateVector & golds, Result * result,
 	SetResult(result, beams_[naivepos][0]);
 }
 
-void SetResult(Parser::Result * result, DPState * goal){
+void SetResult(Parser::Result * result, const DPState * goal){
+	if (!result || !goal)
+		THROW_ERROR("SetResult does not accept NULL arguments " << endl)
 	goal->GetReordering(result->order);
 	result->step = goal->GetStep();
 	goal->AllActions(result->actions);
@@ -262,12 +281,11 @@ void SetResult(Parser::Result * result, DPState * goal){
 }
 
 void Parser::GetKbestResult(vector<Result> & kbest){
-	BOOST_FOREACH(DPState * state, beams_.back())
-		if (state){
-			Result result;
-			SetResult(&result, state);
-			kbest.push_back(result);
-		}
+	for (int k = 0 ; GetKthBest(k) != NULL ; k++){
+		Result result;
+		SetResult(&result, GetKthBest(k));
+		kbest.push_back(result);
+	}
 }
 void Parser::Simulate(ShiftReduceModel & model, const FeatureSet & feature_gen,
 		const vector<DPState::Action> & actions, const Sentence & sent,

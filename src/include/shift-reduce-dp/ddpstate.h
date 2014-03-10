@@ -11,6 +11,11 @@
 #include <shift-reduce-dp/dpstate.h>
 using namespace std;
 
+namespace reranker{
+class DPStateNode;
+class DDPStateNode;
+}
+
 namespace lader{
 
 class DDPState : public DPState{
@@ -24,10 +29,10 @@ public:
 			int maxterm = 1, ReordererModel * model = NULL, const FeatureSet * feature_gen = NULL,
 			const Sentence * sent = NULL);
 	virtual bool Allow(const Action & action, const int n);
-	virtual void InsideActions(vector<Action> & result);
+	virtual void InsideActions(vector<Action> & result) const;
 	virtual DPState * LeftChild() const;
 	virtual DPState * RightChild() const;
-	virtual void GetReordering(vector <int> & result);
+	virtual void GetReordering(vector <int> & result) const;
 	virtual bool IsContinuous() { return src_l2_ < 0 && src_r2_ < 0; }
 	virtual int GetSrcREnd() const { return src_rend_; }
 	int GetSrcL2() const { return src_l2_; }
@@ -47,6 +52,7 @@ public:
 		return DPState::operator ==(other);
 	}
 	virtual void PrintParse(const vector<string> & strs, ostream & out) const;
+	virtual reranker::DPStateNode * ToFlatTree();
 protected:
 	virtual DPState * Shift();
 	virtual DPState * Reduce(DPState * leftstate, Action action);

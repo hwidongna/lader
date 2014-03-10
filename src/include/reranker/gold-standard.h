@@ -73,14 +73,14 @@ public:
 				cerr << endl << "Sentence " << sent << endl;
 				cerr << "Rank:";
 				BOOST_FOREACH(int rank, ranks_[sent]->GetRanks())
-				cerr << " " << rank;
+					cerr << " " << rank;
 				cerr << endl;
 			}
 			vector<DPState::Action> refseq = ranks_[sent]->GetReference(m);
 			if (verbose >= 1){
 				cerr << "Reference:";
 				BOOST_FOREACH(DPState::Action action, refseq)
-				cerr << " " << (char) action;
+					cerr << " " << (char) action;
 				cerr << endl;
 			}
 			Sentence & datas = (*data_[sent]);
@@ -131,6 +131,8 @@ public:
 						THROW_ERROR("Unimplemented output format");
 					}
 				}
+				BOOST_FOREACH(DPState * state, stateseq)
+					delete state;
 			}
 			cout << endl;
 		}

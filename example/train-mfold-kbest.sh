@@ -10,10 +10,11 @@ MAX_STATE=3
 THREADS=4
 SHUFFLE=false
 ITERATION=10
-VERBOSE=0
+VERBOSE=1
 UPDATE=max
 BEAM=10
-MAX_TERM=3
+MAX_TERM=1
+MAX_SWAP=1
 
 # define helper function: run a command and print its exit code
 function run () {
@@ -132,20 +133,21 @@ run "../src/bin/train-shift-reduce -cost 1e-3 -attach_null right \
 -iterations $ITERATION -threads $THREADS -shuffle $SHUFFLE -verbose $VERBOSE \
 -model_in $MODEL_IN'' -model_out output/fold$m/train.mod \
 -source_in output/fold$m/train.en.annot -align_in output/fold$m/train.en-ja.align \
--update $UPDATE -beam $BEAM -max_state $MAX_STATE -max_term $MAX_TERM \
+-update $UPDATE -beam $BEAM -max_state $MAX_STATE \
+-max_term $MAX_TERM -max_swap $MAX_SWAP \
 -source_dev output/tmp/train.en.annot.$m -align_dev output/tmp/train.en-ja.align.$m \
 > output/fold$m/train.out 2> output/fold$m/train.log"
 
 # Produce k-best ITG trees for this fold
 run "../src/bin/shift-reduce-kbest -model output/fold$m/train.mod \
--out_format order,string,score,action,flatten \
--threads $THREADS -beam $BEAM -max_state $MAX_STATE \
+-out_format score,action,order,string,flatten \
+-threads $THREADS -beam $BEAM \
 -verbose $VERBOSE -source_in output/tmp/train.en.annot.$m \
 > output/fold$m/kbest.out 2> output/fold$m/kbest.log"
 
 # Generate the gold-standard tree for this fold
 run "../src/bin/gold-standard -verbose $VERBOSE \
--out_format order,string,action,flatten \
+-out_format action,order,string,flatten -max_swap $MAX_SWAP \
 -source_in output/tmp/train.en.$m -align_in output/tmp/train.en-ja.align.$m \
 > output/fold$m/gold.out 2> output/fold$m/gold.log"
 

@@ -106,7 +106,6 @@ public:
     }
 
     int TestAllActions() {
-    	DPStateVector stateseq;
     	int n = sent.GetNumWords();
     	vector<DPState::Action> refseq = cal.GetReference();
     	vector<DPState::Action> exp(2*n-1, DPState::SHIFT);
@@ -118,13 +117,9 @@ public:
     		return 0;
     	}
     	
-    	stateseq.push_back(new DPState());
-    	for (int step = 1 ; step < 2*n ; step++){
-    		DPState * state = stateseq.back();
-    		state->Take(refseq[step-1], stateseq, true);
-    	}
-    	// for a complete tree
-    	DPState * goal = stateseq.back();
+    	Parser p;
+    	DPState * goal = p.GuidedSearch(refseq, n);
+
     	if (!goal->IsGold()){
     		cerr << *goal << endl;
     		return 0;
@@ -142,14 +137,12 @@ public:
     	}
     	// for an incomplete tree
     	act.clear();
-    	goal = stateseq[2*n - 2];
+    	goal = p.GetBeamBest(2*n-2);
     	goal->AllActions(act);
     	if (act.size() != 2*n-2){
     		cerr << "incomplete all actions: size " << act.size() << endl;
     		ret = 0;
     	}
-    	BOOST_FOREACH(DPState * state, stateseq)
-    		delete state;
     	return ret;
     }
 
@@ -433,19 +426,8 @@ public:
 			return 0;
 		}
 
-    	DPStateVector stateseq;
-		stateseq.push_back(new DDPState());
-		for (int i = 0 ; i < exp.size() ; i++){
-			DPState * state = stateseq.back();
-			if (state->Allow(exp[i], n))
-				state->Take(exp[i], stateseq, true);
-			else{
-				ret = 0;
-				cerr << "action " << (char)exp[i] << " is not allowed at step " << i+1 << endl;
-				break;
-			}
-		}
-		DPState * goal = stateseq.back();
+		DParser p(1);
+		DPState * goal = p.GuidedSearch(refseq, n);
 		if (!goal->IsGold()){
 			cerr << *goal << endl;
 			ret = 0;
@@ -473,8 +455,6 @@ public:
 				ret = 0;
 			}
     	}
-    	BOOST_FOREACH(DPState * state, stateseq)
-    		delete state;
     	return ret;
     }
 
@@ -535,19 +515,8 @@ public:
     	int ret = 1;
     	// 3 0 4 1 2
     	vector<DPState::Action> exp = DPState::ActionFromString("F F F S F D I F F I S");
-    	DPStateVector stateseq;
-    	stateseq.push_back(new DDPState());
-    	for (int i = 0 ; i < exp.size() ; i++){
-    		DPState * state = stateseq.back();
-    		if (state->Allow(exp[i], n))
-    			state->Take(exp[i], stateseq, true);
-    		else{
-    			ret = 0;
-    			cerr << "action " << (char)exp[i] << "is not allowed at step " << i+1 << endl;
-    			break;
-    		}
-    	}
-		DPState * goal = stateseq.back();
+    	DParser p(1);
+    	DPState * goal = p.GuidedSearch(exp, n);
 		{
 		DPState * rchild = goal->RightChild();
 		vector<DPState::Action> act;
@@ -576,8 +545,6 @@ public:
 				ret = 0;
 			}
     	}
-    	BOOST_FOREACH(DPState * state, stateseq)
-    		delete state;
 		return ret;
     }
 
@@ -586,19 +553,8 @@ public:
     	int ret = 1;
     	// 1 2 4 0 5 3 6
     	vector<DPState::Action> exp = DPState::ActionFromString("F F F S F F D S I F F I S F S");
-    	DPStateVector stateseq;
-    	stateseq.push_back(new DDPState());
-    	for (int i = 0 ; i < exp.size() ; i++){
-    		DPState * state = stateseq.back();
-    		if (state->Allow(exp[i], n))
-    			state->Take(exp[i], stateseq, true);
-    		else{
-    			ret = 0;
-    			cerr << "action " << (char)exp[i] << "is not allowed at step " << i+1 << endl;
-    			break;
-    		}
-    	}
-		DPState * goal = stateseq.back();
+    	DParser p(1);
+    	DPState * goal = p.GuidedSearch(exp, n);
     	{ // check reordering
 
 	    	Parser::Result result;
@@ -613,8 +569,6 @@ public:
 				ret = 0;
 			}
     	}
-    	BOOST_FOREACH(DPState * state, stateseq)
-    		delete state;
 		return ret;
     }
     int TestAllow(){
@@ -658,19 +612,8 @@ public:
     	int n = 9;
 		vector<DPState::Action> exp = DPState::ActionFromString("F F F F I F F F S D D D S F F F S F I");
 		int ret = 1;
-		DPStateVector stateseq;
-		stateseq.push_back(new DDPState());
-		for (int i = 0 ; i < exp.size() ; i++){
-			DPState * state = stateseq.back();
-			if (state->Allow(exp[i], n))
-				state->Take(exp[i], stateseq, true);
-			else{
-				ret = 0;
-				cerr << "action " << (char)exp[i] << " is not allowed at step " << i+1 << endl;
-				break;
-			}
-		}
-		DPState * goal = stateseq.back();
+		DParser p(3);
+		DPState * goal = p.GuidedSearch(exp, n);
 		vector<DPState::Action> act;
 		goal->AllActions(act);
 		if (goal->GetStep() != act.size()){
@@ -678,45 +621,20 @@ public:
 			cerr << "step " << goal->GetStep() << " != action size " << act.size() << endl;
 		}
 		ret *= CheckVector(exp, act);
-		BOOST_FOREACH(DPState * state, stateseq)
-			delete state;
 		return ret;
     }
 
     int TestTakeAfterMerge(){
     	int n = 10;
-    	// this transition sequence represents: 0-4, 5-6, 7, 8
-		vector<DPState::Action> t1 = DPState::ActionFromString("F F S F F D S F F S S F F S F F");
 		int ret = 1;
-		DPStateVector stateseq1;
-		stateseq1.push_back(new DDPState());
-		for (int i = 0 ; i < t1.size() ; i++){
-			DPState * state = stateseq1.back();
-			if (state->Allow(t1[i], n))
-				state->Take(t1[i], stateseq1, true);
-			else{
-				ret = 0;
-				cerr << "action " << (char)t1[i] << " is not allowed at step " << i+1 << endl;
-				break;
-			}
-		}
+    	// this transition sequence represents: 0-4, 5-6, 7, 8
+		DParser p1(1);
+		vector<DPState::Action> t1 = DPState::ActionFromString("F F S F F D S F F S S F F S F F");
+		DPState * s1 = p1.GuidedSearch(t1, n);
 		// this transition sequence represents: 0-1:4, 2-3:5-6, 7, 8
+		DParser p2(1);
 		vector<DPState::Action> t2 = DPState::ActionFromString("F F S F F I F D S F F I F S F F");
-		DPStateVector stateseq2;
-		stateseq2.push_back(new DDPState());
-		for (int i = 0 ; i < t2.size() ; i++){
-			DPState * state = stateseq2.back();
-			if (state->Allow(t2[i], n))
-				state->Take(t2[i], stateseq2, true);
-			else{
-				ret = 0;
-				cerr << "action " << (char)t2[i] << " is not allowed at step " << i+1 << endl;
-				break;
-			}
-		}
-
-		DPState * s1 = stateseq1.back();
-		DPState * s2 = stateseq2.back();
+		DPState * s2 = p2.GuidedSearch(t2, n);
 		if (!(*s1 == *s2)){
 			ret = 0;
 			cerr << *s1 << " != " << *s2 << endl;
@@ -737,17 +655,13 @@ public:
 			ret = 0;
 			cerr << "action " << (char)DPState::SWAP << " result size " << result.size() << " != 1 " << endl;
 		}
-		BOOST_FOREACH(DPState * state, result)
+		BOOST_FOREACH(DPState * state, result){
 			if (!state->GetLeftState() || !state->GetLeftState()->IsContinuous()){
 				ret = 0;
 				cerr << "incorrect left state " << endl;
 			}
-		BOOST_FOREACH(DPState * state, stateseq1)
 			delete state;
-		BOOST_FOREACH(DPState * state, stateseq2)
-			delete state;
-		BOOST_FOREACH(DPState * state, result)
-			delete state;
+		}
 		return ret;
     }
     bool RunTest() {

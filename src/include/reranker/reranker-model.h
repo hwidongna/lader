@@ -17,13 +17,13 @@ using namespace lader;
 
 namespace reranker {
 
-// A reorderer model that contains the weights and the feature set
+// A reranker model that contains the weights and the feature count
 class RerankerModel {
 	typedef std::tr1::unordered_map<int,int> ConversionTable;
 public:
 
     // Initialize the reranker model
-    RerankerModel() : add_features_(true) { }
+    RerankerModel() : add_features_(true), max_swap_(0) { }
 
     // Calculate the score of a feature vector
     double ScoreFeatureVector(const FeatureVectorInt & vec) const {
@@ -76,11 +76,12 @@ public:
     }
     void SetAdd(bool add) { add_features_ = add; }
     bool GetAdd() const { return add_features_; }
+    void SetMaxSwap(int max_swap) { max_swap_ = max_swap; }
+    int GetMaxSwap() { return max_swap_; }
 
     int GetId(const std::string & sym, bool add = false){
     	int id = feature_ids_.GetId(sym, add);
     	if (add){
-    		boost::mutex::scoped_lock lock(mutex_);
     		if (counts_.size() <= id)
     			counts_.resize(id+1, 0);
     		counts_[id]++;
@@ -103,7 +104,8 @@ public:
     	return result;
     }
 private:
-    boost::mutex mutex_;
+    // the maximum number of swap actions
+    int max_swap_;
     // The number of times for each feature appears
     std::vector<int> counts_;
     // Weights over features and weights over losses

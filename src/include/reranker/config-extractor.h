@@ -26,7 +26,9 @@ public:
 );
 
         AddConfigEntry("source_in", "", "The input file for the source sentences");
+        AddConfigEntry("kbest_in", "", "The input file for the kbest parses");
         AddConfigEntry("gold_in", "", "The gold-standard file for the source sentences");
+        AddConfigEntry("max_swap", "0", "The maximum number of swap actions");
         AddConfigEntry("model_out", "", "An output file for the model");
         AddConfigEntry("model_in", "", "An input file for the model");
         AddConfigEntry("lexicalize-parent", "false", "Whether to lexicalize parent node");

@@ -53,7 +53,7 @@ std::vector<DPState::Action> Ranks::GetReference(int m) const{
 			action = DPState::STRAIGTH;
 		else if (state->Allow(DPState::INVERTED, n) && IsInverted(leftstate, state) && !HasTie(state))
 			action = DPState::INVERTED;
-		else if (m > 0 && state->Allow(DPState::SWAP, n) && !HasTie(state) && HasContinuous(state))
+		else if (m > 0 && state->Allow(DPState::SWAP, n) && !HasReducible(state))
 			action = DPState::SWAP;
 		else if (state->Allow(DPState::IDLE, n))
 			action = DPState::IDLE;
@@ -87,7 +87,15 @@ bool Ranks::HasTie(DPState * state) const{
 			&& ranks_[state->GetTrgR()-1] == ranks_[state->GetSrcREnd()];// avoid tie ranks in buffer
 }
 
+// check whether a reducible item exists in buffer
+bool Ranks::HasReducible(DPState * state) const {
+       for(int i=state->GetSrcREnd() ; i < ranks_.size() ; i++)
+               if (Ranks::IsContiguous(ranks_[state->GetTrgR()-1], ranks_[i]))
+                       return true;
+       return false;
+}
 
+// check whether a reducible item exists in stack
 bool Ranks::HasContinuous(DPState * state) const {
 	DPState * leftstate = state->GetLeftState();
 	while (leftstate){

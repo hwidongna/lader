@@ -6,6 +6,7 @@
  */
 
 #include "shift-reduce-dp/ddpstate.h"
+#include "reranker/flat-tree.h"
 #include <cstdlib>
 #include <boost/foreach.hpp>
 #include <lader/reorderer-model.h>
@@ -157,7 +158,7 @@ bool DPState::Allow(const Action & action, const int n){
 	return leftstate && leftstate->action_ != INIT && leftstate->src_r_ == src_l_;
 }
 
-void DPState::InsideActions(vector<Action> & result){
+void DPState::InsideActions(vector<Action> & result) const{
 	switch(action_){
 	case INIT:
 		break;
@@ -180,17 +181,15 @@ void DPState::InsideActions(vector<Action> & result){
 	}
 }
 
-void DPState::AllActions(vector<Action> & result){
-	DPState * state = this;
-	while (state){
-		vector<Action> tmp;
-		state->InsideActions(tmp);
-		result.insert(result.begin(), tmp.begin(), tmp.end());
-		state = state->GetLeftState();
-	}
+void DPState::AllActions(vector<Action> & result) const{
+	vector<Action> tmp;
+	InsideActions(tmp);
+	result.insert(result.begin(), tmp.begin(), tmp.end());
+	if (GetLeftState())
+		GetLeftState()->AllActions(result);
 }
 
-void DPState::GetReordering(vector<int> & result){
+void DPState::GetReordering(vector<int> & result) const{
 	switch(action_){
 	case INIT:
 		break;
@@ -218,7 +217,7 @@ void DPState::SetSignature(int max){
 		leftstate = leftstate->GetLeftState();
 	}
 }
-DPState * DPState::Previous(){
+DPState * DPState::Previous() const{
 	if (action_ == INIT)
 		return NULL;
 	else if (action_ == SHIFT)
@@ -262,13 +261,16 @@ void DPState::PrintParse(const vector<string> & strs, ostream & out) const{
 	}
 }
 
-void DPState::PrintTrace(ostream & out) {
-	DPState * state = this;
-	while (state){
-		DDPState * dstate = dynamic_cast<DDPState*>(state);
-		out << (dstate? *dstate : *state) << endl;
-		state = state->Previous();
-	}
+void DPState::PrintTrace(ostream & out) const{
+	const DDPState * dstate = dynamic_cast<const DDPState*>(this);
+	out << (dstate? *dstate : *this) << endl;
+	if (Previous())
+		Previous()->PrintTrace(out);
 }
 
+reranker::DPStateNode * DPState::ToFlatTree(){
+	reranker::DPStateNode * root = new reranker::DPStateNode(0, src_r_, NULL, DPState::INIT);
+	root->AddChild(root->Flatten(this));
+	return root;
+}
 } /* namespace lader */

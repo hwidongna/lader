@@ -10,6 +10,7 @@ OUTPUT=output/test.en.reordered
 THREADS=2
 BEAM=10
 VERBOSE=1
+MAX_SWAP=1
 
 # define helper function: run a command and print its exit code
 function run () {
@@ -58,7 +59,10 @@ run "../src/bin/shift-reduce-kbest -model $MODEL_IN -out_format score,flatten -t
 # Also note that we need to set -attach-null to the same value that we set
 # during training. (In this case, we'll use the default, "right")
 
-run "../src/bin/reranker-oracle -attach_null right $ALIGN_IN data/$TEST_IN $TARGET_IN'' -kbest_in $OUTPUT > output/$TEST_IN.grade"
+run "cat output/kbest.dev | cut -f1,2 | \
+../src/bin/reranker-oracle -attach_null right \
+$ALIGN_IN data/$TEST_IN $TARGET_IN'' -max_swap $MAX_SWAP \
+> output/$TEST_IN.grade"
 
 tail -n3 output/$TEST_IN.grade
 	

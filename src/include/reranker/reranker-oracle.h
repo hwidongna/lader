@@ -11,6 +11,7 @@
 #include <lader/ranks.h>
 #include <boost/algorithm/string.hpp>
 #include <reranker/flat-tree.h>
+#include <shift-reduce-dp/dparser.h>
 #include <sstream>
 
 using namespace lader;
@@ -73,7 +74,13 @@ public:
 			iss >> numParses;
             if (verbose >= 1)
             	cerr << "Sentence " << sent << ": " << numParses << " parses" << endl;
-            vector<GenericNode::ParseResult*> parses(numParses);
+            // Get the source file
+            getline(*src_in, src);
+            vector<string> srcs;
+            algorithm::split(srcs, src, is_any_of(" "));
+			FeatureDataSequence words;
+			words.FromString(src);
+            vector<GenericNode*> parses(numParses);
             for (int i = 0 ; i < numParses ; i++) {
             	getline(kin ? kin : cin, data);
             	if (data.empty())
@@ -82,15 +89,19 @@ public:
             	vector<string> columns;
             	algorithm::split(columns, data, is_any_of("\t"));
             	if (columns.size() != 2)
-            		THROW_ERROR("Expect score<TAB>flatten, get: " << data << endl);
+            		THROW_ERROR("Expect score<TAB>kbest, get: " << data << endl);
             	// Load the data
             	double score = atof(columns[0].c_str());
-            	parses[i] = GenericNode::ParseInput(columns[1].c_str());
+            	vector<DPState::Action> refseq = DPState::ActionFromString(columns[1].c_str());
+				Parser * p;
+    			if (config.GetInt("max_swap") > 0)
+    				p = new DParser(config.GetInt("max_swap"));
+    			else
+    				p = new DParser;
+				DPState * goal = p->GuidedSearch(refseq, words.GetNumWords());
+            	parses[i] = goal->ToFlatTree();
+            	delete p;
             }
-            // Get the source file
-            getline(*src_in, src);
-            vector<string> srcs;
-            algorithm::split(srcs, src, is_any_of(" "));
             // Get the ranks
             Ranks ranks = Ranks(CombinedAlign(srcs,
                                               Alignment::FromString(align),
@@ -124,13 +135,13 @@ public:
             // Score the values
             vector<pair<double,double> > minloss(losses.size(), pair<double,double>(0,0));
             vector<double> maxacc(losses.size(), 0);
-            BOOST_FOREACH(GenericNode::ParseResult * p, parses){
+            BOOST_FOREACH(GenericNode * p, parses){
             	// Print the input values
             	cout << "sys:\t";
-            	p->root->PrintString(p->words, cout);
+            	p->PrintString(words.GetSequence(), cout);
             	cout << endl;
             	std::vector<int> order;
-            	p->root->GetOrder(order);
+            	p->GetOrder(order);
             	for(int i = 0; i < (int) losses.size(); i++) {
             		pair<double,double> my_loss =
             				losses[i]->CalculateSentenceLoss(order,&ranks,NULL);
@@ -146,7 +157,6 @@ public:
             				<< " (loss "<<my_loss.first<< "/" <<my_loss.second<<")";
             	}
             	cout << endl ;
-            	delete p->root;
             	delete p;
             }
         	for(int i = 0; i < (int) losses.size(); i++) {

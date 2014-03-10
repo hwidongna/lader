@@ -10,10 +10,11 @@ MODEL_IN=output/train.mod
 FEATURE_IN=output/features.renumber
 WEIGHTS=output/features.train.weights
 OUTPUT=output/test.en.reordered
-MAX_STATE=3
 THREADS=2
 BEAM=10
+THRESHOLD=5
 VERBOSE=0
+MAX_SWAP=1
 
 # define helper function: run a command and print its exit code
 function run () {
@@ -40,15 +41,22 @@ run "paste data/$TEST_IN output/$TEST_IN.class data/$TEST_IN.pos data/$TEST_IN.p
 #############################################################################
 # 3. Running the reranker
 
-# Extract features for dev
-run "../src/bin/gold-tree -verbose $VERBOSE \
+# Generate the gold-standard tree for dev
+run "../src/bin/gold-standard -verbose $VERBOSE \
+-out_format action,order,string,flatten -max_swap $MAX_SWAP \
 -source_in data/$TEST_IN -align_in $ALIGN_IN > output/gold.dev"
+
+# Produce k-best for dev
 run "../src/bin/shift-reduce-kbest -model $MODEL_IN \
--out_format score,flatten -threads $THREADS \
+-out_format score,action,order,string,flatten -threads $THREADS \
 -beam $BEAM -verbose $VERBOSE -source_in $SOURCE_IN \
 > output/kbest.dev 2> output/kbest.dev.log"
-run "../src/bin/extract-feature -verbose $VERBOSE -model_in $FEATURE_IN \
--source_in output/kbest.dev -gold_in output/gold.dev | \
+
+# Extract features for dev
+run "cat output/kbest.dev | cut -f1,2 | \
+../src/bin/extract-feature -verbose $VERBOSE 
+-model_in $FEATURE_IN -threshold $THRESHOLD	\
+-source_in data/$TEST_IN -gold_in output/gold.dev | \
 ../src/bin/renumber-feature -model_in output/features.model \
 -model_out output/features.renumber | sed 's/[ ][ ]*/ /g' | \
 gzip -c > output/features.dev.gz 2> output/features.dev.log"
@@ -60,24 +68,33 @@ $BLLIP/eval-weights/eval-weights \
 -a output/features.gz output/features.dev.gz > output/weights-eval"
 
 # Run reranker
-run "../src/bin/reranker -model_in $FEATURE_IN -weights $WEIGHTS \
--source_in output/kbest.dev > output/$TEST_IN.reranker"
+run "cat output/kbest.dev | cut -f1,2 | \
+../src/bin/reranker -model_in $FEATURE_IN -weights $WEIGHTS \
+-source_in data/$TEST_IN > output/$TEST_IN.reranker"
 
 # Evaluate reranker result
-run "../src/bin/evaluate-lader -attach_null right $ALIGN_IN output/$TEST_IN.reranker data/$TEST_IN $TARGET_IN'' > output/$TEST_IN.reranker.grade"
+run "../src/bin/evaluate-lader -attach_null right \
+$ALIGN_IN output/$TEST_IN.reranker data/$TEST_IN $TARGET_IN'' \
+> output/$TEST_IN.reranker.grade"
 
 tail -n3 output/$TEST_IN.reranker.grade
 	
 # Run 1-best for comparison
-run "../src/bin/reranker -model_in $FEATURE_IN -weights $WEIGHTS \
--source_in output/kbest.dev -trees 1 > output/$TEST_IN.1best"
+run "cat output/kbest.dev | cut -f1,2 | \
+../src/bin/reranker -model_in $FEATURE_IN -weights $WEIGHTS \
+-source_in data/$TEST_IN -trees 1 > output/$TEST_IN.1best"
 
 # Evaluate 1-best result
-run "../src/bin/evaluate-lader -attach_null right $ALIGN_IN output/$TEST_IN.1best data/$TEST_IN $TARGET_IN'' > output/$TEST_IN.1best.grade" 
+run "../src/bin/evaluate-lader -attach_null right \
+$ALIGN_IN output/$TEST_IN.1best data/$TEST_IN $TARGET_IN'' \
+> output/$TEST_IN.1best.grade" 
 
 tail -n3 output/$TEST_IN.1best.grade
 
 # Evaluate reranker oracle
-run "cat output/kbest.dev | ../src/bin/reranker-oracle -attach_null right $ALIGN_IN data/$TEST_IN $TARGET_IN'' > output/$TEST_IN.oracle.grade" 
+run "cat output/kbest.dev | cut -f1,2 | \
+../src/bin/reranker-oracle -attach_null right \
+$ALIGN_IN data/$TEST_IN $TARGET_IN'' -max_swap $MAX_SWAP \
+> output/$TEST_IN.oracle.grade" 
 
 tail -n3 output/$TEST_IN.oracle.grade

@@ -54,7 +54,7 @@ class ShiftReduceTrainer : public ReordererTrainer {
 			if (verbose >= 1){
 				err << "Reference: ";
 				BOOST_FOREACH(DPState::Action action, refseq)
-				err << (char)action << " ";
+					err << (char)action << " ";
 				err << endl;
 			}
 			Parser * p;

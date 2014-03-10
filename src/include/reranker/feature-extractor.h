@@ -63,12 +63,12 @@ public:
     		if (!gold){
 				if (verbose >= 1)
 					cerr << "Fail to get correct reference sequence, skip " << sent << endl;
-				for (int i = 0 ; i < numParses ; i++)
+				for (int k = 0 ; k < numParses ; k++)
 					getline(kin != NULL? kin : cin, line);
 				continue;
     		}
         	cout << "G=" << gold->NumEdges() << " N=" << numParses;
-    		for (int i = 0 ; i < numParses ; i++) {
+    		for (int k = 0 ; k < numParses ; k++) {
     			getline(kin != NULL? kin : cin, line);
     			if (line.empty())
     				THROW_ERROR("Less than " << numParses << " trees" << endl);

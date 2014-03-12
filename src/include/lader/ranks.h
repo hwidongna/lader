@@ -21,18 +21,28 @@ public:
     {
         return l == r || IsStepOneUp(l, r);
     }
-    
+    static Ranks FromString(const string & line){
+    	Ranks rank;
+    	istringstream iss(line);
+		int i;
+		while (iss >> i){
+			rank.ranks_.push_back(i);
+			if (rank.max_rank_ < i)
+				rank.max_rank_ = i;
+		}
+		return rank;
+    }
     // Access the rank
     int operator[](int i) const { return SafeAccess(ranks_, i); }
     int GetMaxRank() const { return max_rank_; }
     const std::vector<int> & GetRanks() const { return ranks_; }
     int GetSrcLen() const { return ranks_.size(); }
     void SetRanks(const std::vector<int> & order);
-    std::vector<DPState::Action> GetReference() const;
+    ActionVector GetReference() const;
     bool IsStraight(DPState * leftstate, DPState * state) const;
     bool IsInverted(DPState * leftstate, DPState * state) const;
     bool HasTie(DPState * state) const;
-    bool HasReducible(DPState * state) const;
+    bool IsSwap(DPState * state) const;
     bool HasContinuous(DPState * state) const;
 private:
     std::vector<int> ranks_;

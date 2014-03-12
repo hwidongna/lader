@@ -26,7 +26,7 @@ Parser::~Parser() {
 			delete state;
 }
 
-DPState * Parser::GuidedSearch(const vector<DPState::Action> & refseq, int n){
+DPState * Parser::GuidedSearch(const ActionVector & refseq, int n){
 	int max_step = refseq.size() + 1;
 	beams_.resize(max_step, DPStateVector());
 	DPState * state = InitialState();
@@ -43,7 +43,7 @@ DPState * Parser::GuidedSearch(const vector<DPState::Action> & refseq, int n){
 }
 void Parser::Search(ShiftReduceModel & model,
 		const FeatureSet & feature_gen, const Sentence & sent,
-		Result * result, const vector<DPState::Action> * refseq,
+		Result * result, const ActionVector * refseq,
 		const string * update) {
 	DPStateVector golds(2*sent[0]->GetNumWords(), NULL);
 	DynamicProgramming(golds, model, feature_gen, sent, refseq);
@@ -59,7 +59,7 @@ void Parser::Search(ShiftReduceModel & model,
 
 void Parser::DynamicProgramming(DPStateVector & golds, ShiftReduceModel & model,
 		const FeatureSet & feature_gen, const Sentence & sent,
-		const vector<DPState::Action> * refseq) {
+		const ActionVector * refseq) {
 	int n = sent[0]->GetNumWords();
 	int max_step = golds.size();
 	beams_.resize(max_step, DPStateVector());
@@ -187,7 +187,7 @@ void Parser::DynamicProgramming(DPStateVector & golds, ShiftReduceModel & model,
 
 void Parser::CompleteGolds(DPStateVector & simgolds, DPStateVector & golds,
 		ShiftReduceModel & model, const FeatureSet & feature_gen,
-		const Sentence & sent, const vector<DPState::Action> * refseq) {
+		const Sentence & sent, const ActionVector * refseq) {
 	int n = sent[0]->GetNumWords();
 	if (verbose_ >= 2){
 		cerr << "Reference:";
@@ -199,11 +199,14 @@ void Parser::CompleteGolds(DPStateVector & simgolds, DPStateVector & golds,
 	for (int step = 1 ; step < golds.size() ; step++){
 		if (golds[step] == NULL){
 			DPState::Action action = (step > refseq->size() ? DPState::IDLE : (*refseq)[step-1]);
-			if (golds[step-1]->Allow(action, n)) // take an action for golds
-				golds[step-1]->Take(action, simgolds, true, 1,
+			DPState * state = golds[step-1];
+			if (state->Allow(action, n)) // take an action for golds
+				state->Take(action, simgolds, true, 1,
 						&model, &feature_gen, &sent);
-			else
-				THROW_ERROR("Bad reference seq at step " << step << endl);
+			else{
+				state->PrintTrace(cerr);
+				THROW_ERROR("Bad action " << (char)action << endl);
+			}
 			golds[step] = simgolds.back(); // only one next item
 			if (verbose_ >= 2)
 				cerr << "SIMGOLD: " << *golds[step] << endl;
@@ -214,7 +217,7 @@ void Parser::CompleteGolds(DPStateVector & simgolds, DPStateVector & golds,
 }
 // support naive, early, max update for perceptron
 void Parser::Update(DPStateVector & golds, Result * result,
-		const vector<DPState::Action> * refseq, const string * update) {
+		const ActionVector * refseq, const string * update) {
 	int earlypos = -1, latepos, largepos, maxpos = -1, naivepos;
 	if (verbose_ >= 2){
 		cerr << "update strategy: " << *update << endl;
@@ -280,7 +283,7 @@ void Parser::GetKbestResult(vector<Result> & kbest){
 	}
 }
 void Parser::Simulate(ShiftReduceModel & model, const FeatureSet & feature_gen,
-		const vector<DPState::Action> & actions, const Sentence & sent,
+		const ActionVector & actions, const Sentence & sent,
 		const int firstdiff, FeatureMapInt & featmap, double c) {
 	int n = sent[0]->GetNumWords();
 	DPStateVector stateseq;

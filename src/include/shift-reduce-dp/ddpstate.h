@@ -32,6 +32,7 @@ public:
 	virtual void InsideActions(vector<Action> & result) const;
 	virtual DPState * LeftChild() const;
 	virtual DPState * RightChild() const;
+	virtual DPState * Previous() const;
 	virtual void GetReordering(vector <int> & result) const;
 	virtual bool IsContinuous() { return src_l2_ < 0 && src_r2_ < 0; }
 	virtual int GetSrcREnd() const { return src_rend_; }

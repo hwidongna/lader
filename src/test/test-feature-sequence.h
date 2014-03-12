@@ -228,7 +228,7 @@ public:
 		exp[4].push_back(MakePair(syms.GetId("T||S",true),1));
 		vector<FeatureVectorInt> act(2*n, FeatureVectorInt());
     	DPStateVector stateseq;
-    	vector<DPState::Action> refseq = cal.GetReference();
+    	ActionVector refseq = cal.GetReference();
     	ReordererModel mod;
     	stateseq.push_back(new DPState());
     	for (int step = 1 ; step < 2*n ; step++){

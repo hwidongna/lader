@@ -24,20 +24,20 @@ public:
 	virtual ~Parser();
 	typedef struct {
 		vector<int> order;
-		vector<DPState::Action> actions;
+		ActionVector actions;
 		double score;
 		int step;
 	} Result;
 
 	virtual DPState * InitialState() { return new DPState(); }
-	DPState * GuidedSearch(const vector<DPState::Action> & refseq, int n);
+	DPState * GuidedSearch(const ActionVector & refseq, int n);
 	virtual void Search(ShiftReduceModel & model,
 			const FeatureSet & feature_gen, const Sentence & sent,
-			Result * result = NULL, const vector<DPState::Action> * refseq = NULL,
+			Result * result = NULL, const ActionVector * refseq = NULL,
 			const string * update = NULL);
 	void GetKbestResult(vector<Parser::Result> & kbest);
 	void Simulate(ShiftReduceModel & model, const FeatureSet & feature_gen,
-			const vector<DPState::Action> & actions, const Sentence & sent,
+			const ActionVector & actions, const Sentence & sent,
 			const int firstdiff, std::tr1::unordered_map<int,double> & featmap, double c);
 	void SetBeamSize(int beamsize) { beamsize_ = beamsize; }
 	void SetVerbose(int verbose) { verbose_ = verbose; }
@@ -70,17 +70,17 @@ protected:
 	}
 	void DynamicProgramming(DPStateVector & golds, ShiftReduceModel & model,
 			const FeatureSet & feature_gen, const Sentence & sent,
-			const vector<DPState::Action> * refseq = NULL);
+			const ActionVector * refseq = NULL);
 	void CompleteGolds(DPStateVector & simgolds, DPStateVector & golds,
 			ShiftReduceModel & model, const FeatureSet & feature_gen,
-			const Sentence & sent, const vector<DPState::Action> * refseq);
+			const Sentence & sent, const ActionVector * refseq);
 	void Update(DPStateVector & golds, Result * result,
-			const vector<DPState::Action> * refseq, const string * update);
+			const ActionVector * refseq, const string * update);
 	vector< DPStateVector > beams_;
 	int beamsize_;
 	int nstates_, nedges_, nuniq_;
 	int verbose_;
-	vector<DPState::Action> actions_;
+	ActionVector actions_;
 };
 void SetResult(Parser::Result * result, const DPState * goal);
 

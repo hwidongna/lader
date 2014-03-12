@@ -46,7 +46,7 @@ public:
     int TestGetReordering() {
     	DPStateVector stateseq;
     	int n = sent.GetNumWords();
-    	vector<DPState::Action> refseq = cal.GetReference();
+    	ActionVector refseq = cal.GetReference();
     	stateseq.push_back(new DPState());
     	for (int step = 1 ; step < 2*n ; step++){
     		DPState * state = stateseq.back();
@@ -67,7 +67,7 @@ public:
     int TestSetSignature() {
     	DPStateVector stateseq;
     	int n = sent.GetNumWords();
-    	vector<DPState::Action> refseq = cal.GetReference();
+    	ActionVector refseq = cal.GetReference();
     	stateseq.push_back(new DPState());
     	DPState * state = stateseq.back();
     	int max = 3;
@@ -107,8 +107,8 @@ public:
 
     int TestAllActions() {
     	int n = sent.GetNumWords();
-    	vector<DPState::Action> refseq = cal.GetReference();
-    	vector<DPState::Action> exp(2*n-1, DPState::SHIFT);
+    	ActionVector refseq = cal.GetReference();
+    	ActionVector exp(2*n-1, DPState::SHIFT);
     	exp[3]=DPState::INVERTED, exp[4]=DPState::STRAIGTH, exp[6]=DPState::STRAIGTH;    	
     	int ret = 1;
     	ret *= CheckVector(exp, refseq);
@@ -124,7 +124,7 @@ public:
     		cerr << *goal << endl;
     		return 0;
     	}
-    	vector<DPState::Action> act;
+    	ActionVector act;
     	goal->AllActions(act);
     	if (act.size() != 2*n-1){
     		cerr << "incomplete all actions: size " << act.size() << endl;
@@ -149,7 +149,7 @@ public:
     int TestSearch() {
     	DPStateVector stateseq;
     	int n = sent.GetNumWords();
-    	vector<DPState::Action> refseq = cal.GetReference();
+    	ActionVector refseq = cal.GetReference();
     	ShiftReduceModel model;
     	model.SetMaxState(3);
     	FeatureSet set;
@@ -171,7 +171,7 @@ public:
     			cerr << "Goal step " << *goal << " != " << refseq.size() << endl;
     			ret = 0;
     		}
-    		vector<DPState::Action> act;
+    		ActionVector act;
     		goal->AllActions(act);
     		if (act.size() != refseq.size()){
     			cerr << "incomplete all actions: size " << act.size() << " != " << refseq.size() << endl;
@@ -202,8 +202,8 @@ public:
     	string str = "she threw the ball .";
     	sent.FromString(str);
     	int n = sent.GetNumWords();
-    	vector<DPState::Action> refseq = cal.GetReference();
-		vector<DPState::Action> exp(2*n-1, DPState::SHIFT);
+    	ActionVector refseq = cal.GetReference();
+		ActionVector exp(2*n-1, DPState::SHIFT);
 		exp[4]=DPState::STRAIGTH; exp[5]=DPState::INVERTED;
 		exp[6]=DPState::STRAIGTH; exp[8]=DPState::STRAIGTH;
 		int ret = 1;
@@ -234,7 +234,7 @@ public:
 				cerr << "Goal step " << *goal << " != " << refseq.size() << endl;
 				ret = 0;
 			}
-			vector<DPState::Action> act;
+			ActionVector act;
 			goal->AllActions(act);
 			if (act.size() != refseq.size()){
 				cerr << "incomplete all actions: size " << act.size() << " != " << refseq.size() << endl;
@@ -264,8 +264,8 @@ public:
     	sent.FromString(str);
     	DPStateVector stateseq;
     	int n = sent.GetNumWords();
-    	vector<DPState::Action> refseq = cal.GetReference();
-		vector<DPState::Action> exp(2*n-1, DPState::SHIFT);
+    	ActionVector refseq = cal.GetReference();
+		ActionVector exp(2*n-1, DPState::SHIFT);
 		exp[2]=DPState::STRAIGTH, exp[5]=DPState::STRAIGTH, exp[6]=DPState::INVERTED;
 		int ret = 1;
 		ret *= CheckVector(exp, refseq);
@@ -284,7 +284,7 @@ public:
     		cerr << *goal << endl;
     		ret = 0;
     	}
-    	vector<DPState::Action> act;
+    	ActionVector act;
     	goal->AllActions(act);
     	if (act.size() != refseq.size()){
     		cerr << "incomplete all actions: size " << act.size() << " != " << refseq.size() << endl;
@@ -340,8 +340,8 @@ public:
     	sent.FromString(str);
     	DPStateVector stateseq;
     	int n = sent.GetNumWords();
-    	vector<DPState::Action> refseq = cal.GetReference();
-		vector<DPState::Action> exp(2*n-1, DPState::SHIFT);
+    	ActionVector refseq = cal.GetReference();
+		ActionVector exp(2*n-1, DPState::SHIFT);
 		exp[2]=DPState::STRAIGTH, exp[4]=DPState::STRAIGTH, exp[6]=DPState::INVERTED;
 		int ret = 1;
 		ret *= CheckVector(exp, refseq);
@@ -360,7 +360,7 @@ public:
     		cerr << *goal << endl;
     		ret = 0;
     	}
-    	vector<DPState::Action> act;
+    	ActionVector act;
     	goal->AllActions(act);
     	if (act.size() != refseq.size()){
     		cerr << "incomplete all actions: size " << act.size() << " != " << refseq.size() << endl;
@@ -415,8 +415,8 @@ public:
     	string str = "1 2 3 4";
     	sent.FromString(str);
     	int n = sent.GetNumWords();
-    	vector<DPState::Action> refseq = cal.GetReference();
-		vector<DPState::Action> exp(2*n+1, DPState::SHIFT);
+    	ActionVector refseq = cal.GetReference();
+		ActionVector exp(2*n+1, DPState::SHIFT);
 		exp[3]=DPState::SWAP; exp[4]=DPState::INVERTED;
 		exp[7]=DPState::INVERTED; exp[8]=DPState::STRAIGTH;
 		int ret = 1;
@@ -432,7 +432,7 @@ public:
 			cerr << *goal << endl;
 			ret = 0;
 		}
-		vector<DPState::Action> act;
+		ActionVector act;
 		goal->AllActions(act);
     	if (act.size() != refseq.size()){
     		cerr << "incomplete all actions: size " << act.size() << " != " << refseq.size() << endl;
@@ -477,8 +477,8 @@ public:
     	string str = "1 2 3 4";
     	sent.FromString(str);
     	int n = sent.GetNumWords();
-    	vector<DPState::Action> refseq = cal.GetReference();
-		vector<DPState::Action> exp(2*n+1, DPState::SHIFT);
+    	ActionVector refseq = cal.GetReference();
+		ActionVector exp(2*n+1, DPState::SHIFT);
 		exp[3]=DPState::SWAP; exp[4]=DPState::INVERTED;
 		exp[7]=DPState::INVERTED; exp[8]=DPState::STRAIGTH;
 
@@ -499,7 +499,7 @@ public:
         		cerr << "Goal step " << *goal << " != " << refseq.size() << endl;
         		ret = 0;
     		}
-    		vector<DPState::Action> act;
+    		ActionVector act;
     		goal->AllActions(act);
     		if (act.size() != refseq.size()){
     			cerr << "incomplete all actions: size " << act.size() << " != " << refseq.size() << endl;
@@ -514,19 +514,19 @@ public:
     	int n = 5;
     	int ret = 1;
     	// 3 0 4 1 2
-    	vector<DPState::Action> exp = DPState::ActionFromString("F F F S F D I F F I S");
+    	ActionVector exp = DPState::ActionFromString("F F F S F D I F F I S");
     	DParser p(1);
     	DPState * goal = p.GuidedSearch(exp, n);
 		{
 		DPState * rchild = goal->RightChild();
-		vector<DPState::Action> act;
+		ActionVector act;
 		rchild->InsideActions(act);
 		if (act.size() != 3){
 			ret = 0;
 			cerr << "rchild action size " << act.size() << " != 3" << endl;
 		}
 		}
-		vector<DPState::Action> act;
+		ActionVector act;
 		goal->AllActions(act);
 		if (goal->GetStep() != act.size()){
 			ret = 0;
@@ -552,7 +552,7 @@ public:
     	int n = 7;
     	int ret = 1;
     	// 1 2 4 0 5 3 6
-    	vector<DPState::Action> exp = DPState::ActionFromString("F F F S F F D S I F F I S F S");
+    	ActionVector exp = DPState::ActionFromString("F F F S F F D S I F F I S F S");
     	DParser p(1);
     	DPState * goal = p.GuidedSearch(exp, n);
     	{ // check reordering
@@ -610,11 +610,11 @@ public:
 
     int TestAllowConsecutiveSwap(){
     	int n = 9;
-		vector<DPState::Action> exp = DPState::ActionFromString("F F F F I F F F S D D D S F F F S F I");
+		ActionVector exp = DPState::ActionFromString("F F F F I F F F S D D D S F F F S F I");
 		int ret = 1;
 		DParser p(3);
 		DPState * goal = p.GuidedSearch(exp, n);
-		vector<DPState::Action> act;
+		ActionVector act;
 		goal->AllActions(act);
 		if (goal->GetStep() != act.size()){
 			ret = 0;
@@ -629,11 +629,11 @@ public:
 		int ret = 1;
     	// this transition sequence represents: 0-4, 5-6, 7, 8
 		DParser p1(1);
-		vector<DPState::Action> t1 = DPState::ActionFromString("F F S F F D S F F S S F F S F F");
+		ActionVector t1 = DPState::ActionFromString("F F S F F D S F F S S F F S F F");
 		DPState * s1 = p1.GuidedSearch(t1, n);
 		// this transition sequence represents: 0-1:4, 2-3:5-6, 7, 8
 		DParser p2(1);
-		vector<DPState::Action> t2 = DPState::ActionFromString("F F S F F I F D S F F I F S F F");
+		ActionVector t2 = DPState::ActionFromString("F F S F F I F D S F F I F S F F");
 		DPState * s2 = p2.GuidedSearch(t2, n);
 		if (!(*s1 == *s2)){
 			ret = 0;
@@ -664,6 +664,42 @@ public:
 		}
 		return ret;
     }
+
+    int TestGetReference(){
+    	int ret = 1;
+    	Ranks ranks = Ranks::FromString("1 6 4 2 0 5 3 7");
+    	ActionVector exp = DPState::ActionFromString("F F F F D D S F F F D D I F F F S I F I S F S");
+    	ActionVector refseq = ranks.GetReference();
+    	if (!CheckVector(exp, refseq))
+    		ret = 0;
+    	DParser p1(4);
+    	DPState * goal = p1.GuidedSearch(refseq, ranks.GetSrcLen());
+    	ActionVector act;
+		goal->AllActions(act);
+		if (goal->GetStep() != act.size()){
+			ret = 0;
+			cerr << "step " << goal->GetStep() << " != action size " << act.size() << endl;
+		}
+		ret *= CheckVector(exp, act);
+
+		ranks = Ranks::FromString("2 6 8 3 5 4 0 1 9 7");
+		exp = DPState::ActionFromString("F F F F F F I S D I S F F F S D I F F S F I S");
+		refseq = ranks.GetReference();
+		if (!CheckVector(exp, refseq))
+			ret = 0;
+		DParser p2(4);
+    	goal = p2.GuidedSearch(refseq, ranks.GetSrcLen());
+    	act.clear();
+		goal->AllActions(act);
+		if (goal->GetStep() != act.size()){
+			ret = 0;
+			cerr << "step " << goal->GetStep() << " != action size " << act.size() << endl;
+		}
+		ret *= CheckVector(exp, act);
+
+    	return ret;
+    }
+
     bool RunTest() {
     	int done = 0, succeeded = 0;
     	done++; cout << "TestGetReordering()" << endl; if(TestGetReordering()) succeeded++; else cout << "FAILED!!!" << endl;
@@ -680,6 +716,7 @@ public:
     	done++; cout << "TestAllow()" << endl; if(TestAllow()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestAllowConsecutiveSwap()" << endl; if(TestAllowConsecutiveSwap()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestTakeAfterMerge()" << endl; if(TestTakeAfterMerge()) succeeded++; else cout << "FAILED!!!" << endl;
+    	done++; cout << "TestGetReference()" << endl; if(TestGetReference()) succeeded++; else cout << "FAILED!!!" << endl;
     	cout << "#### TestShiftReduceParser Finished with "<<succeeded<<"/"<<done<<" tests succeeding ####"<<endl;
     	return done == succeeded;
     }

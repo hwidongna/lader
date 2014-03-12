@@ -25,7 +25,7 @@ public:
 	virtual DPState * InitialState() { return new DDPState(); }
 	virtual void Search(ShiftReduceModel & model,
 			const FeatureSet & feature_gen, const Sentence & sent,
-			Result * result = NULL, const vector<DPState::Action> * refseq = NULL,
+			Result * result = NULL, const ActionVector * refseq = NULL,
 			const string * update = NULL) {
 		DPStateVector golds(2*(sent[0]->GetNumWords() + m_), NULL);
 		DynamicProgramming(golds, model, feature_gen, sent, refseq);
@@ -54,7 +54,7 @@ protected:
 	virtual bool Allow(DPState * state, DPState::Action action, int n) {
 		DDPState * dold = dynamic_cast<DDPState*>(state);
 		if (!dold)
-			THROW_ERROR("DDPState::Allow fails" << *state << endl)
+			THROW_ERROR("Cannot cast to DDPState: " << *state << endl)
 		return state->Allow(action, n) && (action != DPState::SWAP || dold->GetNumSwap() < m_);
 	}
 private:

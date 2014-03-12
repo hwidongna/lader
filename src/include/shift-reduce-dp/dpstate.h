@@ -65,7 +65,7 @@ public:
 	virtual bool IsContinuous() { return false; }
 	virtual void InsideActions(vector<Action> & result) const;
 	void AllActions(vector <Action> & result) const;
-	DPState * Previous() const;
+	virtual DPState * Previous() const;
 	DPState * GetLeftState() const;
 	virtual DPState * LeftChild() const;
 	virtual DPState * RightChild() const;
@@ -117,7 +117,7 @@ protected:
 	vector<BackPtr> backptrs_;
 	bool keep_alternatives_;
 };
-
+typedef vector<DPState::Action> ActionVector;
 typedef std::priority_queue<DPState*,
 		DPStateVector, PointerLess<DPState*> > DPStateQueue;
 

@@ -41,7 +41,7 @@ public:
 				ess << " " << rank;
 			ess << endl;
 		}
-		vector<DPState::Action> refseq = ranks_->GetReference();
+		ActionVector refseq = ranks_->GetReference();
 		if (verbose >= 1){
 			ess << "Reference:";
 			BOOST_FOREACH(DPState::Action action, refseq)

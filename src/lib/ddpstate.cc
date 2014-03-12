@@ -44,11 +44,16 @@ void DDPState::MergeWith(DPState * other){
 		nswap_ = lstate->nswap_;
 }
 
+// TODO: macro function?
 #define CCC (lstate->IsContinuous() && IsContinuous() && lstate->src_r_ == src_l_)
 #define CCD (lstate->IsContinuous() && IsContinuous() && lstate->src_r_ < src_l_)
 #define CDD (lstate->IsContinuous() && !IsContinuous() && lstate->src_r_ == src_l_)
 #define DCD (!lstate->IsContinuous() && IsContinuous() && lstate->src_r2_ == src_l_)
 #define DDC (!lstate->IsContinuous() && !IsContinuous() && lstate->src_r_ == src_l_ && src_r_ == lstate->src_l2_ && lstate->src_r2_ == src_l2_)
+
+#define LCCD (llstate->IsContinuous() && IsContinuous() && llstate->src_r_ < src_l_)
+#define LCDD (llstate->IsContinuous() && !IsContinuous() && llstate->src_r_ == src_l_)
+#define LDCD (!llstate->IsContinuous() && IsContinuous() && llstate->src_r2_ == src_l_)
 
 void DDPState::Take(Action action, DPStateVector & result, bool actiongold,
 		int maxterm, ReordererModel * model, const FeatureSet * feature_gen,
@@ -113,9 +118,11 @@ void DDPState::Take(Action action, DPStateVector & result, bool actiongold,
 			next->score_ = score_ + actioncost;
 			next->gold_ = gold_ && actiongold;
 			// because the left state is swaped out
-			BOOST_FOREACH(DPState * llstate, leftstate->leftptrs_)
-				if (llstate->IsContinuous()) // allow only one discontinuity
+			BOOST_FOREACH(DPState * s, leftstate->leftptrs_){
+				DDPState * llstate = dynamic_cast<DDPState*>(s);
+				if (LCCD || LCDD || LDCD)
 					next->leftptrs_.push_back(llstate);
+			}
 			if (next->leftptrs_.empty()){ // swap is actually not allowed
 				delete next;
 				continue;
@@ -148,7 +155,8 @@ void DDPState::Take(Action action, DPStateVector & result, bool actiongold,
 	else{ // reduce
 		BOOST_FOREACH(DPState * leftstate, leftptrs_){
 			DDPState * lstate = dynamic_cast<DDPState*>(leftstate);
-			if (CCC || CCD || CDD || DCD || DDC){ // the left state may not be possible to reduce
+			 // the left state may not be possible to reduce
+			if (CCC || CCD || CDD || DCD || DDC){
 				DPState * next = Reduce(leftstate, action);
 				next->inside_ = leftstate->inside_ + inside_ + leftstate->shiftcost_ + actioncost;
 				next->score_ = leftstate->score_ + inside_ + leftstate->shiftcost_ + actioncost;
@@ -261,10 +269,13 @@ bool DDPState::Allow(const Action & action, const int n){
 	DDPState * lstate = dynamic_cast<DDPState*>(GetLeftState());
 	if (action == SHIFT)
 		return action_ != SWAP && (src_rend_ < n || !swaped_.empty());
-	else if (action == SWAP) // this only check the first left state, thus Take may not work
-		return lstate && lstate->GetLeftState() && lstate->GetLeftState()->action_ != INIT
-				&& lstate->GetLeftState()->IsContinuous() && IsContinuous()
+	else if (action == SWAP){// this only check the first left state, thus Take may not work
+		if (!lstate)
+			return false;
+		DDPState * llstate = dynamic_cast<DDPState*>(lstate->GetLeftState());
+		return llstate && llstate->action_ != INIT	&& (LCCD || LCDD || LDCD)
 				&& lstate->src_l_ < src_l_  && src_r_ < n;
+	}
 	else if (action == IDLE)
 		return src_l_ == 0 && src_r_ == n && IsContinuous();
 	// this only check the first left state, thus Take may not work
@@ -313,6 +324,14 @@ DPState * DDPState::RightChild() const{
 	if (trace_ != NULL)
 		return trace_->RightChild();
 	return DPState::RightChild();
+}
+
+DPState * DDPState::Previous() const{
+	if (action_ == INIT)
+		return NULL;
+	else if (action_ == SHIFT || trace_ != NULL)
+		return leftptrs_[0];
+	return RightChild();
 }
 
 void DDPState::GetReordering(vector<int> & result) const{

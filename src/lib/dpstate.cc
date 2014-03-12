@@ -16,7 +16,7 @@ using namespace std;
 
 namespace lader {
 
-vector<DPState::Action> DPState::ActionFromString(const string & line){
+ActionVector DPState::ActionFromString(const string & line){
 	istringstream iss(line);
 	char action;
 	vector<Action> result;

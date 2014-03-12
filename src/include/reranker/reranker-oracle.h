@@ -95,7 +95,7 @@ public:
             		THROW_ERROR("Expect score<TAB>kbest, get: " << data << endl);
             	// Load the data
             	double score = atof(columns[0].c_str());
-            	vector<DPState::Action> refseq = DPState::ActionFromString(columns[1].c_str());
+            	ActionVector refseq = DPState::ActionFromString(columns[1].c_str());
 				Parser * p;
     			if (config.GetInt("max_swap") > 0)
     				p = new DParser(config.GetInt("max_swap"));

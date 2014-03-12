@@ -79,7 +79,7 @@ public:
     				THROW_ERROR("Expect score<TAB>kbest, get: " << line << endl);
     			// Load the data
     			double score = atof(columns[0].c_str());
-    			vector<DPState::Action> refseq = DPState::ActionFromString(columns[1].c_str());
+    			ActionVector refseq = DPState::ActionFromString(columns[1].c_str());
     			if (verbose >= 1){
     				cerr << k+1 << " th best:";
 					BOOST_FOREACH(DPState::Action action, refseq)
@@ -152,7 +152,7 @@ public:
 			vector<string> columns;
 			algorithm::split(columns, line, is_any_of("\t"));
 			// Load the data
-			vector<DPState::Action> refseq = DPState::ActionFromString(columns[0].c_str());
+			ActionVector refseq = DPState::ActionFromString(columns[0].c_str());
 			getline(sin, line);
 			FeatureDataSequence sent;
 			sent.FromString(line);

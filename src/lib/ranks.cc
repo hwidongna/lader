@@ -4,7 +4,8 @@
 #include <map>
 #include <iostream>
 #include <shift-reduce-dp/ddpstate.h>
-
+#include <climits>
+#include <set>
 using namespace std;
 using namespace lader;
 
@@ -40,29 +41,33 @@ void Ranks::SetRanks(const std::vector<int> & order) {
 	max_rank_ = order.size()-1;
 }
 
-std::vector<DPState::Action> Ranks::GetReference() const{
-	std::vector<DPState::Action> reference;
+ActionVector Ranks::GetReference() const{
+	ActionVector reference;
 	DPStateVector stateseq;
 	DPState * state = new DDPState();
 	stateseq.push_back(state);
 	int n = ranks_.size();
-	while (!state->Allow(DPState::IDLE, n)){
+	for (int step = 0 ; !state->Allow(DPState::IDLE, n) ; step++){
 		DPState * leftstate = state->GetLeftState();
 		DPState::Action action;
 		if (state->Allow(DPState::STRAIGTH, n) && IsStraight(leftstate, state))
 			action = DPState::STRAIGTH;
 		else if (state->Allow(DPState::INVERTED, n) && IsInverted(leftstate, state) && !HasTie(state))
 			action = DPState::INVERTED;
-		else if (state->Allow(DPState::SWAP, n) && !HasReducible(state))
+		else if (state->Allow(DPState::SWAP, n) && IsSwap(state))
 			action = DPState::SWAP;
 		else if (state->Allow(DPState::SHIFT, n))
 			action = DPState::SHIFT;
 		else{
 			state->PrintTrace(cerr);
-			THROW_ERROR("Fail to get reference for action " << (char) action << endl);
+			THROW_ERROR("Fail to get reference sequence" << endl);
 		}
 		reference.push_back(action);
 		state->Take(action, stateseq, true); // only one item
+		if (state == stateseq.back()){
+			state->PrintTrace(cerr);
+			THROW_ERROR("Fail to get reference sequence" << endl);
+		}
 		state = stateseq.back();
 	}
 	BOOST_FOREACH(DPState * state, stateseq)
@@ -70,32 +75,80 @@ std::vector<DPState::Action> Ranks::GetReference() const{
 	return reference;
 }
 
-bool Ranks::IsStraight(DPState * leftstate, DPState * state) const{
-	if (!leftstate)
+bool Ranks::IsStraight(DPState * lstate, DPState * state) const{
+	if (!lstate)
 		return false;
-	return Ranks::IsContiguous(ranks_[leftstate->GetTrgR()-1], ranks_[state->GetTrgL()]);
+	int l = min(ranks_[state->GetTrgL()], ranks_[state->GetTrgR()-1]);
+	int r = max(ranks_[state->GetTrgL()], ranks_[state->GetTrgR()-1]);
+	int ll = min(ranks_[lstate->GetTrgL()], ranks_[lstate->GetTrgR()-1]);
+	int lr = max(ranks_[lstate->GetTrgL()], ranks_[lstate->GetTrgR()-1]);
+	return Ranks::IsContiguous(lr, l);
 }
 
-bool Ranks::IsInverted(DPState * leftstate, DPState * state) const{
-	if (!leftstate)
+bool Ranks::IsInverted(DPState * lstate, DPState * state) const{
+	if (!lstate)
 		return false;
-	return 	Ranks::IsStepOneUp(ranks_[state->GetTrgR()-1], ranks_[leftstate->GetTrgL()]); // strictly step-one up
+	int l = min(ranks_[state->GetTrgL()], ranks_[state->GetTrgR()-1]);
+	int r = max(ranks_[state->GetTrgL()], ranks_[state->GetTrgR()-1]);
+	int ll = min(ranks_[lstate->GetTrgL()], ranks_[lstate->GetTrgR()-1]);
+	int lr = max(ranks_[lstate->GetTrgL()], ranks_[lstate->GetTrgR()-1]);
+	return 	Ranks::IsStepOneUp(r, ll); // strictly step-one up
 }
 
 bool Ranks::HasTie(DPState * state) const{
+	int r = max(ranks_[state->GetTrgL()], ranks_[state->GetTrgR()-1]);
 	return 	state->GetSrcREnd() < ranks_.size()	// state->GetSrcREnd() will be the next buffer item
-			&& ranks_[state->GetTrgR()-1] == ranks_[state->GetSrcREnd()];// avoid tie ranks in buffer
+			&& r == ranks_[state->GetSrcREnd()];// avoid tie ranks in buffer
 }
 
-// check whether a reducible item exists in buffer
-bool Ranks::HasReducible(DPState * state) const {
-	for(int i=state->GetSrcREnd() ; i < ranks_.size() ; i++)
-		if (Ranks::IsContiguous(ranks_[state->GetTrgL()], ranks_[i])
-		|| Ranks::IsContiguous(ranks_[i], ranks_[state->GetTrgL()])
-		|| Ranks::IsContiguous(ranks_[state->GetTrgR()-1], ranks_[i])
-		|| Ranks::IsContiguous(ranks_[i], ranks_[state->GetTrgR()-1]))
-			return true;
-	return false;
+// check whether a reducible item exists in stack, not in buffer
+bool Ranks::IsSwap(DPState * state) const {
+	int l = min(ranks_[state->GetTrgL()], ranks_[state->GetTrgR()-1]);
+	int r = max(ranks_[state->GetTrgL()], ranks_[state->GetTrgR()-1]);
+	// check stack
+	DPState * lstate = state->GetLeftState();
+	bool flag = false;
+	while (lstate){
+		int ll = min(ranks_[lstate->GetTrgL()], ranks_[lstate->GetTrgR()-1]);
+		int lr = max(ranks_[lstate->GetTrgL()], ranks_[lstate->GetTrgR()-1]);
+		if (Ranks::IsContiguous(lr, l) || Ranks::IsContiguous(r, ll)){
+			flag = true; // found the reducible item in stack
+			break;
+		}
+		lstate = lstate->GetLeftState();
+	}
+	// check buffer
+	if (state->GetSrcREnd() < ranks_.size()){
+		vector<int> seq;
+		int n = ranks_.size();
+		Span span = state->GetSrcSpan();
+		DPStateVector stateseq;
+		state->Take(DPState::SHIFT, stateseq);
+		span.second++;
+		for(int i=state->GetSrcREnd() ; i < ranks_.size() ; i++){
+			DPState * state = stateseq.back();
+			if (state->GetSrcSpan() == span){
+				flag = false; // found the reducible item in buffer
+				break;
+			}
+			DPState * leftstate = state->GetLeftState();
+			DPState::Action action;
+			if (state->Allow(DPState::STRAIGTH, n) && IsStraight(leftstate, state))
+				action = DPState::STRAIGTH;
+			else if (state->Allow(DPState::INVERTED, n) && IsInverted(leftstate, state) && !HasTie(state))
+				action = DPState::INVERTED;
+			else if (state->Allow(DPState::SHIFT, n)){
+				action = DPState::SHIFT;
+				span.second++;
+			}
+			else
+				break;
+			state->Take(action, stateseq); // only one item
+		}
+		BOOST_FOREACH(DPState * state, stateseq)
+			delete state;
+	}
+	return flag;
 }
 
 // check whether a reducible item exists in stack

@@ -153,7 +153,7 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
         			cerr << " " << rank;
         		cerr << endl;
         	}
-        	vector<DPState::Action> refseq = ranks_[sent]->GetReference();
+        	ActionVector refseq = ranks_[sent]->GetReference();
         	if (verbose >= 1){
         		cerr << "Reference:";
         		BOOST_FOREACH(DPState::Action action, refseq)
@@ -163,7 +163,11 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
         	int n = (*data_[sent])[0]->GetNumWords();
         	if (refseq.size() < 2*n - 1)
         		THROW_ERROR("Fail to get correct reference sequence" << endl)
-
+        	if (refseq.size() > 2*(n+m)){
+        		if (verbose >= 1)
+        			cerr << "Parser cannot produce the reference sequence, skip it" << endl;
+        		continue;
+        	}
             Parser * p;
             if (m > 0)
             	p = new DParser(m);

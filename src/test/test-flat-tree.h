@@ -45,8 +45,8 @@ public:
 
 		DPStateVector stateseq;
 		int n = sent.GetNumWords();
-		vector<DPState::Action> refseq = cal.GetReference();
-		vector<DPState::Action> exp(2*n-1, DPState::SHIFT);
+		ActionVector refseq = cal.GetReference();
+		ActionVector exp(2*n-1, DPState::SHIFT);
 		exp[2]=DPState::STRAIGTH, exp[4]=DPState::STRAIGTH, exp[6]=DPState::INVERTED;
 		int ret = 1;
 		ret *= CheckVector(exp, refseq);
@@ -131,8 +131,8 @@ public:
     	string str = "1 2 3 4";
     	sent.FromString(str);
     	int n = sent.GetNumWords();
-    	vector<DPState::Action> refseq = cal.GetReference();
-		vector<DPState::Action> exp(2*n+1, DPState::SHIFT);
+    	ActionVector refseq = cal.GetReference();
+		ActionVector exp(2*n+1, DPState::SHIFT);
 		exp[3]=DPState::SWAP; exp[4]=DPState::INVERTED;
 		exp[7]=DPState::INVERTED; exp[8]=DPState::STRAIGTH;
 		int ret = 1;
@@ -197,7 +197,7 @@ public:
     	int n = 5;
     	int ret = 1;
     	// 3 0 4 1 2
-    	vector<DPState::Action> exp = DPState::ActionFromString("F F F S F D I F F I S");
+    	ActionVector exp = DPState::ActionFromString("F F F S F D I F F I S");
     	DParser p(1);
     	DPState * goal = p.GuidedSearch(exp, n);
 		if (!goal->IsGold()){

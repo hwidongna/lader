@@ -53,7 +53,7 @@ public:
 		int n = datas[0]->GetNumWords();
 		if (refseq.size() < 2*(n+m) - 1){
 			if (verbose >= 1)
-				ess << "Fail to get correct reference sequence, skip it" << endl;
+				ess << "Fail to get correct reference sequence" << endl;
 			collector_->Write(id_, oss.str(), ess.str());
 			return;
 		}
@@ -64,7 +64,13 @@ public:
         else
             p = new Parser();
         DPState *best = p->GuidedSearch(refseq, n);
-        Output(datas, best);
+        if (best)
+        	Output(datas, best);
+        else{
+        	oss << endl;
+        	if (verbose >= 1)
+        		ess << "Cannot guide with max_swap " << m << endl;
+        }
 		collector_->Write(id_, oss.str(), ess.str());
 		delete p;
 	}

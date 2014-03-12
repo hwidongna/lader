@@ -63,7 +63,7 @@ public:
     		FeatureDataSequence words;
     		words.FromString(line);
         	vector<RerankerResult> buf(numParses);
-    		for (int i = 0 ; i < numParses ; i++) {
+    		for (int k = 0 ; k < numParses ; k++) {
     			getline(kin != NULL? kin : cin, line);
 				if (line.empty())
 					THROW_ERROR("Less than " << numParses << " trees" << endl);
@@ -81,9 +81,12 @@ public:
 				else
 					p = new DParser;
 				DPState * goal = p->GuidedSearch(refseq, words.GetNumWords());
+				if (goal == NULL)
+					THROW_ERROR(k << "th best " << columns[1].c_str() << endl
+							<< "Cannot guide with max_swap " << model_->GetMaxSwap() << endl)
 				DPStateNode * root = goal->ToFlatTree();
 				delete p;
-    			buf[i].tree = root;
+    			buf[k].tree = root;
     			// Extract and set features
     			FeatureMapInt featmap;
     			NLogP f0(score);
@@ -98,7 +101,7 @@ public:
     				f->Extract(root, words);
     				f->Set(featmap, *model_);
     			}
-    			buf[i].score = model_->GetScore(featmap);
+    			buf[k].score = model_->GetScore(featmap);
     			BOOST_FOREACH(TreeFeature * f, features){
     				delete f;
     			}

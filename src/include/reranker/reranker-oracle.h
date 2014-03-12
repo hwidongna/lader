@@ -38,6 +38,9 @@ public:
         combine_ = config.GetBool("combine_blocks") ?
                     CombinedAlign::COMBINE_BLOCKS :
                     CombinedAlign::LEAVE_BLOCKS_AS_IS;
+		bracket_ = config.GetBool("combine_brackets") ?
+				CombinedAlign::ALIGN_BRACKET_SPANS :
+				CombinedAlign::LEAVE_BRACKETS_AS_IS;
         // Set up the losses
         vector<LossBase*> losses;
         losses.push_back(new LossChunk());
@@ -80,8 +83,8 @@ public:
             algorithm::split(srcs, src, is_any_of(" "));
 			FeatureDataSequence words;
 			words.FromString(src);
-            vector<GenericNode*> parses(numParses);
-            for (int i = 0 ; i < numParses ; i++) {
+            vector<GenericNode*> parses(numParses, NULL);
+            for (int k = 0 ; k < numParses ; k++) {
             	getline(kin ? kin : cin, data);
             	if (data.empty())
             		THROW_ERROR("Less than " << numParses << " trees" << endl);
@@ -99,7 +102,10 @@ public:
     			else
     				p = new DParser;
 				DPState * goal = p->GuidedSearch(refseq, words.GetNumWords());
-            	parses[i] = goal->ToFlatTree();
+				if (goal == NULL)
+					THROW_ERROR(k << "th best " << columns[1].c_str() << endl
+							<< "Cannot guide with max_swap " << config.GetInt("max_swap") << endl)
+				parses[k] = goal->ToFlatTree();
             	delete p;
             }
             // Get the ranks
@@ -136,6 +142,8 @@ public:
             vector<pair<double,double> > minloss(losses.size(), pair<double,double>(0,0));
             vector<double> maxacc(losses.size(), 0);
             BOOST_FOREACH(GenericNode * p, parses){
+            	if (!p)
+            		continue;
             	// Print the input values
             	cout << "sys:\t";
             	p->PrintString(words.GetSequence(), cout);

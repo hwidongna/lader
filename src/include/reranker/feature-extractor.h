@@ -92,6 +92,9 @@ public:
     			else
     				p = new DParser;
     			DPState * goal = p->GuidedSearch(refseq, words.GetNumWords());
+				if (goal == NULL)
+					THROW_ERROR(k << "th best " << columns[1].c_str() << endl
+							<< "Cannot guide with max_swap " << config.GetInt("max_swap") << endl)
     			DPStateNode * root = goal->ToFlatTree();
     			delete p;
     			cout << " P=" << root->NumEdges() << " W=" << Node::Intersection(gold, root) << " ";
@@ -178,8 +181,11 @@ public:
 				golds_.push_back(goal->ToFlatTree());
 				count++;
 			}
-			else
+			else{
+				if (config.GetInt("verbose") >= 1)
+					cerr << "Cannot guide with max_swap " << config.GetInt("max_swap") << endl;
 				golds_.push_back(NULL);
+			}
 			delete p;
 		}
 		return count;

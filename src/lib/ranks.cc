@@ -89,10 +89,13 @@ bool Ranks::HasTie(DPState * state) const{
 
 // check whether a reducible item exists in buffer
 bool Ranks::HasReducible(DPState * state) const {
-       for(int i=state->GetSrcREnd() ; i < ranks_.size() ; i++)
-               if (Ranks::IsContiguous(ranks_[state->GetTrgR()-1], ranks_[i]))
-                       return true;
-       return false;
+	for(int i=state->GetSrcREnd() ; i < ranks_.size() ; i++)
+		if (Ranks::IsContiguous(ranks_[state->GetTrgL()], ranks_[i])
+		|| Ranks::IsContiguous(ranks_[i], ranks_[state->GetTrgL()])
+		|| Ranks::IsContiguous(ranks_[state->GetTrgR()-1], ranks_[i])
+		|| Ranks::IsContiguous(ranks_[i], ranks_[state->GetTrgR()-1]))
+			return true;
+	return false;
 }
 
 // check whether a reducible item exists in stack

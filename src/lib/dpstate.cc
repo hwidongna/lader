@@ -262,8 +262,7 @@ void DPState::PrintParse(const vector<string> & strs, ostream & out) const{
 }
 
 void DPState::PrintTrace(ostream & out) const{
-	const DDPState * dstate = dynamic_cast<const DDPState*>(this);
-	out << (dstate? *dstate : *this) << endl;
+	out << *this << endl;
 	if (Previous())
 		Previous()->PrintTrace(out);
 }

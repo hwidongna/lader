@@ -200,13 +200,18 @@ void Parser::CompleteGolds(DPStateVector & simgolds, DPStateVector & golds,
 		if (golds[step] == NULL){
 			DPState::Action action = (step > refseq->size() ? DPState::IDLE : (*refseq)[step-1]);
 			DPState * state = golds[step-1];
+			DPStateVector tmp;
 			if (state->Allow(action, n)) // take an action for golds
-				state->Take(action, simgolds, true, 1,
+				state->Take(action, tmp, true, 1,
 						&model, &feature_gen, &sent);
 			else{
 				state->PrintTrace(cerr);
 				THROW_ERROR("Bad action " << (char)action << endl);
 			}
+			// may have more than one left state if merged?
+			simgolds.push_back(tmp[0]);
+			for (int i = 1 ; i < tmp.size() ; i++)
+				delete tmp[i];
 			golds[step] = simgolds.back(); // only one next item
 			if (verbose_ >= 2)
 				cerr << "SIMGOLD: " << *golds[step] << endl;

@@ -161,14 +161,24 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
         		cerr << endl;
         	}
         	int n = (*data_[sent])[0]->GetNumWords();
-        	if (refseq.size() < 2*n - 1)
-        		THROW_ERROR("Fail to get correct reference sequence" << endl)
-        	if (refseq.size() > 2*(n+m)){
+        	if (refseq.size() < 2*n - 1){
         		if (verbose >= 1)
-        			cerr << "Parser cannot produce the reference sequence, skip it" << endl;
+        			cerr << "Fail to get correct reference sequence, skip it" << endl;
         		continue;
         	}
             Parser * p;
+            if (m > 0)
+            	p = new DParser(m);
+            else
+            	p = new Parser();
+            DPState * goal = p->GuidedSearch(refseq, n);
+        	if (goal == NULL){
+        		if (verbose >= 1)
+        			cerr << "Parser cannot produce the reference sequence, skip it" << endl;
+        		delete p;
+        		continue;
+        	}
+        	delete p;
             if (m > 0)
             	p = new DParser(m);
             else
@@ -189,10 +199,10 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
 				for (int step = 0 ; step < result.actions.size() ; step++)
 					cerr << " " << (char) result.actions[step];
 				cerr << endl;
-        		DPState * best = p->GetBeamBest(result.step);
+        		DDPState * best = dynamic_cast<DDPState*>(p->GetBeamBest(result.step));
         		cerr << "Beam trace:" << endl;
         		best->PrintTrace(cerr);
-        		cerr << "Result step " << result.step << ", reference size " << refseq.size();
+        		cerr << "Result step " << result.step << ", reference size " << refseq.size() << endl;
         	}
         	if (result.step != result.actions.size())
         		THROW_ERROR("Result step " << result.step << " != action size " << result.actions.size() << endl);
@@ -206,7 +216,7 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
         		if (result.actions[step-1] != refseq[step-1])
         			break;
         	if (verbose >= 1 && result.step >= step)
-        		cerr << ": update from " << step << endl;
+        		cerr << "Update from " << step << endl;
         	clock_gettime(CLOCK_MONOTONIC, &tstart);
         	FeatureMapInt feat_map;
         	p->Simulate(*model, *features_, refseq, *data_[sent], step, feat_map, +1); // positive examples

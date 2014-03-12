@@ -99,7 +99,7 @@ public:
 		return score_ < other.score_ || (score_ == other.score_ && inside_ < other.inside_);
 	}
 	virtual void PrintParse(const vector<string> & strs, ostream & out) const;
-	void PrintTrace(ostream & out) const;
+	virtual void PrintTrace(ostream & out) const;
 	virtual reranker::DPStateNode * ToFlatTree();
 protected:
 	virtual DPState * Shift();

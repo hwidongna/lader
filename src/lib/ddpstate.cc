@@ -183,8 +183,11 @@ DPState * DDPState::Shift(){
 		next->src_c_ = -1; next->src_rend_ = src_rend_+1;
 	}
 	else{
-		DPState * top = swaped_.back();
-		next = new DDPState(step_+1, top->src_l_, top->src_r_, top->action_); // restore the swaped state
+		DDPState * top = dynamic_cast<DDPState*>(swaped_.back());
+		if (!top)
+			THROW_ERROR("Incompetible state in swap" << *swaped_.back() << endl);
+		next = new DDPState(step_+1, top->src_l_, top->src_r_, top->action_, // restore the swaped state
+									top->src_l2_, top->src_r2_);	// restore the discontinuity as well
 		next->trace_ = top;	// this is useful for later stage
 		next->swaped_.insert(next->swaped_.begin(), swaped_.begin(), swaped_.end()-1);
 		next->trg_l_ = top->trg_l_; next->trg_r_ = top->trg_r_;
@@ -246,7 +249,7 @@ DPState * DDPState::Reduce(DPState * leftstate, Action action){
 
 // a swaped state, push the leftstate on the top of the stack for the swaped states
 DPState * DDPState::Swap(DPState * leftstate){
-	DDPState * next = new DDPState(step_+1, src_l_, src_r_, SWAP);
+	DDPState * next = new DDPState(step_+1, src_l_, src_r_, SWAP, src_l2_, src_r2_);
 	next->swaped_.insert(next->swaped_.begin(), swaped_.begin(), swaped_.end());
 	next->swaped_.push_back(leftstate);
 	next->src_c_ = src_c_; next->src_rend_ = src_rend_;
@@ -257,7 +260,7 @@ DPState * DDPState::Swap(DPState * leftstate){
 
 // an idle state, only change step count
 DPState * DDPState::Idle(){
-	DDPState * next = new DDPState(step_+1, src_l_, src_r_, IDLE);
+	DDPState * next = new DDPState(step_+1, src_l_, src_r_, IDLE, src_l2_, src_r2_);
 	next->swaped_.insert(next->swaped_.begin(), swaped_.begin(), swaped_.end());
 	next->src_c_ = src_c_; next->src_rend_ = src_rend_;
 	next->trg_l_ = trg_l_;	next->trg_r_ = trg_r_;
@@ -357,6 +360,7 @@ void DDPState::GetReordering(vector<int> & result) const{
 	}
 }
 
+
 void DDPState::PrintParse(const vector<string> & strs, ostream & out) const{
 	switch(action_){
 	case INIT:
@@ -381,6 +385,12 @@ void DDPState::PrintParse(const vector<string> & strs, ostream & out) const{
 		out << "(" <<(char)  action_ << " " << GetTokenWord(strs[GetSrcL()]) <<")";
 		break;
 	}
+}
+
+void DDPState::PrintTrace(ostream & out) const{
+	out << *this << endl;
+	if (Previous())
+		Previous()->PrintTrace(out);
 }
 
 reranker::DPStateNode * DDPState::ToFlatTree(){

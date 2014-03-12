@@ -49,9 +49,7 @@ class ShiftReduceTrainer : public ReordererTrainer {
 				BOOST_FOREACH(int rank, ranks_.GetRanks())
 				err << rank << " ";
 				err << endl;
-			}
-			ActionVector refseq = ranks_.GetReference();
-			if (verbose >= 1){
+				ActionVector refseq = ranks_.GetReference();
 				err << "Reference: ";
 				BOOST_FOREACH(DPState::Action action, refseq)
 					err << (char)action << " ";

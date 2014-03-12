@@ -697,7 +697,24 @@ public:
 		}
 		ret *= CheckVector(exp, act);
 
-    	return ret;
+		ranks = Ranks::FromString("0 1 4 8 2 7 3 6 5");
+		refseq = ranks.GetReference(); // fails to get correct reference in this scheme
+		DParser p3(ranks.GetSrcLen());
+    	goal = p3.GuidedSearch(refseq, ranks.GetSrcLen());
+    	if (goal && goal->Allow(DPState::IDLE, ranks.GetSrcLen())){
+    		ret = 0;
+    		goal->PrintTrace(cerr);
+    	}
+
+		ranks = Ranks::FromString("0 0 0 0 1 1 2 2 9 9 9 9 9 3 4 10 10 10 10 10 5 11 11 11 11 11 6 7 7 8 12 12");
+		refseq = ranks.GetReference(); // fails to get correct reference in this scheme
+    	DParser p4(ranks.GetSrcLen());
+    	goal = p4.GuidedSearch(refseq, ranks.GetSrcLen());
+    	if (goal && goal->Allow(DPState::IDLE, ranks.GetSrcLen())){
+    		ret = 0;
+    		goal->PrintTrace(cerr);
+    	}
+		return ret;
     }
 
     bool RunTest() {

@@ -58,10 +58,8 @@ ActionVector Ranks::GetReference() const{
 			action = DPState::SWAP;
 		else if (state->Allow(DPState::SHIFT, n))
 			action = DPState::SHIFT;
-		else{
-			state->PrintTrace(cerr);
-			THROW_ERROR("Fail to get reference sequence" << endl);
-		}
+		else
+			break;
 		reference.push_back(action);
 		state->Take(action, stateseq, true); // only one item
 		if (state == stateseq.back()){

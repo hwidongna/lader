@@ -136,7 +136,7 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
         	random_shuffle(sent_order.begin(), sent_order.end());
 
         int done = 0;
-        double iter_nedge = 0, iter_nstate = 0;
+        unsigned long iter_nedge = 0, iter_nstate = 0, iter_step = 0, iter_refsize = 0;
         int bad_update = 0, early_update = 0;
         if (verbose >= 1)
         	cerr << "Start training parsing iter " << iter << endl;
@@ -196,13 +196,17 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
         		THROW_ERROR("Result step " << result.step << " != action size " << result.actions.size() << endl);
         	if (result.step < refseq.size())
         		early_update++;
+        	iter_step += result.step;
+        	iter_refsize += refseq.size();
         	refseq.resize(result.step);
         	int step;
         	for (step = 1 ; step <= result.step ; step++)
         		if (result.actions[step-1] != refseq[step-1])
         			break;
         	if (verbose >= 1 && result.step >= step)
-        		cerr << "Result step " << result.step << ", update from " << step << endl;
+        		cerr << "Result step " << result.step
+        			<< ", reference size " << refseq.size()
+        			<< ": update from " << step << endl;
         	clock_gettime(CLOCK_MONOTONIC, &tstart);
         	FeatureMapInt feat_map;
         	p->Simulate(*model, *features_, refseq, *data_[sent], step, feat_map, +1); // positive examples
@@ -230,14 +234,16 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
         	iter_nstate += p->GetNumStates();
         	delete p;
         }
-        cerr << "Running time on average: "
+        cerr << "Running time on average: " << std::setprecision(4)
         		<< "searh " << ((double)search.tv_sec + 1.0e-9*search.tv_nsec) / (iter+1) << "s"
         		<< ", simulate " << ((double)simulate.tv_sec + 1.0e-9*simulate.tv_nsec) / (iter+1) << "s" << endl;
         time_t now = time(0);
         char* dt = ctime(&now);
-        cout << "Finished update " << dt
+        cout << "Finished update " << dt << std::setprecision(4)
         	<< iter_nedge << " edges, " << iter_nstate << " states, "
-        	<< bad_update << " bad, " << early_update << " early" << endl;
+        	<< bad_update << " bad (" << 100.0*bad_update/done << "%), "
+        	<< early_update << " early (" << 100.0*early_update/done << "%), "
+        	<< iter_step << "/" << iter_refsize << " steps (" << 100.0*iter_step/iter_refsize << "%)" << endl;
         cout.flush();
 
         if (verbose >= 1)
@@ -295,7 +301,7 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
 		double prec = 0;
 		for(int i = 0; i < (int) sum_losses.size(); i++) {
 			if(i != 0) cout << "\t";
-			cout << losses_[i]->GetName() << "="
+			cout << losses_[i]->GetName() << "=" << std::setprecision(3)
 					<< (1 - sum_losses[i].first/sum_losses[i].second)
 					<< " (loss "<<sum_losses[i].first/losses_[i]->GetWeight() << "/"
 					<<sum_losses[i].second/losses_[i]->GetWeight()<<")";
@@ -304,7 +310,7 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
 		cout << endl;
 		for(int i = 0; i < (int) sum_losses_kbests.size(); i++) {
 			if(i != 0) cout << "\t";
-			cout << losses_[i]->GetName() << "="
+			cout << losses_[i]->GetName() << "=" << std::setprecision(3)
 					<< (1 - sum_losses_kbests[i].first/sum_losses_kbests[i].second)
 					<< " (kbest "<<sum_losses_kbests[i].first/losses_[i]->GetWeight() << "/"
 					<<sum_losses_kbests[i].second/losses_[i]->GetWeight()<<")";

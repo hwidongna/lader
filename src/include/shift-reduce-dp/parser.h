@@ -65,8 +65,8 @@ public:
 		return b[0];
 	}
 protected:
-	virtual bool Allow(DPState * old, DPState::Action action, int n) {
-		return old->Allow(action, n);
+	virtual bool Allow(DPState * state, DPState::Action action, int n) {
+		return state->Allow(action, n);
 	}
 	void DynamicProgramming(DPStateVector & golds, ShiftReduceModel & model,
 			const FeatureSet & feature_gen, const Sentence & sent,

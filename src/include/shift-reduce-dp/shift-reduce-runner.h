@@ -173,7 +173,6 @@ public:
     	if (!sin)
     		cerr << "use stdin for source_in" << endl;
     	int id = 0;
-    	// do not need to set threads because it runs in parallel at sentence-level
     	while(std::getline(sin != NULL? sin : std::cin, line)) {
     		Task *task = NewShiftReduceTask(id++, line, config);
     		pool.Submit(task);

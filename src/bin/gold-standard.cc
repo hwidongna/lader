@@ -9,8 +9,8 @@
 
 
 
-#include <reranker/config-gold.h>
-#include <reranker/gold-standard.h>
+#include <shift-reduce-dp/config-gold.h>
+#include <shift-reduce-dp/gold-standard.h>
 
 using namespace reranker;
 using namespace std;

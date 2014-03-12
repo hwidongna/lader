@@ -80,6 +80,12 @@ public:
     			// Load the data
     			double score = atof(columns[0].c_str());
     			vector<DPState::Action> refseq = DPState::ActionFromString(columns[1].c_str());
+    			if (verbose >= 1){
+    				cerr << k+1 << " th best:";
+					BOOST_FOREACH(DPState::Action action, refseq)
+						cerr << " " << (char)action;
+					cerr << endl;
+    			}
     			Parser * p;
     			if (config.GetInt("max_swap") > 0)
     				p = new DParser(config.GetInt("max_swap"));
@@ -139,7 +145,7 @@ public:
 		string source_in = config.GetString("source_in");
 		ifstream sin(source_in.c_str());
 		if(!sin) THROW_ERROR("Could not open source file: " <<source_in);
-		while(getline(in, line)){
+		for (int i = 0 ; getline(in, line) ; i++){
 			vector<string> columns;
 			algorithm::split(columns, line, is_any_of("\t"));
 			// Load the data
@@ -147,6 +153,20 @@ public:
 			getline(sin, line);
 			FeatureDataSequence sent;
 			sent.FromString(line);
+			if (config.GetInt("verbose") >= 1){
+				cerr << "Sentence " << i << endl;
+				cerr << "Source: " << sent.ToString() << endl;
+				cerr << "Reference:";
+				BOOST_FOREACH(DPState::Action action, refseq)
+					cerr << " " << (char)action;
+				cerr << endl;
+			}
+
+			if (refseq.empty()){
+				golds_.push_back(NULL);
+				continue;
+			}
+
 			Parser * p;
 			if (config.GetInt("max_swap") > 0)
 				p = new DParser(config.GetInt("max_swap"));
@@ -158,10 +178,9 @@ public:
 				golds_.push_back(goal->ToFlatTree());
 				count++;
 			}
-			else{
+			else
 				golds_.push_back(NULL);
-				delete p;
-			}
+			delete p;
 		}
 		return count;
     }

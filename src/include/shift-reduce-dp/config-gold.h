@@ -42,6 +42,7 @@ public:
         AddConfigEntry("source_in", "", "The input file for the source sentences");
         AddConfigEntry("verbose", "0", "The level of debugging output to print");
         AddConfigEntry("max_swap", "0", "The maximum number of swap actions");
+        AddConfigEntry("threads", "1", "The number of threads to use");
     }
 
 };

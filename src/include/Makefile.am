@@ -13,7 +13,7 @@ shift-reduce-dp/dpstate.h shift-reduce-dp/parser.h shift-reduce-dp/shift-reduce-
 shift-reduce-dp/config-trainer.h shift-reduce-dp/config-runner.h \
 shift-reduce-dp/shift-reduce-runner.h shift-reduce-dp/shift-reduce-kbest.h \
 reranker/flat-tree.h reranker/features.h reranker/feature-extractor.h \
-reranker/gold-standard.h reranker/reranker-model.h reranker/reranker-runner.h \
-reranker/config-extractor.h reranker/config-gold.h reranker/config-renumber.h \
+shift-reduce-dp/gold-standard.h reranker/reranker-model.h reranker/reranker-runner.h \
+reranker/config-extractor.h shift-reduce-dp/config-gold.h reranker/config-renumber.h \
 reranker/config-runner.h reranker/reranker-oracle.h reranker/config-oracle.h \
  shift-reduce-dp/ddpstate.h shift-reduce-dp/dparser.h shift-reduce-dp/shift-reduce-model.h

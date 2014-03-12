@@ -31,5 +31,6 @@ void lader::ClearAndSet(FeatureVectorInt & fvi, const FeatureMapInt & feat_map)
 {
     fvi.clear();
     BOOST_FOREACH(FeaturePairInt feat_pair, feat_map)
-    	fvi.push_back(feat_pair);
+    	if (feat_pair.second != 0)
+    		fvi.push_back(feat_pair);
 }

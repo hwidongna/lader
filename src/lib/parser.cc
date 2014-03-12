@@ -229,13 +229,10 @@ void Parser::Update(DPStateVector & golds, Result * result,
 	if (golds.size() != beams_.size())
 		THROW_ERROR("gold size " << golds.size() << " != beam size" << beams_.size() << endl);
 	for (int step = 1 ; step < (int)beams_.size() ; step++){
-		if (beams_[step].empty()){
-			if (verbose_ >= 1)
-				cerr << "step " << step << " is empty " << endl;
-			continue;
-		}
+		const DPState * best = GetBeamBest(step); // update against best
+		if (!best)
+			THROW_ERROR("Parsing failure at step " << step << endl);
 		naivepos = step;
-		const DPState * best = beams_[step][0]; // update against best
 		if (verbose_ >= 2){
 			cerr << "BEST: " << *best << endl;
 			cerr << "GOLD: " << *golds[step] << endl;
@@ -323,7 +320,7 @@ void Parser::Simulate(ShiftReduceModel & model, const FeatureSet & feature_gen,
 			}
 			delete fvi;
 		}
-		if (state->Allow(action, n)){
+		if (Allow(state, action, n)){
 			state->Take(action, stateseq); // only one item
 			state = stateseq.back();
 		}

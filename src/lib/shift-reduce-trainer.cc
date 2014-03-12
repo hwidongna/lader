@@ -153,7 +153,7 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
         			cerr << " " << rank;
         		cerr << endl;
         	}
-        	vector<DPState::Action> refseq = ranks_[sent]->GetReference(m);
+        	vector<DPState::Action> refseq = ranks_[sent]->GetReference();
         	if (verbose >= 1){
         		cerr << "Reference:";
         		BOOST_FOREACH(DPState::Action action, refseq)
@@ -161,11 +161,8 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
         		cerr << endl;
         	}
         	int n = (*data_[sent])[0]->GetNumWords();
-        	if (refseq.size() < 2*(n + m) - 1){
-        		if (verbose >= 1)
-        			cerr << "Fail to get correct reference sequence, skip it" << endl;
-        		continue;
-        	}
+        	if (refseq.size() < 2*n - 1)
+        		THROW_ERROR("Fail to get correct reference sequence" << endl)
 
             Parser * p;
             if (m > 0)
@@ -191,6 +188,7 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
         		DPState * best = p->GetBeamBest(result.step);
         		cerr << "Beam trace:" << endl;
         		best->PrintTrace(cerr);
+        		cerr << "Result step " << result.step << ", reference size " << refseq.size();
         	}
         	if (result.step != result.actions.size())
         		THROW_ERROR("Result step " << result.step << " != action size " << result.actions.size() << endl);
@@ -198,15 +196,13 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
         		early_update++;
         	iter_step += result.step;
         	iter_refsize += refseq.size();
-        	refseq.resize(result.step);
+        	refseq.resize(result.step, DPState::IDLE); // padding IDLE actions if neccessary
         	int step;
         	for (step = 1 ; step <= result.step ; step++)
         		if (result.actions[step-1] != refseq[step-1])
         			break;
         	if (verbose >= 1 && result.step >= step)
-        		cerr << "Result step " << result.step
-        			<< ", reference size " << refseq.size()
-        			<< ": update from " << step << endl;
+        		cerr << ": update from " << step << endl;
         	clock_gettime(CLOCK_MONOTONIC, &tstart);
         	FeatureMapInt feat_map;
         	p->Simulate(*model, *features_, refseq, *data_[sent], step, feat_map, +1); // positive examples

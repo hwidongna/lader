@@ -415,7 +415,7 @@ public:
     	string str = "1 2 3 4";
     	sent.FromString(str);
     	int n = sent.GetNumWords();
-    	vector<DPState::Action> refseq = cal.GetReference(1);
+    	vector<DPState::Action> refseq = cal.GetReference();
 		vector<DPState::Action> exp(2*n+1, DPState::SHIFT);
 		exp[3]=DPState::SWAP; exp[4]=DPState::INVERTED;
 		exp[7]=DPState::INVERTED; exp[8]=DPState::STRAIGTH;
@@ -477,7 +477,7 @@ public:
     	string str = "1 2 3 4";
     	sent.FromString(str);
     	int n = sent.GetNumWords();
-    	vector<DPState::Action> refseq = cal.GetReference(1);
+    	vector<DPState::Action> refseq = cal.GetReference();
 		vector<DPState::Action> exp(2*n+1, DPState::SHIFT);
 		exp[3]=DPState::SWAP; exp[4]=DPState::INVERTED;
 		exp[7]=DPState::INVERTED; exp[8]=DPState::STRAIGTH;

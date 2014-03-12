@@ -11,7 +11,7 @@
 #include <lader/reorderer-trainer.h>
 #include <lader/reorderer-runner.h>
 #include <lader/feature-set.h>
-#include <shift-reduce-dp/parser.h>
+#include <shift-reduce-dp/ddpstate.h>
 #include <lader/feature-data-sequence.h>
 #include <reranker/flat-tree.h>
 #include <shift-reduce-dp/config-gold.h>
@@ -34,7 +34,6 @@ public:
     {
         int sent = id_;
         int verbose = config_.GetInt("verbose");
-        int m = config_.GetInt("max_swap");
         if(verbose >= 1){
             ess << endl << "Sentence " << sent << endl;
 			ess << "Rank:";
@@ -42,7 +41,7 @@ public:
 				ess << " " << rank;
 			ess << endl;
 		}
-		vector<DPState::Action> refseq = ranks_->GetReference(m);
+		vector<DPState::Action> refseq = ranks_->GetReference();
 		if (verbose >= 1){
 			ess << "Reference:";
 			BOOST_FOREACH(DPState::Action action, refseq)
@@ -51,28 +50,22 @@ public:
 		}
 		const Sentence & datas = (*data_);
 		int n = datas[0]->GetNumWords();
-		if (refseq.size() < 2*(n+m) - 1){
-			if (verbose >= 1)
-				ess << "Fail to get correct reference sequence" << endl;
-			collector_->Write(id_, oss.str(), ess.str());
-			return;
+		if (refseq.size() < 2*n - 1)
+			THROW_ERROR("Fail to get correct reference sequence" << endl)
+		int max_step = refseq.size() + 1;
+		DPStateVector stateseq;
+		DPState * state = new DDPState();
+		stateseq.push_back(state);
+		for (int step = 1 ; step < max_step ; step++){
+			DPState::Action action = refseq[step-1];
+			if (state->Allow(action, n))
+				state->Take(action, stateseq, true);
+			state = stateseq.back(); // only one item
 		}
-        Parser *p;
-        if(m > 0)
-            p = new DParser(m);
-
-        else
-            p = new Parser();
-        DPState *best = p->GuidedSearch(refseq, n);
-        if (best)
-        	Output(datas, best);
-        else{
-        	oss << endl;
-        	if (verbose >= 1)
-        		ess << "Cannot guide with max_swap " << m << endl;
-        }
+		Output(datas, state);
 		collector_->Write(id_, oss.str(), ess.str());
-		delete p;
+		BOOST_FOREACH(DPState * state, stateseq)
+			delete state;
 	}
 protected:
 	const Sentence * data_;
@@ -104,8 +97,6 @@ public:
 		InitializeModel(config);
 		ReadData(config.GetString("source_in"), data_);
 		ReadAlignments(config.GetString("align_in"), ranks_, data_);
-		int verbose = config.GetInt("verbose");
-		int m = config.GetInt("max_swap");
 		vector<ReordererRunner::OutputType> outputs;
 		tokenizer<char_separator<char> > outs(config.GetString("out_format"),
 				char_separator<char>(","));

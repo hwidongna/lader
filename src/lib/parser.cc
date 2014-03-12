@@ -83,7 +83,8 @@ void Parser::DynamicProgramming(DPStateVector & golds, ShiftReduceModel & model,
 			BOOST_FOREACH(DPState::Action action, actions_){
 				if (!Allow(old, action, n))
 					continue;
-				bool actiongold = (refseq != NULL && action == (*refseq)[step-1]);
+				bool actiongold = (refseq != NULL
+						&& (action == DPState::IDLE || action == (*refseq)[step-1]));
 				DPStateVector stateseq;
 				// take an action, see below shift-m
 				old->Take(action, stateseq, actiongold, 1,
@@ -195,18 +196,14 @@ void Parser::CompleteGolds(DPStateVector & simgolds, DPStateVector & golds,
 		cerr << endl;
 	}
 	// complete the rest gold items using refseq
-	for (int step = 1 ; step <= (int)refseq->size() ; step++){
+	for (int step = 1 ; step < golds.size() ; step++){
 		if (golds[step] == NULL){
-			DPState::Action action = (*refseq)[step-1];
-			DPStateVector tmp;
+			DPState::Action action = (step > refseq->size() ? DPState::IDLE : (*refseq)[step-1]);
 			if (golds[step-1]->Allow(action, n)) // take an action for golds
-				golds[step-1]->Take(action, tmp, true, 1,
+				golds[step-1]->Take(action, simgolds, true, 1,
 						&model, &feature_gen, &sent);
 			else
-				THROW_ERROR("Bad reference seq! " << endl);
-			simgolds.push_back(tmp[0]);
-			for (int i = 1 ; i < tmp.size() ; i++)
-				delete tmp[i];
+				THROW_ERROR("Bad reference seq at step " << step << endl);
 			golds[step] = simgolds.back(); // only one next item
 			if (verbose_ >= 2)
 				cerr << "SIMGOLD: " << *golds[step] << endl;
@@ -318,7 +315,7 @@ void Parser::Simulate(ShiftReduceModel & model, const FeatureSet & feature_gen,
 			}
 			delete fvi;
 		}
-		if (Allow(state, action, n)){
+		if (state->Allow(action, n)){
 			state->Take(action, stateseq); // only one item
 			state = stateseq.back();
 		}

@@ -147,7 +147,7 @@ run "../src/bin/shift-reduce-kbest -model output/fold$m/train.mod \
 
 # Generate the gold-standard tree for this fold
 run "../src/bin/gold-standard -verbose $VERBOSE \
--out_format action,order,string,flatten -max_swap $MAX_SWAP \
+-out_format action,order,string,flatten \
 -source_in output/tmp/train.en.$m -align_in output/tmp/train.en-ja.align.$m \
 > output/fold$m/gold.out 2> output/fold$m/gold.log"
 

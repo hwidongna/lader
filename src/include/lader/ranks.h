@@ -28,7 +28,7 @@ public:
     const std::vector<int> & GetRanks() const { return ranks_; }
     int GetSrcLen() const { return ranks_.size(); }
     void SetRanks(const std::vector<int> & order);
-    std::vector<DPState::Action> GetReference(int m=0) const;
+    std::vector<DPState::Action> GetReference() const;
     bool IsStraight(DPState * leftstate, DPState * state) const;
     bool IsInverted(DPState * leftstate, DPState * state) const;
     bool HasTie(DPState * state) const;

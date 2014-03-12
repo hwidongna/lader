@@ -43,7 +43,7 @@ run "paste data/$TEST_IN output/$TEST_IN.class data/$TEST_IN.pos data/$TEST_IN.p
 
 # Generate the gold-standard tree for dev
 run "../src/bin/gold-standard -verbose $VERBOSE \
--out_format action,order,string,flatten -max_swap $MAX_SWAP \
+-out_format action,order,string,flatten \
 -source_in data/$TEST_IN -align_in $ALIGN_IN > output/gold.dev"
 
 # Produce k-best for dev

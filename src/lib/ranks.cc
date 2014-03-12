@@ -40,27 +40,27 @@ void Ranks::SetRanks(const std::vector<int> & order) {
 	max_rank_ = order.size()-1;
 }
 
-std::vector<DPState::Action> Ranks::GetReference(int m) const{
+std::vector<DPState::Action> Ranks::GetReference() const{
 	std::vector<DPState::Action> reference;
 	DPStateVector stateseq;
 	DPState * state = new DDPState();
 	stateseq.push_back(state);
 	int n = ranks_.size();
-	for (int step = 1 ; step < 2*(n+m) ; step++){
+	while (!state->Allow(DPState::IDLE, n)){
 		DPState * leftstate = state->GetLeftState();
 		DPState::Action action;
 		if (state->Allow(DPState::STRAIGTH, n) && IsStraight(leftstate, state))
 			action = DPState::STRAIGTH;
 		else if (state->Allow(DPState::INVERTED, n) && IsInverted(leftstate, state) && !HasTie(state))
 			action = DPState::INVERTED;
-		else if (m > 0 && state->Allow(DPState::SWAP, n) && !HasReducible(state))
+		else if (state->Allow(DPState::SWAP, n) && !HasReducible(state))
 			action = DPState::SWAP;
-		else if (state->Allow(DPState::IDLE, n))
-			action = DPState::IDLE;
 		else if (state->Allow(DPState::SHIFT, n))
 			action = DPState::SHIFT;
-		else // fail to get reference
-			break;
+		else{
+			state->PrintTrace(cerr);
+			THROW_ERROR("Fail to get reference for action " << (char) action << endl);
+		}
 		reference.push_back(action);
 		state->Take(action, stateseq, true); // only one item
 		state = stateseq.back();

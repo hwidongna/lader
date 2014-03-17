@@ -196,9 +196,9 @@ void Parser::CompleteGolds(DPStateVector & simgolds, DPStateVector & golds,
 		cerr << endl;
 	}
 	// complete the rest gold items using refseq
-	for (int step = 1 ; step < golds.size() ; step++){
+	for (int step = 1 ; step <= refseq->size() ; step++){
 		if (golds[step] == NULL){
-			DPState::Action action = (step > refseq->size() ? DPState::IDLE : (*refseq)[step-1]);
+			DPState::Action action = (*refseq)[step-1];
 			DPState * state = golds[step-1];
 			DPStateVector tmp;
 			if (state->Allow(action, n)) // take an action for golds
@@ -219,6 +219,22 @@ void Parser::CompleteGolds(DPStateVector & simgolds, DPStateVector & golds,
 		else if (verbose_ >= 2)
 			cerr << "GOLD: " << *golds[step] << endl;
 	}
+	// padding IDLE states if possible
+	for (int step = refseq->size()+1 ; step < golds.size() ; step++){
+		DPState::Action action = DPState::IDLE;
+		DPState * state = golds[step-1];
+		DPStateVector tmp;
+		if (state->Allow(action, n)) // take an action for golds
+			state->Take(action, tmp, true, 1,
+					&model, &feature_gen, &sent);
+		else
+			break;
+		// may have more than one left state if merged?
+		simgolds.push_back(tmp[0]);
+		for (int i = 1 ; i < tmp.size() ; i++)
+			delete tmp[i];
+		golds[step] = simgolds.back(); // only one next item
+	}
 }
 // support naive, early, max update for perceptron
 void Parser::Update(DPStateVector & golds, Result * result,
@@ -233,14 +249,17 @@ void Parser::Update(DPStateVector & golds, Result * result,
 		THROW_ERROR("gold size " << golds.size() << " != beam size" << beams_.size() << endl);
 	for (int step = 1 ; step < (int)beams_.size() ; step++){
 		const DPState * best = GetBeamBest(step); // update against best
+		const DPState * gold = golds[step];
 		if (!best)
 			THROW_ERROR("Parsing failure at step " << step << endl);
+		if (!gold) // no more update is possible
+			break;
 		naivepos = step;
 		if (verbose_ >= 2){
 			cerr << "BEST: " << *best << endl;
-			cerr << "GOLD: " << *golds[step] << endl;
+			cerr << "GOLD: " << *gold << endl;
 		}
-		if (golds[step]->GetRank() < 0){
+		if (gold->GetRank() < 0){
 			if (*update == "early"){ // fall-off
 				best->AllActions(result->actions);
 				result->step = step;
@@ -253,7 +272,7 @@ void Parser::Update(DPStateVector & golds, Result * result,
 				earlypos = step;
 		}
 		if (*update == "max"){
-			double mdiff = best->GetScore() - golds[step]->GetScore();
+			double mdiff = best->GetScore() - gold->GetScore();
 			if (mdiff >= maxdiff){
 				maxdiff = mdiff;
 				maxpos = step;

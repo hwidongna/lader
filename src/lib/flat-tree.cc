@@ -132,6 +132,8 @@ void Node::GetNonTerminals(cNodeList & result) const{
 }
 
 int Node::Intersection(const Node * t1, const Node * t2){
+	if (t1 == NULL || t2 == NULL)
+		return 0;
 	int count = 0;
 	cNodeList e1, e2;
 	t1->GetNonTerminals(e1); t2->GetNonTerminals(e2);

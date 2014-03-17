@@ -199,9 +199,13 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
 				for (int step = 0 ; step < result.actions.size() ; step++)
 					cerr << " " << (char) result.actions[step];
 				cerr << endl;
-        		DDPState * best = dynamic_cast<DDPState*>(p->GetBeamBest(result.step));
+				DPState * best = p->GetBeamBest(result.step);
+        		DDPState * dbest = dynamic_cast<DDPState*>(best);
         		cerr << "Beam trace:" << endl;
-        		best->PrintTrace(cerr);
+        		if (dbest)
+        			dbest->PrintTrace(cerr);
+        		else
+        			best->PrintTrace(cerr);
         		cerr << "Result step " << result.step << ", reference size " << refseq.size() << endl;
         	}
         	if (result.step != result.actions.size())
@@ -256,6 +260,10 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
         	<< iter_step << "/" << iter_refsize << " steps (" << 100.0*iter_step/iter_refsize << "%)" << endl;
         cout.flush();
 
+        if (early_update == 0){
+        	cout << "No more update" << endl;
+        	break;
+        }
         if (verbose >= 1)
         	cerr << "Start development parsing iter " << iter << endl;
         ThreadPool pool(config.GetInt("threads"), 1000);
@@ -311,7 +319,7 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
 		double prec = 0;
 		for(int i = 0; i < (int) sum_losses.size(); i++) {
 			if(i != 0) cout << "\t";
-			cout << losses_[i]->GetName() << "=" << std::setprecision(3)
+			cout << " " << losses_[i]->GetName() << "=" << std::setprecision(3)
 					<< (1 - sum_losses[i].first/sum_losses[i].second)
 					<< " (loss "<<sum_losses[i].first/losses_[i]->GetWeight() << "/"
 					<<sum_losses[i].second/losses_[i]->GetWeight()<<")";
@@ -320,9 +328,9 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
 		cout << endl;
 		for(int i = 0; i < (int) sum_losses_kbests.size(); i++) {
 			if(i != 0) cout << "\t";
-			cout << losses_[i]->GetName() << "=" << std::setprecision(3)
+			cout << "*" << losses_[i]->GetName() << "=" << std::setprecision(3)
 					<< (1 - sum_losses_kbests[i].first/sum_losses_kbests[i].second)
-					<< " (kbest "<<sum_losses_kbests[i].first/losses_[i]->GetWeight() << "/"
+					<< " (loss "<<sum_losses_kbests[i].first/losses_[i]->GetWeight() << "/"
 					<<sum_losses_kbests[i].second/losses_[i]->GetWeight()<<")";
 		}
 		cout << endl;
@@ -334,12 +342,20 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
         	ss << ".it" << iter;
         	WriteModel(config.GetString("model_out") + ss.str());
         }
+        if (iter > 0 && abs(best_prec - prec) < MINIMUM_WEIGHT){
+        	cout << "Almost reaches the highest precision" << endl;
+        	break;
+        }
         if(prec > best_prec) {
         	best_prec = prec;
         	best_iter = iter;
         	best_wlen = model_->GetWeights().size();
             WriteModel(config.GetString("model_out"));
             cout << "new high at iter " << iter << ": " << prec << endl;
+        }
+        if (prec > 1 - MINIMUM_WEIGHT){
+        	cout << "Reach the highest precision" << endl;
+        	break;
         }
     }
     time_t now = time(0);

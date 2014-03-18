@@ -342,10 +342,6 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
         	ss << ".it" << iter;
         	WriteModel(config.GetString("model_out") + ss.str());
         }
-        if (iter > 0 && abs(best_prec - prec) < MINIMUM_WEIGHT){
-        	cout << "Almost reaches the highest precision" << endl;
-        	break;
-        }
         if(prec > best_prec) {
         	best_prec = prec;
         	best_iter = iter;

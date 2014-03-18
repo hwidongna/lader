@@ -108,6 +108,35 @@ public:
             Ranks ranks = Ranks(CombinedAlign(srcs,
                                               Alignment::FromString(align),
                                               attach_, combine_, bracket_));
+            // Compute losses of all parses and keep the best parse
+            vector<pair<double,double> > minloss(losses.size(), pair<double,double>(0,0));
+            vector<double> maxacc(losses.size(), 0);
+            vector<int> bestparse(losses.size(), 0);
+            for (int k = 0; k < parses.size() ; k++){
+            	GenericNode * p = parses[k];
+            	if (!p)
+            		continue;
+            	// Print the input values
+            	std::vector<int> order;
+            	p->GetOrder(order);
+            	for(int i = 0; i < (int) losses.size(); i++) {
+            		pair<double,double> my_loss =
+            				losses[i]->CalculateSentenceLoss(order,&ranks,NULL);
+            		double acc = my_loss.second == 0 ?
+            				1 : (1-my_loss.first/my_loss.second);
+            		if (acc > maxacc[i]){
+            			maxacc[i] = acc;
+						minloss[i].first = my_loss.first;
+						minloss[i].second = my_loss.second;
+						bestparse[i] = k;
+            		}
+            	}
+            }
+            // best parse has the minimum loss
+        	for(int i = 0; i < (int) losses.size(); i++) {
+        		oracle[i].first += minloss[i].first;
+        		oracle[i].second += minloss[i].second;
+        	}
             // Print the reference reordering
             vector<vector<string> > src_order(ranks.GetMaxRank()+1);
             for(int i = 0; i < (int)srcs.size(); i++)
@@ -133,40 +162,29 @@ public:
                 getline(*trg_in, trg);
                 cout << "trg:\t" << trg << endl;
             }
-
-            // Score the values
-            vector<pair<double,double> > minloss(losses.size(), pair<double,double>(0,0));
-            vector<double> maxacc(losses.size(), 0);
-            BOOST_FOREACH(GenericNode * p, parses){
-            	if (!p)
-            		continue;
-            	// Print the input values
-            	cout << "sys:\t";
-            	p->PrintString(words.GetSequence(), cout);
-            	cout << endl;
-            	std::vector<int> order;
-            	p->GetOrder(order);
-            	for(int i = 0; i < (int) losses.size(); i++) {
-            		pair<double,double> my_loss =
-            				losses[i]->CalculateSentenceLoss(order,&ranks,NULL);
-            		double acc = my_loss.second == 0 ?
-            				1 : (1-my_loss.first/my_loss.second);
-            		if (acc > maxacc[i]){
-            			maxacc[i] = acc;
-						minloss[i].first = my_loss.first;
-						minloss[i].second = my_loss.second;
-            		}
-            		if(i != 0) cout << "\t";
-            		cout << losses[i]->GetName() << "=" << acc
-            				<< " (loss "<<my_loss.first<< "/" <<my_loss.second<<")";
-            	}
-            	cout << endl ;
-            	delete p;
-            }
-        	for(int i = 0; i < (int) losses.size(); i++) {
-        		oracle[i].first += minloss[i].first;
-        		oracle[i].second += minloss[i].second;
-        	}
+            for (int k = 0; k < parses.size() ; k++){
+				GenericNode * p = parses[k];
+				if (!p)
+					continue;
+				// Print the input values
+				cout << "sys:\t";
+				p->PrintString(words.GetSequence(), cout);
+				cout << endl;
+				std::vector<int> order;
+				p->GetOrder(order);
+				for(int i = 0; i < (int) losses.size(); i++) {
+					pair<double,double> my_loss =
+							losses[i]->CalculateSentenceLoss(order,&ranks,NULL);
+					double acc = my_loss.second == 0 ?
+							1 : (1-my_loss.first/my_loss.second);
+					if(i != 0) cout << "\t";
+					if(k == bestparse[i]) cout << "*";
+					cout << losses[i]->GetName() << "=" << acc
+							<< " (loss "<<my_loss.first<< "/" <<my_loss.second<<")";
+				}
+				cout << endl ;
+				delete p;
+			}
             cout << endl;
         }
         cout << "Total:" << endl;

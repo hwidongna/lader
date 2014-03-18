@@ -23,8 +23,8 @@ public:
 "~~~ reranker-oracle ~~~\n"
 "  by Hwidong Na\n"
 "\n"
-"Evaluates the reordering accuracy of k-best parsing result.\n"
-"  Usage: evaluate-lader GOLDEN_ALIGNMENT SRC [TRG] < KBEST \n"
+"Evaluates the oracle reordering accuracy of k-best parsing result.\n"
+"  Usage: reranker-oracle GOLDEN_ALIGNMENT SRC [TRG] < KBEST \n"
 "\n"
 "  GOLDEN_ALIGNMENT: [SRC_LEN]-[TRG_LEN] ||| f1-e1 f2-e2 f3-e3\n"
 "  SRC: Sentence in the original source order\n"
@@ -36,7 +36,6 @@ public:
         AddConfigEntry("combine_blocks", "true", "Whether to attach the blocks together");
         AddConfigEntry("combine_brackets", "true", "Whether to combine alignments into brackets");
         AddConfigEntry("verbose", "0", "The level of debugging output to print");
-        AddConfigEntry("max_swap", "0", "The maximum number of swap actions");
     }
 	
 };

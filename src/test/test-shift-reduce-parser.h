@@ -687,8 +687,12 @@ public:
 		refseq = ranks.GetReference();
 		if (!CheckVector(exp, refseq))
 			ret = 0;
-		DParser p2(4);
+		DParser p2(2);
     	goal = p2.GuidedSearch(refseq, ranks.GetSrcLen());
+    	if (!goal){
+    		ret = 0;
+    		cerr << "fail to get the guided search result " << endl;
+    	}
     	act.clear();
 		goal->AllActions(act);
 		if (goal->GetStep() != act.size()){

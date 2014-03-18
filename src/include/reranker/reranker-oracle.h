@@ -96,15 +96,11 @@ public:
             	// Load the data
             	double score = atof(columns[0].c_str());
             	ActionVector refseq = DPState::ActionFromString(columns[1].c_str());
-				Parser * p;
-    			if (config.GetInt("max_swap") > 0)
-    				p = new DParser(config.GetInt("max_swap"));
-    			else
-    				p = new DParser;
+				Parser * p = new DParser(words.GetNumWords()); // allow the largest number of swap actions
 				DPState * goal = p->GuidedSearch(refseq, words.GetNumWords());
 				if (goal == NULL)
 					THROW_ERROR(k << "th best " << columns[1].c_str() << endl
-							<< "Cannot guide with max_swap " << config.GetInt("max_swap") << endl)
+							<< "Fail to produce the guided search result" << endl)
 				parses[k] = goal->ToFlatTree();
             	delete p;
             }
@@ -112,8 +108,6 @@ public:
             Ranks ranks = Ranks(CombinedAlign(srcs,
                                               Alignment::FromString(align),
                                               attach_, combine_, bracket_));
-            // If source and target files exist, print them as well
-            cout << "src:\t" << src << endl;
             // Print the reference reordering
             vector<vector<string> > src_order(ranks.GetMaxRank()+1);
             for(int i = 0; i < (int)srcs.size(); i++)
@@ -133,6 +127,8 @@ public:
                 }
             }
             cout << endl;
+            // If source and target files exist, print them as well
+            cout << "src:\t" << src << endl;
             if(args.size() > 3) {
                 getline(*trg_in, trg);
                 cout << "trg:\t" << trg << endl;

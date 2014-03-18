@@ -26,6 +26,11 @@ Parser::~Parser() {
 			delete state;
 }
 
+// According to the reference sequence of actions,
+// return the guided search result if possible.
+// It may not be allowed some action in the reference sequence,
+// e.g. because there are too many swap actions,
+// in such case, return NULL
 DPState * Parser::GuidedSearch(const ActionVector & refseq, int n){
 	int max_step = refseq.size() + 1;
 	beams_.resize(max_step, DPStateVector());
@@ -35,8 +40,10 @@ DPState * Parser::GuidedSearch(const ActionVector & refseq, int n){
 		DPState::Action action = refseq[step-1];
 		if (Allow(state, action, n))
 			state->Take(action, beams_[step], true);
-		else // if threre are too many swap actions
+		else {// if threre are too many swap actions
+			state->PrintTrace(cerr);
 			return NULL;
+		}
 		state = beams_[step][0];
 	}
 	return state;

@@ -237,7 +237,7 @@ DPState * DDPState::Reduce(DPState * leftstate, Action action){
 	}
 	next->src_rend_ = src_rend_;
 	next->swaped_.insert(next->swaped_.begin(), swaped_.begin(), swaped_.end());
-	next->nswap_ = lstate->nswap_ + nswap_;
+	next->nswap_ = nswap_;
 	if (action == STRAIGTH){
 		next->trg_l_ = lstate->trg_l_;		next->trg_r_ = trg_r_;
 	}

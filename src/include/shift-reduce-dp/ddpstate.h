@@ -82,7 +82,8 @@ inline ostream& operator << ( ostream& out,
 		<< rhs.GetTrgL() << ", " << rhs.GetTrgR()-1 << " > :: "
 		<< rhs.GetScore() << ", " << rhs.GetInside()
 		<< ": left " << rhs.GetLeftPtrs().size()
-		<< " swap " << rhs.GetSwaped().size();
+		<< ", swap " << rhs.GetSwaped().size()
+		<< ", nswap " << rhs.GetNumSwap();
     return out;
 }
 }

@@ -14,7 +14,6 @@ THREADS=2
 BEAM=10
 THRESHOLD=5
 VERBOSE=0
-MAX_SWAP=1
 
 # define helper function: run a command and print its exit code
 function run () {
@@ -94,7 +93,7 @@ tail -n3 output/$TEST_IN.1best.grade
 # Evaluate reranker oracle
 run "cat output/kbest.dev | cut -f1,2 | \
 ../src/bin/reranker-oracle -attach_null right \
-$ALIGN_IN data/$TEST_IN $TARGET_IN'' -max_swap $MAX_SWAP \
+$ALIGN_IN data/$TEST_IN $TARGET_IN'' \
 > output/$TEST_IN.oracle.grade" 
 
 tail -n3 output/$TEST_IN.oracle.grade

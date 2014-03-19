@@ -132,7 +132,10 @@ public:
         return SafeAccess(stacks_, stacks_.size()-1)->GetSpanOfRank(0);
     }
     SpanStack * GetRootStack() {
-            return SafeAccess(stacks_, stacks_.size()-1);
+		return SafeAccess(stacks_, stacks_.size()-1);
+    }
+    int NumParses(){
+    	return GetRootStack()->size();
     }
     Hypothesis * GetBest() {
 		if (stacks_.empty() || !GetRoot())

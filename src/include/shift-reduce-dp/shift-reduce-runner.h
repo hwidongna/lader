@@ -14,7 +14,7 @@
 #include <shift-reduce-dp/shift-reduce-model.h>
 #include <lader/feature-data-sequence.h>
 #include <reranker/flat-tree.h>
-
+#include <time.h>
 using namespace std;
 namespace lader {
 
@@ -90,20 +90,29 @@ public:
         // Load the data
         Sentence datas = features_->ParseInput(line_);
         // Save the original string
+        vector<string> words = ((FeatureDataSequence*)datas[0])->GetSequence();
         // Build a reordering tree
         if(config_.GetInt("verbose") >= 1)
             ess << endl << "Sentence " << sent << endl;
 
+        struct timespec search={0,0};
+        struct timespec tstart={0,0}, tend={0,0};
+        clock_gettime(CLOCK_MONOTONIC, &tstart);
         Parser *p;
         if(model_->GetMaxSwap() > 0)
             p = new DParser(model_->GetMaxSwap());
-
         else
             p = new Parser();
-
         p->SetBeamSize(config_.GetInt("beam"));
         p->SetVerbose(config_.GetInt("verbose"));
         p->Search(*model_, *features_, datas);
+        clock_gettime(CLOCK_MONOTONIC, &tend);
+        search.tv_sec += tend.tv_sec - tstart.tv_sec;
+        search.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
+        ess << std::setprecision(5) << id_ << " " << words.size()
+			<< " " << ((double)search.tv_sec + 1.0e-9*search.tv_nsec)
+        	<< " " << p->GetNumEdges() << " " << p->GetNumStates() << " " << p->GetNumParses() << endl;
+
         DPState *best = p->GetBest();
         Output(datas, best);
 		collector_->Write(id_, oss.str(), ess.str());
@@ -173,6 +182,7 @@ public:
     	if (!sin)
     		cerr << "use stdin for source_in" << endl;
     	int id = 0;
+    	cerr << "Sentence Length Time #Edge #State #Parse" << endl;
     	while(std::getline(sin != NULL? sin : std::cin, line)) {
     		Task *task = NewShiftReduceTask(id++, line, config);
     		pool.Submit(task);

@@ -17,9 +17,19 @@ void ReordererTask::Run() {
     Sentence datas = features_->ParseInput(line_);
     // Save the original string
     vector<string> words = ((FeatureDataSequence*)datas[0])->GetSequence();
+    struct timespec search={0,0};
+    struct timespec tstart={0,0}, tend={0,0};
+    clock_gettime(CLOCK_MONOTONIC, &tstart);
     // Build the hypergraph
     graph_->SetAllStacks(datas[0]->GetNumWords());
     graph_->BuildHyperGraph(*model_, *features_, datas);
+    clock_gettime(CLOCK_MONOTONIC, &tend);
+    search.tv_sec += tend.tv_sec - tstart.tv_sec;
+    search.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
+    ostringstream ess;
+    ess << std::setprecision(5) << id_ << " " << words.size()
+    	<< " " << ((double)search.tv_sec + 1.0e-9*search.tv_nsec)
+    	<< " " << graph_->NumParses() << endl;
     // Reorder
     std::vector<int> reordering;
     graph_->GetBest()->GetReordering(reordering);
@@ -50,7 +60,7 @@ void ReordererTask::Run() {
         }
     }
     oss << endl;
-    collector_->Write(id_, oss.str(), "");
+    collector_->Write(id_, oss.str(), ess.str());
     // Clean up the data
     BOOST_FOREACH(FeatureDataBase* data, datas)
         delete data;
@@ -73,6 +83,7 @@ void ReordererRunner::Run(const ConfigBase & config) {
     graph.SetBeamSize(config.GetInt("beam"));
 	graph.SetPopLimit(config.GetInt("pop_limit"));
 	// do not need to set threads because it runs in parallel at sentence-level
+	cerr << "Sentence Length Time #Parse" << endl;
     while(std::getline(sin != NULL? sin : std::cin, line)) {
     	ReordererTask *task = new ReordererTask(id++, line, model_, features_,
     		 	&outputs_, config, graph.Clone(),

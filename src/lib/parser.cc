@@ -41,7 +41,6 @@ DPState * Parser::GuidedSearch(const ActionVector & refseq, int n){
 		if (Allow(state, action, n))
 			state->Take(action, beams_[step], true);
 		else {// if threre are too many swap actions
-			state->PrintTrace(cerr);
 			return NULL;
 		}
 		state = beams_[step][0];

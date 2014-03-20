@@ -55,8 +55,9 @@ public:
     // The templates that can be used and combined for binary features are:
     //  %q[0-9]: the [0-9]th element in buffer (from front)
     //  %s[0-9][LR]: the left/rightmost word of the [0-9]th element in stack (from top)
+    //  %t[0-9][LR]: the left/rightmost target word of the left/right child or the [0-9]th stack element, which is non-local feature
     //  %[lr][0-9][LR]: the left/rightmost word of the left/right child or the [0-9]th stack element
-    //  %aT :        The action type: INIT(-1), SHIFT(0), STRAIGHT(1), INVERTED(2)
+    //  %aT :        The action type: INIT(R), SHIFT(F), STRAIGHT(S), INVERTED(I)
 
     virtual void ParseConfiguration(const std::string & str);
 

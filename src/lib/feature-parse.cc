@@ -202,8 +202,9 @@ void FeatureParse::GenerateStateFeatures(
 								FeatureVectorInt & feats) {
 	const FeatureDataParse & tree = (const FeatureDataParse &)sent;
 	// Iterate over each feature
+	ostringstream values;
 	BOOST_FOREACH(FeatureTemplate templ, feature_templates_) {
-		ostringstream values; values << templ.second[0];
+		values << templ.second[0];
 		bool feat_val = 1;
 		for(int i = 1; i < (int)templ.second.size(); i++) {
 			// Choose which span to use
@@ -245,10 +246,12 @@ void FeatureParse::GenerateStateFeatures(
 				break;
 			}
 		}
+		values << std::ends;
 		if (feat_val){
-			int id = feature_ids.GetId(values.str(), add);
+			int id = feature_ids.GetId(values.str().data(), add);
 			if(id >= 0)
 				feats.push_back(MakePair(id,feat_val));
 		}
+		values.seekp(0);
 	}
 }

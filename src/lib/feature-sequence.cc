@@ -25,7 +25,7 @@ bool FeatureSequence::FeatureTemplateIsLegal(const string & name) {
     } else if(name[0] == 'q') {
     	return name.length() == 2 && '0' <= name[1] <= '9';
     // only for shift-reduce parsing
-    } else if(name[0] == 's' || name[0] == 'l' || name[0] == 'r'){
+    } else if(name[0] == 's' || name[0] == 't' || name[0] == 'l' || name[0] == 'r'){
     	return name.length() == 3 && '0' <= name[1] <= '9' && (name[2] == 'L' || name[2] == 'R');
     } else {
         // For sequence matcher Q, check to make sure that the type
@@ -205,11 +205,12 @@ void FeatureSequence::GenerateEdgeFeatures(
     const FeatureDataSequence & sent_seq = (const FeatureDataSequence &)sent;
     bool is_nonterm = (edge.GetType() == HyperEdge::EDGE_INV || 
                        edge.GetType() == HyperEdge::EDGE_STR);
+    ostringstream values;
     // Iterate over each feature
     BOOST_FOREACH(FeatureTemplate templ, feature_templates_) {
         // Make sure that this feature is compatible with the edge
         if (templ.first == ALL_FACTORED || is_nonterm) {
-            ostringstream values; values << templ.second[0];
+            values << templ.second[0];
             double feat_val = 1;
             for(int i = 1; i < (int)templ.second.size(); i++) {
                 // Choose which span to use
@@ -238,11 +239,13 @@ void FeatureSequence::GenerateEdgeFeatures(
                                              span.second, templ.second[i]));
                 }
             }
+            values << std::ends;
             if(feat_val) {
-                int id = feature_ids.GetId(values.str(), add);
+                int id = feature_ids.GetId(values.str().data(), add);
                 if(id >= 0)
                     feat.push_back(MakePair(id,feat_val));
             }
+            values.seekp(0);
         }
     }
 }
@@ -256,8 +259,9 @@ void FeatureSequence::GenerateStateFeatures(
 								FeatureVectorInt & feats) {
 	const FeatureDataSequence & sent_seq = (const FeatureDataSequence &)sent;
 	// Iterate over each feature
+	ostringstream values;
 	BOOST_FOREACH(FeatureTemplate templ, feature_templates_) {
-		ostringstream values; values << templ.second[0];
+		values << templ.second[0];
 		double feat_val = 1;
 		for(int i = 1; i < (int)templ.second.size(); i++) {
 			// Choose which span to use
@@ -273,6 +277,7 @@ void FeatureSequence::GenerateStateFeatures(
 					values << "||</s>";
 				break;
 			case 's':
+			case 't':
 				offset = str[1]-'0';
 				ptr_state = &state;
 				for (int j = 0 ; j < offset && ptr_state; j++)
@@ -282,12 +287,18 @@ void FeatureSequence::GenerateStateFeatures(
 				else if (str[2] == 'L'){
 					if (ptr_state->GetSrcL() >= sent.GetNumWords())
 						THROW_ERROR("Bad state: " << *ptr_state << endl)
-					values << "||" << sent.GetElement(ptr_state->GetSrcL());
+					if (str[0] == 's')
+						values << "||" << sent.GetElement(ptr_state->GetSrcL());
+					else
+						values << "||" << sent.GetElement(ptr_state->GetTrgL());
 				}
 				else if (str[2] == 'R'){
 					if (ptr_state->GetSrcR()-1 >= sent.GetNumWords())
 						THROW_ERROR("Bad state: " << *ptr_state << endl)
-					values << "||" << sent.GetElement(ptr_state->GetSrcR()-1);
+					if (str[0] == 's')
+						values << "||" << sent.GetElement(ptr_state->GetSrcR()-1);
+					else
+						values << "||" << sent.GetElement(ptr_state->GetTrgR()-1);
 				}
 				break;
 			case 'l':
@@ -339,10 +350,12 @@ void FeatureSequence::GenerateStateFeatures(
 	            break;
 			}
 		}
+		values << std::ends;
 		if (feat_val){
-			int id = feature_ids.GetId(values.str(), add);
+			int id = feature_ids.GetId(values.str().data(), add);
 			if(id >= 0)
 				feats.push_back(MakePair(id,feat_val));
 		}
+		values.seekp(0);
 	}
 }

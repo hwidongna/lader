@@ -40,9 +40,10 @@ void ReordererEvaluator::Evaluate(const ConfigEvaluator & config) {
         trg_in = new ifstream(SafeAccess(args, 3).c_str());
         if(!*trg_in) THROW_ERROR("Couldn't find target file " << args[3]);
     }
+	cerr << "Sentence Length Chunk Tau" << endl;
     string data, align, src, trg;
     // Read them one-by-one and run the evaluator
-    while(getline(data_in, data) && getline(aligns_in, align)) {
+    for(int sent = 0 ; getline(data_in, data) && getline(aligns_in, align) ; sent++) {
         // Get the input values
         std::vector<string> datas;
         algorithm::split(datas, data, is_any_of("\t"));
@@ -90,6 +91,9 @@ void ReordererEvaluator::Evaluate(const ConfigEvaluator & config) {
             getline(*trg_in, trg);
             cout << "trg:\t" << trg << endl;
         }
+        FeatureDataSequence words;
+        words.FromString(src);
+        cerr << sent++ << "\t" << words.GetNumWords();
         // Score the values
         for(int i = 0; i < (int) losses.size(); i++) {
             pair<double,double> my_loss = 
@@ -101,7 +105,9 @@ void ReordererEvaluator::Evaluate(const ConfigEvaluator & config) {
             if(i != 0) cout << "\t";
             cout << losses[i]->GetName() << "=" << acc 
                  << " (loss "<<my_loss.first<< "/" <<my_loss.second<<")";
+			cerr << "\t" << acc;
         }
+        cerr << endl;
         cout << endl << endl;
     }
     cout << "Total:" << endl;

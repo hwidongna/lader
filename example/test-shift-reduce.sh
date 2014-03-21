@@ -58,7 +58,7 @@ run "../src/bin/shift-reduce -model $MODEL_IN -out_format order,string,flatten,a
 # Also note that we need to set -attach-null to the same value that we set
 # during training. (In this case, we'll use the default, "right")
 
-run "../src/bin/evaluate-lader -attach_null right $ALIGN_IN $OUTPUT data/$TEST_IN $TARGET_IN'' > output/$TEST_IN.grade"
+run "../src/bin/evaluate-lader -attach_null right $ALIGN_IN $OUTPUT data/$TEST_IN $TARGET_IN'' > output/$TEST_IN.grade 2> output/$TEST_IN.log"
 
 tail -n3 output/$TEST_IN.grade
 	

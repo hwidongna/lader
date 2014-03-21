@@ -74,7 +74,7 @@ run "cat output/kbest.dev | cut -f1,2 | \
 # Evaluate reranker result
 run "../src/bin/evaluate-lader -attach_null right \
 $ALIGN_IN output/$TEST_IN.reranker data/$TEST_IN $TARGET_IN'' \
-> output/$TEST_IN.reranker.grade"
+> output/$TEST_IN.reranker.grade 2> output/$TEST_IN.reranker.log"
 
 tail -n3 output/$TEST_IN.reranker.grade
 	
@@ -86,7 +86,7 @@ run "cat output/kbest.dev | cut -f1,2 | \
 # Evaluate 1-best result
 run "../src/bin/evaluate-lader -attach_null right \
 $ALIGN_IN output/$TEST_IN.1best data/$TEST_IN $TARGET_IN'' \
-> output/$TEST_IN.1best.grade" 
+> output/$TEST_IN.1best.grade 2> output/$TEST_IN.1best.log" 
 
 tail -n3 output/$TEST_IN.1best.grade
 
@@ -94,6 +94,6 @@ tail -n3 output/$TEST_IN.1best.grade
 run "cat output/kbest.dev | cut -f1,2 | \
 ../src/bin/reranker-oracle -attach_null right \
 $ALIGN_IN data/$TEST_IN $TARGET_IN'' \
-> output/$TEST_IN.oracle.grade" 
+> output/$TEST_IN.oracle.grade 2> output/$TEST_IN.oracle.log" 
 
 tail -n3 output/$TEST_IN.oracle.grade

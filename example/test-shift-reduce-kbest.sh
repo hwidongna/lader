@@ -62,7 +62,7 @@ run "../src/bin/shift-reduce-kbest -model $MODEL_IN -out_format score,flatten -t
 run "cat output/kbest.dev | cut -f1,2 | \
 ../src/bin/reranker-oracle -attach_null right \
 $ALIGN_IN data/$TEST_IN $TARGET_IN'' \
-> output/$TEST_IN.grade"
+> output/$TEST_IN.grade 2> output/$TEST_IN.log" 
 
 tail -n3 output/$TEST_IN.grade
 	

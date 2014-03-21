@@ -65,9 +65,7 @@ public:
         ifstream kin(kbest_in.c_str());
         if (!kin)
         	cerr << "use stdin for kbest_in" << endl;
-        int verbose = config.GetInt("verbose");
-        if (verbose >= 1)
-        	cerr << "Sentence Length #Parse Chunk RankChunk Tau RankTau" << endl;
+        cerr << "Sentence Length #Parse Chunk RankChunk Tau RankTau" << endl;
         string data, align, src, trg;
         // Read them one-by-one and run the evaluator
         for (int sent = 0; getline(kin ? kin : cin, data) && getline(aligns_in, align) ; sent++) {
@@ -132,16 +130,12 @@ public:
             		}
             	}
             }
-            if (verbose >= 1)
-            	cerr << sent << "\t" << words.GetNumWords() << "\t" << numParses << "\t";
+            cerr << sent << "\t" << words.GetNumWords() << "\t" << numParses;
             // best parse has the minimum loss
         	for(int i = 0; i < (int) losses.size(); i++) {
         		oracle[i].first += minloss[i].first;
         		oracle[i].second += minloss[i].second;
-                if (verbose >= 1){
-					if(i != 0) cerr << "\t";
-					cerr << maxacc[i] << "\t" << maxrank[i];
-                }
+				cerr << "\t" << maxacc[i] << "\t" << maxrank[i];
         	}
         	cerr << endl;
             // Print the reference reordering

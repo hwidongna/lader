@@ -66,6 +66,8 @@ public:
         if (!kin)
         	cerr << "use stdin for kbest_in" << endl;
         int verbose = config.GetInt("verbose");
+        if (verbose >= 1)
+        	cerr << "Sentence Length #Parse Chunk RankChunk Tau RankTau" << endl;
         string data, align, src, trg;
         // Read them one-by-one and run the evaluator
         for (int sent = 0; getline(kin ? kin : cin, data) && getline(aligns_in, align) ; sent++) {
@@ -75,8 +77,6 @@ public:
         	int numParses;
 			istringstream iss(data);
 			iss >> numParses;
-            if (verbose >= 1)
-            	cerr << "Sentence " << sent << ": " << numParses << " parses" << endl;
             // Get the source file
             getline(*src_in, src);
             vector<string> srcs;
@@ -111,7 +111,7 @@ public:
             // Compute losses of all parses and keep the best parse
             vector<pair<double,double> > minloss(losses.size(), pair<double,double>(0,0));
             vector<double> maxacc(losses.size(), 0);
-            vector<int> bestparse(losses.size(), 0);
+            vector<int> maxrank(losses.size(), 0);
             for (int k = 0; k < parses.size() ; k++){
             	GenericNode * p = parses[k];
             	if (!p)
@@ -128,15 +128,22 @@ public:
             			maxacc[i] = acc;
 						minloss[i].first = my_loss.first;
 						minloss[i].second = my_loss.second;
-						bestparse[i] = k;
+						maxrank[i] = k;
             		}
             	}
             }
+            if (verbose >= 1)
+            	cerr << sent << "\t" << words.GetNumWords() << "\t" << numParses << "\t";
             // best parse has the minimum loss
         	for(int i = 0; i < (int) losses.size(); i++) {
         		oracle[i].first += minloss[i].first;
         		oracle[i].second += minloss[i].second;
+                if (verbose >= 1){
+					if(i != 0) cerr << "\t";
+					cerr << maxacc[i] << "\t" << maxrank[i];
+                }
         	}
+        	cerr << endl;
             // Print the reference reordering
             vector<vector<string> > src_order(ranks.GetMaxRank()+1);
             for(int i = 0; i < (int)srcs.size(); i++)
@@ -178,7 +185,7 @@ public:
 					double acc = my_loss.second == 0 ?
 							1 : (1-my_loss.first/my_loss.second);
 					if(i != 0) cout << "\t";
-					if(k == bestparse[i]) cout << "*";
+					if(k == maxrank[i]) cout << "*";
 					cout << losses[i]->GetName() << "=" << acc
 							<< " (loss "<<my_loss.first<< "/" <<my_loss.second<<")";
 				}

@@ -58,8 +58,8 @@ public:
 protected:
 	virtual DPState * Shift();
 	virtual DPState * Reduce(DPState * leftstate, Action action);
-	DPState * Swap(DPState * leftstate);
-	DPState * Idle();
+	virtual DPState * Swap(DPState * leftstate);
+	virtual DPState * Idle();
 	int src_l2_, src_r2_;	// discontinuous source span
 	int src_rend_;			// source index for the next buffer front
 	DPStateVector swaped_;	// swaped states

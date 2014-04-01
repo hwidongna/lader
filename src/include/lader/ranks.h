@@ -38,7 +38,8 @@ public:
     const std::vector<int> & GetRanks() const { return ranks_; }
     int GetSrcLen() const { return ranks_.size(); }
     void SetRanks(const std::vector<int> & order);
-    ActionVector GetReference() const;
+    ActionVector GetReference(CombinedAlign * cal = NULL) const;
+    bool IsDeleted(CombinedAlign * cal, DPState * state) const;
     bool IsStraight(DPState * leftstate, DPState * state) const;
     bool IsInverted(DPState * leftstate, DPState * state) const;
     bool HasTie(DPState * state) const;

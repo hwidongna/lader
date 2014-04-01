@@ -105,8 +105,8 @@ void DDPState::Take(Action action, DPStateVector & result, bool actiongold,
 		BackPtr back;
 		back.action = action;
 		back.cost = 0;
-		back.leftstate = NULL;
-		back.istate = NULL;
+		back.lchild = NULL;
+		back.rchild = NULL;
 		next->backptrs_.push_back(back);
 		result.push_back(next);
 	}
@@ -131,15 +131,14 @@ void DDPState::Take(Action action, DPStateVector & result, bool actiongold,
 			back.action = action;
 			back.cost = actioncost;
 			// maintain the back ptr of the left state for AllActions
-			back.leftstate = leftstate;
-			back.istate = this;
+			back.lchild = leftstate;
+			back.rchild = this;
 			next->backptrs_.push_back(back);
 			result.push_back(next);
 		}
 	}
 	else if (action == IDLE){
 		DPState * next = Idle();
-		next->shiftcost_ = shiftcost_;
 		next->inside_ = inside_ + actioncost;
 		next->score_ = score_ + actioncost;
 		next->gold_ = gold_ && actiongold;
@@ -147,8 +146,8 @@ void DDPState::Take(Action action, DPStateVector & result, bool actiongold,
 		BackPtr back;
 		back.action = action;
 		back.cost = actioncost;
-		back.leftstate = NULL;
-		back.istate = this;
+		back.lchild = NULL;
+		back.rchild = this;
 		next->backptrs_.push_back(back);
 		result.push_back(next);
 	}
@@ -165,8 +164,8 @@ void DDPState::Take(Action action, DPStateVector & result, bool actiongold,
 				BackPtr back;
 				back.action = action;
 				back.cost = leftstate->shiftcost_ + actioncost;
-				back.leftstate = leftstate;
-				back.istate = this;
+				back.lchild = leftstate;
+				back.rchild = this;
 				next->backptrs_.push_back(back);
 				result.push_back(next);
 			}

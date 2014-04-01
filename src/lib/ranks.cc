@@ -4,6 +4,7 @@
 #include <map>
 #include <iostream>
 #include <shift-reduce-dp/ddpstate.h>
+#include <shift-reduce-dp/idpstate.h>
 #include <climits>
 #include <set>
 using namespace std;
@@ -41,16 +42,27 @@ void Ranks::SetRanks(const std::vector<int> & order) {
 	max_rank_ = order.size()-1;
 }
 
-ActionVector Ranks::GetReference() const{
+// This method gets monolingual reference action sequences without INSERT_[LR]
+// The bilingual reference sequence with INSERT_[LR] is obtained from
+// the intersection of bidirectional GetReference
+ActionVector Ranks::GetReference(CombinedAlign * cal) const{
 	ActionVector reference;
 	DPStateVector stateseq;
-	DPState * state = new DDPState();
+	DPState * state;
+	if (cal)
+		state = new IDPState();
+	else
+		state = new DDPState();
 	stateseq.push_back(state);
 	int n = ranks_.size();
 	for (int step = 0 ; !state->Allow(DPState::IDLE, n) ; step++){
 		DPState * leftstate = state->GetLeftState();
 		DPState::Action action;
-		if (state->Allow(DPState::STRAIGTH, n) && IsStraight(leftstate, state))
+		if (state->Allow(DPState::DELETE_L, n) && IsDeleted(cal, leftstate))
+			action = DPState::DELETE_L;
+		else if (state->Allow(DPState::DELETE_R, n) && IsDeleted(cal, state))
+			action = DPState::DELETE_R;
+		else if (state->Allow(DPState::STRAIGTH, n) && IsStraight(leftstate, state))
 			action = DPState::STRAIGTH;
 		else if (state->Allow(DPState::INVERTED, n) && IsInverted(leftstate, state) && !HasTie(state))
 			action = DPState::INVERTED;
@@ -73,6 +85,12 @@ ActionVector Ranks::GetReference() const{
 	return reference;
 }
 
+bool Ranks::IsDeleted(CombinedAlign * cal, DPState * state) const{
+	if (!cal)
+		return false;
+	const std::vector<std::pair<double,double> > & spans = cal->GetSpans();
+	return spans[state->GetSrcL()].first == -1;
+}
 bool Ranks::IsStraight(DPState * lstate, DPState * state) const{
 	if (!lstate)
 		return false;
@@ -123,7 +141,7 @@ bool Ranks::IsSwap(DPState * state) const {
 		DPStateVector stateseq;
 		state->Take(DPState::SHIFT, stateseq);
 		span.second++;
-		for(int i=state->GetSrcREnd() ; i < ranks_.size() ; i++){
+		while (!state->Allow(DPState::IDLE, n)){
 			DPState * state = stateseq.back();
 			if (state->GetSrcSpan() == span){
 				flag = false; // found the reducible item in buffer

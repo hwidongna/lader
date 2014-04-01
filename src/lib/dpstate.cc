@@ -109,8 +109,8 @@ void DPState::Take(Action action, DPStateVector & result, bool actiongold,
 		BackPtr back;
 		back.action = action;
 		back.cost = 0;
-		back.leftstate = NULL;
-		back.istate = NULL;
+		back.lchild = NULL;
+		back.rchild = NULL;
 		next->backptrs_.push_back(back);
 		result.push_back(next);
 	}
@@ -124,8 +124,8 @@ void DPState::Take(Action action, DPStateVector & result, bool actiongold,
 			BackPtr back;
 			back.action = action;
 			back.cost = leftstate->shiftcost_ + actioncost;
-			back.leftstate = leftstate;
-			back.istate = this;
+			back.lchild = leftstate;
+			back.rchild = this;
 			next->backptrs_.push_back(back);
 			result.push_back(next);
 		}
@@ -234,13 +234,13 @@ DPState * DPState::GetLeftState() const{
 DPState * DPState::LeftChild() const{
 	if (action_ == INIT || action_ == SHIFT)
 		return NULL;
-	return backptrs_[0].leftstate;
+	return backptrs_[0].lchild;
 }
 
 DPState * DPState::RightChild() const{
 	if (action_ == INIT || action_ == SHIFT)
 		return NULL;
-	return backptrs_[0].istate;
+	return backptrs_[0].rchild;
 }
 
 void DPState::PrintParse(const vector<string> & strs, ostream & out) const{

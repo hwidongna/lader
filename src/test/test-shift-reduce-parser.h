@@ -13,8 +13,8 @@
 #include <lader/feature-sequence.h>
 #include <lader/feature-data-sequence.h>
 #include <lader/feature-set.h>
-#include <shift-reduce-dp/ddpstate.h>
 #include <shift-reduce-dp/dparser.h>
+#include <shift-reduce-dp/iparser.h>
 #include <fstream>
 #include <vector>
 
@@ -396,6 +396,159 @@ public:
     	return ret;
     }
 
+    int TestDelete() {
+    	// Create a combined alignment
+		//  .....
+		//  x....
+		//  ....x
+    	//  ..x..
+    	vector<string> words(4, "x");
+    	Alignment al(MakePair(4,5));
+    	al.AddAlignment(MakePair(1,0));
+    	al.AddAlignment(MakePair(2,4));
+    	al.AddAlignment(MakePair(3,2));
+    	CombinedAlign cal(words,al, CombinedAlign::LEAVE_NULL_AS_IS); // for delete
+    	if (cal.GetSpans()[0].first != -1){
+    		cerr << "CombinedAlign fails " << endl;
+    		return 0;
+    	}
+    	Ranks ranks(CombinedAlign(words,al, CombinedAlign::ATTACH_NULL_RIGHT));
+    	FeatureDataSequence sent;
+    	// Create a sentence
+    	string str = "1 2 3 4";
+    	sent.FromString(str);
+    	int n = sent.GetNumWords();
+    	ActionVector refseq = ranks.GetReference(&cal);
+		ActionVector exp(2*n-1, DPState::SHIFT);
+		exp[2]=DPState::DELETE_L; exp[5]=DPState::INVERTED; exp[6]=DPState::STRAIGTH;
+		int ret = 1;
+		ret *= CheckVector(exp, refseq);
+		if (!ret){
+			cerr << "incorrect reference sequence" << endl;
+			return 0;
+		}
+
+		IParser p(1,1);
+		DPState * goal = p.GuidedSearch(refseq, n);
+		if (!goal->IsGold()){
+			cerr << *goal << endl;
+			ret = 0;
+		}
+		ActionVector act;
+		goal->AllActions(act);
+    	if (act.size() != refseq.size()){
+    		cerr << "incomplete all actions: size " << act.size() << " != " << refseq.size() << endl;
+    		ret = 0;
+    	}
+    	ret *= CheckVector(refseq, act);
+		if (!ret){
+			cerr << "incorrect all actions" << endl;
+			ret = 0;
+		}
+    	{ // check reordering
+    		vector<int> act;
+			goal->GetReordering(act);
+			vector<int> exp(n-1); // 0 is deleted
+			exp[0]=1, exp[1]=3, exp[2]=2;
+			ret *= CheckVector(exp, act);
+			if (!ret){
+				cerr << "incorrect get reordering" << endl;
+				ret = 0;
+			}
+    	}
+    	return ret;
+    }
+
+    int TestInsert() {
+    	string str = "1 2 3 4";
+    	sent.FromString(str);
+    	int n = sent.GetNumWords();
+    	ActionVector refseq = DPState::ActionFromString("F F Z V F F V I S E");
+		IParser p(2,1);
+		int ret=1;
+		DPState * goal = p.GuidedSearch(refseq, n);
+		if (!goal->IsGold()){
+			cerr << *goal << endl;
+			ret = 0;
+		}
+		ActionVector act;
+		goal->AllActions(act);
+    	if (act.size() != refseq.size()){
+    		cerr << "incomplete all actions: size " << act.size() << " != " << refseq.size() << endl;
+    		ret = 0;
+    	}
+    	ret *= CheckVector(refseq, act);
+		if (!ret){
+			cerr << "incorrect all actions" << endl;
+			ret = 0;
+		}
+    	{ // check reordering
+    		vector<int> act;
+			goal->GetReordering(act);
+			vector<int> exp(n-1+2); // 0 is deleted, two target words are inserted
+			exp[0]=1, exp[1]=-1, exp[2]=3, exp[3]=-1, exp[4]=2;
+			ret *= CheckVector(exp, act);
+			if (!ret){
+				cerr << "incorrect get reordering" << endl;
+				ret = 0;
+			}
+    	}
+    	return ret;
+    }
+
+    int TestIntersection() {
+    	sent.FromString("a man plays piano");
+    	int n = sent.GetNumWords();
+    	ActionVector refseq = DPState::ActionFromString("F F Z F F I S E"); // one more idle state
+		IParser f2e(1,1);
+		int ret=1;
+		DPState * gf2e = f2e.GuidedSearch(refseq, n);
+		if (!gf2e->IsGold()){
+			cerr << *gf2e << endl;
+			ret = 0;
+		}
+		sent.FromString("man NOM piano ACC plays");
+		n = sent.GetNumWords();
+		refseq = DPState::ActionFromString("F F X F F X F I S E E"); // two more idle states
+		IParser e2f(1,2);
+		DPState * ge2f = e2f.GuidedSearch(refseq, n);
+		if (!ge2f->IsGold()){
+			cerr << *ge2f << endl;
+			ret = 0;
+		}
+		refseq = DPState::ActionFromString("F F Z V F F V I S"); // no idle state
+		ActionVector act;
+		Intersect(act, gf2e, ge2f);
+    	if (act.size() != refseq.size()){
+    		cerr << "incomplete all actions: size " << act.size() << " != " << refseq.size() << endl;
+    		ret = 0;
+    	}
+    	ret *= CheckVector(refseq, act);
+		if (!ret){
+			cerr << "incorrect all actions" << endl;
+			ret = 0;
+		}
+		sent.FromString("a man plays piano");
+		n = sent.GetNumWords();
+		IParser p(2,1);
+		DPState * goal = p.GuidedSearch(refseq, n);
+		if (!goal->IsGold()){
+			cerr << *goal << endl;
+			ret = 0;
+		}
+    	{ // check reordering
+    		vector<int> act;
+			goal->GetReordering(act);
+			vector<int> exp(n-1+2); // 0 is deleted, two target words are inserted
+			exp[0]=1, exp[1]=-1, exp[2]=3, exp[3]=-1, exp[4]=2;
+			ret *= CheckVector(exp, act);
+			if (!ret){
+				cerr << "incorrect get reordering" << endl;
+				ret = 0;
+			}
+    	}
+    	return ret;
+    }
     int TestInsideOut() {
     	// Create a combined alignment
 		//  .x..
@@ -730,6 +883,9 @@ public:
     	done++; cout << "TestSearch2()" << endl; if(TestSearch2()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestShift2()" << endl; if(TestShift2()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestShift3()" << endl; if(TestShift3()) succeeded++; else cout << "FAILED!!!" << endl;
+    	done++; cout << "TestDelete()" << endl; if(TestDelete()) succeeded++; else cout << "FAILED!!!" << endl;
+    	done++; cout << "TestInsert()" << endl; if(TestInsert()) succeeded++; else cout << "FAILED!!!" << endl;
+    	done++; cout << "TestIntersection()" << endl; if(TestIntersection()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestInsideOut()" << endl; if(TestInsideOut()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestInsideOutSearch()" << endl; if(TestInsideOutSearch()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestSwapAfterReduce()" << endl; if(TestSwapAfterReduce()) succeeded++; else cout << "FAILED!!!" << endl;

@@ -31,21 +31,26 @@ typedef vector<DPState*> DPStateVector;
 typedef pair<int,int> Span;
 class DPState {
 	friend class DDPState;
+	friend class IDPState;
 public:
 	// compatible to the HyperEdge::Type
 	typedef enum{
 		INIT = 'R', // do not use except for the initial state
-		SHIFT = 'F', // forward
+		SHIFT = 'F', 	// compatible to Forward of HyperEdge::Type
 		STRAIGTH = 'S',
 		INVERTED = 'I',
+		DELETE_L = 'Z',	// for IDPState
+		DELETE_R = 'X',	// for IDPState
+		INSERT_L = 'C',	// for IDPState
+		INSERT_R = 'V',	// for IDPState
 		SWAP = 'D',		// for DDPState
-		IDLE = 'E'		// for DDPState
+		IDLE = 'E'		// for IDPState and DDPState
 	} Action;
 
 	static vector<Action> ActionFromString(const string & line);
 	typedef struct {
-		DPState * leftstate;
-		DPState * istate;
+		DPState * lchild;
+		DPState * rchild;
 		Action action;
 		double cost;
 	} BackPtr;

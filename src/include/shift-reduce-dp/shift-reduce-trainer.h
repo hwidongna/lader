@@ -106,9 +106,9 @@ public:
 	virtual void InitializeModel(const ConfigBase & config);
     // Train the reorderer incrementally, building they hypergraph each time
     // we parse
-    void TrainIncremental(const ConfigBase & config);
+    virtual void TrainIncremental(const ConfigBase & config);
 
-private:
+protected:
 	std::vector<Ranks*> dev_ranks_; // The alignments to use in development
 	std::vector<Sentence*> dev_data_; // The development data
 

@@ -11,6 +11,7 @@ public:
     Ranks() : max_rank_(-1) { };
     // Turn a combined alignment into its corresponding ranks
     Ranks(const CombinedAlign & combined);
+    virtual ~Ranks() {}
     static bool IsStepOneUp(int l, int r)
     {
         return l + 1 == r;
@@ -38,14 +39,14 @@ public:
     const std::vector<int> & GetRanks() const { return ranks_; }
     int GetSrcLen() const { return ranks_.size(); }
     void SetRanks(const std::vector<int> & order);
-    ActionVector GetReference(CombinedAlign * cal = NULL) const;
-    bool IsDeleted(CombinedAlign * cal, DPState * state) const;
+    ActionVector GetReference() const;
+    bool IsDeleted(const CombinedAlign * cal, DPState * state) const;
     bool IsStraight(DPState * leftstate, DPState * state) const;
     bool IsInverted(DPState * leftstate, DPState * state) const;
     bool HasTie(DPState * state) const;
     bool IsSwap(DPState * state) const;
     bool HasContinuous(DPState * state) const;
-private:
+protected:
     std::vector<int> ranks_;
     int max_rank_;
 };

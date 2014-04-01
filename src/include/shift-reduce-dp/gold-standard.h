@@ -52,20 +52,10 @@ public:
 		int n = datas[0]->GetNumWords();
 		if (refseq.size() < 2*n - 1)
 			THROW_ERROR("Fail to get correct reference sequence" << endl)
-		int max_step = refseq.size() + 1;
-		DPStateVector stateseq;
-		DPState * state = new DDPState();
-		stateseq.push_back(state);
-		for (int step = 1 ; step < max_step ; step++){
-			DPState::Action action = refseq[step-1];
-			if (state->Allow(action, n))
-				state->Take(action, stateseq, true);
-			state = stateseq.back(); // only one item
-		}
+		DParser p(n);
+		DPState * state = p.GuidedSearch(refseq, n);
 		Output(datas, state);
 		collector_->Write(id_, oss.str(), ess.str());
-		BOOST_FOREACH(DPState * state, stateseq)
-			delete state;
 	}
 protected:
 	const Sentence * data_;
@@ -78,7 +68,7 @@ public:
 	virtual ~GoldStandard() { }
 
 	// Initialize the model
-	void InitializeModel(const ConfigBase & config){
+	virtual void InitializeModel(const ConfigBase & config){
 		features_ = new FeatureSet;
 		features_->ParseConfiguration(config.GetString("feature_profile"));
 		// Load the other config
@@ -93,7 +83,7 @@ public:
 				CombinedAlign::LEAVE_BRACKETS_AS_IS;
 	}
 
-	void Run(const ConfigBase & config){
+	virtual void Run(const ConfigBase & config){
 		InitializeModel(config);
 		ReadData(config.GetString("source_in"), data_);
 		ReadAlignments(config.GetString("align_in"), ranks_, data_);

@@ -16,7 +16,7 @@ using namespace boost;
 namespace lader{
 class ShiftReduceModel : public ReordererModel {
 public:
-	ShiftReduceModel() : max_state_(1), max_swap_(0) {}
+	ShiftReduceModel() : ReordererModel(), max_state_(1), max_swap_(0) {}
 	virtual ~ShiftReduceModel() {}
 	int GetMaxState() { return max_state_; }
 	int GetMaxSwap() { return max_swap_; }

@@ -14,7 +14,8 @@ public:
     ReordererTrainer() : learning_rate_(1),
                          attach_(CombinedAlign::ATTACH_NULL_LEFT),
                          combine_(CombinedAlign::COMBINE_BLOCKS),
-                         bracket_(CombinedAlign::ALIGN_BRACKET_SPANS) { }
+                         bracket_(CombinedAlign::ALIGN_BRACKET_SPANS),
+                         model_(NULL), features_(NULL){ }
     virtual ~ReordererTrainer() {
 	    BOOST_FOREACH(Sentence * vec, data_)
 	    	if (vec){
@@ -42,7 +43,7 @@ public:
 	void ReadData(const std::string & source_in, std::vector<Sentence*> & datas);
 
 	// Read in the alignments
-	void ReadAlignments(const std::string & align_in,
+	virtual void ReadAlignments(const std::string & align_in,
 			std::vector<Ranks*> & ranks, std::vector<Sentence*> & datas);
     // Read in the parses
     void ReadParses(const std::string & align_in);

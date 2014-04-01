@@ -42,27 +42,17 @@ void Ranks::SetRanks(const std::vector<int> & order) {
 	max_rank_ = order.size()-1;
 }
 
-// This method gets monolingual reference action sequences without INSERT_[LR]
-// The bilingual reference sequence with INSERT_[LR] is obtained from
-// the intersection of bidirectional GetReference
-ActionVector Ranks::GetReference(CombinedAlign * cal) const{
+// TODO: split GetReference with swap
+ActionVector Ranks::GetReference() const{
 	ActionVector reference;
 	DPStateVector stateseq;
-	DPState * state;
-	if (cal)
-		state = new IDPState();
-	else
-		state = new DDPState();
+	DPState * state = new DDPState();
 	stateseq.push_back(state);
 	int n = ranks_.size();
 	for (int step = 0 ; !state->Allow(DPState::IDLE, n) ; step++){
 		DPState * leftstate = state->GetLeftState();
 		DPState::Action action;
-		if (state->Allow(DPState::DELETE_L, n) && IsDeleted(cal, leftstate))
-			action = DPState::DELETE_L;
-		else if (state->Allow(DPState::DELETE_R, n) && IsDeleted(cal, state))
-			action = DPState::DELETE_R;
-		else if (state->Allow(DPState::STRAIGTH, n) && IsStraight(leftstate, state))
+		if (state->Allow(DPState::STRAIGTH, n) && IsStraight(leftstate, state))
 			action = DPState::STRAIGTH;
 		else if (state->Allow(DPState::INVERTED, n) && IsInverted(leftstate, state) && !HasTie(state))
 			action = DPState::INVERTED;
@@ -85,11 +75,10 @@ ActionVector Ranks::GetReference(CombinedAlign * cal) const{
 	return reference;
 }
 
-bool Ranks::IsDeleted(CombinedAlign * cal, DPState * state) const{
+bool Ranks::IsDeleted(const CombinedAlign * cal, DPState * state) const{
 	if (!cal)
 		return false;
-	const std::vector<std::pair<double,double> > & spans = cal->GetSpans();
-	return spans[state->GetSrcL()].first == -1;
+	return cal->GetSpans()[state->GetSrcL()].first == -1;
 }
 bool Ranks::IsStraight(DPState * lstate, DPState * state) const{
 	if (!lstate)

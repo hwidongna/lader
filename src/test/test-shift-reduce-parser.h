@@ -15,6 +15,7 @@
 #include <lader/feature-set.h>
 #include <shift-reduce-dp/dparser.h>
 #include <shift-reduce-dp/iparser.h>
+#include <shift-reduce-dp/iparser-ranks.h>
 #include <fstream>
 #include <vector>
 
@@ -412,7 +413,7 @@ public:
     		cerr << "CombinedAlign fails " << endl;
     		return 0;
     	}
-    	Ranks ranks(CombinedAlign(words,al, CombinedAlign::ATTACH_NULL_RIGHT));
+    	IParserRanks ranks(CombinedAlign(words,al, CombinedAlign::ATTACH_NULL_RIGHT));
     	FeatureDataSequence sent;
     	// Create a sentence
     	string str = "1 2 3 4";

@@ -50,7 +50,7 @@ void CombinedAlign::AlignBracketSpans(const vector<string> & words) {
 
 void CombinedAlign::CombineBlocks() {
     // Sort the source values in ascending order of target alignment
-    vector<pair<pair<double,double>, int> > word_spans(spans_.size());
+    vector<pair<Span, int> > word_spans(spans_.size());
     for(int i = 0; i < (int)spans_.size(); i++)
         word_spans[i] = MakePair(spans_[i], i);
     sort(word_spans.begin(), word_spans.end());
@@ -93,7 +93,7 @@ void CombinedAlign::BuildFromAlignment(
                     "Length of source sentence in alignments (" << align.GetSrcLen() << ") != length of source sentence in text file (" << words.size() << ")" << endl);
     // Create the new alignment vector
     const vector<pair<int,int> > & vec = align.GetAlignmentVector();
-    spans_ = vector<pair<double,double> >(align.GetSrcLen(), MakePair(-1,-1));
+    spans_ = vector<Span>(align.GetSrcLen(), MakePair(-1,-1));
     // Combine the spans
     for(int i = 0; i < (int)vec.size(); i++) {
         int src = vec[i].first;

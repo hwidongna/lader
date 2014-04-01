@@ -8,6 +8,7 @@ namespace lader {
 
 class CombinedAlign {
 public: 
+	typedef std::pair<double,double> Span;
 
     // How to handle null alignments. Either leave them as-is [-1,-1], or
     // attach them to the left or right
@@ -66,10 +67,10 @@ public:
     void CombineBlocks();
 
     // Accessors
-    const std::pair<double,double> & operator[] (size_t src) const {
+    const Span & operator[] (size_t src) const {
         return SafeAccess(spans_, src);
     }
-    const std::vector<std::pair<double,double> > & GetSpans() const {
+    const std::vector<Span > & GetSpans() const {
         return spans_;
     }
     int GetSrcLen() const { return spans_.size(); }
@@ -77,7 +78,7 @@ public:
 private:
     
     // The set of opening and closing brackets to be used in alignment
-    std::vector<std::pair<double,double> > spans_;
+    std::vector<Span > spans_;
 
 };
 
@@ -86,7 +87,7 @@ private:
 //  a) l's beginning or end is less than r's beginning or end respectively
 //  b) r's beginning and end are not lesser than l's beginning and end
 struct AlignmentIsLesser {
-    bool operator()(std::pair<double,double> l, std::pair<double,double> r) {
+    bool operator()(CombinedAlign::Span l, CombinedAlign::Span r) {
         return (l.first < r.first && l.second <= r.second) ||
                (l.second < r.second && l.first <= r.first);
     }

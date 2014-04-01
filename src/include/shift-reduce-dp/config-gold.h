@@ -34,6 +34,7 @@ public:
 "Produce the gold-standard ITG tree from an word-aligned corpus\n"
 );
         AddConfigEntry("out_format", "string", "A comma seperated list of outputs (string/parse/order/flatten/action)");
+        AddConfigEntry("placeholder", "[*]", "An output symbol for the placeholder (default is [*])");
         AddConfigEntry("align_in", "", "The input file for the alignments");
         AddConfigEntry("attach_null", "right", "Whether to attach null alignments to the left or right");
         AddConfigEntry("combine_blocks", "true", "Whether to combine alignments into blocks");

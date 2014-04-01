@@ -46,18 +46,21 @@ public:
         const std::vector<int> & reordering = result.order;
         // Print the string
         vector<string> words = ((FeatureDataSequence*)(datas[0]))->GetSequence();
-        if (result.order.size() != words.size()){
-        	ess << "Invalid parsing result " << endl;
-        	best->PrintTrace(ess);
-        	oss << endl;
-        	return;
-        }
+//        if (result.order.size() != words.size()){
+//        	ess << "Invalid parsing result " << endl;
+//        	best->PrintTrace(ess);
+//        	oss << endl;
+//        	return;
+//        }
         for(int i = 0; i < (int)outputs_->size(); i++) {
 			if(i != 0) oss << "\t";
 			if(outputs_->at(i) == ReordererRunner::OUTPUT_STRING) {
 				for(int j = 0; j < (int)reordering.size(); j++) {
 					if(j != 0) oss << " ";
-					oss << words[reordering[j]];
+					if (reordering[j] < 0 || words.size() <= reordering[j] )
+						oss << config_.GetString("placeholder");
+					else
+						oss << words[reordering[j]];
 				}
 			} else if(outputs_->at(i) == ReordererRunner::OUTPUT_PARSE) {
 				best->PrintParse(words, oss);

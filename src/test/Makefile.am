@@ -1,7 +1,8 @@
 LADERTH = test-alignments-and-ranks.h test-feature-vector.h test-base.h \
 test-hyper-graph.h test-dictionary.h test-loss-bracket.h test-feature-align.h \
 test-loss-chunk.h test-feature-parse.h test-loss-tau.h test-feature-sequence.h \
-test-reorderer-model.h test-feature-set.h test-shift-reduce-parser.h test-flat-tree.h
+test-reorderer-model.h test-feature-set.h test-shift-reduce-parser.h test-flat-tree.h \
+test-loss-edit-distance.h
 
 AM_CPPFLAGS = -I$(srcdir)/../include -DPKGDATADIR='"$(pkgdatadir)"' $(BOOST_CPPFLAGS)
 AM_LDFLAGS = $(BOOST_LDFLAGS)

@@ -202,7 +202,7 @@ void Parser::CompleteGolds(DPStateVector & simgolds, DPStateVector & golds,
 		cerr << endl;
 	}
 	// complete the rest gold items using refseq
-	for (int step = 1 ; step <= refseq->size() ; step++){
+	for (int step = 1 ; step <= refseq->size() && step < golds.size() ; step++){
 		if (golds[step] == NULL){
 			DPState::Action action = (*refseq)[step-1];
 			DPState * state = golds[step-1];
@@ -296,7 +296,7 @@ void Parser::Update(DPStateVector & golds, Result * result,
 	SetResult(result, beams_[naivepos][0]);
 }
 
-void SetResult(Parser::Result * result, const DPState * goal){
+void Parser::SetResult(Parser::Result * result, const DPState * goal){
 	if (!result || !goal)
 		THROW_ERROR("SetResult does not accept NULL arguments " << endl)
 	goal->GetReordering(result->order);

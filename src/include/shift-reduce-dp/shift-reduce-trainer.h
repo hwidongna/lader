@@ -34,7 +34,7 @@ class ShiftReduceTrainer : public ReordererTrainer {
 	class ShiftReduceTask : public Task {
 	public:
 		ShiftReduceTask(int id, const Sentence & data, const Ranks & ranks,
-				ReordererModel * model, FeatureSet * features, const ConfigBase& config,
+				ShiftReduceModel * model, FeatureSet * features, const ConfigBase& config,
 				Parser::Result & result, OutputCollector & collector, vector<Parser::Result> & kbest) :
 					id_(id), data_(data), ranks_(ranks), model_(model), features_(features), config_(config),
 					collector_(collector), result_(result), kbest_(kbest) { }
@@ -62,9 +62,9 @@ class ShiftReduceTrainer : public ReordererTrainer {
 				p = new Parser();
 			p->SetBeamSize(config_.GetInt("beam"));
 			p->SetVerbose(config_.GetInt("verbose"));
-			p->Search(*dynamic_cast<ShiftReduceModel*>(model_), *features_, data_);
+			p->Search(*model_, *features_, data_);
 			p->GetKbestResult(kbest_);
-			SetResult(&result_, p->GetBest());
+			Parser::SetResult(&result_, p->GetBest());
 			if (verbose >= 1){
 				err << "Result:   ";
 				for (int step = 0 ; step < result_.actions.size() ; step++)
@@ -82,7 +82,7 @@ class ShiftReduceTrainer : public ReordererTrainer {
 		int id_;
 		const Sentence & data_;
 		const Ranks & ranks_;
-		ReordererModel * model_; // The model
+		ShiftReduceModel * model_; // The model
 		FeatureSet * features_;  // The mapping on feature ids and which to use
 		const ConfigBase& config_;
 		Parser::Result & result_;

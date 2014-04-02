@@ -35,11 +35,12 @@ Ranks::Ranks(const CombinedAlign & combined) {
 }
 
 void Ranks::SetRanks(const std::vector<int> & order) {
-	if(order.size() != ranks_.size())
-		THROW_ERROR("Vector sizes in Reorder don't match: " << order.size() << " != " << ranks_.size() << endl)
 	// overwrite the new order as ranks
 	ranks_ = order;
-	max_rank_ = order.size()-1;
+	max_rank_= -1;
+	BOOST_FOREACH(int r, ranks_)
+		if (max_rank_ < r)
+			max_rank_ = r;
 }
 
 // TODO: split GetReference with swap

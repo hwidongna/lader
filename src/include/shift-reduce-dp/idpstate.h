@@ -34,6 +34,7 @@ public:
 	int GetNumDel() const { return ndel_; }
 	virtual void PrintParse(const vector<string> & strs, ostream & out) const;
 	virtual void PrintTrace(ostream & out) const;
+	static void Merge(ActionVector & result, const DPState * source, const DPState * target);
 protected:
 	virtual DPState * Shift();
 	// a delete action is also a reduce operation
@@ -43,7 +44,6 @@ protected:
 	int nins_, ndel_;				// the number of insert/delete actions taken so far
 };
 
-void Intersect(ActionVector & result, const DPState * source, const DPState * target);
 }
 
 namespace std {

@@ -64,6 +64,7 @@ public:
 			return NULL;
 		return b[0];
 	}
+	static void SetResult(Result * result, const DPState * goal);
 protected:
 	virtual bool Allow(DPState * state, DPState::Action action, int n) {
 		return state->Allow(action, n);
@@ -82,7 +83,6 @@ protected:
 	int verbose_;
 	ActionVector actions_;
 };
-void SetResult(Parser::Result * result, const DPState * goal);
 
 
 } /* namespace lader */

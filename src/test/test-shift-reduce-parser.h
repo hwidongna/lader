@@ -497,7 +497,7 @@ public:
     	return ret;
     }
 
-    int TestIntersection() {
+    int TestMerge() {
     	sent.FromString("a man plays piano");
     	int n = sent.GetNumWords();
     	ActionVector refseq = DPState::ActionFromString("F F Z F F I S E"); // one more idle state
@@ -519,7 +519,7 @@ public:
 		}
 		refseq = DPState::ActionFromString("F F Z V F F V I S"); // no idle state
 		ActionVector act;
-		Intersect(act, gf2e, ge2f);
+		IDPState::Merge(act, gf2e, ge2f);
     	if (act.size() != refseq.size()){
     		cerr << "incomplete all actions: size " << act.size() << " != " << refseq.size() << endl;
     		ret = 0;
@@ -550,6 +550,115 @@ public:
     	}
     	return ret;
     }
+
+    int TestMerge1toM(){
+    	sent.FromString("he ate rice");
+		int n = sent.GetNumWords();
+		ActionVector refseq = DPState::ActionFromString("F F F I S");
+		IParser f2e(n,n);
+		int ret=1;
+		DPState * gf2e = f2e.GuidedSearch(refseq, n);
+		if (!gf2e->IsGold()){
+			cerr << *gf2e << endl;
+			ret = 0;
+		}
+    	sent.FromString("he NOM rice ACC eat PAST");
+    	n = sent.GetNumWords();
+    	refseq = DPState::ActionFromString("F F X F F X F F S I S");
+    	IParser e2f(n,n);
+    	DPState * ge2f = e2f.GuidedSearch(refseq, n);
+    	if (!ge2f->IsGold()){
+    		cerr << *ge2f << endl;
+    		ret = 0;
+    	}
+    	refseq = DPState::ActionFromString("F V F F V I S");
+		ActionVector act;
+		IDPState::Merge(act, gf2e, ge2f);
+		if (act.size() != refseq.size()){
+			cerr << "incomplete all actions: size " << act.size() << " != " << refseq.size() << endl;
+			ret = 0;
+		}
+		ret *= CheckVector(refseq, act);
+		if (!ret){
+			cerr << "incorrect all actions" << endl;
+			ret = 0;
+		}
+		sent.FromString("he ate rice");
+		n = sent.GetNumWords();
+		IParser p(n,n);
+		DPState * goal = p.GuidedSearch(refseq, n);
+		if (!goal->IsGold()){
+			cerr << *goal << endl;
+			ret = 0;
+		}
+		{ // check reordering
+			vector<int> act;
+			goal->GetReordering(act);
+			vector<int> exp(n+2); // two target words are inserted
+			exp[0]=0, exp[1]=-1, exp[2]=2, exp[3]=-1, exp[4]=1;
+			ret *= CheckVector(exp, act);
+			if (!ret){
+				cerr << "incorrect get reordering" << endl;
+				ret = 0;
+			}
+		}
+		return ret;
+    }
+
+    int TestMergeNto1(){
+    	sent.FromString("the man ate rice");
+		int n = sent.GetNumWords();
+		ActionVector refseq = DPState::ActionFromString("F F Z F F I S");
+		IParser f2e(n,n);
+		int ret=1;
+		DPState * gf2e = f2e.GuidedSearch(refseq, n);
+		if (!gf2e->IsGold()){
+			cerr << *gf2e << endl;
+			ret = 0;
+		}
+    	sent.FromString("man NOM rice ACC eat PAST");
+    	n = sent.GetNumWords();
+    	refseq = DPState::ActionFromString("F F X F F X F F S I S");
+    	IParser e2f(n,n);
+    	DPState * ge2f = e2f.GuidedSearch(refseq, n);
+    	if (!ge2f->IsGold()){
+    		cerr << *ge2f << endl;
+    		ret = 0;
+    	}
+    	refseq = DPState::ActionFromString("F F X C F F X F F S I S");
+		ActionVector act;
+		IDPState::Merge(act, ge2f, gf2e); // reverse direction
+		if (act.size() != refseq.size()){
+			cerr << "incomplete all actions: size " << act.size() << " != " << refseq.size() << endl;
+			ret = 0;
+		}
+		ret *= CheckVector(refseq, act);
+		if (!ret){
+			cerr << "incorrect all actions" << endl;
+			ret = 0;
+		}
+		sent.FromString("man NOM rice ACC eat PAST");
+		n = sent.GetNumWords();
+		IParser p(n,n);
+		DPState * goal = p.GuidedSearch(refseq, n);
+		if (!goal->IsGold()){
+			cerr << *goal << endl;
+			ret = 0;
+		}
+		{ // check reordering
+			vector<int> act;
+			goal->GetReordering(act);
+			vector<int> exp(n-2+1); // one source word is inserted, two target words are deleted
+			exp[0]=-1, exp[1]=0, exp[2]=4, exp[3]=5, exp[4]=2;
+			ret *= CheckVector(exp, act);
+			if (!ret){
+				cerr << "incorrect get reordering" << endl;
+				ret = 0;
+			}
+		}
+		return ret;
+    }
+
     int TestInsideOut() {
     	// Create a combined alignment
 		//  .x..
@@ -712,7 +821,7 @@ public:
     	{ // check reordering
 
 	    	Parser::Result result;
-	    	SetResult(&result, goal);
+	    	Parser::SetResult(&result, goal);
     		vector<int> & act = result.order;
 			vector<int> exp(n);
 			exp[0]=1, exp[1]=2, exp[2]=4, exp[3]=0;
@@ -886,7 +995,9 @@ public:
     	done++; cout << "TestShift3()" << endl; if(TestShift3()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestDelete()" << endl; if(TestDelete()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestInsert()" << endl; if(TestInsert()) succeeded++; else cout << "FAILED!!!" << endl;
-    	done++; cout << "TestIntersection()" << endl; if(TestIntersection()) succeeded++; else cout << "FAILED!!!" << endl;
+    	done++; cout << "TestMerge()" << endl; if(TestMerge()) succeeded++; else cout << "FAILED!!!" << endl;
+    	done++; cout << "TestMerge1toM()" << endl; if(TestMerge1toM()) succeeded++; else cout << "FAILED!!!" << endl;
+    	done++; cout << "TestMergeNto1()" << endl; if(TestMergeNto1()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestInsideOut()" << endl; if(TestInsideOut()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestInsideOutSearch()" << endl; if(TestInsideOutSearch()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestSwapAfterReduce()" << endl; if(TestSwapAfterReduce()) succeeded++; else cout << "FAILED!!!" << endl;

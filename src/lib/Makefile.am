@@ -6,7 +6,7 @@ LADERCPP = lader.cc hyper-graph.cc combined-alignment.cc alignment.cc \
            feature-data-parse.cc target-span.cc feature-parse.cc \
            loss-bracket.cc feature-align.cc thread-pool.cc hypothesis.cc
 
-SRDPCPP = parser.cc dpstate.cc shift-reduce-trainer.cc ddpstate.cc idpstate.cc
+SRDPCPP = parser.cc dpstate.cc shift-reduce-trainer.cc ddpstate.cc idpstate.cc iparser-trainer.cc
 
 RERANKERCPP = flat-tree.cc reranker-model.cc
 

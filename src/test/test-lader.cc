@@ -9,6 +9,7 @@
 #include "test-loss-chunk.h"
 #include "test-loss-tau.h"
 #include "test-loss-bracket.h"
+#include "test-loss-edit-distance.h"
 #include "test-dictionary.h"
 #include "test-shift-reduce-parser.h"
 #include "test-flat-tree.h"
@@ -31,6 +32,7 @@ int main() {
     tests.push_back(new TestLossChunk());
     tests.push_back(new TestLossTau());
     tests.push_back(new TestLossBracket());
+    tests.push_back(new TestLossEditDistance());
     tests.push_back(new TestDictionary());
     tests.push_back(new TestShiftReduceParser());
     tests.push_back(new TestFlatTree());

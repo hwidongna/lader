@@ -14,6 +14,7 @@
 using namespace boost;
 
 namespace lader{
+
 class ShiftReduceModel : public ReordererModel {
 public:
 	ShiftReduceModel() : ReordererModel(), max_state_(1), max_swap_(0) {}
@@ -60,8 +61,9 @@ public:
 	    }
 	    return ret;
 	}
-private:
+protected:
 	int max_state_;	// The maximum number of states in equality checking
+	// TODO: need to split swap
 	int max_swap_;	// The maximum number of swap actions for non-ITG
 };
 }

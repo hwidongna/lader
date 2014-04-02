@@ -5,7 +5,7 @@ AM_LDFLAGS = $(BOOST_LDFLAGS)
 
 bin_PROGRAMS = train-lader lader evaluate-lader label-ranking \
 				train-shift-reduce shift-reduce shift-reduce-kbest \
-				extract-feature gold-standard iparser-gold \
+				extract-feature gold-standard iparser-gold train-iparser \
 				renumber-feature reranker reranker-oracle
 
 train_lader_SOURCES = train-lader.cc
@@ -34,6 +34,9 @@ extract_feature_LDADD = ../lib/liblader.la -lboost_regex-mt -lboost_thread-mt -l
 
 gold_standard_SOURCES = gold-standard.cc
 gold_standard_LDADD = ../lib/liblader.la -lboost_regex-mt -lboost_thread-mt -lboost_filesystem -lboost_system -lrt
+
+train_iparser_SOURCES = train-iparser.cc
+train_iparser_LDADD = ../lib/liblader.la -lboost_regex-mt -lboost_thread-mt -lboost_filesystem -lboost_system -lrt
 
 iparser_gold_SOURCES = iparser-gold.cc
 iparser_gold_LDADD = ../lib/liblader.la -lboost_regex-mt -lboost_thread-mt -lboost_filesystem -lboost_system -lrt

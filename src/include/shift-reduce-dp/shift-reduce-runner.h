@@ -31,7 +31,7 @@ public:
 	void Output(const Sentence & datas, const DPState *best)
     {
         Parser::Result result;
-        SetResult(&result, best);
+        Parser::SetResult(&result, best);
         if (config_.GetInt("verbose") >= 1){
 			ess << "Result:   ";
 			for (int step = 0 ; step < (const int)result.actions.size() ; step++)

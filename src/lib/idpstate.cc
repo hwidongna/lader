@@ -162,8 +162,8 @@ bool IDPState::Allow(const Action & action, const int n){
 		return src_r_ < n;
 	else if (action == IDLE)
 		return src_l_ == 0 && src_r_ == n;
-	else if (action == INSERT_L || action == INSERT_R)
-		return action_ != INIT;
+	else if (action == INSERT_L || action == INSERT_R) // do not allow consecutive insert
+		return action_ != INIT && action_ != INSERT_L && action_ != INSERT_R;
 	else if (action == DELETE_L)
 		return leftstate && leftstate ->action_ != INIT && leftstate->action_ == SHIFT;
 	else if (action == DELETE_R)
@@ -274,37 +274,48 @@ void IDPState::PrintTrace(ostream & out) const{
 // Delete actions in the source tree remain delete actions in the result
 // Deletions preceed to insertions, and idle actions are ignored
 // Note that inverted actions change the order of children
-void Intersect(ActionVector & result, const DPState * source, const DPState * target){
+void IDPState::Merge(ActionVector & result, const DPState * source, const DPState * target){
 	if (source == NULL || target == NULL){
 		return;
 	} else if (target->GetAction() == DPState::IDLE){
-		Intersect(result, source, target->RightChild());
+		Merge(result, source, target->RightChild());
 	} else if (source->GetAction() == DPState::IDLE){
-		Intersect(result, source->RightChild(), target);
+		Merge(result, source->RightChild(), target);
 	} else if (target->GetAction() == DPState::DELETE_L) {
-		Intersect(result, source, target->RightChild());
+		Merge(result, source, target->RightChild());
 		result.push_back(DPState::INSERT_L);
 	} else if (target->GetAction() == DPState::DELETE_R) {
-		Intersect(result, source, target->LeftChild());
+		Merge(result, source, target->LeftChild());
 		result.push_back(DPState::INSERT_R);
 	} else if (source->GetAction() == DPState::DELETE_L) {
 		result.push_back(DPState::SHIFT);
-		Intersect(result, source->RightChild(), target);
+		Merge(result, source->RightChild(), target);
 		result.push_back(DPState::DELETE_L);
 	} else if (source->GetAction() == DPState::DELETE_R) {
-		Intersect(result, source->LeftChild(), target);
+		Merge(result, source->LeftChild(), target);
 		result.push_back(DPState::SHIFT);
 		result.push_back(DPState::DELETE_R);
-	} else if (source->GetAction() == target->GetAction()) {
-		if (source->GetAction() == DPState::STRAIGTH){
-			Intersect(result, source->LeftChild(), target->LeftChild());
-			Intersect(result, source->RightChild(), target->RightChild());
-		} else if (source->GetAction() == DPState::INVERTED){
-			Intersect(result, source->LeftChild(), target->RightChild());
-			Intersect(result, source->RightChild(), target->LeftChild());
+	} else if (source->GetAction() == DPState::STRAIGTH){
+		if (target->LeftChild() && target->RightChild()){
+			Merge(result, source->LeftChild(), target->LeftChild());
+			Merge(result, source->RightChild(), target->RightChild());
+		} else {
+			Merge(result, source->LeftChild(), target);
+			Merge(result, source->RightChild(), target);
 		}
 		result.push_back(source->GetAction());
-	} else
+	} else if (source->GetAction() == DPState::INVERTED){
+		if (target->LeftChild() && target->RightChild()){
+			Merge(result, source->LeftChild(), target->RightChild());
+			Merge(result, source->RightChild(), target->LeftChild());
+		} else {
+			Merge(result, source->LeftChild(), target);
+			Merge(result, source->RightChild(), target);
+		}
+		result.push_back(source->GetAction());
+	} else if (source->GetAction() == DPState::SHIFT)
+		result.push_back(source->GetAction());
+	else
 		THROW_ERROR("Fail to intersect" << endl << *source << endl << *target << endl);
 }
 

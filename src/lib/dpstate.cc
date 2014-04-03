@@ -211,10 +211,10 @@ void DPState::GetReordering(vector<int> & result) const{
 void DPState::SetSignature(int max){
 	if (!signature_.empty())
 		THROW_ERROR("Signature exists!" << *this)
-	DPState * leftstate = this;
-	for (int i = 0 ; i < max && leftstate->action_ != INIT ; i++){
-		signature_.push_back(leftstate->GetTrgSpan());
-		leftstate = leftstate->GetLeftState();
+	DPState * state = this;
+	for (int i = 0 ; i < max && state->action_ != INIT ; i++){
+		signature_.push_back(state->GetTrgSpan());
+		state = state->GetLeftState();
 	}
 }
 DPState * DPState::Previous() const{

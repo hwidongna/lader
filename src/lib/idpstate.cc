@@ -94,11 +94,12 @@ void IDPState::Take(Action action, DPStateVector & result, bool actiongold,
 	case INVERTED:
 		BOOST_FOREACH(DPState * leftstate, leftptrs_){
 			next = Reduce(leftstate, action);
+			if (!next)
+				continue;
 			next->inside_ = leftstate->inside_ + inside_ + leftstate->shiftcost_ + actioncost;
 			next->score_ = leftstate->score_ + inside_ + leftstate->shiftcost_ + actioncost;
 			next->gold_ = leftstate->gold_ && gold_ && actiongold;
 			next->leftptrs_ = leftstate->leftptrs_;
-			BackPtr back;
 			back.action = action;
 			back.cost = leftstate->shiftcost_ + actioncost;
 			back.lchild = leftstate;
@@ -124,6 +125,9 @@ DPState * IDPState::Shift(){
 
 // a reduced/deleted state
 DPState * IDPState::Reduce(DPState * leftstate, Action action){
+	if ((action == DELETE_L && leftstate->action_ != SHIFT)
+		|| (action == DELETE_R && action_ != SHIFT))
+		return NULL;
 	IDPState * next = new IDPState(step_+1, leftstate->src_l_, src_r_, action);
 	next->src_c_ = src_l_;
 	if (action == STRAIGTH){
@@ -133,7 +137,7 @@ DPState * IDPState::Reduce(DPState * leftstate, Action action){
 		next->trg_l_ = trg_l_;		next->trg_r_ = leftstate->trg_r_;
 	}
 	else{
-		next->trg_l_ = trg_l_;	next->trg_r_ = trg_r_;
+		next->trg_l_ = leftstate->trg_l_;	next->trg_r_ = trg_r_;
 	}
 	next->nins_ = nins_;
 	if (action == DELETE_L || action == DELETE_R)
@@ -147,7 +151,15 @@ DPState * IDPState::Reduce(DPState * leftstate, Action action){
 DPState * IDPState::Insert(Action action){
 	IDPState * next = new IDPState(step_+1, src_l_, src_r_, action);
 	next->src_c_ = src_c_;
-	next->trg_l_ = trg_l_;	next->trg_r_ = trg_r_;
+	if (action == INSERT_L){
+		next->trg_l_ = -1;	next->trg_r_ = trg_r_;
+	}
+	else if (action == INSERT_R){
+		next->trg_l_ = trg_l_;	next->trg_r_ = -1;
+	}
+	else{
+		next->trg_l_ = trg_l_;	next->trg_r_ = trg_r_;
+	}
 	if (action == IDLE)
 		next->nins_ = nins_;
 	else
@@ -165,7 +177,9 @@ bool IDPState::Allow(const Action & action, const int n){
 	else if (action == INSERT_L || action == INSERT_R) // do not allow consecutive insert
 		return action_ != INIT && action_ != INSERT_L && action_ != INSERT_R;
 	else if (action == DELETE_L)
-		return leftstate && leftstate ->action_ != INIT && leftstate->action_ == SHIFT;
+		// this only check whether the first left state is shifted
+		// thus, check the rest left state again when actually take action
+		return leftstate && leftstate->action_ == SHIFT;
 	else if (action == DELETE_R)
 		return leftstate && leftstate ->action_ != INIT && action_ == SHIFT;
 	return leftstate && leftstate->action_ != INIT && leftstate->src_r_ == src_l_;
@@ -264,7 +278,10 @@ void IDPState::PrintParse(const vector<string> & strs, ostream & out) const{
 }
 
 void IDPState::PrintTrace(ostream & out) const{
-	out << *this << endl;
+	out << *this;
+	BOOST_FOREACH(Span span, GetSignature())
+		cerr << " [" << span.first << ", " << span.second << "]";
+	out << endl;
 	if (Previous())
 		Previous()->PrintTrace(out);
 }

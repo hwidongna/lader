@@ -120,7 +120,8 @@ void IParserTrainer::TrainIncremental(const ConfigBase & config) {
 				cerr << endl;
         	}
         	if (frefseq.empty() || erefseq.empty()){
-        		cerr << "Parser cannot produce the reference sequence, skip it" << endl;
+        		if (verbose >= 1)
+        			cerr << "Parser cannot produce the reference sequence, skip it" << endl;
         		continue;
         	}
         	int J = (frefseq.size()+1) / 2;
@@ -151,8 +152,8 @@ void IParserTrainer::TrainIncremental(const ConfigBase & config) {
 			}
 			if (verbose >= 1){
 				cerr << "Merged Reference:";
-				BOOST_FOREACH(DPState::Action action, refseq)
-					cerr << " " << (char)action;
+				for (int step = 0 ; step < refseq.size() ; step++)
+					cerr << " " << (char)refseq[step]  << "_" << step+1;
 				cerr << endl;
 			}
 //			n = (*data_[sent])[0]->GetNumWords();
@@ -171,9 +172,9 @@ void IParserTrainer::TrainIncremental(const ConfigBase & config) {
         	search.tv_sec += tend.tv_sec - tstart.tv_sec;
         	search.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
         	if (verbose >= 1){
-        		cerr << "Result:   ";
+        		cerr << "Result ActionSeq:";
 				for (int step = 0 ; step < result.actions.size() ; step++)
-					cerr << " " << (char) result.actions[step];
+					cerr << " " << (char) result.actions[step] << "_" << step+1;
 				cerr << endl;
 				DPState * best = parser.GetBeamBest(result.step);
         		IDPState * dbest = dynamic_cast<IDPState*>(best);
@@ -365,7 +366,7 @@ void IParserTrainer::TrainIncremental(const ConfigBase & config) {
 		for(int i = 0; i < (int) sum_losses_kbests.size(); i++) {
 			if(i != 0) cout << "\t";
 			cout << "*" << losses_[i]->GetName() << "=" << setprecision(3)
-					<< (1 - sum_losses_kbests[i].first/sum_losses_kbests[i].second)
+					<< (1 - sum_losses_kbests[i].first/sum_losses_kbests[i].second) << setprecision(6)
 					<< " (loss "<<sum_losses_kbests[i].first/losses_[i]->GetWeight() << "/"
 					<<sum_losses_kbests[i].second/losses_[i]->GetWeight()<<")";
 		}

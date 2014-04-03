@@ -36,7 +36,7 @@ public:
         AddConfigEntry("cost", "1e-3", "The rate at which to learn");
         AddConfigEntry("feature_profile", "seq=Q0%q0%aT,LL0%s0L%aT,RR0%s0R%aT,LR0%l0R%aT,RL0%r0L%aT,O0%s0L%s0R%aT,I0%l0R%r0L%aT,BIAS%aT", "Which features to use ");
         AddConfigEntry("iterations", "15", "The number of iterations of training to perform.");
-        AddConfigEntry("loss_profile", "chunk=1", "Which loss functions to use");
+        AddConfigEntry("loss_profile", "edit-distance=1", "Which loss functions to use");
         AddConfigEntry("max_state", "1", "The maximum numer of states in equality checking");
         AddConfigEntry("max_ins", "1", "The maximum numer of insert actions");
         AddConfigEntry("max_del", "1", "The maximum numer of delete actions");

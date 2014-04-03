@@ -4,11 +4,10 @@
  *  Created on: Feb 14, 2014
  *      Author: leona
  */
-#include <reranker/flat-tree.h>
+#include "shift-reduce-dp/flat-tree.h"
 #include <lader/util.h>
 #include <stack>
 
-using namespace reranker;
 using namespace lader;
 
 inline void Node::MergeChildrenAndDelete(Node * v){
@@ -84,6 +83,56 @@ DPStateNode * DDPStateNode::Flatten(const lader::DPState * root){
 			v->MergeChildrenAndDelete(r);
 		else
 			v->AddChild(r);
+	}
+	return v;
+}
+
+DPStateNode * IDPStateNode::Flatten(const lader::DPState * root){
+	if (!root) // just in case
+		return NULL;
+	DPStateNode * v = new IDPStateNode(root->GetSrcL(), root->GetSrcR(), this, root->GetAction());
+	DPState * lchild, * rchild;
+	DPStateNode * l, * r;
+	switch(root->GetAction()){
+	case DPState::INSERT_L:
+	case DPState::INSERT_R:
+		rchild = root->RightChild();
+		r = v->Flatten(rchild);
+		v->AddChild(r);
+		break;
+	case DPState::IDLE:
+		rchild = root->RightChild();
+		r = v->Flatten(rchild);
+		v->SetLabel(r->GetLabel()); // does not affect the tree structure
+		v->MergeChildrenAndDelete(r);
+		break;
+	case DPState::DELETE_L:
+	case DPState::DELETE_R:
+	case DPState::STRAIGTH:
+	case DPState::INVERTED:
+		lchild = root->LeftChild();
+		if (!lchild)
+			THROW_ERROR("NULL left child ")
+		l = v->Flatten(lchild);
+		if ( l->GetLabel() == v->GetLabel() )
+			v->MergeChildrenAndDelete(l);
+		else
+			v->AddChild(l);
+		rchild = root->RightChild();
+		if (!rchild)
+			THROW_ERROR("NULL right child")
+		r = v->Flatten(rchild);
+		if (r->GetLabel() == v->GetLabel() )
+			v->MergeChildrenAndDelete(r);
+		else
+			v->AddChild(r);
+		break;
+	case DPState::SHIFT:
+		// do nothing
+		break;
+	default:
+		THROW_ERROR("Unsupported action " << (char) root->GetAction() << " is taken" << endl)
+		break;
 	}
 	return v;
 }

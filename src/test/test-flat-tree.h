@@ -13,11 +13,12 @@
 #include <lader/feature-sequence.h>
 #include <lader/feature-data-sequence.h>
 #include <lader/feature-set.h>
-#include <reranker/flat-tree.h>
+#include <shift-reduce-dp/flat-tree.h>
 #include <reranker/features.h>
 #include <shift-reduce-dp/ddpstate.h>
 #include <fstream>
 #include <vector>
+
 using namespace reranker;
 
 namespace lader {

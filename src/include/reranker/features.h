@@ -7,7 +7,7 @@
 
 #ifndef FEATURES_H_
 #define FEATURES_H_
-#include <reranker/flat-tree.h>
+#include <shift-reduce-dp/flat-tree.h>
 #include <boost/foreach.hpp>
 #include <reranker/reranker-model.h>
 using namespace lader;

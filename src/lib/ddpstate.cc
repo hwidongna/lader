@@ -9,7 +9,7 @@
 
 
 #include "shift-reduce-dp/ddpstate.h"
-#include "reranker/flat-tree.h"
+#include "shift-reduce-dp/flat-tree.h"
 #include <cstdlib>
 #include <boost/foreach.hpp>
 #include <lader/reorderer-model.h>
@@ -392,8 +392,8 @@ void DDPState::PrintTrace(ostream & out) const{
 		Previous()->PrintTrace(out);
 }
 
-reranker::DPStateNode * DDPState::ToFlatTree(){
-	reranker::DPStateNode * root = new reranker::DDPStateNode(0, src_r_, NULL, DPState::INIT);
+DPStateNode * DDPState::ToFlatTree(){
+	DPStateNode * root = new DDPStateNode(0, src_r_, NULL, DPState::INIT);
 	root->AddChild(root->Flatten(this));
 	return root;
 }

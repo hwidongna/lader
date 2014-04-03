@@ -11,11 +11,6 @@
 #include <shift-reduce-dp/dpstate.h>
 using namespace std;
 
-namespace reranker{
-class DPStateNode;
-class DDPStateNode;
-}
-
 namespace lader{
 
 class DDPState : public DPState{
@@ -54,7 +49,7 @@ public:
 	}
 	virtual void PrintParse(const vector<string> & strs, ostream & out) const;
 	virtual void PrintTrace(ostream & out) const;
-	virtual reranker::DPStateNode * ToFlatTree();
+	virtual DPStateNode * ToFlatTree();
 protected:
 	virtual DPState * Shift();
 	virtual DPState * Reduce(DPState * leftstate, Action action);

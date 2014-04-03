@@ -12,7 +12,7 @@
 #include <reranker/features.h>
 #include <reranker/config-extractor.h>
 #include <reranker/reranker-model.h>
-#include <reranker/flat-tree.h>
+#include <shift-reduce-dp/flat-tree.h>
 #include <boost/algorithm/string.hpp>
 #include <fstream>
 #include <vector>

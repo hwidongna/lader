@@ -12,7 +12,7 @@
 #include <lader/feature-set.h>
 #include <shift-reduce-dp/dparser.h>
 #include <lader/feature-data-sequence.h>
-#include <reranker/flat-tree.h>
+#include <shift-reduce-dp/flat-tree.h>
 
 using namespace std;
 namespace lader {

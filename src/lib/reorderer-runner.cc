@@ -4,12 +4,11 @@
 #include <lader/output-collector.h>
 #include <boost/tokenizer.hpp>
 #include <lader/hyper-graph.h>
-#include <reranker/flat-tree.h>
+#include "shift-reduce-dp/flat-tree.h"
 
 using namespace lader;
 using namespace std;
 using namespace boost;
-using namespace reranker;
 
 void ReordererTask::Run() {
     int verbose = config_.GetInt("verbose");
@@ -52,8 +51,8 @@ void ReordererTask::Run() {
         } else if(outputs_->at(i) == ReordererRunner::OUTPUT_SCORE) {
         	oss << graph_->GetBest()->GetScore();
         } else if(outputs_->at(i) == ReordererRunner::OUTPUT_FLATTEN) {
-        	reranker::HypNode dummy(0, words.size(), NULL, HyperEdge::EDGE_ROOT);
-        	reranker::HypNode * root = dummy.Flatten(graph_->GetBest()->GetLeftHyp());
+        	HypNode dummy(0, words.size(), NULL, HyperEdge::EDGE_ROOT);
+        	HypNode * root = dummy.Flatten(graph_->GetBest()->GetLeftHyp());
         	root->PrintParse(words, oss);
         } else {
             THROW_ERROR("Unimplemented output format");

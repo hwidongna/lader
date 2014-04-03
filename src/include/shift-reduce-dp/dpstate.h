@@ -16,14 +16,11 @@
 #include <tr1/unordered_map>
 using namespace std;
 
-namespace reranker{
-class DPStateNode;
-}
-
 namespace lader {
 
 #define MULTI_K 0xFFFF
 
+class DPStateNode;
 class ReordererModel;
 class FeatureSet;
 class DPState;
@@ -105,7 +102,7 @@ public:
 	}
 	virtual void PrintParse(const vector<string> & strs, ostream & out) const;
 	virtual void PrintTrace(ostream & out) const;
-	virtual reranker::DPStateNode * ToFlatTree();
+	virtual DPStateNode * ToFlatTree();
 protected:
 	virtual DPState * Shift();
 	virtual DPState * Reduce(DPState * leftstate, Action action);

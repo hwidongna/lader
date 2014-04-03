@@ -13,7 +13,7 @@
 #include <shift-reduce-dp/dparser.h>
 #include <shift-reduce-dp/shift-reduce-model.h>
 #include <lader/feature-data-sequence.h>
-#include <reranker/flat-tree.h>
+#include <shift-reduce-dp/flat-tree.h>
 #include <time.h>
 using namespace std;
 namespace lader {
@@ -28,6 +28,10 @@ public:
 			const ConfigBase& config, OutputCollector * collector) :
 				id_(id), line_(line), model_(model), features_(features),
 				outputs_(outputs), collector_(collector), config_(config) { }
+	virtual ~ShiftReduceTask() { }
+	virtual DPStateNode * NewDPStateNode(vector<string> & words){
+		return new DDPStateNode(0, words.size(), NULL, DPState::INIT);
+	}
 	void Output(const Sentence & datas, const DPState *best)
     {
         Parser::Result result;
@@ -72,9 +76,10 @@ public:
 			} else if(outputs_->at(i) == ReordererRunner::OUTPUT_SCORE) {
 				oss << result.score;
 			} else if(outputs_->at(i) == ReordererRunner::OUTPUT_FLATTEN) {
-				reranker::DDPStateNode root(0, words.size(), NULL, DPState::INIT);
-				root.AddChild(root.Flatten(best));
-				root.PrintParse(words, oss);
+				DPStateNode * root = NewDPStateNode(words);
+				root->AddChild(root->Flatten(best));
+				root->PrintParse(words, oss);
+				delete root;
 			} else if(outputs_->at(i) == ReordererRunner::OUTPUT_ACTION) {
 				for(int j = 0; j < (int)result.actions.size(); j++) {
 					if(j != 0) oss << " ";
@@ -139,7 +144,7 @@ protected:
 class ShiftReduceRunner : public ReordererRunner{
 public:
 	// Initialize the model
-	void InitializeModel(const ConfigBase & config) {
+	virtual void InitializeModel(const ConfigBase & config) {
 		std::ifstream in(config.GetString("model").c_str());
 		if(!in) THROW_ERROR("Couldn't read model from file (-model '"
 							<< config.GetString("model") << "')");

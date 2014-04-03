@@ -10,7 +10,7 @@
 #include <lader/loss-tau.h>
 #include <lader/ranks.h>
 #include <boost/algorithm/string.hpp>
-#include <reranker/flat-tree.h>
+#include <shift-reduce-dp/flat-tree.h>
 #include <shift-reduce-dp/dparser.h>
 #include <sstream>
 

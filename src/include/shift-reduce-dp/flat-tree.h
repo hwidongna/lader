@@ -15,7 +15,7 @@
 
 using namespace std;
 
-namespace reranker {
+namespace lader {
 
 class Node;
 typedef vector<Node*> NodeList;
@@ -31,7 +31,7 @@ public:
 				delete node;
 	}
 	void AddChild(Node * child) { child->parent_ = this; children_.push_back(child); }
-	Node * GetChild(int i) const { return lader::SafeAccess(children_, i); }
+	Node * GetChild(int i) const { return SafeAccess(children_, i); }
 	NodeList GetChildren() const { return children_; }
 	int GetLeft()  const { return left_; }
 	int GetRight() const { return right_; }
@@ -91,29 +91,36 @@ protected:
 
 class DPStateNode : public GenericNode{
 public:
-	DPStateNode(int left, int right, Node * parent, lader::DPState::Action action) :
+	DPStateNode(int left, int right, Node * parent, DPState::Action action) :
 		GenericNode(left, right, parent, (char)action) { }
-	virtual DPStateNode * Flatten(const lader::DPState * root);
+	virtual DPStateNode * Flatten(const DPState * root);
 };
 
 class DDPStateNode : public DPStateNode{
 public:
-	DDPStateNode(int left, int right, Node * parent, lader::DPState::Action action) :
+	DDPStateNode(int left, int right, Node * parent, DPState::Action action) :
 		DPStateNode(left, right, parent, action) { }
-	virtual DPStateNode * Flatten(const lader::DPState * root);
+	virtual DPStateNode * Flatten(const DPState * root);
+};
+
+class IDPStateNode : public DPStateNode{
+public:
+	IDPStateNode(int left, int right, Node * parent, DPState::Action action) :
+		DPStateNode(left, right, parent, action) { }
+	virtual DPStateNode * Flatten(const DPState * root);
 };
 
 class HypNode : public GenericNode{
 public:
-	HypNode(int left, int right, Node * parent, lader::HyperEdge::Type type ) :
+	HypNode(int left, int right, Node * parent, HyperEdge::Type type ) :
 		GenericNode(left, right, parent, (char)type) { }
-	HypNode * Flatten(lader::Hypothesis * root);
+	HypNode * Flatten(Hypothesis * root);
 };
 }
 
 namespace std {
 inline ostream& operator << ( ostream& out,
-                                   const reranker::Node & rhs )
+                                   const lader::Node & rhs )
 {
     out << rhs.GetLabel() << ":"
     	<< "<" << rhs.GetLeft() << ", " << rhs.GetRight() << ">";

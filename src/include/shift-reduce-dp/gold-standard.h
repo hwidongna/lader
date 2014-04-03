@@ -13,7 +13,7 @@
 #include <lader/feature-set.h>
 #include <shift-reduce-dp/ddpstate.h>
 #include <lader/feature-data-sequence.h>
-#include <reranker/flat-tree.h>
+#include <shift-reduce-dp/flat-tree.h>
 #include <shift-reduce-dp/config-gold.h>
 #include <boost/tokenizer.hpp>
 #include <shift-reduce-dp/shift-reduce-runner.h>

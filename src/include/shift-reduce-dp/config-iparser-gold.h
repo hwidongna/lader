@@ -1,12 +1,12 @@
 /*
- * config-gold.h
+ * config-iparser-gold.h
  *
- *  Created on: Feb 26, 2014
+ *  Created on: Apr 3, 2014
  *      Author: leona
  */
 
-#ifndef CONFIG_GOLD_H_
-#define CONFIG_GOLD_H_
+#ifndef CONFIG_IPARSER_GOLD_H_
+#define CONFIG_IPARSER_GOLD_H_
 
 #include <string>
 #include <vector>
@@ -19,11 +19,11 @@ using namespace lader;
 
 namespace reranker{
 
-class ConfigGold : public ConfigBase {
+class ConfigIParserGold : public ConfigBase {
 
 public:
 
-    ConfigGold() : ConfigBase() {
+    ConfigIParserGold() : ConfigBase() {
         minArgs_ = 0;
         maxArgs_ = 0;
 
@@ -34,6 +34,7 @@ public:
 "Produce the gold-standard ITG tree from an word-aligned corpus\n"
 );
         AddConfigEntry("out_format", "string", "A comma seperated list of outputs (string/parse/order/flatten/action)");
+        AddConfigEntry("placeholder", "[*]", "An output symbol for the placeholder (default is [*])");
         AddConfigEntry("align_in", "", "The input file for the alignments");
         AddConfigEntry("attach_null", "right", "Whether to attach null alignments to the left or right");
         AddConfigEntry("combine_blocks", "true", "Whether to combine alignments into blocks");
@@ -49,4 +50,4 @@ public:
 }
 
 
-#endif /* CONFIG_GOLD_H_ */
+#endif /* CONFIG_IPARSER_GOLD_H_ */

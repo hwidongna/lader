@@ -12,10 +12,11 @@ lader/util.h lader/config.h lader/thread-pool.h lader/output-collector.h \
 shift-reduce-dp/dpstate.h shift-reduce-dp/parser.h shift-reduce-dp/shift-reduce-trainer.h \
 shift-reduce-dp/config-trainer.h shift-reduce-dp/config-runner.h \
 shift-reduce-dp/shift-reduce-runner.h shift-reduce-dp/shift-reduce-kbest.h \
-reranker/flat-tree.h reranker/features.h reranker/feature-extractor.h \
+shift-reduce-dp/flat-tree.h reranker/features.h reranker/feature-extractor.h \
 shift-reduce-dp/gold-standard.h reranker/reranker-model.h reranker/reranker-runner.h \
 reranker/config-extractor.h shift-reduce-dp/config-gold.h reranker/config-renumber.h \
 reranker/config-runner.h reranker/reranker-oracle.h reranker/config-oracle.h \
 shift-reduce-dp/ddpstate.h shift-reduce-dp/dparser.h shift-reduce-dp/shift-reduce-model.h \
 shift-reduce-dp/idpstate.h shift-reduce-dp/iparser.h shift-reduce-dp/iparser-gold.h \
-shift-reduce-dp/iparser-ranks.h shift-reduce-dp/iparser-trainer.h shift-reduce-dp/iparser-model.h
+shift-reduce-dp/iparser-ranks.h shift-reduce-dp/iparser-trainer.h shift-reduce-dp/iparser-model.h \
+shift-reduce-dp/iparser-runner.h shift-reduce-dp/config-iparser-runner.h shift-reduce-dp/config-iparser-gold.h

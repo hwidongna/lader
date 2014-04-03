@@ -9,7 +9,7 @@
 
 
 #include "shift-reduce-dp/idpstate.h"
-#include "reranker/flat-tree.h"
+#include "shift-reduce-dp/flat-tree.h"
 #include <cstdlib>
 #include <boost/foreach.hpp>
 #include <lader/reorderer-model.h>

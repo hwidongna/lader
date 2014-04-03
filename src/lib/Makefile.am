@@ -6,9 +6,10 @@ LADERCPP = lader.cc hyper-graph.cc combined-alignment.cc alignment.cc \
            feature-data-parse.cc target-span.cc feature-parse.cc \
            loss-bracket.cc feature-align.cc thread-pool.cc hypothesis.cc
 
-SRDPCPP = parser.cc dpstate.cc shift-reduce-trainer.cc ddpstate.cc idpstate.cc iparser-trainer.cc
+SRDPCPP = parser.cc dpstate.cc shift-reduce-trainer.cc ddpstate.cc flat-tree.cc \
+		  idpstate.cc iparser-trainer.cc iparser-evaluator.cc
 
-RERANKERCPP = flat-tree.cc reranker-model.cc
+RERANKERCPP = reranker-model.cc
 
 AM_CPPFLAGS = -I$(srcdir)/../include $(BOOST_CPPFLAGS)
 AM_LDFLAGS = $(BOOST_LDFLAGS)

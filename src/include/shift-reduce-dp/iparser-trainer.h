@@ -11,12 +11,13 @@
 #include <shift-reduce-dp/shift-reduce-trainer.h>
 #include <shift-reduce-dp/iparser-model.h>
 #include <shift-reduce-dp/iparser.h>
+#include <shift-reduce-dp/iparser-evaluator.h>
 using namespace std;
 
 namespace lader {
 
 
-class IParserTrainer : public ShiftReduceTrainer {
+class IParserTrainer : public ShiftReduceTrainer, public IParserEvaluator {
 	// A task
 	class IParserTask : public Task {
 	public:
@@ -59,11 +60,7 @@ public:
     // we parse
     virtual void TrainIncremental(const ConfigBase & config);
 
-	// Read in the alignments
-	void ReadGold(const string & gold_in, vector<ActionVector> & gold);
 protected:
-	vector<ActionVector> source_gold_;
-	vector<ActionVector> target_gold_;
 	vector<ActionVector> source_dev_gold_;
 	vector<ActionVector> target_dev_gold_;
 

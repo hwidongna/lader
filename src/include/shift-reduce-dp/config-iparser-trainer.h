@@ -51,7 +51,7 @@ public:
         AddConfigEntry("target_dev_gold", "", "The dev gold action sequence file for the target sentences");
         AddConfigEntry("use_reverse", "false", "Whether to use reverse terminals ");
         AddConfigEntry("threads", "1", "The number of threads to use");
-        AddConfigEntry("verbose", "0", "The level of debugging output to print 1: {model,oracle}{loss,score} 2: detail for building and rescoring");
+        AddConfigEntry("verbose", "0", "The level of debugging output to print");
         AddConfigEntry("write_every_iter", "false", "Write the model out every time during training.");
         AddConfigEntry("update", "max", "Which update strategy to use {naive,early,max}");
     }

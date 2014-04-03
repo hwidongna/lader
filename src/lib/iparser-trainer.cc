@@ -58,19 +58,6 @@ void IParserTrainer::InitializeModel(const ConfigBase & config) {
     }
 }
 
-void IParserTrainer::ReadGold(const string & gold_in, vector<ActionVector> & golds) {
-	std::ifstream in(gold_in.c_str());
-	if(!in) THROW_ERROR("Could not open gold file: "
-			<<gold_in);
-	std::string line;
-	golds.clear();
-	while(getline(in, line)){
-		vector<string> columns;
-		algorithm::split(columns, line, is_any_of("\t"));
-		golds.push_back(DPState::ActionFromString(columns[0]));
-	}
-}
-
 void IParserTrainer::TrainIncremental(const ConfigBase & config) {
     InitializeModel(config);
     ReadData(config.GetString("source_in"), data_);
@@ -272,7 +259,8 @@ void IParserTrainer::TrainIncremental(const ConfigBase & config) {
 				cerr << endl;
         	}
         	if (frefseq.empty() || erefseq.empty()){
-        		cerr << "Parser cannot produce the reference sequence, skip it" << endl;
+        		if (verbose >= 1)
+        			cerr << "Parser cannot produce the reference sequence, skip it" << endl;
         		continue;
         	}
         	int J = (frefseq.size()+1) / 2;

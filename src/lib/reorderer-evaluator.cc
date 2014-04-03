@@ -93,7 +93,7 @@ void ReordererEvaluator::Evaluate(const ConfigEvaluator & config) {
         }
         FeatureDataSequence words;
         words.FromString(src);
-        cerr << sent++ << "\t" << words.GetNumWords();
+        cerr << sent << "\t" << words.GetNumWords();
         // Score the values
         for(int i = 0; i < (int) losses.size(); i++) {
             pair<double,double> my_loss = 

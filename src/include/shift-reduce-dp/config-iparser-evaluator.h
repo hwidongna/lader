@@ -32,7 +32,7 @@ public:
 
         AddConfigEntry("source_gold", "", "The gold action sequence file for the source sentences");
         AddConfigEntry("target_gold", "", "The gold action sequence file for the target sentences");
-        AddConfigEntry("loss_profile", "edit-distance=1", "Which loss functions to use");
+        AddConfigEntry("loss_profile", "levenshtein=1", "Which loss functions to use");
         AddConfigEntry("verbose", "0", "The level of debugging output to print");
         AddConfigEntry("placeholder", "[*]", "An output symbol for the placeholder (default is [*])");
     }

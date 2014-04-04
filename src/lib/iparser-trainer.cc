@@ -85,68 +85,34 @@ void IParserTrainer::TrainIncremental(const ConfigBase & config) {
 
         int done = 0;
         unsigned long iter_nedge = 0, iter_nstate = 0, iter_step = 0, iter_refsize = 0;
-        int bad_update = 0, early_update = 0;
+        int bad_update = 0, early_update = 0, prev_early = 0;
         if (verbose >= 1)
         	cerr << "Start training parsing iter " << iter << endl;
         BOOST_FOREACH(int sent, sent_order) {
         	if(++done% 100 == 0) cerr << ".";
         	if(done % (100*10) == 0) cerr << done << endl;
-
-        	// Obtain the reference action sequence from bidirectional gold action sequences
-        	ActionVector & frefseq = source_gold_[sent];
-        	ActionVector & erefseq = target_gold_[sent];
-        	if (verbose >= 1){
+        	if (verbose >= 1)
         		cerr << endl << "Sentence " << sent << endl;
-        		cerr << "Source Reference:";
-        		BOOST_FOREACH(DPState::Action action, frefseq)
-        			cerr << " " << (char)action;
-        		cerr << endl;
-        		cerr << "Target Reference:";
-				BOOST_FOREACH(DPState::Action action, erefseq)
-					cerr << " " << (char)action;
-				cerr << endl;
-        	}
-        	if (frefseq.empty() || erefseq.empty()){
-        		if (verbose >= 1)
-        			cerr << "Parser cannot produce the reference sequence, skip it" << endl;
-        		continue;
-        	}
-        	int J = (frefseq.size()+1) / 2;
-        	IParser fparser(J, J);
-            DPState * fgoal = fparser.GuidedSearch(frefseq, J);
-        	if (fgoal == NULL){
-        		if (verbose >= 1)
-        			cerr << "Parser cannot produce the source reference sequence, skip it" << endl;
-        		continue;
-        	}
-        	int I = (erefseq.size()+1) / 2;
-			IParser eparser(I, I);
-			DPState * egoal = eparser.GuidedSearch(erefseq, I);
-			if (egoal == NULL){
-				if (verbose >= 1)
-					cerr << "Parser cannot produce the target reference sequence, skip it" << endl;
-				continue;
-			}
+        	// Obtain the reference action sequence from bidirectional gold action sequences
 			ActionVector refseq;
-			IDPState::Merge(refseq, fgoal, egoal);
-			int n = (refseq.size()+1) / 2;
-			IParser gparser(n, n);
-			DPState * goal = gparser.GuidedSearch(refseq, n);
-			if (goal == NULL){
-				if (verbose >= 1)
-					cerr << "Parser cannot produce the reference sequence, skip it" << endl;
+			GetMergedReference(refseq, source_gold_[sent], target_gold_[sent], verbose);
+			if (refseq.empty())
 				continue;
-			}
 			if (verbose >= 1){
 				cerr << "Merged Reference:";
 				for (int step = 0 ; step < refseq.size() ; step++)
 					cerr << " " << (char)refseq[step]  << "_" << step+1;
 				cerr << endl;
 			}
-//			n = (*data_[sent])[0]->GetNumWords();
-//			if (refseq.size() > 2*(n+model->GetMaxIns())){
-//
-//			}
+			int n = (refseq.size()+1) / 2;
+			IParser gparser(n, n);
+			DPState * goal = gparser.GuidedSearch(refseq, n);
+			if (goal == NULL){
+				if (verbose >= 1)
+					cerr << "Parser cannot produce the merged reference sequence, skip it" << endl;
+				continue;
+			}
+			// Produce the parse
 			IParser parser(model->GetMaxIns(), model->GetMaxDel());
             parser.SetBeamSize(config.GetInt("beam"));
             parser.SetVerbose(verbose);
@@ -223,10 +189,11 @@ void IParserTrainer::TrainIncremental(const ConfigBase & config) {
         	<< iter_step << "/" << iter_refsize << " steps (" << 100.0*iter_step/iter_refsize << "%)" << endl;
         cout.flush();
 
-        if (early_update == 0){
+        if (early_update == 0 || prev_early == early_update){
         	cout << "No more update" << endl;
         	break;
         }
+        prev_early = early_update;
         if (verbose >= 1)
         	cerr << "Start development parsing iter " << iter << endl;
         ThreadPool pool(config.GetInt("threads"), 1000);
@@ -245,42 +212,10 @@ void IParserTrainer::TrainIncremental(const ConfigBase & config) {
         vector<pair<double,double> > sum_losses(losses_.size(), pair<double,double>(0,0));
         vector<pair<double,double> > sum_losses_kbests(losses_.size(), pair<double,double>(0,0));
         for (int sent = 0 ; sent < dev_data_.size() ; sent++) {
-        	ActionVector & frefseq = source_dev_gold_[sent];
-        	ActionVector & erefseq = target_dev_gold_[sent];
-        	if (verbose >= 1){
-        		cerr << endl << "Sentence " << sent << endl;
-        		cerr << "Source Reference:";
-        		BOOST_FOREACH(DPState::Action action, frefseq)
-        			cerr << " " << (char)action;
-        		cerr << endl;
-        		cerr << "Target Reference:";
-				BOOST_FOREACH(DPState::Action action, erefseq)
-					cerr << " " << (char)action;
-				cerr << endl;
-        	}
-        	if (frefseq.empty() || erefseq.empty()){
-        		if (verbose >= 1)
-        			cerr << "Parser cannot produce the reference sequence, skip it" << endl;
-        		continue;
-        	}
-        	int J = (frefseq.size()+1) / 2;
-        	IParser fparser(J, J);
-            DPState * fgoal = fparser.GuidedSearch(frefseq, J);
-        	if (fgoal == NULL){
-        		if (verbose >= 1)
-        			cerr << "Parser cannot produce the source reference sequence, skip it" << endl;
-        		continue;
-        	}
-        	int I = (erefseq.size()+1) / 2;
-			IParser eparser(I, I);
-			DPState * egoal = eparser.GuidedSearch(erefseq, I);
-			if (egoal == NULL){
-				if (verbose >= 1)
-					cerr << "Parser cannot produce the target reference sequence, skip it" << endl;
-				continue;
-			}
 			ActionVector refseq;
-			IDPState::Merge(refseq, fgoal, egoal);
+			GetMergedReference(refseq, source_dev_gold_[sent], target_dev_gold_[sent], verbose);
+			if (refseq.empty())
+				continue;
 			if (verbose >= 1){
 				cerr << "Merged Reference:";
 				BOOST_FOREACH(DPState::Action action, refseq)
@@ -296,7 +231,7 @@ void IParserTrainer::TrainIncremental(const ConfigBase & config) {
 			DPState * goal = gparser.GuidedSearch(refseq, n);
 			if (goal == NULL){
 				if (verbose >= 1)
-					cerr << "Parser cannot produce the reference sequence, skip it" << endl;
+					cerr << "Parser cannot produce the merged reference sequence, skip it" << endl;
 				continue;
 			}
 			Parser::Result gresult;
@@ -345,7 +280,7 @@ void IParserTrainer::TrainIncremental(const ConfigBase & config) {
 		for(int i = 0; i < (int) sum_losses.size(); i++) {
 			if(i != 0) cout << "\t";
 			cout << " " << losses_[i]->GetName() << "=" << setprecision(3)
-					<< (1 - sum_losses[i].first/sum_losses[i].second)
+					<< (1 - sum_losses[i].first/sum_losses[i].second) << setprecision(6)
 					<< " (loss "<<sum_losses[i].first/losses_[i]->GetWeight() << "/"
 					<<sum_losses[i].second/losses_[i]->GetWeight()<<")";
 			prec += (1 - sum_losses[i].first/sum_losses[i].second) * losses_[i]->GetWeight();

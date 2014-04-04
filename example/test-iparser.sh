@@ -6,7 +6,7 @@ SOURCE_IN=output/test.en.annot
 TARGET_IN=data/test.ja
 ALIGN_IN=data/test.en-ja.align
 MODEL_IN=output/train.iparser.mod
-OUTPUT=output/test.en.reordered
+OUTPUT=output/test.en.iparser
 THREADS=2
 BEAM=10
 VERBOSE=1
@@ -60,7 +60,7 @@ run "../src/bin/evaluate-iparser \
 -source_gold output/$t.en-ja.gold.out \
 -target_gold output/$t.ja-en.gold.out \
 $OUTPUT data/$TEST_IN $TARGET_IN'' \
-> output/$TEST_IN.grade 2> output/$TEST_IN.log"
+> output/$TEST_IN.iparser.grade 2> output/$TEST_IN.iparser.log"
 
-tail -n3 output/$TEST_IN.grade
+tail -n3 output/$TEST_IN.iparser.grade
 	

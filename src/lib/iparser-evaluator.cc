@@ -33,6 +33,44 @@ void IParserEvaluator::ReadGold(const string & gold_in, vector<ActionVector> & g
 	}
 }
 
+
+void IParserEvaluator::GetMergedReference(ActionVector & refseq,
+		const ActionVector & frefseq, const ActionVector & erefseq,
+		int verbose) {
+	if (verbose >= 1){
+		cerr << "Source Reference:";
+		BOOST_FOREACH(DPState::Action action, frefseq)
+			cerr << " " << (char)action;
+		cerr << endl;
+		cerr << "Target Reference:";
+		BOOST_FOREACH(DPState::Action action, erefseq)
+			cerr << " " << (char)action;
+		cerr << endl;
+	}
+	if (frefseq.empty() || erefseq.empty()){
+		if (verbose >= 1)
+			cerr << "Either source/target reference is empty, skip it" << endl;
+		return;
+	}
+	int J = (frefseq.size()+1) / 2;
+	IParser fparser(J, J);
+    DPState * fgoal = fparser.GuidedSearch(frefseq, J);
+	if (fgoal == NULL){
+		if (verbose >= 1)
+			cerr << "Parser cannot produce the source reference sequence, skip it" << endl;
+		return;
+	}
+	int I = (erefseq.size()+1) / 2;
+	IParser eparser(I, I);
+	DPState * egoal = eparser.GuidedSearch(erefseq, I);
+	if (egoal == NULL){
+		if (verbose >= 1)
+			cerr << "Parser cannot produce the target reference sequence, skip it" << endl;
+		return;
+	}
+	IDPState::Merge(refseq, fgoal, egoal);
+}
+
 // Run the evaluator
 void IParserEvaluator::Evaluate(const ConfigBase & config){
 	// Set up the losses
@@ -74,42 +112,10 @@ void IParserEvaluator::Evaluate(const ConfigBase & config){
 	string data, align, src, trg;
 	// Read them one-by-one and run the evaluator
 	for(int sent = 0 ; getline(data_in, data) ; sent++) {
-		ActionVector & frefseq = source_gold_[sent];
-		ActionVector & erefseq = target_gold_[sent];
-		if (verbose >= 1){
-			cerr << endl << "Sentence " << sent << endl;
-			cerr << "Source Reference:";
-			BOOST_FOREACH(DPState::Action action, frefseq)
-			cerr << " " << (char)action;
-			cerr << endl;
-			cerr << "Target Reference:";
-			BOOST_FOREACH(DPState::Action action, erefseq)
-			cerr << " " << (char)action;
-			cerr << endl;
-		}
-		if (frefseq.empty() || erefseq.empty()){
-			if (verbose >= 1)
-				cerr << "Parser cannot produce the reference sequence, skip it" << endl;
-			continue;
-		}
-		int J = (frefseq.size()+1) / 2;
-		IParser fparser(J, J);
-		DPState * fgoal = fparser.GuidedSearch(frefseq, J);
-		if (fgoal == NULL){
-			if (verbose >= 1)
-				cerr << "Parser cannot produce the source reference sequence, skip it" << endl;
-			continue;
-		}
-		int I = (erefseq.size()+1) / 2;
-		IParser eparser(I, I);
-		DPState * egoal = eparser.GuidedSearch(erefseq, I);
-		if (egoal == NULL){
-			if (verbose >= 1)
-				cerr << "Parser cannot produce the target reference sequence, skip it" << endl;
-			continue;
-		}
 		ActionVector refseq;
-		IDPState::Merge(refseq, fgoal, egoal);
+		GetMergedReference(refseq, source_gold_[sent], target_gold_[sent], verbose);
+		if (refseq.empty())
+			continue;
 		if (verbose >= 1){
 			cerr << "Merged Reference:";
 			BOOST_FOREACH(DPState::Action action, refseq)
@@ -121,7 +127,7 @@ void IParserEvaluator::Evaluate(const ConfigBase & config){
 		DPState * goal = gparser.GuidedSearch(refseq, n);
 		if (goal == NULL){
 			if (verbose >= 1)
-				cerr << "Parser cannot produce the reference sequence, skip it" << endl;
+				cerr << "Parser cannot produce the merged reference sequence, skip it" << endl;
 			continue;
 		}
 		Parser::Result gresult;

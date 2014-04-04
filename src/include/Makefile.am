@@ -19,4 +19,5 @@ reranker/config-runner.h reranker/reranker-oracle.h reranker/config-oracle.h \
 shift-reduce-dp/ddpstate.h shift-reduce-dp/dparser.h shift-reduce-dp/shift-reduce-model.h \
 shift-reduce-dp/idpstate.h shift-reduce-dp/iparser.h shift-reduce-dp/iparser-gold.h \
 shift-reduce-dp/iparser-ranks.h shift-reduce-dp/iparser-trainer.h shift-reduce-dp/iparser-model.h \
-shift-reduce-dp/iparser-runner.h shift-reduce-dp/config-iparser-runner.h shift-reduce-dp/config-iparser-gold.h
+shift-reduce-dp/iparser-runner.h shift-reduce-dp/config-iparser-runner.h \
+shift-reduce-dp/config-iparser-gold.h shift-reduce-dp/loss-levenshtein.h

@@ -5,21 +5,21 @@
  *      Author: leona
  */
 
-#ifndef TEST_LOSS_EDIT_DISTANCE_H_
-#define TEST_LOSS_EDIT_DISTANCE_H_
+#ifndef TEST_LOSS_LEVENSHTEIN_H_
+#define TEST_LOSS_LEVENSHTEIN_H_
 
 #include "test-base.h"
-#include <shift-reduce-dp/loss-edit-distance.h>
+#include <shift-reduce-dp/loss-levenshtein.h>
 
 namespace lader {
 
-class TestLossEditDistance : public TestBase {
+class TestLossLevenshtein : public TestBase {
 
 public:
 
-    TestLossEditDistance() {
+    TestLossLevenshtein() {
     }
-    ~TestLossEditDistance() { }
+    ~TestLossLevenshtein() { }
 
     int TestCalculateSentenceLoss() {
         int ret = 1;
@@ -40,7 +40,7 @@ public:
     }
 
 private:
-    LossEditDistance lf;
+    LossLevenshtein lf;
 
 };
 
@@ -48,4 +48,4 @@ private:
 
 
 
-#endif /* TEST_LOSS_EDIT_DISTANCE_H_ */
+#endif /* TEST_LOSS_LEVENSHTEIN_H_ */

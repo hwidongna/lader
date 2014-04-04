@@ -12,7 +12,7 @@
 
 namespace lader {
 
-class LossEditDistance : public LossBase {
+class LossLevenshtein : public LossBase {
 public:
 
 	virtual double AddLossToProduction(Hypothesis * hyp,
@@ -53,32 +53,8 @@ public:
     	ret.second *= weight_;
     	return ret;
     }
-//
-//    // Initializes the loss calculator with a ranks
-//    virtual void Initialize(
-//        const Ranks * ranks, const FeatureDataParse * parse);
 
     virtual std::string GetName() const { return "edit-distance"; }
-
-private:
-//
-//    // Get the loss of a single span
-//    int GetLoss(const Ranks & ranks, int l, int c, int r,
-//                    bool straight,std::vector<int> & losses);
-//
-//    int GetLossStraight(const Ranks & ranks, int l, int c, int r) {
-//        return GetLoss(ranks, l, c, r, true, straight_);
-//    }
-//    int GetLossInverse(const Ranks & ranks, int l, int c, int r) {
-//        return GetLoss(ranks, l, c, r, false, inverse_);
-//    }
-//    int & AccessArray(std::vector<int> & arr, int l, int c, int r, int n) {
-//        return SafeAccess(arr, l*n*n+c*n+r);
-//    }
-//
-//    // Get the loss for a particular array
-//    std::vector<int> straight_, inverse_;
-
 };
 
 }

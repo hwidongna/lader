@@ -119,7 +119,7 @@ done
 # Thus, loss functions are also defined over gold action sequences
 # e.g. edit distance, affine gap distance (to be considered), etc.
 
-LOSS_PROFILE="edit-distance=1"
+LOSS_PROFILE="levenshtein=1"
 FEATURE_PROFILE="\
 seq=dict=output/train.en-ja.pt,D%0QE0%aT,D0%0Q#00%aT,D1%0Q#01%aT,D2%0Q#02%aT,\
 Q0%q0%aT,LL0%s0L%aT,RR0%s0R%aT,LR0%l0R%aT,RL0%r0L%aT,O0%s0L%s0R%aT,I0%l0R%r0L%aT,LL1%s1L%aT,RR1%s1R%aT,LR1%l1R%aT,RL1%r1L%aT,O1%s1L%s1R%aT,I1%l1R%r1L%aT,BIAS%aT\

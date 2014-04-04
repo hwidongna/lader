@@ -59,7 +59,6 @@ public:
     // Train the reorderer incrementally, building they hypergraph each time
     // we parse
     virtual void TrainIncremental(const ConfigBase & config);
-
 protected:
 	vector<ActionVector> source_dev_gold_;
 	vector<ActionVector> target_dev_gold_;

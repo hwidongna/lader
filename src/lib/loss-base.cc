@@ -2,6 +2,7 @@
 #include <lader/loss-tau.h>
 #include <lader/loss-bracket.h>
 #include <shift-reduce-dp/loss-levenshtein.h>
+#include <shift-reduce-dp/loss-affine.h>
 #include <lader/loss-base.h>
 
 using namespace lader;
@@ -17,6 +18,8 @@ LossBase * LossBase::CreateNew(const string & type) {
         return new LossBracket;
     else if(type == "levenshtein")
     	return new LossLevenshtein;
+    else if(type == "affine")
+    	return new LossAffine;
     else
         THROW_ERROR("Bad loss type " << type << " (must be chunk/tau/bracket/levenshtein)");
     return NULL;

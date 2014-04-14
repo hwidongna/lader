@@ -34,7 +34,7 @@ public:
         AddConfigEntry("target_gold", "", "The gold action sequence file for the target sentences");
         AddConfigEntry("loss_profile", "levenshtein=1", "Which loss functions to use");
         AddConfigEntry("verbose", "0", "The level of debugging output to print");
-        AddConfigEntry("placeholder", "[*]", "An output symbol for the placeholder (default is [*])");
+        AddConfigEntry("placeholder", "<>", "An output symbol for the placeholder (default is <>)");
     }
 	
 };

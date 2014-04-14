@@ -54,7 +54,7 @@ public:
     	return ret;
     }
 
-    virtual std::string GetName() const { return "edit-distance"; }
+    virtual std::string GetName() const { return "levenshtein"; }
 };
 
 }

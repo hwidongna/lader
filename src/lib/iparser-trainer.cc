@@ -249,6 +249,7 @@ void IParserTrainer::TrainIncremental(const ConfigBase & config) {
 			Ranks granks;
 			granks.SetRanks(gresult.order);
         	for(int i = 0; i < (int) losses_.size(); i++) {
+				losses_[i]->Initialize(NULL, NULL);
         		pair<double,double> my_loss =
         				losses_[i]->CalculateSentenceLoss(results[sent].order, &granks, NULL);
         		sum_losses[i].first += my_loss.first;

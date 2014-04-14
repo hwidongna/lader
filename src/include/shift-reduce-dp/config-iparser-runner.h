@@ -33,7 +33,7 @@ public:
 );
 
         AddConfigEntry("out_format", "string", "A comma seperated list of outputs (string/parse/order/score/flatten/action)");
-        AddConfigEntry("placeholder", "[*]", "An output symbol for the placeholder (default is [*])");
+        AddConfigEntry("placeholder", "<>", "An output symbol for the placeholder (default is <>)");
         AddConfigEntry("model", "", "A model to be used in reordering");
         AddConfigEntry("beam", "20", "The maximum beam size");
         AddConfigEntry("threads", "1", "The number of threads to use");

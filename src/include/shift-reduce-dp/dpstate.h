@@ -92,6 +92,9 @@ public:
 	// a simple hash function
 	size_t hash() const { return trg_l_ * MULTI_K + trg_r_; }
 	// compare signature
+	bool operator != (const DPState & other) const {
+		return !operator==(other);
+	}
 	virtual bool operator == (const DPState & other) const {
 		if (signature_.size() != other.signature_.size())
 			return false;
@@ -133,7 +136,14 @@ std::size_t operator()( const DPState * c ) const
         }
 };
 
-typedef std::tr1::unordered_map<DPState*, DPState*, DPStateHash> DPStateMap;
+struct DPStateEqual {
+std::size_t operator()( const DPState * s1, const DPState * s2 ) const
+        {
+            return *s1 == *s2;
+        }
+};
+
+typedef std::tr1::unordered_map<DPState*, DPState*, DPStateHash, DPStateEqual> DPStateMap;
 
 } /* namespace lader */
 

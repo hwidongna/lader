@@ -35,6 +35,7 @@ public:
 	virtual void PrintParse(const vector<string> & strs, ostream & out) const;
 	void Print(ostream & out) const;
 	virtual bool operator == (const DPState & other) const;
+	void Rollback(const DPState * lstate);
 protected:
 	virtual DPState * Shift();
 	// a delete action is also a reduce operation

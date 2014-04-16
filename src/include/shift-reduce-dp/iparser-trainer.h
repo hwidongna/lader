@@ -38,7 +38,7 @@ class IParserTrainer : public ShiftReduceTrainer {
 			parser.SetVerbose(config_.GetInt("verbose"));
 			parser.Search(*model_, *features_, data_);
 			parser.GetKbestResult(kbest_);
-			Parser::SetResult(&result_, parser.GetBest());
+			Parser::SetResult(result_, parser.GetBest());
 			collector_.Write(id_, "", err.str());
 		}
 	protected:

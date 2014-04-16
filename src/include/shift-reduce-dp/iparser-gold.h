@@ -42,6 +42,7 @@ public:
 							CombinedAlign::LEAVE_NULL_AS_IS, combine_, bracket_);
         IParserRanks ranks(CombinedAlign(srcs, Alignment::FromString(aline_),
                 	attach_, combine_, bracket_), attach_trg_);
+        ranks.SetVerbose(verbose >= 2);
         ranks.Insert(&cal);
 		ActionVector refseq = ranks.GetReference(&cal);
 		if (verbose >= 1){
@@ -60,6 +61,13 @@ public:
 
 		IParser p(n, n);
 		DPState * state = p.GuidedSearch(refseq, n);
+		if (!state){
+			ess << "Fail to produce the goal state" << endl;
+			oss << endl;
+			collector_->Write(id_, oss.str(), ess.str());
+			return;
+		}
+
 		Output(datas, state);
 		collector_->Write(id_, oss.str(), ess.str());
 	}

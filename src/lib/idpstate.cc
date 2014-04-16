@@ -126,8 +126,8 @@ DPState * IDPState::Shift(){
 
 // a reduced/deleted state
 DPState * IDPState::Reduce(DPState * leftstate, Action action){
-	if ((action == DELETE_L && leftstate->action_ != SHIFT)
-		|| (action == DELETE_R && action_ != SHIFT))
+	if ((action == DELETE_L && leftstate->action_ != SHIFT && leftstate->action_ != INSERT_L && leftstate->action_ != INSERT_R)
+		|| (action == DELETE_R && action_ != SHIFT && action_ != INSERT_L && action_ != INSERT_R))
 		return NULL;
 	IDPState * next = new IDPState(step_+1, leftstate->src_l_, src_r_, action);
 	next->src_c_ = src_l_;
@@ -168,13 +168,21 @@ bool IDPState::Allow(const Action & action, const int n){
 	else if (action == IDLE)
 		return src_l_ == 0 && src_r_ == n;
 	else if (action == INSERT_L || action == INSERT_R) // do not allow consecutive insert
-		return action_ != INIT && action_ != INSERT_L && action_ != INSERT_R;
+		return action_ != INIT
+			&& (action_ != INSERT_L || action != INSERT_L)
+			&& (action_ != INSERT_R || action != INSERT_R);
 	else if (action == DELETE_L)
-		// this only check whether the first left state is shifted
+		// this only check whether the first left state is shifted or inserted
 		// thus, check the rest left state again when actually taking action
-		return leftstate && leftstate->action_ == SHIFT;
+		return leftstate
+			&& (leftstate->action_ == SHIFT
+				|| leftstate->action_ == INSERT_L
+				|| leftstate->action_ == INSERT_R);
 	else if (action == DELETE_R)
-		return leftstate && leftstate ->action_ != INIT && action_ == SHIFT;
+		return leftstate && leftstate ->action_ != INIT
+				&& (action_ == SHIFT
+					|| action_ == INSERT_L
+					|| action_ == INSERT_R);
 	return leftstate && leftstate->action_ != INIT && leftstate->src_r_ == src_l_;
 }
 
@@ -222,10 +230,10 @@ void IDPState::GetReordering(vector<int> & result) const{
 	case DELETE_L:
 	case IDLE:
 		if (action_ == INSERT_L)
-			result.push_back(-1);
+			result.push_back(Ranks::INSERT_L);
 		RightChild()->GetReordering(result);
 		if (action_ == INSERT_R)
-			result.push_back(-1);
+			result.push_back(Ranks::INSERT_R);
 		break;
 	case DELETE_R:
 		LeftChild()->GetReordering(result);
@@ -272,6 +280,8 @@ void IDPState::PrintParse(const vector<string> & strs, ostream & out) const{
 
 void IDPState::Print(ostream & out) const{
 	out << *this;
+	BOOST_FOREACH(Span span, GetSignature())
+		cerr << " [" << span.first << ", " << span.second << "]";
 }
 
 // compare signature and action if inserted
@@ -282,11 +292,20 @@ bool IDPState::operator == (const DPState & other) const {
 		other.Print(cerr); cerr << endl;
 		THROW_ERROR("Incompatible comparison " << this->name () << " != " << other.name())
 	}
-	// if either this or other state is not inserted, they are not equal
+	// if either this or other state is not deleted/inserted, they are not equal
 	if ((action_ != INSERT_L ^ dother->action_ != INSERT_L)
-			|| (action_ != INSERT_R ^ dother->action_ != INSERT_R))
+	|| (action_ != INSERT_R ^ dother->action_ != INSERT_R)
+	|| (action_ != DELETE_L ^ dother->action_ != DELETE_L)
+	|| (action_ != DELETE_R ^ dother->action_ != DELETE_R))
 		return false;
 	return DPState::operator ==(other);
 }
 
+// Rollback a dummy shift (only for IParserRank::GetReordering)
+void IDPState::Rollback(const DPState * lstate) {
+	step_--;
+	src_l_--; src_r_--;
+	trg_l_--; trg_r_--;
+	leftptrs_ = lstate->leftptrs_;
+}
 } /* namespace lader */

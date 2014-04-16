@@ -68,11 +68,13 @@ void IParserTrainer::TrainIncremental(const ConfigBase & config) {
     InitializeModel(config);
     ReadData(config.GetString("source_in"), data_);
     if(config.GetString("align_in").length()){
+    	ReadAlignments(config.GetString("align_in"), ranks_, data_); // just in case
         GetReferenceSequences(config.GetString("align_in"), refseq_, data_);
     }
     if(config.GetString("source_dev").length() && config.GetString("align_dev").length()){
     	ReadData(config.GetString("source_dev"), dev_data_);
-    	GetReferenceSequences(config.GetString("align_in"), dev_refseq_, data_);
+    	ReadAlignments(config.GetString("align_dev"), dev_ranks_, dev_data_); // just in case
+    	GetReferenceSequences(config.GetString("align_dev"), dev_refseq_, dev_data_);
     }
     int verbose = config.GetInt("verbose");
     vector<int> sent_order(data_.size());
@@ -106,6 +108,10 @@ void IParserTrainer::TrainIncremental(const ConfigBase & config) {
 			if (refseq.empty())
 				continue;
 			if (verbose >= 1){
+				cerr << "Rank:";
+				BOOST_FOREACH(int rank, ranks_[sent]->GetRanks())
+					cerr << " " << rank;
+				cerr << endl;
 				cerr << "Reference Action:";
 				for (int step = 0 ; step < refseq.size() ; step++)
 					cerr << " " << (char)refseq[step]  << "_" << step+1;
@@ -223,6 +229,10 @@ void IParserTrainer::TrainIncremental(const ConfigBase & config) {
 			if (refseq.empty())
 				continue;
 			if (verbose >= 1){
+				cerr << "Rank:";
+				BOOST_FOREACH(int rank, dev_ranks_[sent]->GetRanks())
+					cerr << " " << rank;
+				cerr << endl;
 				cerr << "Reference Action:";
 				BOOST_FOREACH(DPState::Action action, refseq)
 					cerr << " " << (char)action;
@@ -241,7 +251,7 @@ void IParserTrainer::TrainIncremental(const ConfigBase & config) {
 				continue;
 			}
 			Parser::Result gresult;
-			Parser::SetResult(&gresult, goal);
+			Parser::SetResult(gresult, goal);
 			if (verbose >= 1){
 				cerr << "Oracle Purmutation:";
 				BOOST_FOREACH(int order, gresult.order)

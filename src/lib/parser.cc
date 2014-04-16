@@ -276,22 +276,22 @@ void Parser::Update(DPStateVector & golds, Result * result,
 			cerr << "Max update at step " << result->step << endl;
 		return;
 	}
-	SetResult(result, beams_[naivepos][0]);
+	SetResult(*result, beams_[naivepos][0]);
 }
 
-void Parser::SetResult(Parser::Result * result, const DPState * goal){
-	if (!result || !goal)
+void Parser::SetResult(Parser::Result & result, const DPState * goal){
+	if (!goal)
 		THROW_ERROR("SetResult does not accept NULL arguments " << endl)
-	goal->GetReordering(result->order);
-	result->step = goal->GetStep();
-	goal->AllActions(result->actions);
-	result->score = goal->GetScore();
+	goal->GetReordering(result.order);
+	result.step = goal->GetStep();
+	goal->AllActions(result.actions);
+	result.score = goal->GetScore();
 }
 
 void Parser::GetKbestResult(vector<Result> & kbest){
 	for (int k = 0 ; GetKthBest(k) != NULL ; k++){
 		Result result;
-		SetResult(&result, GetKthBest(k));
+		SetResult(result, GetKthBest(k));
 		kbest.push_back(result);
 	}
 }

@@ -388,6 +388,8 @@ void DDPState::PrintParse(const vector<string> & strs, ostream & out) const{
 
 void DDPState::Print(ostream & out) const{
 	out << *this;
+	BOOST_FOREACH(Span span, GetSignature())
+		cerr << " [" << span.first << ", " << span.second << "]";
 }
 
 DPStateNode * DDPState::ToFlatTree(){

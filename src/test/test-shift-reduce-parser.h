@@ -44,6 +44,37 @@ public:
     }
     ~TestShiftReduceParser() { }
 
+    int TestDPStateMap() {
+    	DPState s(0, 0, 0, DPState::INIT);
+    	DPStateMap tmp;
+    	DPStateMap::iterator it = tmp.find(&s);
+    	int ret = 1;
+    	if (it != tmp.end()){
+    		cerr << "incorrect find before insert " << endl;
+    		ret = 0;
+    	}
+    	tmp[&s] = &s;
+    	it = tmp.find(&s);
+    	if (it == tmp.end() || it->second != &s){
+    		cerr << "incorrect find after insert " << endl;
+			ret = 0;
+    	}
+    	Parser p1, p2;
+    	// g1 and g2 are equivalent dpstates
+    	DPState * g1 = p1.GuidedSearch(DPState::ActionFromString("F F S F S"), 3);
+    	DPState * g2 = p2.GuidedSearch(DPState::ActionFromString("F F F S S"), 3);
+    	if (g1->hash() != g2->hash() || *g1 != *g2){
+    		cerr << "incorrect hash or operator ==" << endl;
+    		ret = 0;
+    	}
+    	tmp[g1] = g1;
+    	it = tmp.find(g2);
+		if (it == tmp.end() || it->second != g1){
+			cerr << "incorrect find after insert " << endl;
+			ret = 0;
+		}
+    	return ret;
+    }
     int TestGetReordering() {
     	DPStateVector stateseq;
     	int n = sent.GetNumWords();
@@ -60,9 +91,7 @@ public:
     	exp[0]=0, exp[1]=2, exp[2]=1, exp[3]=3;
     	BOOST_FOREACH(DPState * state, stateseq)
     		delete state;
-    	int ret = 1;
-    	ret *= CheckVector(exp, act);
-    	return ret;
+    	return CheckVector(exp, act);
     }
 
     int TestSetSignature() {
@@ -158,6 +187,7 @@ public:
         Sentence datas;
         datas.push_back(&sent);
     	Parser p;
+//    	p.SetVerbose(2);
     	p.Search(model, set, datas);
     	vector<Parser::Result> kbest;
     	p.GetKbestResult(kbest);
@@ -559,7 +589,7 @@ public:
     	{ // check reordering
 
 	    	Parser::Result result;
-	    	Parser::SetResult(&result, goal);
+	    	Parser::SetResult(result, goal);
     		vector<int> & act = result.order;
 			vector<int> exp(n);
 			exp[0]=1, exp[1]=2, exp[2]=4, exp[3]=0;
@@ -724,6 +754,7 @@ public:
 
     bool RunTest() {
     	int done = 0, succeeded = 0;
+    	done++; cout << "TestDPStateMap()" << endl; if(TestDPStateMap()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestGetReordering()" << endl; if(TestGetReordering()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestSetSignature()" << endl; if(TestSetSignature()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestAllActions()" << endl; if(TestAllActions()) succeeded++; else cout << "FAILED!!!" << endl;

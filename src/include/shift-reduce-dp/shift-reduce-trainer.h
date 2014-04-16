@@ -64,7 +64,7 @@ class ShiftReduceTrainer : public ReordererTrainer {
 			p->SetVerbose(config_.GetInt("verbose"));
 			p->Search(*model_, *features_, data_);
 			p->GetKbestResult(kbest_);
-			Parser::SetResult(&result_, p->GetBest());
+			Parser::SetResult(result_, p->GetBest());
 			if (verbose >= 1){
 				err << "Result:   ";
 				for (int step = 0 ; step < result_.actions.size() ; step++)

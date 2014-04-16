@@ -117,7 +117,7 @@ void IParserEvaluator::Evaluate(const ConfigBase & config){
 				continue;
 			}
 			Parser::Result gresult;
-			Parser::SetResult(&gresult, goal);
+			Parser::SetResult(gresult, goal);
 			cout << "ref:\t";
 			BOOST_FOREACH(int order, gresult.order)
 				cout << " " << order;

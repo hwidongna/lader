@@ -63,7 +63,7 @@ public:
         }
         if(verbose >= 1){
         	Parser::Result result;
-        	Parser::SetResult(&result, best);
+        	Parser::SetResult(result, best);
 			ess << "Result Purmutation:";
 			BOOST_FOREACH(int order, result.order)
 				ess << " " << order;

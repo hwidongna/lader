@@ -29,7 +29,7 @@ public:
 	virtual void Evaluate(const ConfigBase & config);
 
 protected:
-	CombinedAlign::NullHandler attach_trg_;
+	CombinedAlign::NullHandler attach_trg_; // Where to attach nulls
 
 };
 

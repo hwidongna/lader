@@ -33,6 +33,7 @@ public:
 
         AddConfigEntry("attach_null", "right", "Whether to attach null alignments to the left or right");
         AddConfigEntry("combine_blocks", "true", "Whether to attach the blocks together");
+        AddConfigEntry("combine_brackets", "true", "Whether to combine alignments into brackets");
 
     }
 	

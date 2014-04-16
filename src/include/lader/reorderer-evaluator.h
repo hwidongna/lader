@@ -16,15 +16,15 @@ public:
         combine_(CombinedAlign::COMBINE_BLOCKS),
         bracket_(CombinedAlign::ALIGN_BRACKET_SPANS)
          { }
-    ~ReordererEvaluator() { }
-    
-    // Run the evaluator
-    void Evaluate(const ConfigEvaluator & config);
+    virtual ~ReordererEvaluator() { }
 
-private:
-    CombinedAlign::NullHandler attach_;
-    CombinedAlign::BlockHandler combine_;
-    CombinedAlign::BracketHandler bracket_;
+    virtual void InitializeModel(const ConfigBase & config);
+    // Run the evaluator
+    virtual void Evaluate(const ConfigBase & config);
+
+    CombinedAlign::NullHandler attach_; // Where to attach nulls
+    CombinedAlign::BlockHandler combine_; // Whether to combine blocks
+    CombinedAlign::BracketHandler bracket_; // Whether to handle brackets
 
 };
 

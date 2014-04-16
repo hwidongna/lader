@@ -76,29 +76,16 @@ ActionVector Ranks::GetReference() const{
 	return reference;
 }
 
-bool Ranks::IsDeleted(const CombinedAlign * cal, DPState * state) const{
-	if (!cal)
-		return false;
-	return cal->GetSpans()[state->GetSrcL()].first == -1;
-}
 bool Ranks::IsStraight(DPState * lstate, DPState * state) const{
 	if (!lstate)
 		return false;
-	int l = min(ranks_[state->GetTrgL()], ranks_[state->GetTrgR()-1]);
-	int r = max(ranks_[state->GetTrgL()], ranks_[state->GetTrgR()-1]);
-	int ll = min(ranks_[lstate->GetTrgL()], ranks_[lstate->GetTrgR()-1]);
-	int lr = max(ranks_[lstate->GetTrgL()], ranks_[lstate->GetTrgR()-1]);
-	return Ranks::IsContiguous(lr, l);
+	return Ranks::IsContiguous(ranks_[lstate->GetTrgR()-1], ranks_[state->GetTrgL()]);
 }
 
 bool Ranks::IsInverted(DPState * lstate, DPState * state) const{
 	if (!lstate)
 		return false;
-	int l = min(ranks_[state->GetTrgL()], ranks_[state->GetTrgR()-1]);
-	int r = max(ranks_[state->GetTrgL()], ranks_[state->GetTrgR()-1]);
-	int ll = min(ranks_[lstate->GetTrgL()], ranks_[lstate->GetTrgR()-1]);
-	int lr = max(ranks_[lstate->GetTrgL()], ranks_[lstate->GetTrgR()-1]);
-	return 	Ranks::IsStepOneUp(r, ll); // strictly step-one up
+	return 	Ranks::IsStepOneUp(ranks_[state->GetTrgR()-1], ranks_[lstate->GetTrgL()]); // strictly step-one up
 }
 
 bool Ranks::HasTie(DPState * state) const{

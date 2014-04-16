@@ -37,10 +37,12 @@ public:
         AddConfigEntry("placeholder", "<>", "An output symbol for the placeholder (default is <>)");
         AddConfigEntry("align_in", "", "The input file for the alignments");
         AddConfigEntry("attach_null", "right", "Whether to attach null alignments to the left or right");
+        AddConfigEntry("attach_trg", "left", "Whether to attach null alignments to the left or right");
         AddConfigEntry("combine_blocks", "true", "Whether to combine alignments into blocks");
         AddConfigEntry("combine_brackets", "true", "Whether to combine alignments into brackets");
         AddConfigEntry("feature_profile", "seq=X", "Which features to use (meaningless) ");
         AddConfigEntry("source_in", "", "The input file for the source sentences");
+        AddConfigEntry("align_in", "", "The input file for the alignments");
         AddConfigEntry("verbose", "0", "The level of debugging output to print");
         AddConfigEntry("threads", "1", "The number of threads to use");
     }

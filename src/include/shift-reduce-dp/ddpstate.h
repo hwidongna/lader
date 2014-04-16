@@ -48,7 +48,7 @@ public:
 		return DPState::operator ==(other);
 	}
 	virtual void PrintParse(const vector<string> & strs, ostream & out) const;
-	virtual void PrintTrace(ostream & out) const;
+	virtual void Print(ostream & out) const;
 	virtual DPStateNode * ToFlatTree();
 protected:
 	virtual DPState * Shift();

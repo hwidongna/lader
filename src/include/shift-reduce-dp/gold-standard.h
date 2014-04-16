@@ -21,34 +21,32 @@ using namespace std;
 using namespace boost;
 
 namespace lader {
-
 // A task
-class ShiftReduceGoldTask : public ShiftReduceTask {
+class ShiftReduceGoldTask : public ShiftReduceTask, public ReordererEvaluator {
 public:
-	ShiftReduceGoldTask(int id, const Sentence * data, const Ranks * ranks,
-			vector<ReordererRunner::OutputType> * outputs,
+	ShiftReduceGoldTask(int id, const string & sline, const string & aline,
+			FeatureSet * features, vector<ReordererRunner::OutputType> * outputs,
 			const ConfigBase& config, OutputCollector * collector) :
-				ShiftReduceTask(id, "", NULL, NULL, outputs, config, collector),
-				data_(data), ranks_(ranks)	{ }
-    void Run()
-    {
-        int sent = id_;
-        int verbose = config_.GetInt("verbose");
-        if(verbose >= 1){
-            ess << endl << "Sentence " << sent << endl;
-			ess << "Rank:";
-			BOOST_FOREACH(int rank, ranks_->GetRanks())
-				ess << " " << rank;
-			ess << endl;
-		}
-		ActionVector refseq = ranks_->GetReference();
+				ShiftReduceTask(id, "", NULL, features, outputs, config, collector),
+				sline_(sline), aline_(aline)	{ }
+	void Run()
+	{
+		ReordererEvaluator::InitializeModel(config_);
+		Sentence datas = features_->ParseInput(sline_);
+		const vector<string> & srcs = datas[0]->GetSequence();
+		int sent = id_;
+		int verbose = config_.GetInt("verbose");
+		if(verbose >= 1)
+			ess << endl << "Sentence " << sent << endl;
+		Ranks ranks(CombinedAlign(srcs, Alignment::FromString(aline_),
+				attach_, combine_, bracket_));
+		ActionVector refseq = ranks.GetReference();
 		if (verbose >= 1){
 			ess << "Reference:";
 			BOOST_FOREACH(DPState::Action action, refseq)
 				ess << " " << (char) action;
 			ess << endl;
 		}
-		const Sentence & datas = (*data_);
 		int n = datas[0]->GetNumWords();
 		if (refseq.size() < 2*n - 1)
 			THROW_ERROR("Fail to get correct reference sequence" << endl)
@@ -58,35 +56,33 @@ public:
 		collector_->Write(id_, oss.str(), ess.str());
 	}
 protected:
-	const Sentence * data_;
-	const Ranks * ranks_;
+	const string sline_;
+	const string aline_;
 };
 
-class GoldStandard : public ReordererTrainer{
+class GoldStandard : public ReordererEvaluator{
 public:
-	GoldStandard() { }
-	virtual ~GoldStandard() { }
+	GoldStandard(): features_(NULL) { }
+	virtual ~GoldStandard() {
+	    if(features_) delete features_;
+	}
 
 	// Initialize the model
 	virtual void InitializeModel(const ConfigBase & config){
+		ReordererEvaluator::InitializeModel(config);
 		features_ = new FeatureSet;
 		features_->ParseConfiguration(config.GetString("feature_profile"));
-		// Load the other config
-		attach_ = config.GetString("attach_null") == "left" ?
-				CombinedAlign::ATTACH_NULL_LEFT :
-				CombinedAlign::ATTACH_NULL_RIGHT;
-		combine_ = config.GetBool("combine_blocks") ?
-				CombinedAlign::COMBINE_BLOCKS :
-				CombinedAlign::LEAVE_BLOCKS_AS_IS;
-		bracket_ = config.GetBool("combine_brackets") ?
-				CombinedAlign::ALIGN_BRACKET_SPANS :
-				CombinedAlign::LEAVE_BRACKETS_AS_IS;
+	}
+
+	virtual Task * NewGoldTask(int sent, const string & sline,
+			const string & aline, vector<ReordererRunner::OutputType> & outputs,
+			const ConfigBase& config, OutputCollector & collector) {
+		return new ShiftReduceGoldTask(sent, sline, aline,
+				features_, &outputs, config, &collector);
 	}
 
 	virtual void Run(const ConfigBase & config){
 		InitializeModel(config);
-		ReadData(config.GetString("source_in"), data_);
-		ReadAlignments(config.GetString("align_in"), ranks_, data_);
 		vector<ReordererRunner::OutputType> outputs;
 		tokenizer<char_separator<char> > outs(config.GetString("out_format"),
 				char_separator<char>(","));
@@ -105,14 +101,24 @@ public:
 				THROW_ERROR("Bad output format '" << str <<"'");
 		}
 		OutputCollector collector;
+		string source_in = config.GetString("source_in");
+		string align_in = config.GetString("align_in");
+		std::ifstream sin(source_in.c_str());
+		if(!sin) THROW_ERROR("Could not open source file: "
+				<<source_in);
+	    std::ifstream ain(align_in.c_str());
+	    if(!ain) THROW_ERROR("Could not open alignment file: "
+	                            <<align_in);
     	ThreadPool pool(config.GetInt("threads"), 1000);
-    	for (int sent = 0 ; sent < data_.size() ; sent++) {
-    		Task *task = new ShiftReduceGoldTask(sent, data_[sent],
-					ranks_[sent], &outputs, config, &collector);
+    	string sline, aline;
+    	for (int sent = 0 ; getline(sin, sline) && getline(ain, aline) ; sent++) {
+    		Task *task = NewGoldTask(sent, sline, aline, outputs, config, collector);
     		pool.Submit(task);
     	}
     	pool.Stop(true);
 	}
+protected:
+    FeatureSet* features_;  // The mapping on feature ids and which to use
 };
 
 }

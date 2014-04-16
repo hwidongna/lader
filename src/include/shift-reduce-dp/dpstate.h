@@ -14,6 +14,7 @@
 #include <lader/util.h>
 #include <queue>
 #include <tr1/unordered_map>
+#include <typeinfo>
 using namespace std;
 
 namespace lader {
@@ -101,7 +102,9 @@ public:
 		return score_ < other.score_ || (score_ == other.score_ && inside_ < other.inside_);
 	}
 	virtual void PrintParse(const vector<string> & strs, ostream & out) const;
-	virtual void PrintTrace(ostream & out) const;
+	void PrintTrace(ostream & out) const;
+	virtual void Print(ostream & out) const;
+    std::string name() const { return typeid(*this).name(); }
 	virtual DPStateNode * ToFlatTree();
 protected:
 	virtual DPState * Shift();
@@ -124,13 +127,13 @@ typedef std::priority_queue<DPState*,
 		DPStateVector, PointerLess<DPState*> > DPStateQueue;
 
 struct DPStateHash {
-std::size_t operator()( const DPState & c ) const
+std::size_t operator()( const DPState * c ) const
         {
-            return c.hash();
+            return c->hash();
         }
 };
 
-typedef std::tr1::unordered_map<DPState, DPState*, DPStateHash> DPStateMap;
+typedef std::tr1::unordered_map<DPState*, DPState*, DPStateHash> DPStateMap;
 
 } /* namespace lader */
 

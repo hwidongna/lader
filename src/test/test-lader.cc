@@ -13,6 +13,7 @@
 #include "test-dictionary.h"
 #include "test-shift-reduce-parser.h"
 #include "test-flat-tree.h"
+#include "test-iparser.h"
 #include <vector>
 
 using namespace std;
@@ -36,6 +37,7 @@ int main() {
     tests.push_back(new TestDictionary());
     tests.push_back(new TestShiftReduceParser());
     tests.push_back(new TestFlatTree());
+    tests.push_back(new TestIParser());
     // Run all the tests
     int number_passed = 0;
     for(int i = 0; i < (int)tests.size(); i++)

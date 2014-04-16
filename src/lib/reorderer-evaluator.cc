@@ -11,14 +11,20 @@ using namespace lader;
 using namespace std;
 using namespace boost;
 
-// Run the evaluator
-void ReordererEvaluator::Evaluate(const ConfigEvaluator & config) {
-    // Set the attachment handler
-    attach_ = config.GetString("attach_null") == "left"
-        ? CombinedAlign::ATTACH_NULL_LEFT : CombinedAlign::ATTACH_NULL_RIGHT;
-    combine_ = config.GetBool("combine_blocks") ? 
+void ReordererEvaluator::InitializeModel(const ConfigBase & config){
+    attach_ = config.GetString("attach_null") == "left" ?
+                CombinedAlign::ATTACH_NULL_LEFT :
+                CombinedAlign::ATTACH_NULL_RIGHT;
+    combine_ = config.GetBool("combine_blocks") ?
                 CombinedAlign::COMBINE_BLOCKS :
                 CombinedAlign::LEAVE_BLOCKS_AS_IS;
+    bracket_ = config.GetBool("combine_brackets") ?
+    			CombinedAlign::ALIGN_BRACKET_SPANS :
+    			CombinedAlign::LEAVE_BRACKETS_AS_IS;
+}
+// Run the evaluator
+void ReordererEvaluator::Evaluate(const ConfigBase & config) {
+    InitializeModel(config);
     // Set up the losses
     vector<LossBase*> losses;
     losses.push_back(new LossChunk());
@@ -87,7 +93,7 @@ void ReordererEvaluator::Evaluate(const ConfigEvaluator & config) {
             }
         }
         cout << endl;
-        if(args.size() > 3) {
+        if(trg_in) {
             getline(*trg_in, trg);
             cout << "trg:\t" << trg << endl;
         }

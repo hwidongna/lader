@@ -79,11 +79,7 @@ void Parser::DynamicProgramming(DPStateVector & golds, ShiftReduceModel & model,
 		DPStateQueue q;
 		BOOST_FOREACH(DPState * old, beams_[step-1]){
 			if (verbose_ >= 2){
-				DDPState * dold = dynamic_cast<DDPState*>(old);
-				cerr << "OLD: " << (dold ? *dold : *old);
-				BOOST_FOREACH(Span span, old->GetSignature())
-					cerr << " [" << span.first << ", " << span.second << "]";
-				cerr << endl;
+				cerr << "OLD: "; old->Print(cerr); cerr << endl;
 			}
 			// iterate over actions
 			BOOST_FOREACH(DPState::Action action, actions_){
@@ -99,10 +95,7 @@ void Parser::DynamicProgramming(DPStateVector & golds, ShiftReduceModel & model,
 					next->SetSignature(model.GetMaxState());
 					q.push(next);
 					if (verbose_ >= 2){
-						cerr << "  NEW: " << *next;
-						BOOST_FOREACH(Span span, next->GetSignature())
-							cerr << " [" << span.first << ", " << span.second << "]";
-						cerr << endl;
+						cerr << "  NEW: "; next->Print(cerr); cerr << endl;
 					}
 				}
 			}
@@ -119,11 +112,7 @@ void Parser::DynamicProgramming(DPStateVector & golds, ShiftReduceModel & model,
 				if (old->GetSrcREnd()+m >= n)
 					continue;
 				if (verbose_ >= 2){
-					DDPState * dold = dynamic_cast<DDPState*>(old);
-					cerr << "OLD: " << (dold ? *dold : *old);
-					BOOST_FOREACH(Span span, old->GetSignature())
-						cerr << " [" << span.first << ", " << span.second << "]";
-					cerr << endl;
+					cerr << "OLD: "; old->Print(cerr); cerr << endl;
 				}
 				DPState::Action action = DPState::SHIFT;
 				bool actiongold = (refseq != NULL && action == (*refseq)[oldstep]);
@@ -141,10 +130,7 @@ void Parser::DynamicProgramming(DPStateVector & golds, ShiftReduceModel & model,
 				next->SetSignature(model.GetMaxState());
 				q.push(next);
 				if (verbose_ >= 2){
-					cerr << "  NEW: " << *next;
-					BOOST_FOREACH(Span span, next->GetSignature())
-						cerr << " [" << span.first << ", " << span.second << "]";
-					cerr << endl;
+					cerr << "  NEW: " << *next; next->Print(cerr); cerr << endl;
 				}
 			}
 		}
@@ -156,18 +142,15 @@ void Parser::DynamicProgramming(DPStateVector & golds, ShiftReduceModel & model,
 		int rank = 0;
 		for (int k = 0 ; !q.empty() && (!beamsize_ || k < beamsize_) ; k++){
 			DPState * top = q.top(); q.pop();
-			DPStateMap::iterator it = tmp.find(*top); // utilize hash() and operator==()
+			DPStateMap::iterator it = tmp.find(top); // utilize hash() and operator==()
 			if (it == tmp.end()){
-				tmp[*top] = top;
+				tmp[top] = top;
 				beams_[step].push_back(top);
 				top->SetRank(rank++);
 				if (top->IsGold())
 					golds[step] = top;
 				if (verbose_ >= 2){
-					cerr << *top << " :";
-					BOOST_FOREACH(Span span, top->GetSignature())
-						cerr << " [" << span.first << ", " << span.second << "]";
-					cerr << endl;
+					top->Print(cerr); cerr << endl;
 				}
 
 			}

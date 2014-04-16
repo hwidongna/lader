@@ -14,6 +14,7 @@
 #include <boost/foreach.hpp>
 #include <lader/reorderer-model.h>
 #include <lader/util.h>
+#include <lader/ranks.h>
 using namespace std;
 
 namespace lader {
@@ -147,19 +148,11 @@ DPState * IDPState::Reduce(DPState * leftstate, Action action){
 	return next;
 }
 
-// TODO: insert appropriate psuedo words in the target language
+// an insert/idle state
 DPState * IDPState::Insert(Action action){
 	IDPState * next = new IDPState(step_+1, src_l_, src_r_, action);
 	next->src_c_ = src_c_;
-	if (action == INSERT_L){
-		next->trg_l_ = -1;	next->trg_r_ = trg_r_;
-	}
-	else if (action == INSERT_R){
-		next->trg_l_ = trg_l_;	next->trg_r_ = -1;
-	}
-	else{
-		next->trg_l_ = trg_l_;	next->trg_r_ = trg_r_;
-	}
+	next->trg_l_ = trg_l_;	next->trg_r_ = trg_r_;
 	if (action == IDLE)
 		next->nins_ = nins_;
 	else
@@ -178,7 +171,7 @@ bool IDPState::Allow(const Action & action, const int n){
 		return action_ != INIT && action_ != INSERT_L && action_ != INSERT_R;
 	else if (action == DELETE_L)
 		// this only check whether the first left state is shifted
-		// thus, check the rest left state again when actually take action
+		// thus, check the rest left state again when actually taking action
 		return leftstate && leftstate->action_ == SHIFT;
 	else if (action == DELETE_R)
 		return leftstate && leftstate ->action_ != INIT && action_ == SHIFT;
@@ -277,63 +270,23 @@ void IDPState::PrintParse(const vector<string> & strs, ostream & out) const{
 	}
 }
 
-void IDPState::PrintTrace(ostream & out) const{
+void IDPState::Print(ostream & out) const{
 	out << *this;
-	BOOST_FOREACH(Span span, GetSignature())
-		cerr << " [" << span.first << ", " << span.second << "]";
-	out << endl;
-	if (Previous())
-		Previous()->PrintTrace(out);
 }
 
-// Produce an action sequence by intersection of source and target intermediate trees
-// Delete actions in the target tree become insert actions in the result
-// Delete actions in the source tree remain delete actions in the result
-// Deletions preceed to insertions, and idle actions are ignored
-// Note that inverted actions change the order of children
-void IDPState::Merge(ActionVector & result, const DPState * source, const DPState * target){
-	if (source == NULL || target == NULL){
-		return;
-	} else if (target->GetAction() == DPState::IDLE){
-		Merge(result, source, target->RightChild());
-	} else if (source->GetAction() == DPState::IDLE){
-		Merge(result, source->RightChild(), target);
-	} else if (target->GetAction() == DPState::DELETE_L) {
-		Merge(result, source, target->RightChild());
-		result.push_back(DPState::INSERT_L);
-	} else if (target->GetAction() == DPState::DELETE_R) {
-		Merge(result, source, target->LeftChild());
-		result.push_back(DPState::INSERT_R);
-	} else if (source->GetAction() == DPState::DELETE_L) {
-		result.push_back(DPState::SHIFT);
-		Merge(result, source->RightChild(), target);
-		result.push_back(DPState::DELETE_L);
-	} else if (source->GetAction() == DPState::DELETE_R) {
-		Merge(result, source->LeftChild(), target);
-		result.push_back(DPState::SHIFT);
-		result.push_back(DPState::DELETE_R);
-	} else if (source->GetAction() == DPState::STRAIGTH){
-		if (target->LeftChild() && target->RightChild()){
-			Merge(result, source->LeftChild(), target->LeftChild());
-			Merge(result, source->RightChild(), target->RightChild());
-		} else {
-			Merge(result, source->LeftChild(), target);
-			Merge(result, source->RightChild(), target);
-		}
-		result.push_back(source->GetAction());
-	} else if (source->GetAction() == DPState::INVERTED){
-		if (target->LeftChild() && target->RightChild()){
-			Merge(result, source->LeftChild(), target->RightChild());
-			Merge(result, source->RightChild(), target->LeftChild());
-		} else {
-			Merge(result, source->LeftChild(), target);
-			Merge(result, source->RightChild(), target);
-		}
-		result.push_back(source->GetAction());
-	} else if (source->GetAction() == DPState::SHIFT)
-		result.push_back(source->GetAction());
-	else
-		THROW_ERROR("Fail to intersect" << endl << *source << endl << *target << endl);
+// compare signature and action if inserted
+bool IDPState::operator == (const DPState & other) const {
+	const IDPState * dother = dynamic_cast<const IDPState *>(&other);
+	if (!dother){
+		this->Print(cerr); cerr << endl;
+		other.Print(cerr); cerr << endl;
+		THROW_ERROR("Incompatible comparison " << this->name () << " != " << other.name())
+	}
+	// if either this or other state is not inserted, they are not equal
+	if ((action_ != INSERT_L ^ dother->action_ != INSERT_L)
+			|| (action_ != INSERT_R ^ dother->action_ != INSERT_R))
+		return false;
+	return DPState::operator ==(other);
 }
 
 } /* namespace lader */

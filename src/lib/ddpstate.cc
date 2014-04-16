@@ -386,10 +386,8 @@ void DDPState::PrintParse(const vector<string> & strs, ostream & out) const{
 	}
 }
 
-void DDPState::PrintTrace(ostream & out) const{
-	out << *this << endl;
-	if (Previous())
-		Previous()->PrintTrace(out);
+void DDPState::Print(ostream & out) const{
+	out << *this;
 }
 
 DPStateNode * DDPState::ToFlatTree(){

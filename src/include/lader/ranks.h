@@ -8,6 +8,10 @@ namespace lader {
 
 class Ranks {
 public:
+	typedef enum{
+		INSERT_L = -2,
+		INSERT_R = -1,
+	}_;
     Ranks() : max_rank_(-1) { };
     // Turn a combined alignment into its corresponding ranks
     Ranks(const CombinedAlign & combined);
@@ -40,7 +44,6 @@ public:
     int GetSrcLen() const { return ranks_.size(); }
     void SetRanks(const std::vector<int> & order);
     ActionVector GetReference() const;
-    bool IsDeleted(const CombinedAlign * cal, DPState * state) const;
     bool IsStraight(DPState * leftstate, DPState * state) const;
     bool IsInverted(DPState * leftstate, DPState * state) const;
     bool HasTie(DPState * state) const;

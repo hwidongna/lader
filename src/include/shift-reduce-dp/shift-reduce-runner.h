@@ -32,7 +32,7 @@ public:
 	virtual DPStateNode * NewDPStateNode(vector<string> & words){
 		return new DDPStateNode(0, words.size(), NULL, DPState::INIT);
 	}
-	void Output(const Sentence & datas, const DPState *best)
+	virtual void Output(const Sentence & datas, const DPState *best)
     {
         Parser::Result result;
         Parser::SetResult(&result, best);
@@ -50,12 +50,6 @@ public:
         const std::vector<int> & reordering = result.order;
         // Print the string
         vector<string> words = ((FeatureDataSequence*)(datas[0]))->GetSequence();
-//        if (result.order.size() != words.size()){
-//        	ess << "Invalid parsing result " << endl;
-//        	best->PrintTrace(ess);
-//        	oss << endl;
-//        	return;
-//        }
         for(int i = 0; i < (int)outputs_->size(); i++) {
 			if(i != 0) oss << "\t";
 			if(outputs_->at(i) == ReordererRunner::OUTPUT_STRING) {
@@ -158,8 +152,6 @@ public:
 	            outputs_.push_back(OUTPUT_STRING);
 	        else if(str == "parse")
 	            outputs_.push_back(OUTPUT_PARSE);
-	        else if(str == "hypergraph")
-	            outputs_.push_back(OUTPUT_HYPERGRAPH);
 	        else if(str == "order")
 	            outputs_.push_back(OUTPUT_ORDER);
 	        else if(str == "score")

@@ -44,11 +44,13 @@ public:
         AddConfigEntry("model_out", "", "An output file for the model");
         AddConfigEntry("shuffle", "false", "Whether to shuffle the input");
         AddConfigEntry("source_in", "", "The input file for the source sentences");
-        AddConfigEntry("source_gold", "", "The gold action sequence file for the source sentences");
-        AddConfigEntry("target_gold", "", "The gold action sequence file for the target sentences");
         AddConfigEntry("source_dev", "", "The dev file for the source sentences");
-        AddConfigEntry("source_dev_gold", "", "The dev gold action sequence file for the source sentences");
-        AddConfigEntry("target_dev_gold", "", "The dev gold action sequence file for the target sentences");
+        AddConfigEntry("align_in", "", "The input file for the alignments");
+        AddConfigEntry("align_dev", "", "The dev file for the alignments");
+        AddConfigEntry("attach_null", "right", "Whether to attach null alignments to the left or right");
+        AddConfigEntry("attach_trg", "left", "Whether to attach null alignments to the left or right");
+        AddConfigEntry("combine_blocks", "true", "Whether to combine alignments into blocks");
+        AddConfigEntry("combine_brackets", "true", "Whether to combine alignments into brackets");
         AddConfigEntry("use_reverse", "false", "Whether to use reverse terminals ");
         AddConfigEntry("threads", "1", "The number of threads to use");
         AddConfigEntry("verbose", "0", "The level of debugging output to print");

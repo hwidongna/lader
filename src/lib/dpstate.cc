@@ -262,11 +262,17 @@ void DPState::PrintParse(const vector<string> & strs, ostream & out) const{
 }
 
 void DPState::PrintTrace(ostream & out) const{
-	out << *this << endl;
+	this->Print(out);
+	BOOST_FOREACH(Span span, GetSignature())
+		cerr << " [" << span.first << ", " << span.second << "]";
+	out << endl;
 	if (Previous())
 		Previous()->PrintTrace(out);
 }
 
+void DPState::Print(ostream & out) const{
+	out << *this;
+}
 DPStateNode * DPState::ToFlatTree(){
 	DPStateNode * root = new DPStateNode(0, src_r_, NULL, DPState::INIT);
 	root->AddChild(root->Flatten(this));

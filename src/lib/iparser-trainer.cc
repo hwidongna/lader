@@ -8,6 +8,7 @@
 
 #include "shift-reduce-dp/iparser-trainer.h"
 #include "shift-reduce-dp/iparser-model.h"
+#include "shift-reduce-dp/iparser-ranks.h"
 #include "shift-reduce-dp/iparser.h"
 #include <boost/foreach.hpp>
 #include <boost/algorithm/string.hpp>
@@ -19,6 +20,11 @@ using namespace boost;
 namespace lader {
 
 void IParserTrainer::InitializeModel(const ConfigBase & config) {
+	// TODO: restruture inheritance hierarchy
+	ReordererEvaluator::InitializeModel(config);
+    attach_trg_ = config.GetString("attach_trg") == "left" ?
+                CombinedAlign::ATTACH_NULL_LEFT :
+                CombinedAlign::ATTACH_NULL_RIGHT;
     srand(time(NULL));
     ofstream model_out(config.GetString("model_out").c_str());
     if(!model_out)
@@ -61,11 +67,13 @@ void IParserTrainer::InitializeModel(const ConfigBase & config) {
 void IParserTrainer::TrainIncremental(const ConfigBase & config) {
     InitializeModel(config);
     ReadData(config.GetString("source_in"), data_);
-    ReadGold(config.GetString("source_gold"), source_gold_);
-    ReadGold(config.GetString("target_gold"), target_gold_);
-    ReadData(config.GetString("source_dev"), dev_data_);
-    ReadGold(config.GetString("source_dev_gold"), source_dev_gold_);
-	ReadGold(config.GetString("target_dev_gold"), target_dev_gold_);
+    if(config.GetString("align_in").length()){
+        GetReferenceSequences(config.GetString("align_in"), refseq_, data_);
+    }
+    if(config.GetString("source_dev").length() && config.GetString("align_dev").length()){
+    	ReadData(config.GetString("source_dev"), dev_data_);
+    	GetReferenceSequences(config.GetString("align_in"), dev_refseq_, data_);
+    }
     int verbose = config.GetInt("verbose");
     vector<int> sent_order(data_.size());
 	for(int i = 0 ; i < (int)sent_order.size(); i++)
@@ -93,13 +101,12 @@ void IParserTrainer::TrainIncremental(const ConfigBase & config) {
         	if(done % (100*10) == 0) cerr << done << endl;
         	if (verbose >= 1)
         		cerr << endl << "Sentence " << sent << endl;
-        	// Obtain the reference action sequence from bidirectional gold action sequences
-			ActionVector refseq;
-			GetMergedReference(refseq, source_gold_[sent], target_gold_[sent], verbose);
+        	// copy the original reference sequence because it will be resized if early update
+    		ActionVector refseq = refseq_[sent];
 			if (refseq.empty())
 				continue;
 			if (verbose >= 1){
-				cerr << "Merged Reference:";
+				cerr << "Reference Action:";
 				for (int step = 0 ; step < refseq.size() ; step++)
 					cerr << " " << (char)refseq[step]  << "_" << step+1;
 				cerr << endl;
@@ -212,12 +219,11 @@ void IParserTrainer::TrainIncremental(const ConfigBase & config) {
         vector<pair<double,double> > sum_losses(losses_.size(), pair<double,double>(0,0));
         vector<pair<double,double> > sum_losses_kbests(losses_.size(), pair<double,double>(0,0));
         for (int sent = 0 ; sent < dev_data_.size() ; sent++) {
-			ActionVector refseq;
-			GetMergedReference(refseq, source_dev_gold_[sent], target_dev_gold_[sent], verbose);
+        	ActionVector & refseq = dev_refseq_[sent];
 			if (refseq.empty())
 				continue;
 			if (verbose >= 1){
-				cerr << "Merged Reference:";
+				cerr << "Reference Action:";
 				BOOST_FOREACH(DPState::Action action, refseq)
 					cerr << " " << (char)action;
 				cerr << endl;

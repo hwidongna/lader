@@ -70,7 +70,10 @@ public:
     const Span & operator[] (size_t src) const {
         return SafeAccess(spans_, src);
     }
-    const std::vector<Span > & GetSpans() const {
+    const std::vector<Span> & GetSpans() const {
+        return spans_;
+    }
+    std::vector<Span> & GetSpans() {
         return spans_;
     }
     int GetSrcLen() const { return spans_.size(); }

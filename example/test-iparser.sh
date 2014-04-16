@@ -56,10 +56,10 @@ run "../src/bin/iparser-gold -verbose $VERBOSE -attach_null left \
 -source_in data/$t.ja -align_in data/$t.ja-en.align \
 > output/$t.ja-en.gold.out 2> output/$t.ja-en.gold.log"
 
-run "../src/bin/evaluate-iparser \
--source_gold output/$t.en-ja.gold.out \
--target_gold output/$t.ja-en.gold.out \
-$OUTPUT data/$TEST_IN $TARGET_IN'' \
+LOSS_PROFILE="levenshtein=1"
+run "../src/bin/evaluate-iparser -loss_profile '$LOSS_PROFILE' \
+-attach_null right -attach_trg left \
+$ALIGN_IN $OUTPUT data/$TEST_IN $TARGET_IN'' \
 > output/$TEST_IN.iparser.grade 2> output/$TEST_IN.iparser.log"
 
 tail -n3 output/$TEST_IN.iparser.grade

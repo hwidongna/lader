@@ -11,13 +11,13 @@
 #include <shift-reduce-dp/shift-reduce-trainer.h>
 #include <shift-reduce-dp/iparser-model.h>
 #include <shift-reduce-dp/iparser.h>
-#include <shift-reduce-dp/iparser-evaluator.h>
+#include <shift-reduce-dp/iparser-ranks.h>
 using namespace std;
 
 namespace lader {
 
 
-class IParserTrainer : public ShiftReduceTrainer, public IParserEvaluator {
+class IParserTrainer : public ShiftReduceTrainer {
 	// A task
 	class IParserTask : public Task {
 	public:
@@ -56,12 +56,30 @@ public:
 	virtual ~IParserTrainer() { }
 	// Initialize the model
 	virtual void InitializeModel(const ConfigBase & config);
+	void GetReferenceSequences(const std::string & align_in,
+		std::vector<ActionVector> & refseq, std::vector<Sentence*> & datas){
+	    std::ifstream in(align_in.c_str());
+	    if(!in) THROW_ERROR("Could not open alignment file: "
+	                            <<align_in);
+	    std::string line;
+	    int i = 0;
+	    while(getline(in, line)){
+	    	const vector<string> & srcs = (*SafeAccess(datas,i++))[0]->GetSequence();
+			CombinedAlign cal(srcs, Alignment::FromString(line),
+								CombinedAlign::LEAVE_NULL_AS_IS, combine_, bracket_);
+			IParserRanks ranks(CombinedAlign(srcs, Alignment::FromString(line),
+						attach_, combine_, bracket_), attach_trg_);
+			ranks.Insert(&cal);
+			refseq.push_back(ranks.GetReference(&cal));
+	    }
+
+	}
     // Train the reorderer incrementally, building they hypergraph each time
     // we parse
     virtual void TrainIncremental(const ConfigBase & config);
 protected:
-	vector<ActionVector> source_dev_gold_;
-	vector<ActionVector> target_dev_gold_;
+    vector<ActionVector> refseq_, dev_refseq_;
+    CombinedAlign::NullHandler attach_trg_;
 
 };
 

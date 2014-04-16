@@ -33,13 +33,13 @@ public:
 	int GetNumIns() const { return nins_; }
 	int GetNumDel() const { return ndel_; }
 	virtual void PrintParse(const vector<string> & strs, ostream & out) const;
-	virtual void PrintTrace(ostream & out) const;
-	static void Merge(ActionVector & result, const DPState * source, const DPState * target);
+	void Print(ostream & out) const;
+	virtual bool operator == (const DPState & other) const;
 protected:
 	virtual DPState * Shift();
 	// a delete action is also a reduce operation
 	virtual DPState * Reduce(DPState * leftstate, Action action);
-	// TODO: insert appropriate psuedo words in the target language
+	// an idle action is also regarded as a insert operation
 	virtual DPState * Insert(Action action);
 	int nins_, ndel_;				// the number of insert/delete actions taken so far
 };

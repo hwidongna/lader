@@ -1,4 +1,5 @@
 #include <lader/reorderer-trainer.h>
+#include <lader/reorderer-evaluator.h>
 #include <lader/thread-pool.h>
 #include <boost/algorithm/string.hpp>
 #include <boost/filesystem.hpp>
@@ -227,6 +228,7 @@ void ReordererTrainer::TrainIncremental(const ConfigBase & config) {
 }
 
 void ReordererTrainer::InitializeModel(const ConfigBase & config) {
+	ReordererEvaluator::InitializeModel(config);
     srand(time(NULL));
     ofstream model_out(config.GetString("model_out").c_str());
     if(!model_out)
@@ -247,15 +249,6 @@ void ReordererTrainer::InitializeModel(const ConfigBase & config) {
         features_->ParseConfiguration(config.GetString("feature_profile"));
     }
     // Load the other config
-    attach_ = config.GetString("attach_null") == "left" ? 
-                CombinedAlign::ATTACH_NULL_LEFT :
-                CombinedAlign::ATTACH_NULL_RIGHT;
-    combine_ = config.GetBool("combine_blocks") ? 
-                CombinedAlign::COMBINE_BLOCKS :
-                CombinedAlign::LEAVE_BLOCKS_AS_IS;
-    bracket_ = config.GetBool("combine_brackets") ?
-    			CombinedAlign::ALIGN_BRACKET_SPANS :
-    			CombinedAlign::LEAVE_BRACKETS_AS_IS;
     model_->SetCost(config.GetDouble("cost"));
     std::vector<std::string> losses, first_last;
     algorithm::split(

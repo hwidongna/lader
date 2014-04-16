@@ -119,7 +119,7 @@ done
 # Thus, loss functions are also defined over gold action sequences
 # e.g. edit distance, affine gap distance (to be considered), etc.
 
-LOSS_PROFILE="levenshtein=0.5|affine=0.5"
+LOSS_PROFILE="levenshtein=1"
 FEATURE_PROFILE="\
 seq=dict=output/train.en-ja.pt,D%0QE0%aT,D0%0Q#00%aT,D1%0Q#01%aT,D2%0Q#02%aT,\
 Q0%q0%aT,LL0%s0L%aT,RR0%s0R%aT,LR0%l0R%aT,RL0%r0L%aT,O0%s0L%s0R%aT,I0%l0R%r0L%aT,LL1%s1L%aT,RR1%s1R%aT,LR1%l1R%aT,RL1%r1L%aT,O1%s1L%s1R%aT,I1%l1R%r1L%aT,BIAS%aT\
@@ -131,12 +131,8 @@ run "../src/bin/train-iparser -cost 1e-3 \
 -loss_profile '$LOSS_PROFILE' -feature_profile '$FEATURE_PROFILE' \
 -iterations $ITERATION -threads $THREADS -shuffle $SHUFFLE \
 -verbose $VERBOSE -model_in $MODEL_IN'' -model_out output/train.iparser.mod \
--source_in $SOURCE_IN \
--source_gold output/train.en-ja.gold.out \
--target_gold output/train.ja-en.gold.out \
--source_dev $SOURCE_DEV \
--source_dev_gold output/test.en-ja.gold.out \
--target_dev_gold output/test.ja-en.gold.out \
+-source_in $SOURCE_IN -align_in $ALIGN_IN \
+-source_dev $SOURCE_DEV -align_dev $ALIGN_DEV \
 -update $UPDATE -beam $BEAM -max_state $MAX_STATE \
 -max_ins $MAX_INS -max_del $MAX_DEL -verbose $VERBOSE"
 

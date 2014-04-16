@@ -4,17 +4,15 @@
 #include <fstream>
 #include <lader/config-trainer.h>
 #include <lader/hyper-graph.h>
+#include <lader/reorderer-evaluator.h>
 
 namespace lader {
 
 // A class to train the reordering model
-class ReordererTrainer {
+class ReordererTrainer : public ReordererEvaluator {
 public:
 
     ReordererTrainer() : learning_rate_(1),
-                         attach_(CombinedAlign::ATTACH_NULL_LEFT),
-                         combine_(CombinedAlign::COMBINE_BLOCKS),
-                         bracket_(CombinedAlign::ALIGN_BRACKET_SPANS),
                          model_(NULL), features_(NULL){ }
     virtual ~ReordererTrainer() {
 	    BOOST_FOREACH(Sentence * vec, data_)
@@ -66,9 +64,7 @@ protected:
     ReordererModel* model_; // The model
     FeatureSet* features_;  // The mapping on feature ids and which to use
     std::vector<LossBase*> losses_; // The loss functions
-    CombinedAlign::NullHandler attach_; // Where to attach nulls
-    CombinedAlign::BlockHandler combine_; // Whether to combine blocks
-    CombinedAlign::BracketHandler bracket_; // Whether to handle brackets
+
 private:
 
     std::vector<FeatureDataParse> parses_; // The parses to use in training

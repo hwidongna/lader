@@ -12,29 +12,24 @@
 #include <vector>
 #include <shift-reduce-dp/dpstate.h>
 #include <lader/config-base.h>
+#include <lader/reorderer-evaluator.h>
 using namespace std;
 
 namespace lader {
 
 
-class IParserEvaluator{
+class IParserEvaluator : public ReordererEvaluator{
 public:
-	IParserEvaluator() { }
+	IParserEvaluator() : attach_trg_(CombinedAlign::ATTACH_NULL_LEFT) { }
 	virtual ~IParserEvaluator() { }
 
-	// Read in the alignments
-	void ReadGold(const string & gold_in, vector<ActionVector> & golds);
+	virtual void InitializeModel(const ConfigBase & config);
 
-	// Obtain a merged action sequence from bidirectional gold action sequences
-    void GetMergedReference(ActionVector & refseq,
-			const ActionVector & frefseq, const ActionVector & erefseq,
-			int verbose);
 	// Run the evaluator
-	void Evaluate(const ConfigBase & config);
+	virtual void Evaluate(const ConfigBase & config);
 
 protected:
-	vector<ActionVector> source_gold_;
-	vector<ActionVector> target_gold_;
+	CombinedAlign::NullHandler attach_trg_;
 
 };
 

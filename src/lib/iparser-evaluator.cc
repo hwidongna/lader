@@ -88,6 +88,7 @@ void IParserEvaluator::Evaluate(const ConfigBase & config){
 		algorithm::split(srcs, src, is_any_of(" "));
 		FeatureDataSequence words;
 		words.FromString(src);
+		cerr << sent << "\t" << words.GetNumWords();
 		// Print the input values
 		cout << "sys_ord:\t" << datas[0] << endl;
 		for(int i = 1; i < (int)datas.size(); i++)
@@ -99,10 +100,21 @@ void IParserEvaluator::Evaluate(const ConfigBase & config){
 			cout << "trg:\t" << trg << endl;
 		}
 		Alignment al = Alignment::FromString(align);
-        IParserRanks ranks(CombinedAlign(srcs, al, attach_, combine_, bracket_), attach_trg_);
-        CombinedAlign cal(srcs, al, CombinedAlign::LEAVE_NULL_AS_IS, combine_, bracket_);
-        ranks.Insert(&cal); // TODO: optional?
-		ActionVector refseq = ranks.GetReference(&cal);
+        CombinedAlign cal1(srcs, al, CombinedAlign::LEAVE_NULL_AS_IS, combine_, bracket_);
+        CombinedAlign cal2(srcs, al, attach_, combine_, bracket_);
+        IParserRanks ranks(cal2, attach_trg_);
+        ActionVector refseq;
+        // enable insert/delete if allowed
+        if (config.GetBool("delete")){
+        	if (config.GetBool("insert"))
+        		ranks.Insert(&cal1);
+        	refseq = ranks.GetReference(&cal1);
+        }
+        else{
+        	if (config.GetBool("insert"))
+        		ranks.Insert(&cal2);
+        	refseq = ranks.GetReference(&cal2);
+        }
 		if (!refseq.empty()){
 			cout << "ref:\t";
 			BOOST_FOREACH(DPState::Action action, refseq)
@@ -112,8 +124,7 @@ void IParserEvaluator::Evaluate(const ConfigBase & config){
 			IParser gparser(n, n);
 			DPState * goal = gparser.GuidedSearch(refseq, n);
 			if (goal == NULL){
-				if (verbose >= 1)
-					cerr << "Parser cannot produce the merged reference sequence, skip it" << endl;
+				cerr << endl;
 				continue;
 			}
 			Parser::Result gresult;
@@ -141,7 +152,6 @@ void IParserEvaluator::Evaluate(const ConfigBase & config){
 			// Get the ranks
 			Ranks ranks;
 			ranks.SetRanks(gresult.order);
-			cerr << sent << "\t" << words.GetNumWords();
 			// Score the values
 			for(int i = 0; i < (int) losses.size(); i++) {
 				pair<double,double> my_loss =

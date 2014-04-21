@@ -63,14 +63,25 @@ public:
 	                            <<align_in);
 	    std::string line;
 	    int i = 0;
+	    IParserModel * model = dynamic_cast<IParserModel*>(model_);
 	    while(getline(in, line)){
 	    	const vector<string> & srcs = (*SafeAccess(datas,i++))[0]->GetSequence();
-			CombinedAlign cal(srcs, Alignment::FromString(line),
+			CombinedAlign cal1(srcs, Alignment::FromString(line),
 								CombinedAlign::LEAVE_NULL_AS_IS, combine_, bracket_);
-			IParserRanks ranks(CombinedAlign(srcs, Alignment::FromString(line),
-						attach_, combine_, bracket_), attach_trg_);
-			ranks.Insert(&cal);
-			refseq.push_back(ranks.GetReference(&cal));
+			CombinedAlign cal2(srcs, Alignment::FromString(line),
+									attach_, combine_, bracket_);
+			IParserRanks ranks(cal2, attach_trg_);
+			// enable insert/delete if allowed
+			if (model->GetMaxDel() > 0){
+				if (model->GetMaxIns() > 0)
+					ranks.Insert(&cal1);
+				refseq.push_back(ranks.GetReference(&cal1));
+			}
+			else{
+				if (model->GetMaxIns() > 0)
+					ranks.Insert(&cal2);
+				refseq.push_back(ranks.GetReference(&cal2));
+			}
 	    }
 
 	}

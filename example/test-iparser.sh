@@ -10,6 +10,8 @@ OUTPUT=output/test.en.iparser
 THREADS=2
 BEAM=10
 VERBOSE=1
+INSERT=true
+DELETE=false
 
 # define helper function: run a command and print its exit code
 function run () {
@@ -59,6 +61,7 @@ run "../src/bin/iparser-gold -verbose $VERBOSE -attach_null left \
 LOSS_PROFILE="levenshtein=1"
 run "../src/bin/evaluate-iparser -loss_profile '$LOSS_PROFILE' \
 -attach_null right -attach_trg left \
+-insert $INSERT -delete $DELETE \
 $ALIGN_IN $OUTPUT data/$TEST_IN $TARGET_IN'' \
 > output/$TEST_IN.iparser.grade 2> output/$TEST_IN.iparser.log"
 

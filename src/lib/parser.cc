@@ -336,6 +336,10 @@ void Parser::Simulate(ShiftReduceModel & model, const FeatureSet & feature_gen,
 			state = stateseq.back();
 		}
 		else{
+			cerr << "Simulate fails:";
+			BOOST_FOREACH(string word, sent[0]->GetSequence())
+				cerr << " " << word;
+			cerr << endl;
 			state->PrintTrace(cerr);
 			THROW_ERROR("Bad action! " << (char) action << endl);
 		}

@@ -38,6 +38,8 @@ public:
         AddConfigEntry("attach_trg", "left", "Whether to attach target null alignments to the left or right");
         AddConfigEntry("combine_blocks", "true", "Whether to attach the blocks together");
         AddConfigEntry("combine_brackets", "true", "Whether to combine alignments into brackets");
+        AddConfigEntry("insert", "true", "Whether to insert target words");
+        AddConfigEntry("delete", "true", "Whether to delete source words");
 
     }
 	

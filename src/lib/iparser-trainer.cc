@@ -118,11 +118,11 @@ void IParserTrainer::TrainIncremental(const ConfigBase & config) {
 				cerr << endl;
 			}
 			int n = (refseq.size()+1) / 2;
-			IParser gparser(n, n);
-			DPState * goal = gparser.GuidedSearch(refseq, n);
-			if (goal == NULL){
+			IParser p(n, n);
+			DPState * goal = p.GuidedSearch(refseq, n);
+			if (!goal || !goal->Allow(DPState::IDLE, n)){
 				if (verbose >= 1)
-					cerr << "Parser cannot produce the merged reference sequence, skip it" << endl;
+					cerr << "Parser cannot produce the goal state" << endl;
 				continue;
 			}
 			// Produce the parse
@@ -143,12 +143,8 @@ void IParserTrainer::TrainIncremental(const ConfigBase & config) {
 					cerr << " " << (char) result.actions[step] << "_" << step+1;
 				cerr << endl;
 				DPState * best = parser.GetBeamBest(result.step);
-        		IDPState * dbest = dynamic_cast<IDPState*>(best);
         		cerr << "Beam trace:" << endl;
-        		if (dbest)
-        			dbest->PrintTrace(cerr);
-        		else
-        			best->PrintTrace(cerr);
+        		best->PrintTrace(cerr);
         		cerr << "Result step " << result.step << ", reference size " << refseq.size() << endl;
         	}
         	if (result.step != result.actions.size())
@@ -243,18 +239,18 @@ void IParserTrainer::TrainIncremental(const ConfigBase & config) {
 				cerr << endl;
 			}
 			int n = (refseq.size()+1) / 2;
-			IParser gparser(n, n);
-			DPState * goal = gparser.GuidedSearch(refseq, n);
-			if (goal == NULL){
+			IParser p(n, n);
+			DPState * goal = p.GuidedSearch(refseq, n);
+			if (!goal || !goal->Allow(DPState::IDLE, n)){
 				if (verbose >= 1)
-					cerr << "Parser cannot produce the merged reference sequence, skip it" << endl;
+					cerr << "Parser cannot produce the goal state" << endl;
 				continue;
 			}
-			Parser::Result gresult;
-			Parser::SetResult(gresult, goal);
+			Parser::Result result;
+			Parser::SetResult(result, goal);
 			if (verbose >= 1){
 				cerr << "Oracle Purmutation:";
-				BOOST_FOREACH(int order, gresult.order)
+				BOOST_FOREACH(int order, result.order)
 					cerr << " " << order;
 				cerr << endl;
 				cerr << "Result Purmutation:";
@@ -262,12 +258,12 @@ void IParserTrainer::TrainIncremental(const ConfigBase & config) {
 					cerr << " " << order;
 				cerr << endl;
 			}
-			Ranks granks;
-			granks.SetRanks(gresult.order);
+			Ranks ranks;
+			ranks.SetRanks(result.order);
         	for(int i = 0; i < (int) losses_.size(); i++) {
 				losses_[i]->Initialize(NULL, NULL);
         		pair<double,double> my_loss =
-        				losses_[i]->CalculateSentenceLoss(results[sent].order, &granks, NULL);
+        				losses_[i]->CalculateSentenceLoss(results[sent].order, &ranks, NULL);
         		sum_losses[i].first += my_loss.first;
         		sum_losses[i].second += my_loss.second;
         		double acc = my_loss.second == 0 ?
@@ -279,7 +275,7 @@ void IParserTrainer::TrainIncremental(const ConfigBase & config) {
         		}
         		BOOST_FOREACH(Parser::Result & result, result_kbests[sent]){
             		pair<double,double> loss_k =
-            				losses_[i]->CalculateSentenceLoss(result.order, &granks, NULL);
+            				losses_[i]->CalculateSentenceLoss(result.order, &ranks, NULL);
             		double acc_k = loss_k.second == 0 ?
             				1 : (1-loss_k.first/loss_k.second);
             		if (acc_k > acc){

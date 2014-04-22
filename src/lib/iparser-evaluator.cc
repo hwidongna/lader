@@ -123,7 +123,7 @@ void IParserEvaluator::Evaluate(const ConfigBase & config){
 			int n = (refseq.size()+1) / 2;
 			IParser gparser(n, n);
 			DPState * goal = gparser.GuidedSearch(refseq, n);
-			if (goal == NULL){
+			if (!goal || !goal->Allow(DPState::IDLE, n)){
 				cerr << endl;
 				continue;
 			}

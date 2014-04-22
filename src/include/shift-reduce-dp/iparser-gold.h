@@ -38,13 +38,23 @@ public:
         int verbose = config_.GetInt("verbose");
         if(verbose >= 1)
             ess << endl << "Sentence " << sent << endl;
-    	CombinedAlign cal(srcs, Alignment::FromString(aline_),
-							CombinedAlign::LEAVE_NULL_AS_IS, combine_, bracket_);
-        IParserRanks ranks(CombinedAlign(srcs, Alignment::FromString(aline_),
-                	attach_, combine_, bracket_), attach_trg_);
-        ranks.SetVerbose(verbose >= 2);
-        ranks.Insert(&cal);
-		ActionVector refseq = ranks.GetReference(&cal);
+		Alignment al = Alignment::FromString(aline_);
+        CombinedAlign cal1(srcs, al, CombinedAlign::LEAVE_NULL_AS_IS, combine_, bracket_);
+        CombinedAlign cal2(srcs, al, attach_, combine_, bracket_);
+        IParserRanks ranks(cal2, attach_trg_);
+        ActionVector refseq;
+        // enable insert/delete if allowed
+        if (config_.GetBool("delete")){
+        	if (config_.GetBool("insert"))
+        		ranks.Insert(&cal1);
+        	refseq = ranks.GetReference(&cal1);
+        }
+        else{
+        	if (config_.GetBool("insert"))
+        		ranks.Insert(&cal2);
+        	refseq = ranks.GetReference(&cal2);
+        }
+
 		if (verbose >= 1){
 			ess << "Reference:";
 			BOOST_FOREACH(DPState::Action action, refseq)
@@ -60,15 +70,15 @@ public:
 		}
 
 		IParser p(n, n);
-		DPState * state = p.GuidedSearch(refseq, n);
-		if (!state){
+		DPState * goal = p.GuidedSearch(refseq, n);
+		if (!goal || !goal->Allow(DPState::IDLE, n)){
 			ess << "Fail to produce the goal state" << endl;
 			oss << endl;
 			collector_->Write(id_, oss.str(), ess.str());
 			return;
 		}
 
-		Output(datas, state);
+		Output(datas, goal);
 		collector_->Write(id_, oss.str(), ess.str());
 	}
 protected:

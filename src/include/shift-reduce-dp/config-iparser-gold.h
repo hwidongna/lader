@@ -45,6 +45,8 @@ public:
         AddConfigEntry("align_in", "", "The input file for the alignments");
         AddConfigEntry("verbose", "0", "The level of debugging output to print");
         AddConfigEntry("threads", "1", "The number of threads to use");
+        AddConfigEntry("insert", "true", "Whether to insert target words");
+        AddConfigEntry("delete", "true", "Whether to delete source words");
     }
 
 };

@@ -120,9 +120,9 @@ void IParserEvaluator::Evaluate(const ConfigBase & config){
 			BOOST_FOREACH(DPState::Action action, refseq)
 				cout << " " << (char)action;
 			cout << endl;
-			int n = (refseq.size()+1) / 2;
-			IParser gparser(n, n);
-			DPState * goal = gparser.GuidedSearch(refseq, n);
+			int n = words.GetNumWords();
+			IParser parser(n, n);
+			DPState * goal = parser.GuidedSearch(refseq, n);
 			if (!goal || !goal->Allow(DPState::IDLE, n)){
 				cerr << endl;
 				continue;

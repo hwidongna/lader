@@ -11,7 +11,7 @@ THREADS=2
 BEAM=10
 VERBOSE=1
 INSERT=true
-DELETE=false
+DELETE=true
 
 # define helper function: run a command and print its exit code
 function run () {

@@ -117,7 +117,7 @@ void IParserTrainer::TrainIncremental(const ConfigBase & config) {
 					cerr << " " << (char)refseq[step]  << "_" << step+1;
 				cerr << endl;
 			}
-			int n = (refseq.size()+1) / 2;
+			int n = (*data_[sent])[0]->GetNumWords();
 			IParser p(n, n);
 			DPState * goal = p.GuidedSearch(refseq, n);
 			if (!goal || !goal->Allow(DPState::IDLE, n)){
@@ -238,7 +238,7 @@ void IParserTrainer::TrainIncremental(const ConfigBase & config) {
 					cerr << " " << (char)action;
 				cerr << endl;
 			}
-			int n = (refseq.size()+1) / 2;
+			int n = (*dev_data_[sent])[0]->GetNumWords();
 			IParser p(n, n);
 			DPState * goal = p.GuidedSearch(refseq, n);
 			if (!goal || !goal->Allow(DPState::IDLE, n)){

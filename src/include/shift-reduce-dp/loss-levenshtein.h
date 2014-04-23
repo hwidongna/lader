@@ -33,10 +33,14 @@ public:
     	std::vector< std::vector<double> > score(order.size()+1);
     	for (int row = 0 ; row <= order.size(); row++)
     		score[row].resize(gold.size()+1, 0);
-    	score[0][0] = 0;
+    	int n = std::max(order.size(), gold.size());
     	for (int row = 0 ; row <= order.size(); row++){
     		for (int col = 0 ; col <= gold.size() ; col++){
-    			double ins = 0, del = 0, sub = 0;
+    			if (row == 0 && col == 0){
+    				score[0][0] = 0;
+    				continue;
+    			}
+    			double ins = n, del = n, sub = n;
     			if (col > 0)
     				ins = score[row][col-1] + 1;
     			if (row > 0)
@@ -48,7 +52,7 @@ public:
     	}
     	std::pair<double,double> ret(0,0);
     	ret.first = score[order.size()][gold.size()];
-    	ret.second = std::max(order.size() + 1, gold.size() + 1);
+    	ret.second = n;
     	ret.first *= weight_;
     	ret.second *= weight_;
     	return ret;

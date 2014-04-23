@@ -29,6 +29,35 @@ public:
         	cerr << loss.first << " != 0" << endl;;
         	ret = 0;
         }
+        // insert one
+        Ranks ranks2 = Ranks::FromString("0 1 -1 5 4 3 2 6");
+        loss = lf.CalculateSentenceLoss(ranks.GetRanks(), &ranks2, NULL);
+        if (loss.first != 1){
+			cerr << loss.first << " != 1" << endl;;
+			ret = 0;
+		}
+        // delete one
+        Ranks ranks3 = Ranks::FromString("1 5 4 3 2 6");
+        loss = lf.CalculateSentenceLoss(ranks.GetRanks(), &ranks3, NULL);
+        if (loss.first != 1){
+        	cerr << loss.first << " != 1" << endl;;
+        	ret = 0;
+        }
+        // substitute one
+		Ranks ranks4 = Ranks::FromString("0 -1 5 4 3 2 6");
+		loss = lf.CalculateSentenceLoss(ranks.GetRanks(), &ranks4, NULL);
+		if (loss.first != 1){
+			cerr << loss.first << " != 1" << endl;;
+			ret = 0;
+		}
+		// mixed
+		Ranks ranks5 = Ranks::FromString("0 -1 4 5 3 2 6");
+		loss = lf.CalculateSentenceLoss(ranks.GetRanks(), &ranks5, NULL);
+		if (loss.first != 1+1+1){
+			cerr << loss.first << " != 3" << endl;;
+			ret = 0;
+		}
+
         return ret;
     }
 

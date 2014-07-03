@@ -38,8 +38,9 @@ public:
 		int verbose = config_.GetInt("verbose");
 		if(verbose >= 1)
 			ess << endl << "Sentence " << sent << endl;
-		Ranks ranks(CombinedAlign(srcs, Alignment::FromString(aline_),
-				attach_, combine_, bracket_));
+		Alignment al = Alignment::FromString(aline_);
+		CombinedAlign cal(srcs, al, attach_, combine_, bracket_);
+		Ranks ranks(cal);
 		ActionVector refseq = ranks.GetReference();
 		if (verbose >= 1){
 			ess << "Reference:";
@@ -52,7 +53,7 @@ public:
 			THROW_ERROR("Fail to get correct reference sequence" << endl)
 		DParser p(n);
 		DPState * state = p.GuidedSearch(refseq, n);
-		Output(datas, state);
+		Output(datas, state, &al, &cal);
 		collector_->Write(id_, oss.str(), ess.str());
 	}
 protected:
@@ -97,6 +98,8 @@ public:
 				outputs.push_back(ReordererRunner::OUTPUT_FLATTEN);
 			else if(str == "action")
 				outputs.push_back(ReordererRunner::OUTPUT_ACTION);
+	        else if (str == "align")
+				outputs.push_back(ReordererRunner::OUTPUT_ALIGN);
 			else
 				THROW_ERROR("Bad output format '" << str <<"'");
 		}

@@ -14,6 +14,10 @@ using namespace lader;
 Ranks::Ranks(const CombinedAlign & combined) {
     // Sort the combined alignments in rank order (allowing ties)
     typedef pair<pair<double,double>, vector<int> > RankPair;
+    // Currently, it is more likely to turn on the combine_blocks option
+    // i.e. if target spans of two source words overlap, their ranks are same
+    // because of the definition of AlignmentIsLesser
+    // Do we need to redefine AlignmentIsLess?
     typedef map<pair<double,double>, vector<int>, AlignmentIsLesser> RankMap;
     RankMap rank_map;
     for(int i = 0; i < (int)combined.GetSrcLen(); i++) {

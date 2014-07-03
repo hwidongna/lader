@@ -82,6 +82,62 @@ public:
         return CheckVector(exp, act);
     }
 
+    // Test whether blocking works
+    // .x.
+    // x.x
+    int TestSourceDiscontinuous() {
+        vector<string> words(3, "x");
+        Alignment al = Alignment::FromString("3-2 ||| 1-0 0-1 2-1");
+        CombinedAlign cal;
+        cal.BuildFromAlignment(words,
+                               al,
+                               CombinedAlign::ATTACH_NULL_RIGHT,
+                               CombinedAlign::LEAVE_BLOCKS_AS_IS);
+        vector<pair<double,double> > exp(3), act = cal.GetSpans();
+        exp[0] = MakePair(1,1);
+        exp[1] = MakePair(0,0);
+        exp[2] = MakePair(1,1);
+        int ret = 1;
+        if (!CheckVector(exp, act)){
+        	cerr << "BuildFromAlignment fails" << endl;
+        	ret = 0;
+        }
+        Ranks rank(cal);
+        if (!CheckVector(Ranks::FromString("1 0 1").GetRanks(), rank.GetRanks())){
+        	cerr << "Ranks fails" << endl;
+        	ret = 0;
+        }
+        return ret;
+    }
+
+    // Test whether blocking works
+    // .x
+    // x.
+    // .x
+    int TestTargetDiscontinuous() {
+        vector<string> words(2, "x");
+        Alignment al = Alignment::FromString("2-3 ||| 1-0 0-1 1-2");
+        CombinedAlign cal;
+        cal.BuildFromAlignment(words,
+                               al,
+                               CombinedAlign::ATTACH_NULL_RIGHT,
+                               CombinedAlign::LEAVE_BLOCKS_AS_IS);
+        vector<pair<double,double> > exp(2), act = cal.GetSpans();
+        exp[0] = MakePair(1,1);
+        exp[1] = MakePair(0,2);
+        int ret = 1;
+        if (!CheckVector(exp, act)){
+        	cerr << "BuildFromAlignment fails" << endl;
+        	ret = 0;
+        }
+        Ranks rank(cal);
+        if (!CheckVector(Ranks::FromString("0 0").GetRanks(), rank.GetRanks())){
+        	cerr << "Ranks fails" << endl;
+        	ret = 0;
+        }
+        return ret;
+    }
+
     // Test whether brackets work
     int TestBracketCombination() {
         vector<string> words(6, "x");
@@ -249,6 +305,8 @@ public:
         int done = 0, succeeded = 0;
         done++; cout << "TestSimpleCombination()" << endl; if(TestSimpleCombination()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestBlockingCombination()" << endl; if(TestBlockingCombination()) succeeded++; else cout << "FAILED!!!" << endl;
+        done++; cout << "TestSourceDiscontinuous()" << endl; if(TestSourceDiscontinuous()) succeeded++; else cout << "FAILED!!!" << endl;
+        done++; cout << "TestTargetDiscontinuous()" << endl; if(TestTargetDiscontinuous()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestBracketCombination()" << endl; if(TestBracketCombination()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestAttachNull()" << endl; if(TestAttachNull()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestAlignmentReadWrite()" << endl; if(TestAlignmentReadWrite()) succeeded++; else cout << "FAILED!!!" << endl;

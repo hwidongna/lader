@@ -78,7 +78,9 @@ public:
 			return;
 		}
 
-		Output(datas, goal);
+		// output word alignment b/w the reordered and target sentences
+		// for further processing of morphological prediction
+		Output(datas, goal, &al, config_.GetBool("delete") ? &cal1 : &cal2);
 		collector_->Write(id_, oss.str(), ess.str());
 	}
 protected:

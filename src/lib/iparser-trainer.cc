@@ -95,18 +95,18 @@ void IParserTrainer::TrainIncremental(const ConfigBase & config) {
 
         int done = 0;
         unsigned long iter_nedge = 0, iter_nstate = 0, iter_step = 0, iter_refsize = 0;
-        int bad_update = 0, early_update = 0, prev_early = 0;
+        int bad_update = 0, early_update = 0, prev_early = 0, skipped = 0;
         if (verbose >= 1)
         	cerr << "Start training parsing iter " << iter << endl;
         BOOST_FOREACH(int sent, sent_order) {
-        	if(++done% 100 == 0) cerr << ".";
-        	if(done % (100*10) == 0) cerr << done << endl;
         	if (verbose >= 1)
         		cerr << endl << "Sentence " << sent << endl;
         	// copy the original reference sequence because it will be resized if early update
     		ActionVector refseq = refseq_[sent];
-			if (refseq.empty())
+			if (refseq.empty()){
+				skipped++;
 				continue;
+			}
 			if (verbose >= 1){
 				cerr << "Rank:";
 				BOOST_FOREACH(int rank, ranks_[sent]->GetRanks())
@@ -123,8 +123,11 @@ void IParserTrainer::TrainIncremental(const ConfigBase & config) {
 			if (!goal || !goal->Allow(DPState::IDLE, n)){
 				if (verbose >= 1)
 					cerr << "Parser cannot produce the goal state" << endl;
+				skipped++;
 				continue;
 			}
+        	if(++done% 100 == 0) cerr << ".";
+        	if(done % (100*10) == 0) cerr << done << endl;
 			// Produce the parse
 			IParser parser(model->GetMaxIns(), model->GetMaxDel());
             parser.SetBeamSize(config.GetInt("beam"));
@@ -193,6 +196,7 @@ void IParserTrainer::TrainIncremental(const ConfigBase & config) {
         char* dt = ctime(&now);
         cout << "Finished update " << dt << setprecision(4)
         	<< iter_nedge << " edges, " << iter_nstate << " states, "
+        	<< skipped << " skip (" << 100.0*skipped/done << "%), "
         	<< bad_update << " bad (" << 100.0*bad_update/done << "%), "
         	<< early_update << " early (" << 100.0*early_update/done << "%), "
         	<< iter_step << "/" << iter_refsize << " steps (" << 100.0*iter_step/iter_refsize << "%)" << endl;

@@ -15,6 +15,7 @@
 #include <lader/feature-data-sequence.h>
 #include <shift-reduce-dp/flat-tree.h>
 #include <time.h>
+#include <map>
 using namespace std;
 namespace lader {
 
@@ -32,7 +33,10 @@ public:
 	virtual DPStateNode * NewDPStateNode(vector<string> & words){
 		return new DDPStateNode(0, words.size(), NULL, DPState::INIT);
 	}
-	virtual void Output(const Sentence & datas, const DPState *best)
+	// al:	the original word alignment
+	// cal:	the target span of each source word
+	virtual void Output(const Sentence & datas, const DPState *best,
+			const Alignment * al=NULL, const CombinedAlign * cal=NULL)
     {
         Parser::Result result;
         Parser::SetResult(result, best);
@@ -78,6 +82,68 @@ public:
 				for(int j = 0; j < (int)result.actions.size(); j++) {
 					if(j != 0) oss << " ";
 					oss << (char) result.actions[j];
+				}
+			} else if(outputs_->at(i) == ReordererRunner::OUTPUT_ALIGN) {
+				if (!al || !cal)
+					THROW_ERROR("Cannot output alignment" << endl);
+//				// Collect target spans
+//				typedef pair<pair<double,double>, vector<int> > RankPair;
+//			    typedef map<pair<double,double>, vector<int>, AlignmentIsLesser> RankMap;
+//			    RankMap rank_map;
+//			    const CombinedAlign & ca = *cal;
+//			    for(int i = 0; i < (int)ca.GetSrcLen(); i++) {
+//			        RankMap::iterator it = rank_map.find(ca[i]);
+//			        if(it == rank_map.end()) {
+//			            rank_map.insert(MakePair(ca[i], vector<int>(1,i)));
+//			        } else {
+//			            it->second.push_back(i);
+//			        }
+//			    }
+//			    // Extend overlapping spans
+//			    vector<CombinedAlign::Span> spans(ca.GetSrcLen());
+//			    BOOST_FOREACH(RankPair rp, rank_map) {
+//			    	CombinedAlign::Span s = rp.first;
+//			    	BOOST_FOREACH(int i, rp.second){
+//			    		if (ca[i].first < s.first)
+//			    			s.first = ca[i].first;
+//			    		if (s.second < ca[i].second)
+//			    			s.second = ca[i].second;
+//			    	}
+//			    	BOOST_FOREACH(int i, rp.second)
+//			    		spans[i] = s;
+//			    }
+				vector<CombinedAlign::Span> spans(cal->GetSpans());
+//				BOOST_FOREACH(CombinedAlign::Span s, spans){
+//					cerr << "[" << s.first << "," << s.second << "] ";
+//				}
+//				cerr << endl;
+				sort(spans.begin(), spans.end());
+//				BOOST_FOREACH(CombinedAlign::Span s, spans){
+//					cerr << "[" << s.first << "," << s.second << "] ";
+//				}
+//				cerr << endl;
+				int i = 0 ;
+				while(spans[i] == CombinedAlign::Span(-1,-1) && i < spans.size())
+					 i++; // skip the null-aligned source positions
+				vector<CombinedAlign::Span> nullspans;
+				// null span at the beginning
+				if (0 < spans[i].first)
+					nullspans.push_back(CombinedAlign::Span(0, spans[i].first-1));
+				// null span between words
+				for(i = i+1 ; i < spans.size() ; i++)
+					if (spans[i-1].second+1 < spans[i].first)
+						nullspans.push_back(CombinedAlign::Span(spans[i-1].second+1, spans[i].first-1));
+				int k = 0;
+				for(int j = 0; j < (int)reordering.size(); j++) {
+					if (reordering[j] < 0){
+						for (int i = nullspans[k].first ; i <= nullspans[k].second ; i++)
+							oss << j << "-" << i << " ";
+						k++;
+					}
+					else
+						BOOST_FOREACH(Alignment::AlignmentPair a, al->GetAlignmentVector())
+							if (reordering[j] == a.first)
+								oss << j << "-" << a.second << " ";
 				}
 			} else {
 				THROW_ERROR("Unimplemented output format");

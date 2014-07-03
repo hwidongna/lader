@@ -14,7 +14,7 @@ using namespace std;
 namespace lader{
 
 // insert null-aligned target positions
-// note that the size of ranks/cal will change
+// note that the size of ranks/cal will be increased
 void IParserRanks::Insert(CombinedAlign * cal){
 	int n = ranks_.size();
 	vector<CombinedAlign::Span> spans(cal->GetSpans());
@@ -108,10 +108,13 @@ void IParserRanks::Insert(CombinedAlign * cal){
 			cerr << "[" << s.first << "," << s.second << "] ";
 		cerr << endl;
 	}
+	if (ranks_.size() != cal->GetSpans().size())
+		THROW_ERROR("Ranks.size() != calspan.size(): "
+				<< ranks_.size() << " != " << cal->GetSpans().size() << endl);
 	// null span at the end, do we need this?
 }
 // Get reference action sequence from a combined word alignment
-// note that the size of ranks/cal will change
+// note that the size of ranks/cal will be decreased to the original sentence length
 // if you want to insert target position, call Insert before this method
 ActionVector IParserRanks::GetReference(CombinedAlign * cal){
 	ActionVector result;
@@ -173,6 +176,9 @@ ActionVector IParserRanks::GetReference(CombinedAlign * cal){
 	}
 	BOOST_FOREACH(DPState * state, stateseq)
 		delete state;
+	if (ranks_.size() != cal->GetSpans().size())
+		THROW_ERROR("Ranks.size() != calspan.size(): "
+				<< ranks_.size() << " != " << cal->GetSpans().size() << endl);
 	return result;
 }
 

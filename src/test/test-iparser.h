@@ -16,6 +16,9 @@
 #include <shift-reduce-dp/dparser.h>
 #include <shift-reduce-dp/iparser.h>
 #include <shift-reduce-dp/iparser-ranks.h>
+#include <lader/reorderer-runner.h>
+#include <shift-reduce-dp/config-iparser-gold.h>
+#include <shift-reduce-dp/iparser-gold.h>
 #include <fstream>
 #include <vector>
 
@@ -373,6 +376,66 @@ public:
 		return ret;
     }
 
+    int TestDiscontinuousTarget(){
+		sent.FromString("if she ate rice");
+		// if(만약) she rice ate if(다면)
+		Alignment al = Alignment::FromString("4-5 ||| 0-0 1-1 3-2 2-3 0-4");
+		const vector<string> & words = sent.GetSequence();
+		CombinedAlign cal(words,al, CombinedAlign::ATTACH_NULL_RIGHT, CombinedAlign::LEAVE_BLOCKS_AS_IS);
+		{
+		vector<pair<double,double> > exp(4);
+		exp[0] = MakePair(0,4);
+		exp[1] = MakePair(1,1);
+		exp[2] = MakePair(3,3);
+		exp[3] = MakePair(2,2);
+		if (!CheckVector(exp, cal.GetSpans())){
+			cerr << "CombinedAling fails" << endl;
+			return 0;
+		}
+		}
+		IParserRanks ranks(cal, CombinedAlign::ATTACH_NULL_LEFT);
+		if (!CheckVector(Ranks::FromString("0 1 3 2").GetRanks(), ranks.GetRanks())){
+			cerr << "IParserRanks fails " << endl;
+			return 0;
+		}
+		ActionVector refseq = ranks.GetReference(&cal);
+		int n = words.size();
+		int ret = 1;
+		ActionVector exp = DPState::ActionFromString("F F S F F I S");
+		if (!CheckVector(exp, refseq)){
+			cerr << "incorrect reference sequence" << endl;
+			return 0;
+		}
+
+		IParser p(n,n);
+		DPState * goal = p.GuidedSearch(refseq, n);
+		if (!goal->IsGold()){
+			cerr << *goal << endl;
+			ret = 0;
+		}
+		ActionVector act;
+		goal->AllActions(act);
+		if (act.size() != refseq.size()){
+			cerr << "incomplete all actions: size " << refseq.size() << " != " << act.size() << endl;
+			ret = 0;
+		}
+		if (!CheckVector(refseq, act)){
+			cerr << "incorrect all actions" << endl;
+			ret = 0;
+		}
+		{ // check reordering
+			vector<int> act;
+			goal->GetReordering(act);
+			vector<int> exp(n);
+			exp[0]=0, exp[1]=1, exp[2]=3, exp[3]=2;
+			if (!CheckVector(exp, act)){
+				cerr << "incorrect get reordering" << endl;
+				ret = 0;
+			}
+		}
+		return ret;
+	}
+
     int Test122(){
     	sent.FromString("The oligarchy that controls the region is well-known for their radical views .");
 		Alignment al = Alignment::FromString("13-24 ||| 5-1 3-3 2-4 0-5 1-5 0-6 1-6 0-7 1-7 10-9 10-10 11-11 8-15 6-16 7-16 6-17 7-17 6-18 7-18 6-19 7-19 6-20 7-20 6-21 7-21 12-22 12-23");
@@ -429,6 +492,48 @@ public:
 		}
 		return ret;
     }
+
+    int TestGoldOutput(){
+//    	string sline = "An apartment complex in Orlando , Fla . , where Ibragim Todashev was killed by an F.B.I. agent last month .";
+    	string sline = "An apartment complex in Orlando , Fla . ,";
+//    	string aline = "21-27 ||| 6-0 4-1 3-2 1-5 2-6 5-7 8-7 10-8 10-9 11-10 11-11 18-13 19-14 16-15 16-16 16-17 17-18 14-19 13-20 12-21 13-21 12-22 9-23 9-24 9-25 20-26";
+    	string aline = "9-8 ||| 6-0 4-1 3-2 1-5 2-6 5-7 8-7";
+    	FeatureSet f;
+    	f.ParseConfiguration("seq=X");
+    	vector<ReordererRunner::OutputType> outputs;
+    	outputs.push_back(ReordererRunner::OUTPUT_STRING);
+    	outputs.push_back(ReordererRunner::OUTPUT_ORDER);
+    	outputs.push_back(ReordererRunner::OUTPUT_ALIGN);
+    	ConfigIParserGold config;
+    	char * argv[] = {"", "-insert", "true",
+    						"-delete" , "false",
+    						"-attach_null", "right",
+    						"-attach_trg", "left",
+    						"-combine_blocks", "false"};
+    	config.loadConfig(11, argv);
+    	ostringstream oss, ess;
+    	OutputCollector collector(&oss,&ess);
+		IParserGoldTask gold(0, sline, aline, &f, &outputs, config, &collector);
+		gold.Run();
+		tokenizer<char_separator<char> > outs(oss.str(), char_separator<char>("\t"));
+		tokenizer<char_separator<char> >::iterator it = outs.begin();
+		int ret = 1;
+		if (*it != "Fla Orlando in <> An apartment complex , . ,"){
+			cerr << "incorrect string: " << *it << endl;
+			ret = 0;
+		}
+		it++;
+		if (*it != "6 4 3 -1 0 1 2 5 7 8"){
+			cerr << "incorrect order: " << *it << endl;
+			ret = 0;
+		}
+		it++;
+		if (*it != "0-0 1-1 2-2 3-3 3-4 5-5 6-6 7-7 9-7 "){
+			cerr << "incorrect align: " << *it << endl;
+			ret = 0;
+		}
+		return ret;
+    }
     bool RunTest() {
     	int done = 0, succeeded = 0;
     	done++; cout << "TestInertRank()" << endl; if(TestInsertRank()) succeeded++; else cout << "FAILED!!!" << endl;
@@ -437,7 +542,9 @@ public:
     	done++; cout << "TestInverted()" << endl; if(TestInverted()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestNullSourceMultiple()" << endl; if(TestNullSourceMultiple()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestNullTargetFront()" << endl; if(TestNullTargetFront()) succeeded++; else cout << "FAILED!!!" << endl;
+//    	done++; cout << "TestDiscontiuousTarget()" << endl; if(TestDiscontinuousTarget()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "Test122()" << endl; if(Test122()) succeeded++; else cout << "FAILED!!!" << endl;
+//    	done++; cout << "TestGoldOutput()" << endl; if(TestGoldOutput()) succeeded++; else cout << "FAILED!!!" << endl;
     	cout << "#### TestIParser Finished with "<<succeeded<<"/"<<done<<" tests succeeding ####"<<endl;
     	return done == succeeded;
     }

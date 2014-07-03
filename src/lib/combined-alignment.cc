@@ -48,6 +48,10 @@ void CombinedAlign::AlignBracketSpans(const vector<string> & words) {
     }
 }
 
+// TODO bug fix:
+// Test whether blocking works
+// .x.
+// x.x
 void CombinedAlign::CombineBlocks() {
     // Sort the source values in ascending order of target alignment
     vector<pair<Span, int> > word_spans(spans_.size());

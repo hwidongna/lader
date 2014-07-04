@@ -534,6 +534,49 @@ public:
 		}
 		return ret;
     }
+
+    int TestGoldOutput377(){
+//    	string sline = "The couple met in the early 2000s , when both were students at the University of St. Andrews in Scotland , and their relationship , which was later hailed as a fairy tale union , proceeded sporadically for several years until their wedding in April 2011 .";
+    	string sline = "The couple met in the early 2000s , when both were students at the University of St. Andrews in Scotland , and";
+//    	string aline = "47-53 ||| 1-0 6-2 6-3 6-4 5-5 7-6 19-7 16-8 17-9 14-10 12-11 9-12 11-13 11-14 8-15 20-16 2-17 21-18 20-19 27-20 27-21 33-22 31-23 32-23 31-24 32-24 29-25 28-26 26-27 28-27 34-28 22-29 22-30 22-31 23-32 45-34 45-35 44-36 44-37 41-38 41-39 41-40 42-41 40-42 40-43 38-44 39-45 37-46 36-47 36-48 36-49 35-50 35-51 46-52";
+    	string aline = "22-20 ||| 1-0 6-2 6-3 6-4 5-5 7-6 19-7 16-8 17-9 14-10 12-11 9-12 11-13 11-14 8-15 20-16 2-17 21-18 20-19";
+    	FeatureSet f;
+    	f.ParseConfiguration("seq=X");
+    	vector<ReordererRunner::OutputType> outputs;
+    	outputs.push_back(ReordererRunner::OUTPUT_STRING);
+    	outputs.push_back(ReordererRunner::OUTPUT_ORDER);
+    	outputs.push_back(ReordererRunner::OUTPUT_ALIGN);
+    	ConfigIParserGold config;
+    	char * argv[] = {"", "-insert", "true",
+    						"-delete" , "false",
+    						"-attach_null", "right",
+    						"-attach_trg", "left",
+    						"-combine_blocks", "true"};
+    	config.loadConfig(11, argv);
+    	ostringstream oss, ess;
+    	OutputCollector collector(&oss,&ess);
+		IParserGoldTask gold(0, sline, aline, &f, &outputs, config, &collector);
+		gold.Run();
+		tokenizer<char_separator<char> > outs(oss.str(), char_separator<char>("\t"));
+		tokenizer<char_separator<char> >::iterator it = outs.begin();
+		int ret = 1;
+		if (*it != "The couple <> 2000s in the early , in Scotland of St. Andrews the University at both were students when , met and"){
+			cerr << "incorrect string: " << *it << endl;
+			ret = 0;
+		}
+		it++;
+		if (*it != "0 1 -1 6 3 4 5 7 18 19 15 16 17 13 14 12 9 10 11 8 20 2 21"){
+			cerr << "incorrect order: " << *it << endl;
+			ret = 0;
+		}
+		it++;
+		if (*it != "1-0 2-1 3-2 3-3 3-4 6-5 7-6 9-7 11-8 12-9 14-10 15-11 16-12 18-13 19-15 20-16 21-17 22-18 20-19 "){
+			cerr << "incorrect align: " << *it << endl;
+			ret = 0;
+		}
+		return ret;
+    }
+
     bool RunTest() {
     	int done = 0, succeeded = 0;
     	done++; cout << "TestInertRank()" << endl; if(TestInsertRank()) succeeded++; else cout << "FAILED!!!" << endl;
@@ -545,6 +588,7 @@ public:
 //    	done++; cout << "TestDiscontiuousTarget()" << endl; if(TestDiscontinuousTarget()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "Test122()" << endl; if(Test122()) succeeded++; else cout << "FAILED!!!" << endl;
 //    	done++; cout << "TestGoldOutput()" << endl; if(TestGoldOutput()) succeeded++; else cout << "FAILED!!!" << endl;
+//		done++; cout << "TestGoldOutput377()" << endl; if(TestGoldOutput377()) succeeded++; else cout << "FAILED!!!" << endl;
     	cout << "#### TestIParser Finished with "<<succeeded<<"/"<<done<<" tests succeeding ####"<<endl;
     	return done == succeeded;
     }

@@ -117,6 +117,7 @@ public:
 //					cerr << "[" << s.first << "," << s.second << "] ";
 //				}
 //				cerr << endl;
+				// TODO bug fix: spans may not be disjoint
 				sort(spans.begin(), spans.end());
 //				BOOST_FOREACH(CombinedAlign::Span s, spans){
 //					cerr << "[" << s.first << "," << s.second << "] ";

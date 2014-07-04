@@ -3,7 +3,8 @@
 #include <boost/algorithm/string/join.hpp>
 #include <iostream>
 #include <cfloat>
-
+#include <map>
+#include <boost/foreach.hpp>
 using namespace lader;
 using namespace std; 
 using namespace boost;
@@ -48,10 +49,6 @@ void CombinedAlign::AlignBracketSpans(const vector<string> & words) {
     }
 }
 
-// TODO bug fix:
-// Test whether blocking works
-// .x.
-// x.x
 void CombinedAlign::CombineBlocks() {
     // Sort the source values in ascending order of target alignment
     vector<pair<Span, int> > word_spans(spans_.size());
@@ -78,9 +75,18 @@ void CombinedAlign::CombineBlocks() {
             while(f2 < word_spans[i].second)
                 e2 = max(e2, spans_[++f2].second);
         }
-        // For all words from f1 to f2, set the new span to e1, e2
+        // compute the new span by extending e1, e2 if possible
+        Span e = MakePair(e1,e2);
+        for (int j = f1 ; j <= f2 ; j++){
+        	Span & s = spans_[j];
+        	if (s.first < e.first)
+        		e.first = s.first ;
+        	if (e.second < s.second)
+        		e.second = s.second;
+        }
+        // For all words from f1 to f2, set the new span
         while(f1 <= f2)
-            spans_[f1++] = MakePair(e1,e2);
+            spans_[f1++] = e;
     }
 }
 

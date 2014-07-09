@@ -52,6 +52,7 @@ public:
     	}
     	std::pair<double,double> ret(0,0);
     	ret.first = score[order.size()][gold.size()];
+    	// TODO bug fix: max loss of the best and kbest should be equal
     	ret.second = n;
     	ret.first *= weight_;
     	ret.second *= weight_;

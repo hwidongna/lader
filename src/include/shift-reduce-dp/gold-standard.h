@@ -100,6 +100,8 @@ public:
 				outputs.push_back(ReordererRunner::OUTPUT_ACTION);
 	        else if (str == "align")
 				outputs.push_back(ReordererRunner::OUTPUT_ALIGN);
+	        else if (str == "statistics")
+					outputs.push_back(ReordererRunner::OUTPUT_STATISTICS);
 			else
 				THROW_ERROR("Bad output format '" << str <<"'");
 		}

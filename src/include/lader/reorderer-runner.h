@@ -28,6 +28,7 @@ public:
         OUTPUT_FLATTEN,
         OUTPUT_ACTION,	// only for shift-reduce parser
         OUTPUT_ALIGN,	// only for parser gold
+        OUTPUT_STATISTICS,	// only for shift-reduce parser: # of each action
     } OutputType;
 
     ReordererRunner(): model_(NULL), features_(NULL){ }

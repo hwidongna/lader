@@ -167,7 +167,9 @@ bool IDPState::Allow(const Action & action, const int n){
 		return src_r_ < n;
 	else if (action == IDLE)
 		return src_l_ == 0 && src_r_ == n;
-	else if (action == INSERT_L || action == INSERT_R) // do not allow consecutive insert
+	else if (action == INSERT_L || action == INSERT_R)
+		// do not allow consecutive insert
+		// allow insert at the terminal level
 		return action_ != INIT
 			&& (action_ != INSERT_L || action != INSERT_L)
 			&& (action_ != INSERT_R || action != INSERT_R);

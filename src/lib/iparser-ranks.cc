@@ -138,13 +138,7 @@ ActionVector IParserRanks::GetReference(CombinedAlign * cal){
 			cerr << endl;
 		}
 		DPState::Action action;
-		if (state->Allow(DPState::DELETE_L, n) && IsDeleted(cal, lstate) && !IsDeleted(cal, state) && HasTie(lstate))
-			action = DPState::DELETE_L;
-		else if (state->Allow(DPState::DELETE_R, n) && !IsDeleted(cal, lstate) && IsDeleted(cal, state) && HasTie(lstate))
-			action = DPState::DELETE_R;
-		else if (state->Allow(DPState::STRAIGTH, n) && !IsDeleted(cal, lstate) && !IsDeleted(cal, state) && IsStraight(lstate, state))
-			action = DPState::STRAIGTH;
-		else if (state->Allow(DPState::INSERT_L, n) && !IsDeleted(cal, state) && lstate->GetAction() != DPState::INIT && ranks_[lstate->GetSrcL()] == Ranks::INSERT_L){
+		if (state->Allow(DPState::INSERT_L, n) && !IsDeleted(cal, state) && lstate->GetAction() != DPState::INIT && ranks_[lstate->GetSrcL()] == Ranks::INSERT_L){
 			action = DPState::INSERT_L;
 			ranks_.erase(ranks_.begin() + state->GetSrcL()-1);
 			cal->GetSpans().erase(cal->GetSpans().begin() + state->GetSrcL()-1);
@@ -160,6 +154,12 @@ ActionVector IParserRanks::GetReference(CombinedAlign * cal){
 			cal->GetSpans().erase(cal->GetSpans().begin() + state->GetSrcREnd());
 			n--; // the size of rank and cal shrink
 		}
+		else if (state->Allow(DPState::DELETE_L, n) && IsDeleted(cal, lstate) && !IsDeleted(cal, state) && HasTie(lstate))
+			action = DPState::DELETE_L;
+		else if (state->Allow(DPState::DELETE_R, n) && !IsDeleted(cal, lstate) && IsDeleted(cal, state) && HasTie(lstate))
+			action = DPState::DELETE_R;
+		else if (state->Allow(DPState::STRAIGTH, n) && !IsDeleted(cal, lstate) && !IsDeleted(cal, state) && IsStraight(lstate, state))
+			action = DPState::STRAIGTH;
 		else if (state->Allow(DPState::INVERTED, n) && !IsDeleted(cal, lstate) && !IsDeleted(cal, state) && IsInverted(lstate, state) && !HasTie(state))
 			action = DPState::INVERTED;
 		else if (state->Allow(DPState::SHIFT, n))

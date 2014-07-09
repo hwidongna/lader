@@ -157,6 +157,7 @@ void IParserEvaluator::Evaluate(const ConfigBase & config){
 				pair<double,double> my_loss =
 						losses_[i]->CalculateSentenceLoss(order,&ranks,NULL);
 				sums[i].first += my_loss.first;
+				// TODO bug fix: max loss of the best and kbest should be equal
 				sums[i].second += my_loss.second;
 				double acc = my_loss.second == 0 ?
 						1 : (1-my_loss.first/my_loss.second);

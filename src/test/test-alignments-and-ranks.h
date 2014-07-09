@@ -167,6 +167,31 @@ public:
     }
 
     // Test whether blocking works
+    // ..x..
+    // x...x
+    int TestBlockingSourceDiscontinuousWithNull() {
+        vector<string> words(5, "x");
+        Alignment al = Alignment::FromString("5-2 ||| 2-0 0-1 4-1");
+        CombinedAlign cal;
+        cal.BuildFromAlignment(words,
+                               al,
+                               CombinedAlign::ATTACH_NULL_RIGHT,
+                               CombinedAlign::COMBINE_BLOCKS);
+        vector<pair<double,double> > exp(words.size(), MakePair(0,1)), act = cal.GetSpans();
+        int ret = 1;
+        if (!CheckVector(exp, act)){
+        	cerr << "BuildFromAlignment fails" << endl;
+        	ret = 0;
+        }
+        Ranks rank(cal);
+        if (!CheckVector(Ranks::FromString("0 0 0 0 0").GetRanks(), rank.GetRanks())){
+        	cerr << "Ranks fails" << endl;
+        	ret = 0;
+        }
+        return ret;
+    }
+
+    // Test whether blocking works
     // .x
     // x.
     // .x
@@ -364,6 +389,7 @@ public:
         done++; cout << "TestSourceDiscontinuous()" << endl; if(TestSourceDiscontinuous()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestTargetDiscontinuous()" << endl; if(TestTargetDiscontinuous()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestBlockingSourceDiscontinuous()" << endl; if(TestBlockingSourceDiscontinuous()) succeeded++; else cout << "FAILED!!!" << endl;
+        done++; cout << "TestBlockingSourceDiscontinuousWithNull()" << endl; if(TestBlockingSourceDiscontinuousWithNull()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestBlockingTargetDiscontinuous()" << endl; if(TestBlockingTargetDiscontinuous()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestBracketCombination()" << endl; if(TestBracketCombination()) succeeded++; else cout << "FAILED!!!" << endl;
         done++; cout << "TestAttachNull()" << endl; if(TestAttachNull()) succeeded++; else cout << "FAILED!!!" << endl;

@@ -269,6 +269,7 @@ void IParserTrainer::TrainIncremental(const ConfigBase & config) {
         		pair<double,double> my_loss =
         				losses_[i]->CalculateSentenceLoss(results[sent].order, &ranks, NULL);
         		sum_losses[i].first += my_loss.first;
+        		// TODO bug fix: max loss of the best and kbest should be equal
         		sum_losses[i].second += my_loss.second;
         		double acc = my_loss.second == 0 ?
         				1 : (1-my_loss.first/my_loss.second);
@@ -288,6 +289,7 @@ void IParserTrainer::TrainIncremental(const ConfigBase & config) {
             		}
         		}
         		sum_losses_kbests[i].first += my_loss.first;
+        		// TODO bug fix: max loss of the best and kbest should be equal
         		sum_losses_kbests[i].second += my_loss.second;
         	}
         	if (verbose >= 1)

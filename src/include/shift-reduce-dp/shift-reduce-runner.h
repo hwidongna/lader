@@ -146,6 +146,30 @@ public:
 							if (reordering[j] == a.first)
 								oss << j << "-" << a.second << " ";
 				}
+			} else if(outputs_->at(i) == ReordererRunner::OUTPUT_STATISTICS) {
+				typedef pair<DPState::Action, int> Statistics;
+				map<DPState::Action, int> statistics;
+				BOOST_FOREACH(DPState::Action a, result.actions){
+					map<DPState::Action, int>::iterator it = statistics.find(a);
+					if (it == statistics.end())
+						statistics[a] = 1;
+					else
+						it->second++;
+				}
+				static DPState::Action arr[] = {
+						DPState::SHIFT, DPState::STRAIGTH, DPState::INVERTED,
+						DPState::INSERT_L, DPState::INSERT_R,
+						DPState::DELETE_L, DPState::DELETE_R,};
+				ActionVector vec(arr, arr + sizeof(arr) / sizeof(arr[0]) );
+				for (int i = 0 ; i < vec.size() ; i++){
+					if (i != 0) oss << " ";
+					DPState::Action & a = vec[i];
+					map<DPState::Action, int>::iterator it = statistics.find(a);
+					if (it != statistics.end())
+						oss << it->second;
+					else
+						oss << 0;
+				}
 			} else {
 				THROW_ERROR("Unimplemented output format");
 			}

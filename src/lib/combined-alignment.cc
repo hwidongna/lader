@@ -79,7 +79,8 @@ void CombinedAlign::CombineBlocks() {
         Span e = MakePair(e1,e2);
         for (int j = f1 ; j <= f2 ; j++){
         	Span & s = spans_[j];
-        	if (s.first < e.first)
+        	// Skip null aligned spans
+        	if (s.first != -1 && s.first < e.first)
         		e.first = s.first ;
         	if (e.second < s.second)
         		e.second = s.second;

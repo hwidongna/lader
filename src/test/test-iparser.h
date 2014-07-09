@@ -120,7 +120,7 @@ public:
     		cerr << "incorrect get reference: size " << ranks.GetRanks().size() << " != " << cal.GetSpans().size() << endl;
     		ret = 0;
     	}
-		ActionVector exp = DPState::ActionFromString("F F Z V F F V I S");
+		ActionVector exp = DPState::ActionFromString("F F V Z F F V I S");
 		if (!CheckVector(exp, refseq)){
 			cerr << "incorrect reference sequence" << endl;
 			return 0;
@@ -174,7 +174,7 @@ public:
     	ActionVector refseq = ranks.GetReference(&cal);
     	int n = words.size();
     	int ret = 1;
-    	ActionVector exp = DPState::ActionFromString("F V F F V I S F S F S F S V F F Z S F S");
+    	ActionVector exp = DPState::ActionFromString("F V F F V I S F S F S F V S F F Z S F S");
 		if (!CheckVector(exp, refseq)){
 			cerr << "incorrect reference sequence" << endl;
 			return 0;
@@ -285,7 +285,7 @@ public:
 		ActionVector refseq = ranks.GetReference(&cal);
 		int n = words.size();
 		int ret = 1;
-		ActionVector exp = DPState::ActionFromString("F F F F Z Z V I F I F F S I F S");
+		ActionVector exp = DPState::ActionFromString("F F F F V Z Z I F I F F S I F S");
 		if (!CheckVector(exp, refseq)){
 			cerr << "incorrect reference sequence" << endl;
 			return 0;
@@ -376,6 +376,103 @@ public:
 		return ret;
     }
 
+    int TestNullMixed(){
+    	sent.FromString("The oligarchy that controls the region");
+		Alignment al = Alignment::FromString("6-9 ||| 5-1 3-3 2-4 0-5 1-5 0-6 1-6 0-7 1-7");
+		const vector<string> & words = sent.GetSequence();
+		CombinedAlign cal(words,al, CombinedAlign::LEAVE_NULL_AS_IS); // for delete
+		if (cal.GetSpans()[4] != CombinedAlign::Span(-1,-1)){
+			cerr << "CombinedAlign fails: span[4] = ["
+					<< cal.GetSpans()[4].first << ", " << cal.GetSpans()[4].second << "]" << endl;
+			return 0;
+		}
+		IParserRanks ranks(CombinedAlign(words,al, CombinedAlign::ATTACH_NULL_RIGHT),	// attach null in source
+									CombinedAlign::ATTACH_NULL_LEFT);					// attach null in target
+		ranks.Insert(&cal); // for insert
+		if (!CheckVector(Ranks::FromString("3 3 2 1 -2 0 0 -1").GetRanks(), ranks.GetRanks())){
+			cerr << "Ranks::Insert fails " << endl;
+			return 0;
+		}
+		ActionVector refseq = ranks.GetReference(&cal);
+		int n = words.size();
+		int ret = 1;
+		ActionVector exp = DPState::ActionFromString("F F S F I F I F F V Z C I");
+		if (!CheckVector(exp, refseq)){
+			cerr << "incorrect reference sequence" << endl;
+			return 0;
+		}
+
+		IParser p(n,n);
+		DPState * goal = p.GuidedSearch(refseq, n);
+		if (!goal->IsGold()){
+			cerr << *goal << endl;
+			ret = 0;
+		}
+		ActionVector act;
+		goal->AllActions(act);
+		if (act.size() != refseq.size()){
+			cerr << "incomplete all actions: size " << refseq.size() << " != " << act.size() << endl;
+			ret = 0;
+		}
+		if (!CheckVector(refseq, act)){
+			cerr << "incorrect all actions" << endl;
+			ret = 0;
+		}
+		{ // check reordering
+			vector<int> act;
+			goal->GetReordering(act);
+			vector<int> exp(n-1+2); // one source word is deleted, two target words are inserted
+			exp[0]=Ranks::INSERT_L, exp[1]=5, exp[2]=Ranks::INSERT_R;
+			exp[3]=3, exp[4]=2, exp[5]=0, exp[6]=1;
+			if (!CheckVector(exp, act)){
+				cerr << "incorrect get reordering" << endl;
+				ret = 0;
+			}
+		}
+		return ret;
+    }
+
+    int TestNullLeftRight(){
+    	sent.FromString("the budget director , said the rift within the Republican Party could be an opening for compromise .");
+		Alignment al = Alignment::FromString("18-24 ||| 1-0 2-1 3-3 9-4 10-4 7-5 9-5 10-5 7-6 6-9 16-11 15-12 14-13 12-15 11-16 12-16 11-17 11-18 4-19 4-20 4-21 4-22 17-23");
+		const vector<string> & words = sent.GetSequence();
+		int n = words.size();
+		CombinedAlign cal(words,al, CombinedAlign::ATTACH_NULL_RIGHT, CombinedAlign::COMBINE_BLOCKS); // no delete
+		IParserRanks ranks(CombinedAlign(words,al,
+											CombinedAlign::ATTACH_NULL_RIGHT, 			// attach null in source
+											CombinedAlign::COMBINE_BLOCKS),				// combine blocks in source
+									CombinedAlign::ATTACH_NULL_LEFT);					// attach null in target
+		ranks.Insert(&cal); // for insert
+		if (!CheckVector(Ranks::FromString("0 0 1 -1 2 9 4 4 -1 3 3 3 3 -1 8 8 7 7 -1 6 5 10").GetRanks(), ranks.GetRanks())){
+			cerr << "Ranks::Insert fails " << endl;
+			return 0;
+		}
+		ActionVector refseq = ranks.GetReference(&cal);
+		int ret = 1;
+		ActionVector exp = DPState::ActionFromString("F F S F V S F S F F F V S F F S F S F V S I F F S F F V S I F I F I S I S F S");
+		if (!CheckVector(exp, refseq)){
+			cerr << "incorrect reference sequence" << endl;
+			return 0;
+		}
+
+		IParser p(n,n);
+		DPState * goal = p.GuidedSearch(refseq, n);
+		if (!goal->IsGold()){
+			cerr << *goal << endl;
+			ret = 0;
+		}
+		ActionVector act;
+		goal->AllActions(act);
+		if (act.size() != refseq.size()){
+			cerr << "incomplete all actions: size " << refseq.size() << " != " << act.size() << endl;
+			ret = 0;
+		}
+		if (!CheckVector(refseq, act)){
+			cerr << "incorrect all actions" << endl;
+			ret = 0;
+		}
+		return ret;
+	}
     int TestDiscontinuousTarget(){
 		sent.FromString("if she ate rice");
 		// if(만약) she rice ate if(다면)
@@ -455,7 +552,7 @@ public:
 		ActionVector refseq = ranks.GetReference(&cal);
 		int n = words.size();
 		int ret = 1;
-		ActionVector exp = DPState::ActionFromString("F F S V F I F I F F Z C V I F F S F I F F Z F S V I S F S");
+		ActionVector exp = DPState::ActionFromString("F F V S F I F I F C F Z V I F F S F I F F Z F V S I S F S");
 		if (!CheckVector(exp, refseq)){
 			cerr << "incorrect reference sequence" << endl;
 			return 0;
@@ -577,6 +674,48 @@ public:
 		return ret;
     }
 
+    int TestGoldOutput317(){
+//    	string sline = "No one suggested a breakthrough was imminent , though Sylvia Mathews Burwell , the new White House budget director , said the rift within the Republican Party could be an opening for compromise .";
+    	string sline = "the budget director , said the rift within the Republican Party could be an opening for compromise .";
+//    	string aline = "4-0 6-2 6-3 6-4 6-5 0-7 1-7 0-8 1-8 2-9 2-10 2-11 8-12 8-13 8-14 7-15 9-16 10-17 11-18 12-19 14-20 15-21 16-21 17-22 18-23 19-25 25-26 26-26 23-27 25-27 26-27 23-28 22-31 32-33 31-34 30-35 28-37 27-38 28-38 27-39 27-40 20-41 20-42 20-43 20-44 33-45";
+    	string aline = "18-24 ||| 1-0 2-1 3-3 9-4 10-4 7-5 9-5 10-5 7-6 6-9 16-11 15-12 14-13 12-15 11-16 12-16 11-17 11-18 4-19 4-20 4-21 4-22 17-23";
+    	FeatureSet f;
+    	f.ParseConfiguration("seq=X");
+    	vector<ReordererRunner::OutputType> outputs;
+    	outputs.push_back(ReordererRunner::OUTPUT_STRING);
+    	outputs.push_back(ReordererRunner::OUTPUT_ORDER);
+    	outputs.push_back(ReordererRunner::OUTPUT_ALIGN);
+    	ConfigIParserGold config;
+    	char * argv[] = {"", "-insert", "true",
+    						"-delete" , "false",
+    						"-attach_null", "right",
+    						"-attach_trg", "left",
+    						"-combine_blocks", "true"};
+    	config.loadConfig(11, argv);
+    	ostringstream oss, ess;
+    	OutputCollector collector(&oss,&ess);
+		IParserGoldTask gold(0, sline, aline, &f, &outputs, config, &collector);
+		gold.Run();
+		tokenizer<char_separator<char> > outs(oss.str(), char_separator<char>("\t"));
+		tokenizer<char_separator<char> >::iterator it = outs.begin();
+		int ret = 1;
+		if (*it != "the budget director <> , within the Republican Party <> the rift <> compromise for an opening <> could be said ."){
+			cerr << "incorrect string: " << *it << endl;
+			ret = 0;
+		}
+		it++;
+		if (*it != "0 1 2 -1 3 7 8 9 10 -1 5 6 -1 16 15 13 14 -1 11 12 4 17"){
+			cerr << "incorrect order: " << *it << endl;
+			ret = 0;
+		}
+		it++;
+		if (*it != "1-0 2-1 3-2 4-3 5-5 5-6 7-4 7-5 8-4 8-5 9-7 9-8 11-9 12-10 13-11 14-12 16-13 17-14 18-16 18-17 18-18 19-15 19-16 20-19 20-20 20-21 20-22 21-23 "){
+			cerr << "incorrect align: " << *it << endl;
+			ret = 0;
+		}
+		return ret;
+    }
+
     bool RunTest() {
     	int done = 0, succeeded = 0;
     	done++; cout << "TestInertRank()" << endl; if(TestInsertRank()) succeeded++; else cout << "FAILED!!!" << endl;
@@ -585,10 +724,13 @@ public:
     	done++; cout << "TestInverted()" << endl; if(TestInverted()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestNullSourceMultiple()" << endl; if(TestNullSourceMultiple()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestNullTargetFront()" << endl; if(TestNullTargetFront()) succeeded++; else cout << "FAILED!!!" << endl;
+    	done++; cout << "TestNullMixed()" << endl; if(TestNullMixed()) succeeded++; else cout << "FAILED!!!" << endl;
+    	done++; cout << "TestNullLeftRight()" << endl; if(TestNullLeftRight()) succeeded++; else cout << "FAILED!!!" << endl;
 //    	done++; cout << "TestDiscontiuousTarget()" << endl; if(TestDiscontinuousTarget()) succeeded++; else cout << "FAILED!!!" << endl;
-    	done++; cout << "Test122()" << endl; if(Test122()) succeeded++; else cout << "FAILED!!!" << endl;
+//    	done++; cout << "Test122()" << endl; if(Test122()) succeeded++; else cout << "FAILED!!!" << endl;
 //    	done++; cout << "TestGoldOutput()" << endl; if(TestGoldOutput()) succeeded++; else cout << "FAILED!!!" << endl;
 //		done++; cout << "TestGoldOutput377()" << endl; if(TestGoldOutput377()) succeeded++; else cout << "FAILED!!!" << endl;
+//		done++; cout << "TestGoldOutput317()" << endl; if(TestGoldOutput317()) succeeded++; else cout << "FAILED!!!" << endl;
     	cout << "#### TestIParser Finished with "<<succeeded<<"/"<<done<<" tests succeeding ####"<<endl;
     	return done == succeeded;
     }

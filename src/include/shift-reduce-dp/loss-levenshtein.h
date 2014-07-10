@@ -33,7 +33,9 @@ public:
     	std::vector< std::vector<double> > score(order.size()+1);
     	for (int row = 0 ; row <= order.size(); row++)
     		score[row].resize(gold.size()+1, 0);
-    	int n = std::max(order.size(), gold.size());
+    	// set max loss to the length of *gold* rank
+    	// in order to prevent different max losses between different orders
+    	double n = gold.size();
     	for (int row = 0 ; row <= order.size(); row++){
     		for (int col = 0 ; col <= gold.size() ; col++){
     			if (row == 0 && col == 0){
@@ -47,12 +49,12 @@ public:
     				del = score[row-1][col] + 1;
     			if (row > 0 && col > 0)
     				sub = score[row-1][col-1] + (order[row-1] == gold[col-1] ? 0 : 1);
-    			score[row][col] = std::min(std::min(ins, del), sub);
+    			// the upper bound of loss is n
+    			score[row][col] = std::min(std::min(std::min(ins, del), sub), n);
     		}
     	}
     	std::pair<double,double> ret(0,0);
     	ret.first = score[order.size()][gold.size()];
-    	// TODO bug fix: max loss of the best and kbest should be equal
     	ret.second = n;
     	ret.first *= weight_;
     	ret.second *= weight_;

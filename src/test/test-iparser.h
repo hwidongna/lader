@@ -437,7 +437,9 @@ public:
 		Alignment al = Alignment::FromString("18-24 ||| 1-0 2-1 3-3 9-4 10-4 7-5 9-5 10-5 7-6 6-9 16-11 15-12 14-13 12-15 11-16 12-16 11-17 11-18 4-19 4-20 4-21 4-22 17-23");
 		const vector<string> & words = sent.GetSequence();
 		int n = words.size();
-		CombinedAlign cal(words,al, CombinedAlign::ATTACH_NULL_RIGHT, CombinedAlign::COMBINE_BLOCKS); // no delete
+		CombinedAlign cal(words,al,
+				CombinedAlign::ATTACH_NULL_RIGHT, // no delete
+				CombinedAlign::COMBINE_BLOCKS);	// combine blocks
 		IParserRanks ranks(CombinedAlign(words,al,
 											CombinedAlign::ATTACH_NULL_RIGHT, 			// attach null in source
 											CombinedAlign::COMBINE_BLOCKS),				// combine blocks in source
@@ -478,7 +480,7 @@ public:
 		// if(만약) she rice ate if(다면)
 		Alignment al = Alignment::FromString("4-5 ||| 0-0 1-1 3-2 2-3 0-4");
 		const vector<string> & words = sent.GetSequence();
-		CombinedAlign cal(words,al, CombinedAlign::ATTACH_NULL_RIGHT, CombinedAlign::LEAVE_BLOCKS_AS_IS);
+		CombinedAlign cal(words,al, CombinedAlign::ATTACH_NULL_RIGHT); // no delete
 		{
 		vector<pair<double,double> > exp(4);
 		exp[0] = MakePair(0,4);
@@ -490,15 +492,20 @@ public:
 			return 0;
 		}
 		}
-		IParserRanks ranks(cal, CombinedAlign::ATTACH_NULL_LEFT);
-		if (!CheckVector(Ranks::FromString("0 1 3 2").GetRanks(), ranks.GetRanks())){
+		IParserRanks ranks(CombinedAlign(words,al,
+				CombinedAlign::ATTACH_NULL_RIGHT, 			// attach null in source
+				CombinedAlign::COMBINE_BLOCKS),				// combine blocks in source
+				CombinedAlign::ATTACH_NULL_LEFT);			// attach null in target
+		// TODO additional action and dimension for discontinuity?
+//		if (!CheckVector(Ranks::FromString("0 1 3 2 0").GetRanks(), ranks.GetRanks())){
+		if (!CheckVector(Ranks::FromString("0 0 0 0").GetRanks(), ranks.GetRanks())){
 			cerr << "IParserRanks fails " << endl;
 			return 0;
 		}
 		ActionVector refseq = ranks.GetReference(&cal);
 		int n = words.size();
 		int ret = 1;
-		ActionVector exp = DPState::ActionFromString("F F S F F I S");
+		ActionVector exp = DPState::ActionFromString("F F S F S F S");
 		if (!CheckVector(exp, refseq)){
 			cerr << "incorrect reference sequence" << endl;
 			return 0;
@@ -524,7 +531,63 @@ public:
 			vector<int> act;
 			goal->GetReordering(act);
 			vector<int> exp(n);
-			exp[0]=0, exp[1]=1, exp[2]=3, exp[3]=2;
+			exp[0]=0, exp[1]=1, exp[2]=2, exp[3]=3;
+			if (!CheckVector(exp, act)){
+				cerr << "incorrect get reordering" << endl;
+				ret = 0;
+			}
+		}
+		return ret;
+	}
+
+    int TestDiscontinuousTargetWithNull(){
+		sent.FromString("if she ate rice");
+		// if(만약) she NOM rice ACC ate if(다면)
+		Alignment al = Alignment::FromString("4-7 ||| 0-0 1-1 3-3 2-5 0-6");
+		const vector<string> & words = sent.GetSequence();
+		CombinedAlign cal(words,al,
+				CombinedAlign::ATTACH_NULL_RIGHT,	// no delete
+				CombinedAlign::COMBINE_BLOCKS); 	// combine block
+		IParserRanks ranks(CombinedAlign(words,al,
+				CombinedAlign::ATTACH_NULL_RIGHT, 			// attach null in source
+				CombinedAlign::COMBINE_BLOCKS),				// combine blocks in source
+				CombinedAlign::ATTACH_NULL_LEFT);			// attach null in target
+		ranks.Insert(&cal);
+		// TODO ?
+		if (!CheckVector(Ranks::FromString("0 0 -1 0 -1 0 -1").GetRanks(), ranks.GetRanks())){
+			cerr << "IParserRanks::Insert fails" << endl;
+			return 0;
+		}
+		ActionVector refseq = ranks.GetReference(&cal);
+		int n = words.size();
+		int ret = 1;
+		ActionVector exp = DPState::ActionFromString("F F V S F V S F V S");
+		if (!CheckVector(exp, refseq)){
+			cerr << "incorrect reference sequence" << endl;
+			return 0;
+		}
+
+		IParser p(n,n);
+		DPState * goal = p.GuidedSearch(refseq, n);
+		if (!goal->IsGold()){
+			cerr << *goal << endl;
+			ret = 0;
+		}
+		ActionVector act;
+		goal->AllActions(act);
+		if (act.size() != refseq.size()){
+			cerr << "incomplete all actions: size " << refseq.size() << " != " << act.size() << endl;
+			ret = 0;
+		}
+		if (!CheckVector(refseq, act)){
+			cerr << "incorrect all actions" << endl;
+			ret = 0;
+		}
+		{ // check reordering
+			vector<int> act;
+			goal->GetReordering(act);
+			vector<int> exp(n+3);
+			exp[0]=0, exp[1]=1, exp[2]=-1, exp[3]=3, exp[4]=-1, exp[5]=2, exp[6]=-1;
 			if (!CheckVector(exp, act)){
 				cerr << "incorrect get reordering" << endl;
 				ret = 0;
@@ -726,7 +789,8 @@ public:
     	done++; cout << "TestNullTargetFront()" << endl; if(TestNullTargetFront()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestNullMixed()" << endl; if(TestNullMixed()) succeeded++; else cout << "FAILED!!!" << endl;
     	done++; cout << "TestNullLeftRight()" << endl; if(TestNullLeftRight()) succeeded++; else cout << "FAILED!!!" << endl;
-//    	done++; cout << "TestDiscontiuousTarget()" << endl; if(TestDiscontinuousTarget()) succeeded++; else cout << "FAILED!!!" << endl;
+    	done++; cout << "TestDiscontiuousTarget()" << endl; if(TestDiscontinuousTarget()) succeeded++; else cout << "FAILED!!!" << endl;
+//    	done++; cout << "TestDiscontiuousTargetWithNull()" << endl; if(TestDiscontinuousTargetWithNull()) succeeded++; else cout << "FAILED!!!" << endl;
 //    	done++; cout << "Test122()" << endl; if(Test122()) succeeded++; else cout << "FAILED!!!" << endl;
 //    	done++; cout << "TestGoldOutput()" << endl; if(TestGoldOutput()) succeeded++; else cout << "FAILED!!!" << endl;
 //		done++; cout << "TestGoldOutput377()" << endl; if(TestGoldOutput377()) succeeded++; else cout << "FAILED!!!" << endl;

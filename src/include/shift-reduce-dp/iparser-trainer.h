@@ -67,7 +67,7 @@ public:
 	    while(getline(in, line)){
 	    	const vector<string> & srcs = (*SafeAccess(datas,i++))[0]->GetSequence();
 			CombinedAlign cal1(srcs, Alignment::FromString(line),
-								CombinedAlign::LEAVE_NULL_AS_IS, combine_, bracket_);
+								CombinedAlign::LEAVE_NULL_AS_IS, combine_, bracket_); 	// for delete
 			CombinedAlign cal2(srcs, Alignment::FromString(line),
 									attach_, combine_, bracket_);
 			IParserRanks ranks(cal2, attach_trg_);

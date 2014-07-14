@@ -18,10 +18,10 @@ class IParserModel : public ShiftReduceModel {
 public:
 	IParserModel() : ShiftReduceModel(), max_ins_(0), max_del_(0) {}
 	virtual ~IParserModel() {}
-	int GetMaxIns() { return max_ins_; }
-	int GetMaxDel() { return max_del_; }
-	void SetMaxIns(int max_ins) { max_ins_ = max_ins; }
-	void SetMaxDel(int max_del) { max_del_ = max_del; }
+	double GetMaxIns() { return max_ins_; }
+	double GetMaxDel() { return max_del_; }
+	void SetMaxIns(double max_ins) { max_ins_ = max_ins; }
+	void SetMaxDel(double max_del) { max_del_ = max_del; }
 
 	// IO Functions
 	virtual void ToStream(std::ostream & out) {
@@ -41,9 +41,9 @@ public:
 		GetConfigLine(in, "max_state", line);
 		ret->SetMaxState(atoi(line.c_str()));
 		GetConfigLine(in, "max_ins", line);
-		ret->SetMaxIns(atoi(line.c_str()));
+		ret->SetMaxIns(atof(line.c_str()));
 		GetConfigLine(in, "max_del", line);
-		ret->SetMaxDel(atoi(line.c_str()));
+		ret->SetMaxDel(atof(line.c_str()));
 	    GetlineEquals(in, "reorderer_model");
 	    while(std::getline(in, line) && line.length()) {
 	        vector<string> columns;
@@ -58,7 +58,7 @@ public:
 	    return ret;
 	}
 private:
-	int max_ins_, max_del_;	// The maximum number of insert/delete actions
+	double max_ins_, max_del_;	// The maximum percentages of insert/delete actions
 };
 }
 

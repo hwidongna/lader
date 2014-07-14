@@ -34,6 +34,7 @@ public:
         Sentence datas = features_->ParseInput(line_);
         // Save the original string
         vector<string> words = ((FeatureDataSequence*)datas[0])->GetSequence();
+        int n = words.size();
         // Build a reordering tree
         if(verbose >= 1)
             ess << endl << "Sentence " << sent << endl;
@@ -42,7 +43,7 @@ public:
         struct timespec search={0,0};
         struct timespec tstart={0,0}, tend={0,0};
         clock_gettime(CLOCK_MONOTONIC, &tstart);
-        IParser parser(model->GetMaxIns(), model->GetMaxDel());
+        IParser parser(model->GetMaxIns()*n, model->GetMaxDel()*n);
         parser.SetBeamSize(config_.GetInt("beam"));
         parser.SetVerbose(config_.GetInt("verbose"));
         parser.Search(*model, *features_, datas);

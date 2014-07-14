@@ -38,8 +38,8 @@ public:
         AddConfigEntry("iterations", "15", "The number of iterations of training to perform.");
         AddConfigEntry("loss_profile", "levenshtein=1", "Which loss functions to use");
         AddConfigEntry("max_state", "1", "The maximum numer of states in equality checking");
-        AddConfigEntry("max_ins", "1", "The maximum numer of insert actions");
-        AddConfigEntry("max_del", "1", "The maximum numer of delete actions");
+        AddConfigEntry("max_ins", "0.2", "The maximum percentage of insert actions");
+        AddConfigEntry("max_del", "0.2", "The maximum percentage of delete actions");
         AddConfigEntry("model_in", "", "Can read in a model and use it as the starting point for training");
         AddConfigEntry("model_out", "", "An output file for the model");
         AddConfigEntry("shuffle", "false", "Whether to shuffle the input");

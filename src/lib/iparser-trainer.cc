@@ -40,8 +40,8 @@ void IParserTrainer::InitializeModel(const ConfigBase & config) {
     } else {
         IParserModel * model = new IParserModel;
         model->SetMaxState(config.GetInt("max_state"));
-        model->SetMaxIns(config.GetInt("max_ins"));
-        model->SetMaxDel(config.GetInt("max_del"));
+        model->SetMaxIns(config.GetDouble("max_ins"));
+        model->SetMaxDel(config.GetDouble("max_del"));
         model->SetUseReverse(config.GetBool("use_reverse"));
         model_ = model;
         features_ = new FeatureSet;
@@ -129,7 +129,7 @@ void IParserTrainer::TrainIncremental(const ConfigBase & config) {
         	if(++done% 100 == 0) cerr << ".";
         	if(done % (100*10) == 0) cerr << done << endl;
 			// Produce the parse
-			IParser parser(model->GetMaxIns(), model->GetMaxDel());
+			IParser parser(model->GetMaxIns()*n, model->GetMaxDel()*n);
             parser.SetBeamSize(config.GetInt("beam"));
             parser.SetVerbose(verbose);
         	Parser::Result result;

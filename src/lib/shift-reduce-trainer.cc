@@ -17,35 +17,6 @@ using namespace boost;
 
 namespace lader {
 
-template <class T>
-int MoveRandom(vector<T> & from, vector<T> & to, double ratio){
-	srand(time(0)); // intensionally use same seed across fuction calls
-	to.resize(from.size());
-	int count = 0;
-	for (int i = 0 ; i < from.size() ; i++){
-		double r = ((double) rand() / (RAND_MAX));
-		if (r > ratio)
-			continue;
-		to[i] = from[i];
-		from[i] = NULL;
-		count++;
-	}
-	if (count == 0)
-		return MoveRandom(from, to, ratio); // try again
-	return count;
-}
-
-template <class T>
-void Merge(vector<T> & to, vector<T> & from){
-//	if (to.size() != from.size())
-//		THROW_ERROR("vector size " << to.size() << " != " << from.size() << endl);
-	for (int i = 0 ; i < to.size() ; i++)
-		if (!to[i] && from[i]){
-			to[i] = from[i];
-			from[i] = NULL;
-		}
-}
-
 void ShiftReduceTrainer::InitializeModel(const ConfigBase & config) {
 	ReordererEvaluator::InitializeModel(config);
     srand(time(NULL));
@@ -87,14 +58,40 @@ void ShiftReduceTrainer::InitializeModel(const ConfigBase & config) {
     }
 }
 
+void ShiftReduceTrainer::GetReferenceSequences(const std::string & align_in,
+		std::vector<ActionVector> & refseq, std::vector<Sentence*> & datas){
+	std::ifstream in(align_in.c_str());
+	if(!in) THROW_ERROR("Could not open alignment file: "
+							<<align_in);
+	std::string line;
+	int i = 0;
+	ShiftReduceModel * model = dynamic_cast<ShiftReduceModel*>(model_);
+	while(getline(in, line)){
+		const vector<string> & srcs = (*SafeAccess(datas,i++))[0]->GetSequence();
+		CombinedAlign cal2(srcs, Alignment::FromString(line),
+								attach_, combine_, bracket_);
+		Ranks ranks(cal2);
+		refseq.push_back(ranks.GetReference());
+	}
+
+}
+
 void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
     InitializeModel(config);
     ReadData(config.GetString("source_in"), data_);
-    if(config.GetString("align_in").length())
+    if(config.GetString("align_in").length()){
         ReadAlignments(config.GetString("align_in"), ranks_, data_);
+        GetReferenceSequences(config.GetString("align_in"), refseq_, data_);
+    }
     if(config.GetString("source_dev").length() && config.GetString("align_dev").length()){
     	ReadData(config.GetString("source_dev"), dev_data_);
     	ReadAlignments(config.GetString("align_dev"), dev_ranks_, dev_data_);
+    	GetReferenceSequences(config.GetString("align_dev"), dev_refseq_, dev_data_);
+    }
+    else{ // use train data as dev
+    	ReadData(config.GetString("source"), dev_data_);
+		ReadAlignments(config.GetString("align"), dev_ranks_, dev_data_);
+		GetReferenceSequences(config.GetString("align"), dev_refseq_, dev_data_);
     }
     if(config.GetString("parse_in").length())
         ReadParses(config.GetString("parse_in"));
@@ -110,18 +107,6 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
     struct timespec tstart={0,0}, tend={0,0};
     double best_prec = 0;
     int best_iter, best_wlen;
-    // Split train and dev set
-    if(!(config.GetString("source_dev").length() && config.GetString("align_dev").length())){
-    	int count1, count2;
-    	do{
-    		Merge(data_, dev_data_);
-    		Merge(ranks_, dev_ranks_);
-    		count1 = MoveRandom(data_, dev_data_, config.GetDouble("ratio_dev"));
-    		count2 = MoveRandom(ranks_, dev_ranks_, config.GetDouble("ratio_dev"));
-    	} while(count1 != count2 || count1 == data_.size());
-    	cerr << "Split " << data_.size() << " train set into "
-    			<< data_.size()-count1 << " train and " << count1 << " dev set" << endl;
-    }
     ShiftReduceModel * model = dynamic_cast<ShiftReduceModel*>(model_);
     for(int iter = 0; iter < config.GetInt("iterations"); iter++) {
         // Shuffle
@@ -130,33 +115,39 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
 
         int done = 0;
         unsigned long iter_nedge = 0, iter_nstate = 0, iter_step = 0, iter_refsize = 0;
-        int bad_update = 0, early_update = 0;
+        int bad_update = 0, early_update = 0, prev_early = 0, skipped = 0;
         if (verbose >= 1)
         	cerr << "Start training parsing iter " << iter << endl;
         BOOST_FOREACH(int sent, sent_order) {
-        	if (!ranks_[sent]) // it would be NULL
-        		continue;
+//        	if (!ranks_[sent]) // it would be NULL
+//        		continue;
         	if(++done% 100 == 0) cerr << ".";
         	if(done % (100*10) == 0) cerr << done << endl;
 
         	if (verbose >= 1){
         		cerr << endl << "Sentence " << sent << endl;
+        	}
+        	// copy the original reference sequence because it will be resized if early update
+        	ActionVector refseq = refseq_[sent];
+        	if (refseq.empty()){
+				skipped++;
+				continue;
+			}
+        	if (verbose >= 1){
         		cerr << "Rank:";
         		BOOST_FOREACH(int rank, ranks_[sent]->GetRanks())
         			cerr << " " << rank;
         		cerr << endl;
-        	}
-        	ActionVector refseq = ranks_[sent]->GetReference();
-        	if (verbose >= 1){
-        		cerr << "Reference:";
-        		BOOST_FOREACH(DPState::Action action, refseq)
-        			cerr << " " << (char)action;
+        		cerr << "Reference Action:";
+				for (int step = 0 ; step < refseq.size() ; step++)
+					cerr << " " << (char)refseq[step]  << "_" << step+1;
         		cerr << endl;
         	}
         	int n = (*data_[sent])[0]->GetNumWords();
         	if (refseq.size() < 2*n - 1){
         		if (verbose >= 1)
-        			cerr << "Fail to get correct reference sequence, skip it" << endl;
+        			cerr << "Fail to get correct reference sequence" << endl;
+        		skipped++;
         		continue;
         	}
             Parser * p;
@@ -165,10 +156,11 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
             else
             	p = new Parser();
             DPState * goal = p->GuidedSearch(refseq, n);
-        	if (goal == NULL){
+        	if (goal == NULL || !goal->Allow(DPState::IDLE, n)){
         		if (verbose >= 1)
-        			cerr << "Parser cannot produce the reference sequence, skip it" << endl;
+        			cerr << "Parser cannot produce the goal state" << endl;
         		delete p;
+        		skipped++;
         		continue;
         	}
         	delete p;
@@ -248,14 +240,16 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
         cout << "Finished update " << dt << std::setprecision(4)
         	<< iter_nedge << " edges, " << iter_nstate << " states, "
         	<< bad_update << " bad (" << 100.0*bad_update/done << "%), "
+        	<< skipped << " skip (" << 100.0*skipped/done << "%), "
         	<< early_update << " early (" << 100.0*early_update/done << "%), "
         	<< iter_step << "/" << iter_refsize << " steps (" << 100.0*iter_step/iter_refsize << "%)" << endl;
         cout.flush();
 
-        if (early_update == 0){
+        if (early_update == 0 || prev_early == early_update){
         	cout << "No more update" << endl;
         	break;
         }
+        prev_early = early_update;
         if (verbose >= 1)
         	cerr << "Start development parsing iter " << iter << endl;
         ThreadPool pool(config.GetInt("threads"), 1000);
@@ -263,10 +257,9 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
         vector<Parser::Result> results(dev_data_.size());
         vector< vector<Parser::Result> > result_kbests(dev_data_.size());
 		for (int sent = 0 ; sent < dev_data_.size() ; sent++) {
-			if (!dev_data_[sent] || !dev_ranks_[sent])  // it would be NULL
-				continue;
 			Task *task = new ShiftReduceTask(sent, *dev_data_[sent],
-					*dev_ranks_[sent], model, features_, config, results[sent], collector, result_kbests[sent]);
+					model, features_, config,
+					results[sent], collector, result_kbests[sent]);
 			pool.Submit(task);
         }
 		pool.Stop(true);
@@ -278,8 +271,23 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
         for (int sent = 0 ; sent < dev_data_.size() ; sent++) {
         	if(++done% 100 == 0) cerr << ".";
         	if(done % (100*10) == 0) cerr << done << endl;
-        	if (!dev_data_[sent] || !dev_ranks_[sent])  // it would be NULL
-        		continue;
+        	ActionVector & refseq = dev_refseq_[sent];
+			if (refseq.empty())
+				continue;
+			if (verbose >= 1){
+				cerr << "Rank:";
+				BOOST_FOREACH(int rank, dev_ranks_[sent]->GetRanks())
+					cerr << " " << rank;
+				cerr << endl;
+				cerr << "Reference Action:";
+				BOOST_FOREACH(DPState::Action action, refseq)
+					cerr << " " << (char)action;
+				cerr << endl;
+				cerr << "Result ActionSeq:";
+				BOOST_FOREACH(DPState::Action action, results[sent].actions)
+					cerr << " " << (char)action;
+				cerr << endl;
+			}
         	for(int i = 0; i < (int) losses_.size(); i++) {
         		pair<double,double> my_loss =
         				losses_[i]->CalculateSentenceLoss(results[sent].order,dev_ranks_[sent],NULL);
@@ -308,12 +316,13 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
         	if (verbose >= 1)
         		cerr << endl;
         }
+        // Output the losses
 		double prec = 0;
 		for(int i = 0; i < (int) sum_losses.size(); i++) {
 			if(i != 0) cout << "\t";
 			cout << " " << losses_[i]->GetName() << "=" << std::setprecision(3)
-					<< (1 - sum_losses[i].first/sum_losses[i].second)
-					<< " (loss "<<sum_losses[i].first/losses_[i]->GetWeight() << "/"
+					<< (1 - sum_losses[i].first/sum_losses[i].second);
+			cout << " (loss "<<sum_losses[i].first/losses_[i]->GetWeight() << "/"
 					<<sum_losses[i].second/losses_[i]->GetWeight()<<")";
 			prec += (1 - sum_losses[i].first/sum_losses[i].second) * losses_[i]->GetWeight();
 		}
@@ -321,8 +330,8 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
 		for(int i = 0; i < (int) sum_losses_kbests.size(); i++) {
 			if(i != 0) cout << "\t";
 			cout << "*" << losses_[i]->GetName() << "=" << std::setprecision(3)
-					<< (1 - sum_losses_kbests[i].first/sum_losses_kbests[i].second)
-					<< " (loss "<<sum_losses_kbests[i].first/losses_[i]->GetWeight() << "/"
+					<< (1 - sum_losses_kbests[i].first/sum_losses_kbests[i].second);
+			cout << " (loss "<<sum_losses_kbests[i].first/losses_[i]->GetWeight() << "/"
 					<<sum_losses_kbests[i].second/losses_[i]->GetWeight()<<")";
 		}
 		cout << endl;

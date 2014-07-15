@@ -33,28 +33,16 @@ class ShiftReduceTrainer : public ReordererTrainer {
 	// A task
 	class ShiftReduceTask : public Task {
 	public:
-		ShiftReduceTask(int id, const Sentence & data, const Ranks & ranks,
+		ShiftReduceTask(int id, const Sentence & data,
 				ShiftReduceModel * model, FeatureSet * features, const ConfigBase& config,
 				Parser::Result & result, OutputCollector & collector, vector<Parser::Result> & kbest) :
-					id_(id), data_(data), ranks_(ranks), model_(model), features_(features), config_(config),
+					id_(id), data_(data), model_(model), features_(features), config_(config),
 					collector_(collector), result_(result), kbest_(kbest) { }
 		void Run(){
 			int verbose = config_.GetInt("verbose");
 			int m = config_.GetInt("max_swap");
 			int sent = id_;
 			ostringstream err;
-			if (verbose >= 1){
-				err << endl << "Sentence " << sent << endl;
-				err << "Rank: ";
-				BOOST_FOREACH(int rank, ranks_.GetRanks())
-				err << rank << " ";
-				err << endl;
-				ActionVector refseq = ranks_.GetReference();
-				err << "Reference: ";
-				BOOST_FOREACH(DPState::Action action, refseq)
-					err << (char)action << " ";
-				err << endl;
-			}
 			Parser * p;
 			if (m > 0)
 				p = new DParser(m);
@@ -65,23 +53,12 @@ class ShiftReduceTrainer : public ReordererTrainer {
 			p->Search(*model_, *features_, data_);
 			p->GetKbestResult(kbest_);
 			Parser::SetResult(result_, p->GetBest());
-			if (verbose >= 1){
-				err << "Result:   ";
-				for (int step = 0 ; step < result_.actions.size() ; step++)
-					err << " " << (char) result_.actions[step];
-				err << endl;
-				err << "Purmutation:";
-				BOOST_FOREACH(int order, result_.order)
-				err << " " << order;
-				err << endl;
-			}
 			collector_.Write(id_, "", err.str());
 			delete p;
 		}
 	protected:
 		int id_;
 		const Sentence & data_;
-		const Ranks & ranks_;
 		ShiftReduceModel * model_; // The model
 		FeatureSet * features_;  // The mapping on feature ids and which to use
 		const ConfigBase& config_;
@@ -108,8 +85,13 @@ public:
     // we parse
     virtual void TrainIncremental(const ConfigBase & config);
 
+    virtual void GetReferenceSequences(const std::string & align_in,
+    		std::vector<ActionVector> & refseq, std::vector<Sentence*> & datas);
+
 protected:
-	std::vector<Ranks*> dev_ranks_; // The alignments to use in development
+    vector<ActionVector> refseq_;		//
+    vector<ActionVector> dev_refseq_;
+	std::vector<Ranks*> dev_ranks_;		// The alignments to use in development
 	std::vector<Sentence*> dev_data_; // The development data
 
 };

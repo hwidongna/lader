@@ -56,40 +56,12 @@ public:
 	virtual ~IParserTrainer() { }
 	// Initialize the model
 	virtual void InitializeModel(const ConfigBase & config);
-	void GetReferenceSequences(const std::string & align_in,
-		std::vector<ActionVector> & refseq, std::vector<Sentence*> & datas){
-	    std::ifstream in(align_in.c_str());
-	    if(!in) THROW_ERROR("Could not open alignment file: "
-	                            <<align_in);
-	    std::string line;
-	    int i = 0;
-	    IParserModel * model = dynamic_cast<IParserModel*>(model_);
-	    while(getline(in, line)){
-	    	const vector<string> & srcs = (*SafeAccess(datas,i++))[0]->GetSequence();
-			CombinedAlign cal1(srcs, Alignment::FromString(line),
-								CombinedAlign::LEAVE_NULL_AS_IS, combine_, bracket_); 	// for delete
-			CombinedAlign cal2(srcs, Alignment::FromString(line),
-									attach_, combine_, bracket_);
-			IParserRanks ranks(cal2, attach_trg_);
-			// enable insert/delete if allowed
-			if (model->GetMaxDel() > 0){
-				if (model->GetMaxIns() > 0)
-					ranks.Insert(&cal1);
-				refseq.push_back(ranks.GetReference(&cal1));
-			}
-			else{
-				if (model->GetMaxIns() > 0)
-					ranks.Insert(&cal2);
-				refseq.push_back(ranks.GetReference(&cal2));
-			}
-	    }
-
-	}
-    // Train the reorderer incrementally, building they hypergraph each time
+	virtual void GetReferenceSequences(const std::string & align_in,
+		std::vector<ActionVector> & refseq, std::vector<Sentence*> & datas);
+	// Train the reorderer incrementally, building they hypergraph each time
     // we parse
     virtual void TrainIncremental(const ConfigBase & config);
 protected:
-    vector<ActionVector> refseq_, dev_refseq_;
     CombinedAlign::NullHandler attach_trg_;
 
 };

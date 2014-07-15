@@ -62,7 +62,7 @@ void ReordererTrainer::TrainIncremental(const ConfigBase & config) {
     // Perform an iteration
     cerr << "(\".\" == 100 sentences)" << endl;
     for(int iter = 0; iter < config.GetInt("iterations"); iter++) {
-        double iter_model_loss = 0, iter_oracle_loss = 0;
+        double iter_model_loss = 0, iter_oracle_loss = 0, iter_total_loss = 0;
         // Shuffle
         if(config.GetBool("shuffle"))
             random_shuffle(sent_order.begin(), sent_order.end());
@@ -143,9 +143,25 @@ void ReordererTrainer::TrainIncremental(const ConfigBase & config) {
 			// Add the statistics for this iteration
 			iter_model_loss += model_loss;
 			iter_oracle_loss += oracle_loss;
+			vector<int> order;
+			ptr_graph->GetBest()->GetReordering(order, verbose > 1);
+			// --- DEBUG: check both losses match ---
+			double sent_loss = 0, sent_score = 0;
+			BOOST_FOREACH(LossBase * loss, losses_){
+				pair<double,double> l = loss->CalculateSentenceLoss(order,
+						sent < (int)ranks_.size() ? ranks_[sent] : NULL,
+								sent < (int)parses_.size() ? &parses_[sent] : NULL);
+				sent_loss += l.first;
+				iter_total_loss += l.second;
+			}
+			if(sent_loss != model_loss){
+				ostringstream out;
+				vector<string> words = ((FeatureDataSequence*)(*data_[sent])[0])->GetSequence();
+				ptr_graph->GetBest()->PrintParse(words, out);
+				cerr << "sent=" << sent << " sent_loss="<< sent_loss <<" != model_loss="<< model_loss << endl;
+				cerr << out.str() << endl;
+			}
 			if (verbose > 1){
-				vector<int> order;
-				ptr_graph->GetBest()->GetReordering(order, verbose > 1);
 				for(int i = 0; i < (int)order.size(); i++) {
 					if(i != 0) cout << " "; cout << order[i];
 				}
@@ -158,21 +174,10 @@ void ReordererTrainer::TrainIncremental(const ConfigBase & config) {
 					if(i != 0) cout << " "; cout << (*ranks_[sent])[i];
 				}
 				cout << endl;
-				// --- DEBUG: check both losses match ---
-				double sent_loss = 0;
-				BOOST_FOREACH(LossBase * loss, losses_)
-					sent_loss += loss->CalculateSentenceLoss(order,
-									sent < (int)ranks_.size() ? ranks_[sent] : NULL,
-									sent < (int)parses_.size() ? &parses_[sent] : NULL).first;
-				if(sent_loss != model_loss){
-					ostringstream out;
-					vector<string> words = ((FeatureDataSequence*)(*data_[sent])[0])->GetSequence();
-		            ptr_graph->GetBest()->PrintParse(words, out);
-					cerr << "sent=" << sent << " sent_loss="<< sent_loss <<" != model_loss="<<model_loss << endl;
-		            cerr << out.str() << endl;
-				}
-				cout << "sent=" << sent << " oracle_score=" << oracle_score << " model_score=" << model_score << endl
-					 << "sent_loss = "<< sent_loss << " oracle_loss=" << oracle_loss << " model_loss=" << model_loss << endl;
+				sent_score = ptr_graph->Rescore(*model_, 0.0);
+				cout << "sent=" << sent << endl
+					 << "sent_score=" << sent_score << " oracle_score=" << oracle_score << " model_score=" << model_score << endl
+					 << "sent_loss="<< sent_loss << " oracle_loss=" << oracle_loss << " model_loss=" << model_loss << endl;
 			}
 			// Add the difference between the vectors if there is at least
 			//  some loss
@@ -203,7 +208,21 @@ void ReordererTrainer::TrainIncremental(const ConfigBase & config) {
 			if(!config.GetBool("save_features"))
             	ptr_graph->Clear();
         }
-        cout << "Finished iteration " << iter << " with loss " << iter_model_loss << " (oracle: " << iter_oracle_loss << ")" << endl;
+        cout << "Finished iteration " << iter << endl;
+        cout << " ";
+        for (int i = 0 ; i < losses_.size() ; i++){
+        	if (i != 0) cout << " + ";
+        	cout << losses_[i]->GetName() << "*" << losses_[i]->GetWeight();
+        }
+        cout << "=" << 1 - iter_model_loss/iter_total_loss
+        	 << " (loss " << iter_model_loss << "/" << iter_total_loss << ")" << endl;
+        cout << "*";
+        for (int i = 0 ; i < losses_.size() ; i++){
+			if (i != 0) cout << " + ";
+			cout << losses_[i]->GetName() << "*" << losses_[i]->GetWeight();
+		}
+        cout << "=" << 1 - iter_oracle_loss/iter_total_loss <<
+        		" (loss " << iter_oracle_loss << "/" << iter_total_loss << ")" << endl;
         if (verbose > 0)
 			cout << "Running time on average: "
 					<< "generate " << ((double)generate.tv_sec + 1.0e-9*generate.tv_nsec) / (iter+1) << "s"

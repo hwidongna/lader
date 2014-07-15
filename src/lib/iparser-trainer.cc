@@ -64,18 +64,53 @@ void IParserTrainer::InitializeModel(const ConfigBase & config) {
     }
 }
 
+void IParserTrainer::GetReferenceSequences(const std::string & align_in,
+		std::vector<ActionVector> & refseq, std::vector<Sentence*> & datas){
+	std::ifstream in(align_in.c_str());
+	if(!in) THROW_ERROR("Could not open alignment file: "
+			<<align_in);
+	std::string line;
+	int i = 0;
+	IParserModel * model = dynamic_cast<IParserModel*>(model_);
+	while(getline(in, line)){
+		const vector<string> & srcs = (*SafeAccess(datas,i++))[0]->GetSequence();
+		CombinedAlign cal1(srcs, Alignment::FromString(line),
+				CombinedAlign::LEAVE_NULL_AS_IS, combine_, bracket_); 	// for delete
+		CombinedAlign cal2(srcs, Alignment::FromString(line),
+				attach_, combine_, bracket_);
+		IParserRanks ranks(cal2, attach_trg_);
+		// enable insert/delete if allowed
+		if (model->GetMaxDel() > 0){
+			if (model->GetMaxIns() > 0)
+				ranks.Insert(&cal1);
+			refseq.push_back(ranks.GetReference(&cal1));
+		}
+		else{
+			if (model->GetMaxIns() > 0)
+				ranks.Insert(&cal2);
+			refseq.push_back(ranks.GetReference(&cal2));
+		}
+	}
+
+}
+
 void IParserTrainer::TrainIncremental(const ConfigBase & config) {
     InitializeModel(config);
     ReadData(config.GetString("source_in"), data_);
     if(config.GetString("align_in").length()){
-    	ReadAlignments(config.GetString("align_in"), ranks_, data_); // just in case
+    	ReadAlignments(config.GetString("align_in"), ranks_, data_);
         GetReferenceSequences(config.GetString("align_in"), refseq_, data_);
     }
     if(config.GetString("source_dev").length() && config.GetString("align_dev").length()){
     	ReadData(config.GetString("source_dev"), dev_data_);
-    	ReadAlignments(config.GetString("align_dev"), dev_ranks_, dev_data_); // just in case
+    	ReadAlignments(config.GetString("align_dev"), dev_ranks_, dev_data_);
     	GetReferenceSequences(config.GetString("align_dev"), dev_refseq_, dev_data_);
     }
+    else{ // use train data as dev
+		ReadData(config.GetString("source"), dev_data_);
+		ReadAlignments(config.GetString("align"), dev_ranks_, dev_data_);
+		GetReferenceSequences(config.GetString("align"), dev_refseq_, dev_data_);
+	}
     int verbose = config.GetInt("verbose");
     vector<int> sent_order(data_.size());
 	for(int i = 0 ; i < (int)sent_order.size(); i++)
@@ -242,6 +277,10 @@ void IParserTrainer::TrainIncremental(const ConfigBase & config) {
 					cerr << " " << (char)action;
 				cerr << endl;
 			}
+			// For Levenshetein loss, do not use dev_rank_[sent]
+			// We need to compare two sequences
+			// Therefore, produce a parse using refseq,
+			// and abuse Rank to set the result
 			int n = (*dev_data_[sent])[0]->GetNumWords();
 			IParser p(n, n);
 			DPState * goal = p.GuidedSearch(refseq, n);

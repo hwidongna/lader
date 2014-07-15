@@ -275,7 +275,6 @@ private:
     int pop_limit_;
     // the beam size used for cube pruning/growing
     int beam_size_;
-    bool save_features_;
     int threads_;
     // The length of the sentence
     int n_;

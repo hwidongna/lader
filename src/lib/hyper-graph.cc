@@ -119,9 +119,6 @@ double HyperGraph::GetEdgeScore(ReordererModel & model,
     const FeatureVectorInt * vec = 
                 GetEdgeFeatures(model, feature_gen, sent, edge);
     double score = model.ScoreFeatureVector(SafeReference(vec));
-//    // features are not stored, thus delete
-//    if (!save_features_)
-//    	delete vec;
     return score;
 }
 
@@ -186,7 +183,6 @@ void HyperGraph::IncrementRight(const Hypothesis *old_hyp, TargetSpan *new_right
 		THROW_ERROR("Fail to IncrementRight for " << *old_hyp << endl)
 	// Clone this hypothesis
 	Hypothesis * new_hyp = old_hyp->Clone();
-	double non_local_score = 0.0;
 	new_hyp->SetScore(old_hyp->GetScore()
 			- old_right->GetScore() + new_right->GetScore());
 	new_hyp->SetRightRank(old_hyp->GetRightRank()+1);

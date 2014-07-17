@@ -26,7 +26,8 @@ bool FeatureSequence::FeatureTemplateIsLegal(const string & name) {
     	return name.length() == 2 && '0' <= name[1] <= '9';
     // only for shift-reduce parsing
     } else if(name[0] == 's' || name[0] == 't' || name[0] == 'l' || name[0] == 'r'){
-    	return name.length() == 3 && '0' <= name[1] <= '9' && (name[2] == 'L' || name[2] == 'R');
+    	return name.length() == 3 && '0' <= name[1] <= '9' &&
+    			(name[2] == 'L' || name[2] == 'R' || name[2] == 'B' || name[2] == 'A');
     } else {
         // For sequence matcher Q, check to make sure that the type
         //  name[2] = E (existance indicator) or # (feature)
@@ -264,8 +265,10 @@ void FeatureSequence::GenerateStateFeatures(
 		values << templ.second[0];
 		double feat_val = 1;
 		for(int i = 1; i < (int)templ.second.size(); i++) {
+			if (templ.first == NONTERM_FACTORED && action == DPState::SHIFT )
+				continue;
 			// Choose which span to use
-			int offset;
+			int offset, diff;
 			const DPState * ptr_state;
 			string & str = templ.second[i];
 			switch (str[0]) {
@@ -300,6 +303,12 @@ void FeatureSequence::GenerateStateFeatures(
 					else
 						values << "||" << sent.GetElement(ptr_state->GetTrgR()-1);
 				}
+				else if (str[2] == 'B')
+					values << "||" << (ptr_state->GetSrcL() > 0 ?
+							sent.GetElement(ptr_state->GetSrcL()-1) : "<s>");
+				else if (str[2] == 'A')
+						values << "||" << (ptr_state->GetSrcR() < sent.GetNumWords() ?
+								sent.GetElement(ptr_state->GetSrcR()) : "</s>");
 				break;
 			case 'l':
 				offset = str[1]-'0';
@@ -307,7 +316,7 @@ void FeatureSequence::GenerateStateFeatures(
 				for (int j = 0 ; j < offset && ptr_state; j++)
 					ptr_state = ptr_state->GetLeftState();
 				if (!ptr_state || ptr_state->GetSrcC() < 0)
-					feat_val = 0;
+					feat_val = 0; // do not have child, do not add feature
 				else if (str[2] == 'L')
 					values << "||" << sent.GetElement(ptr_state->GetSrcL());
 				else if (str[2] == 'R')
@@ -319,7 +328,7 @@ void FeatureSequence::GenerateStateFeatures(
 				for (int j = 0 ; j < offset && ptr_state; j++)
 					ptr_state = ptr_state->GetLeftState();
 				if (!ptr_state || ptr_state->GetSrcC() < 0)
-					feat_val = 0;
+					feat_val = 0; // do not have child, do not add feature
 				else if (str[2] == 'L')
 					values << "||" << sent.GetElement(ptr_state->GetSrcC());
 				else if (str[2] == 'R')
@@ -328,7 +337,29 @@ void FeatureSequence::GenerateStateFeatures(
 			case 'a':
 				values << "||" << (char)action;
 				break;
-	        default:
+//			case 'C':
+//				ptr_state = state.GetLeftState();
+//				if (ptr_state){
+//					values << "||";
+//					diff = state.GetSrcR()-2*state.GetSrcL()+ptr_state->GetSrcL()+1;
+//					switch (str[1]){
+//					// Get the difference between values
+//					case 'D':
+//						// Distance is (r-c+1)-(c-l)
+//						values << abs(diff);
+//						break;
+//					case 'B':
+//					case 'L':
+//						// Get the balance between the values
+//						if(str[1] == 'B') { values << diff;}
+//						else if(diff < 0) { values << "L"; }
+//						else if(diff > 0) { values << "R"; }
+//						else { values << "E"; }
+//						break;
+//					}
+//				}
+//				break;
+	        default: // Dictionary features, staring with digit
 	        	if (str.length() < 3)
 	        		THROW_ERROR("Bad feature template " << str);
 				offset = str[0]-'0';

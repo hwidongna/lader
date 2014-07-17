@@ -35,6 +35,7 @@ public:
     // The templates that can be used and combined for binary features are:
     //  %[SLR]S[1-9] :    entire String of a span, up to length 1-9
     //  %[SLR][LR] : Left or Right-most word of a span
+    //  %[SLR][BA] : Left - 1 or Right-most + 1 word of a span
     //  %[SLR]N :    Number of words in a span
     //  %[SLR]QE[0-9]: Whether a span exists in dictionary numbered 0-9,
     //               specified with dict=XX
@@ -55,9 +56,14 @@ public:
     // The templates that can be used and combined for binary features are:
     //  %q[0-9]: the [0-9]th element in buffer (from front)
     //  %s[0-9][LR]: the left/rightmost word of the [0-9]th element in stack (from top)
-    //  %t[0-9][LR]: the left/rightmost target word of the left/right child or the [0-9]th stack element, which is non-local feature
+    //	%s[0-9][BA]: the left-1/rightmost+1 of words of the [0-9]th element in stack (from top)
+    //  %t[0-9][LR]: the left/rightmost target word of the left/right child or the [0-9]th stack element
+    //					which is *non-local* feature
     //  %[lr][0-9][LR]: the left/rightmost word of the left/right child or the [0-9]th stack element
     //  %aT :        The action type: INIT(R), SHIFT(F), STRAIGHT(S), INVERTED(I)
+    //  %[0-9]Q#[0-9][0-9]: For the [0-9]th element in stack,
+    //						the value of the [0-9]th feature in the [0-9]th
+    //               		dictionary (dictionary number is first, feature second)
 
     virtual void ParseConfiguration(const std::string & str);
 

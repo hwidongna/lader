@@ -170,6 +170,7 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
             	p = new Parser();
             p->SetBeamSize(config.GetInt("beam"));
             p->SetVerbose(verbose);
+        	// TODO Generate local features in advance, can be parallelized?
         	Parser::Result result;
         	clock_gettime(CLOCK_MONOTONIC, &tstart);
         	p->Search(*model, *features_, *data_[sent],	// obligatory
@@ -271,16 +272,13 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
         for (int sent = 0 ; sent < dev_data_.size() ; sent++) {
         	if(++done% 100 == 0) cerr << ".";
         	if(done % (100*10) == 0) cerr << done << endl;
-        	ActionVector & refseq = dev_refseq_[sent];
-			if (refseq.empty())
-				continue;
 			if (verbose >= 1){
 				cerr << "Rank:";
 				BOOST_FOREACH(int rank, dev_ranks_[sent]->GetRanks())
 					cerr << " " << rank;
 				cerr << endl;
 				cerr << "Reference Action:";
-				BOOST_FOREACH(DPState::Action action, refseq)
+				BOOST_FOREACH(DPState::Action action, dev_refseq_[sent])
 					cerr << " " << (char)action;
 				cerr << endl;
 				cerr << "Result ActionSeq:";

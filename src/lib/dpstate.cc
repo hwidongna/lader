@@ -154,6 +154,8 @@ DPState * DPState::Reduce(DPState * leftstate, Action action){
 bool DPState::Allow(const Action & action, const int n){
 	if (action == SHIFT)
 		return src_r_ < n;
+	else if (action == IDLE)
+		return src_l_ == 0 && src_r_ == n;
 	DPState * leftstate = GetLeftState();
 	return leftstate && leftstate->action_ != INIT && leftstate->src_r_ == src_l_;
 }

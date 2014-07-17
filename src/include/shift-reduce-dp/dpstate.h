@@ -118,11 +118,11 @@ protected:
 	int src_c_; 		// the split point of subspans if exists, otherwise -1
 	int trg_l_, trg_r_;	// target span
 	vector<Span> signature_; // target spans in the stack (from the top)
-	int rank_;
-	Action action_;
-	bool gold_;
-	vector<DPState*> leftptrs_;
-	vector<BackPtr> backptrs_;
+	int rank_;			// the rank of this state in a bin
+	Action action_;		// action taken
+	bool gold_;			// is this a gold state?
+	vector<DPState*> leftptrs_; // a list of left states that can be reduced with this state
+	vector<BackPtr> backptrs_;	// a list of previous states where this state comes from
 	bool keep_alternatives_;
 };
 typedef vector<DPState::Action> ActionVector;

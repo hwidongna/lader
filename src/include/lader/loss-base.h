@@ -25,6 +25,13 @@ public:
     		const Ranks * ranks, const FeatureDataParse * parse) = 0;
 
     // Add a loss value to a production
+            //  state: The DPState for the production
+            //  ranks: The correct ranks of the words
+            //  parse: The correct parse
+	virtual double GetStateLoss(DPState * state, bool root,
+			const Ranks * ranks, const FeatureDataParse * parse) = 0;
+
+    // Add a loss value to a production
     //  src_left: The starting position of the left span
     //  src_mid: The starting position of the right span (or nonterm -1)
     //  src_right: The ending position of the right span

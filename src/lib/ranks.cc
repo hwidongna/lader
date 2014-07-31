@@ -81,13 +81,13 @@ ActionVector Ranks::GetReference() const{
 }
 
 bool Ranks::IsStraight(DPState * lstate, DPState * state) const{
-	if (!lstate)
+	if (!lstate || lstate->GetAction() == DPState::INIT)
 		return false;
 	return Ranks::IsContiguous(ranks_[lstate->GetTrgR()-1], ranks_[state->GetTrgL()]);
 }
 
 bool Ranks::IsInverted(DPState * lstate, DPState * state) const{
-	if (!lstate)
+	if (!lstate || lstate->GetAction() == DPState::INIT)
 		return false;
 	return 	Ranks::IsStepOneUp(ranks_[state->GetTrgR()-1], ranks_[lstate->GetTrgL()]); // strictly step-one up
 }

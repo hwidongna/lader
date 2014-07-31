@@ -64,10 +64,10 @@ protected:
     ReordererModel* model_; // The model
     FeatureSet* features_;  // The mapping on feature ids and which to use
     std::vector<LossBase*> losses_; // The loss functions
+    std::vector<FeatureDataParse> parses_; // The parses to use in training
 
 private:
 
-    std::vector<FeatureDataParse> parses_; // The parses to use in training
     double learning_rate_; // The learning rate
     std::vector<HyperGraph*> saved_graphs_; // Features for each hypergraph
 

@@ -8,6 +8,23 @@ double LossTau::AddLossToProduction(Hypothesis * hyp,
 	return AddLossToProduction(hyp->GetLeft(), hyp->GetCenter(), hyp->GetRight(),
 			-1, -1, -1, -1, hyp->GetEdgeType(), ranks, parse);
 }
+
+double LossTau::GetStateLoss(DPState * state, bool root,
+        const Ranks * ranks, const FeatureDataParse * parse) {
+    if(!ranks) THROW_ERROR("Must have ranks for Tau loss");
+    int loss = 0;
+	switch (state->GetAction()) {
+	// For straight and inverse non-terms, check inside values
+	case DPState::STRAIGTH:
+		loss = GetLossStraight(*ranks, state->GetSrcL(), state->GetSrcC(), state->GetSrcR()-1);
+		break;
+	case DPState::INVERTED:
+		loss = GetLossInverse(*ranks, state->GetSrcL(), state->GetSrcC(), state->GetSrcR()-1);
+		break;
+	}
+	return loss*weight_;
+}
+
 double LossTau::AddLossToProduction(
         int src_left, int src_mid, int src_right,
         int trg_left, int trg_midleft, int trg_midright, int trg_right,

@@ -16,7 +16,10 @@ class LossLevenshtein : public LossBase {
 public:
 
 	virtual double AddLossToProduction(Hypothesis * hyp,
-	    		const Ranks * ranks, const FeatureDataParse * parse) { THROW_ERROR("Unsupported operation"); return 0; }
+			const Ranks * ranks, const FeatureDataParse * parse) { THROW_ERROR("Unsupported operation"); return 0; }
+
+	virtual double GetStateLoss(DPState * state, bool root,
+			const Ranks * ranks, const FeatureDataParse * parse) { THROW_ERROR("Unsupported operation"); return 0; }
 
     virtual double AddLossToProduction(
         int src_left, int src_mid, int src_right,

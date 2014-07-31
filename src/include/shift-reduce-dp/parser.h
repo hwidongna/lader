@@ -12,6 +12,7 @@
 #include <shift-reduce-dp/shift-reduce-model.h>
 #include <lader/feature-data-base.h>
 #include <lader/feature-vector.h>
+#include <lader/loss-base.h>
 #include <boost/foreach.hpp>
 #include <string>
 #include <vector>
@@ -22,6 +23,7 @@ class Parser {
 public:
 	Parser();
 	virtual ~Parser();
+	void Clear();
 	typedef struct {
 		vector<int> order;
 		ActionVector actions;
@@ -33,8 +35,12 @@ public:
 	DPState * GuidedSearch(const ActionVector & refseq, int n);
 	virtual void Search(ShiftReduceModel & model,
 			const FeatureSet & feature_gen, const Sentence & sent,
-			Result * result = NULL, const ActionVector * refseq = NULL,
+			Result * result = NULL, const Ranks * ranks = NULL,
 			const string * update = NULL);
+//	virtual void Search(ShiftReduceModel & model,
+//			const FeatureSet & feature_gen, const Sentence & sent,
+//			Result * result = NULL, const ActionVector * refseq = NULL,
+//			const string * update = NULL);
 	void GetKbestResult(vector<Parser::Result> & kbest);
 	void Simulate(ShiftReduceModel & model, const FeatureSet & feature_gen,
 			const ActionVector & actions, const Sentence & sent,
@@ -44,6 +50,7 @@ public:
 
 	int GetNumStates() const { return nstates_; }
 	int GetNumEdges() const { return nedges_; }
+	int GetNumUniq() const { return nuniq_; }
 	int GetNumParses() const {
 		int k;
 		for (k = 0 ; GetKthBest(k) != NULL ; k++)
@@ -64,24 +71,59 @@ public:
 			return NULL;
 		return b[0];
 	}
+	DPState * GetGoldBest(int step) const {
+		const DPStateVector & b = SafeAccess(golds_, step);
+		if (b.empty())
+			return NULL;
+		return b[0];
+	}
 	static void SetResult(Result & result, const DPState * goal);
+
+    // Add up the loss over an entire sentence
+    void AddLoss(
+    		LossBase* loss,
+    		const Ranks * ranks,
+            const FeatureDataParse * parse) ;
+    // Rescore a state
+    double Rescore(double loss_multiplier, DPState * state);
+    // Rescore the hypergraph using the given model and a loss multiplier
+    double Rescore(double loss_multiplier);
+    // Add up the loss over an entire subtree defined by a state
+    double AccumulateLoss(const DPState* state);
+    void AccumulateFeatures(FeatureMapInt & featmap,
+    									ReordererModel & model,
+    									const FeatureSet & features,
+    									const Sentence & sent,
+    									const DPState * goal);
+
 protected:
 	virtual bool Allow(DPState * state, DPState::Action action, int n) {
 		return state->Allow(action, n);
 	}
-	void DynamicProgramming(DPStateVector & golds, ShiftReduceModel & model,
+	virtual bool IsGold(DPState::Action action, const Ranks * ranks,
+			DPState * old) const;
+	// latent variable version
+	void DynamicProgramming(ShiftReduceModel & model,
 			const FeatureSet & feature_gen, const Sentence & sent,
-			const ActionVector * refseq = NULL);
-	void CompleteGolds(DPStateVector & simgolds, DPStateVector & golds,
-			ShiftReduceModel & model, const FeatureSet & feature_gen,
-			const Sentence & sent, const ActionVector * refseq);
-	void Update(DPStateVector & golds, Result * result,
-			const ActionVector * refseq, const string * update);
-	vector< DPStateVector > beams_;
-	int beamsize_;
-	int nstates_, nedges_, nuniq_;
-	int verbose_;
-	ActionVector actions_;
+			const Ranks * ranks = NULL);
+//	// oracle sequence version, may not be accurate
+//	void DynamicProgramming(DPStateVector & golds, ShiftReduceModel & model,
+//			const FeatureSet & feature_gen, const Sentence & sent,
+//			const ActionVector * refseq = NULL);
+//	void CompleteGolds(DPStateVector & simgolds, DPStateVector & golds,
+//			ShiftReduceModel & model, const FeatureSet & feature_gen,
+//			const Sentence & sent, const ActionVector * refseq);
+	// latent variable version
+	void Update(Result * result, const string * update);
+//	// oracle sequence version, may not be accurate
+//	void Update(DPStateVector & golds, Result * result,
+//			const ActionVector * refseq, const string * update);
+	vector< DPStateVector > beams_;		// store dp states produced by decoding
+	vector< DPStateVector > golds_;		// store all possible gold states, assuming latent variable
+	int beamsize_;						// the maximum # states in a bin
+	int nstates_, nedges_, nuniq_;		// # of produced states, edges, and unique states
+	int verbose_;						// control verbosity
+	ActionVector actions_;				// all possible actions for this parser
 };
 
 

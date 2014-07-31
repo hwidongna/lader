@@ -65,12 +65,16 @@ public:
 			int maxterm = 1, ReordererModel * model = NULL, const FeatureSet * feature_gen = NULL,
 			const Sentence * sent = NULL);
 	virtual bool Allow(const Action & action, const int n);
-	virtual bool IsContinuous() { return false; }
+	virtual bool IsContinuous() { return true; }
 	virtual void InsideActions(vector<Action> & result) const;
 	void AllActions(vector <Action> & result) const;
+	// Previous state
 	virtual DPState * Previous() const;
+	// Left state, s.t. can be reduced with this state
 	DPState * GetLeftState() const;
+	// Left child state
 	virtual DPState * LeftChild() const;
+	// Right child state
 	virtual DPState * RightChild() const;
 	double GetScore() const { return score_; }
 	double GetInside() const { return inside_; }
@@ -88,6 +92,10 @@ public:
 	virtual void GetReordering(vector <int> & result) const;
 	void SetSignature(int max);
 	vector<Span> GetSignature() const { return signature_; }
+	void SetLoss(double loss) { loss_ = loss; }
+	double GetLoss() const { return loss_; }
+	void SetRescore(double rescore) { rescore_ = rescore; }
+	double GetRescore() const { return rescore_; }
 
 	// a simple hash function
 	size_t hash() const { return trg_l_ * MULTI_K + trg_r_; }
@@ -95,12 +103,7 @@ public:
 	bool operator != (const DPState & other) const {
 		return !operator==(other);
 	}
-	virtual bool operator == (const DPState & other) const {
-		if (signature_.size() != other.signature_.size())
-			return false;
-		return std::equal(signature_.begin(), signature_.end(), other.signature_.begin())
-				&& src_l_ == other.src_l_; // do not need to compare j_
-	}
+	virtual bool operator == (const DPState & other) const;
 	bool operator < (const DPState & other) const {
 		return score_ < other.score_ || (score_ == other.score_ && inside_ < other.inside_);
 	}
@@ -120,10 +123,12 @@ protected:
 	vector<Span> signature_; // target spans in the stack (from the top)
 	int rank_;			// the rank of this state in a bin
 	Action action_;		// action taken
-	bool gold_;			// is this a gold state?
+	bool gold_;			// whether this is a gold state or not
 	vector<DPState*> leftptrs_; // a list of left states that can be reduced with this state
 	vector<BackPtr> backptrs_;	// a list of previous states where this state comes from
 	bool keep_alternatives_;
+	double loss_;				// for loss-augmented training
+	double rescore_;			// for loss-augmented training
 };
 typedef vector<DPState::Action> ActionVector;
 typedef std::priority_queue<DPState*,

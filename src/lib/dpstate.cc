@@ -35,6 +35,7 @@ DPState::DPState() {
 	action_ = INIT;
 	gold_ = true;
 	keep_alternatives_ = false;
+	loss_ = 0;
 }
 
 // new state
@@ -47,15 +48,24 @@ DPState::DPState(int step, int i, int j, Action action) {
 	action_ = action;
 	gold_ = false;
 	keep_alternatives_ = false;
+	loss_ = 0;
 }
 
 DPState::~DPState() {
 }
 
+// TODO Is this correct?
+bool DPState::operator == (const DPState & other) const {
+	if (signature_.size() != other.signature_.size())
+		return false;
+	return std::equal(signature_.begin(), signature_.end(), other.signature_.begin())
+			&& src_l_ == other.src_l_; // do not need to compare j_
+}
+
 void DPState::MergeWith(DPState * other){
 	if (action_ == SHIFT)
 		leftptrs_.push_back(other->leftptrs_[0]);
-	else // reduce
+	else if (action_ != IDLE) // reduce
 		if (keep_alternatives_)
 			backptrs_.push_back(other->backptrs_[0]);
 }
@@ -160,7 +170,7 @@ bool DPState::Allow(const Action & action, const int n){
 	return leftstate && leftstate->action_ != INIT && leftstate->src_r_ == src_l_;
 }
 
-void DPState::InsideActions(vector<Action> & result) const{
+void DPState::InsideActions(ActionVector & result) const{
 	switch(action_){
 	case INIT:
 		break;
@@ -183,8 +193,8 @@ void DPState::InsideActions(vector<Action> & result) const{
 	}
 }
 
-void DPState::AllActions(vector<Action> & result) const{
-	vector<Action> tmp;
+void DPState::AllActions(ActionVector & result) const{
+	ActionVector tmp;
 	InsideActions(tmp);
 	result.insert(result.begin(), tmp.begin(), tmp.end());
 	if (GetLeftState())

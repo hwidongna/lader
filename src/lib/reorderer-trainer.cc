@@ -67,6 +67,7 @@ void ReordererTrainer::TrainIncremental(const ConfigBase & config) {
         if(config.GetBool("shuffle"))
             random_shuffle(sent_order.begin(), sent_order.end());
         int done = 0;
+        int bad_update = 0;
         BOOST_FOREACH(int sent, sent_order) {
         	if(++done % 100 == 0) cerr << ".";
         	if(done % (100*10) == 0) cerr << done << endl;
@@ -179,6 +180,11 @@ void ReordererTrainer::TrainIncremental(const ConfigBase & config) {
 					 << "sent_score=" << sent_score << " oracle_score=" << oracle_score << " model_score=" << model_score << endl
 					 << "sent_loss="<< sent_loss << " oracle_loss=" << oracle_loss << " model_loss=" << model_loss << endl;
 			}
+        	if (model_->ScoreFeatureVector(VectorSubtract(oracle_features, model_features)) > 0){
+        		bad_update++;
+        		if (verbose >= 1)
+					cerr << "Bad update at Sentence " << sent << endl;
+        	}
 			// Add the difference between the vectors if there is at least
 			//  some loss
 			clock_gettime(CLOCK_MONOTONIC, &tstart);
@@ -208,7 +214,8 @@ void ReordererTrainer::TrainIncremental(const ConfigBase & config) {
 			if(!config.GetBool("save_features"))
             	ptr_graph->Clear();
         }
-        cout << "Finished iteration " << iter << endl;
+        cout << "Finished iteration " << iter << ", "
+			 << bad_update << " bad update (" << 100.0*bad_update/done << "%)" << endl;
         cout << " ";
         for (int i = 0 ; i < losses_.size() ; i++){
         	if (i != 0) cout << " + ";

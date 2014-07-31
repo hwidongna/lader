@@ -4,6 +4,7 @@
 #include "test-base.h"
 #include <lader/combined-alignment.h>
 #include <lader/loss-chunk.h>
+#include <shift-reduce-dp/parser.h>
 
 namespace lader {
 
@@ -37,6 +38,12 @@ public:
         if(loss01 != 0) {
             cerr << "loss01 "<<loss01<<" != 0"<<endl; ret = 0;
         }
+		Parser p;
+		DPState * state = p.GuidedSearch(DPState::ActionFromString("F F S"), ranks.GetSrcLen());
+        loss01 = lf.GetStateLoss(state, false, &ranks, NULL);
+        if(loss01 != 0) {
+            cerr << "loss01 "<<loss01<<" != 0"<<endl; ret = 0;
+        }
         // Create a skipped node, loss==1
         double loss12 = lf.AddLossToProduction(1,2,2,1,1,2,2,
                                                HyperEdge::EDGE_STR,
@@ -44,6 +51,12 @@ public:
         if(loss12 != 0.5) {
             cerr << "loss12 "<<loss12<<" != 1"<<endl; ret = 0;
         }
+        p.Clear();
+        state = p.GuidedSearch(DPState::ActionFromString("F F F S"), ranks.GetSrcLen());
+        loss12 = lf.GetStateLoss(state, false, &ranks, NULL);
+        if(loss12 != 0.5) {
+			cerr << "loss12 "<<loss12<<" != 1"<<endl; ret = 0;
+		}
         // Create a reversed node, loss==1
         double loss23 = lf.AddLossToProduction(2,3,3,2,2,3,3,
                                                HyperEdge::EDGE_STR,
@@ -51,6 +64,12 @@ public:
         if(loss23 != 0.5) {
             cerr << "loss23 "<<loss23<<" != 1"<<endl; ret = 0;
         }
+        p.Clear();
+		state = p.GuidedSearch(DPState::ActionFromString("F F F F S"), ranks.GetSrcLen());
+		loss23 = lf.GetStateLoss(state, false, &ranks, NULL);
+		if(loss23 != 0.5) {
+			cerr << "loss23 "<<loss23<<" != 1"<<endl; ret = 0;
+		}
         return ret;
     }
 
@@ -63,6 +82,12 @@ public:
         if(loss01 != 0) {
             cerr << "loss01 "<<loss01<<" != 0"<<endl; ret = 0;
         }
+		Parser p;
+		DPState * state = p.GuidedSearch(DPState::ActionFromString("F F I"), ranks.GetSrcLen());
+        loss01 = lf.GetStateLoss(state, false, &ranks, NULL);
+        if(loss01 != 0) {
+            cerr << "loss01 "<<loss01<<" != 0"<<endl; ret = 0;
+        }
         // Create a skipped node, loss==1
         double loss12 = lf.AddLossToProduction(1,2,2,2,2,1,1,
                                                HyperEdge::EDGE_INV,
@@ -70,6 +95,12 @@ public:
         if(loss12 != 0.5) {
             cerr << "loss12 "<<loss12<<" != 1"<<endl; ret = 0;
         }
+        p.Clear();
+		state = p.GuidedSearch(DPState::ActionFromString("F F F I"), ranks.GetSrcLen());
+		loss12 = lf.GetStateLoss(state, false, &ranks, NULL);
+		if(loss12 != 0.5) {
+			cerr << "loss12 "<<loss12<<" != 1"<<endl; ret = 0;
+		}
         // Create a reversed node, loss==0
         double loss23 = lf.AddLossToProduction(2,3,3,3,3,2,2,
                                                HyperEdge::EDGE_INV,
@@ -77,6 +108,12 @@ public:
         if(loss23 != 0) {
             cerr << "loss23 "<<loss23<<" != 0"<<endl; ret = 0;
         }
+        p.Clear();
+		state = p.GuidedSearch(DPState::ActionFromString("F F F F I"), ranks.GetSrcLen());
+		loss23 = lf.GetStateLoss(state, false, &ranks, NULL);
+		if(loss23 != 0) {
+			cerr << "loss23 "<<loss23<<" != 1"<<endl; ret = 0;
+		}
         return ret;
     }
 
@@ -141,6 +178,13 @@ public:
         if(loss1 != 0) {
             cerr << "loss1 "<<loss1<<" != 0"<<endl; ret = 0;
         }
+		Parser p;
+		DPState * state = p.GuidedSearch(DPState::ActionFromString("F F S F F I S"), ranks.GetSrcLen());
+        loss1 = lf.GetStateLoss(state, true, &ranks, NULL);
+        if(loss1 != 0) {
+            cerr << "loss1 "<<loss1<<" != 0"<<endl; ret = 0;
+        }
+
         // Create a reversed node, loss==2
         double loss2 = lf.AddLossToProduction(0,-1,2,2,-1,-1,1,
                                               HyperEdge::EDGE_ROOT,
@@ -148,6 +192,12 @@ public:
         if(loss2 != 1.0) {
             cerr << "loss2 "<<loss2<<" != 2"<<endl; ret = 2;
         }
+        p.Clear();
+        state = p.GuidedSearch(DPState::ActionFromString("F F S F F I I"), ranks.GetSrcLen());
+		loss2 = lf.GetStateLoss(state, true, &ranks, NULL);
+		if(loss2 != 1.5) { // compute inside loss (1) as well as sentence boundary losses (2)
+			cerr << "loss2 "<<loss2<<" != 0"<<endl; ret = 0;
+		}
         return ret;
     }
 

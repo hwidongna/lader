@@ -20,6 +20,39 @@ double LossChunk::AddLossToProduction(Hypothesis * hyp,
 			trg_left, trg_midleft, trg_midright, trg_right, hyp->GetEdgeType(), ranks, parse);
 }
 
+double LossChunk::GetStateLoss(DPState * state, bool root,
+        const Ranks * ranks, const FeatureDataParse * parse) {
+	if(!ranks) THROW_ERROR("Chunk loss requires alignment input");
+    int tl, tr;
+    int loss = 0;
+    switch(state->GetAction()){
+    case DPState::STRAIGTH:
+    case DPState::SWAP:
+    	tl = state->LeftChild()->GetTrgR()-1;
+    	tr = state->RightChild()->GetTrgL();
+    	if(!Ranks::IsContiguous((*ranks)[tl], (*ranks)[tr]))
+			loss++;
+
+    	break;
+    case DPState::INVERTED:
+    	tl = state->RightChild()->GetTrgR()-1;
+    	tr = state->LeftChild()->GetTrgL();
+    	if(!Ranks::IsContiguous((*ranks)[tl], (*ranks)[tr]))
+			loss++;
+    	break;
+    // INIT, SHIFT and IDLE have no loss
+    }
+	if (root){
+    	tl = state->GetTrgL();
+		tr = state->GetTrgR()-1;
+        if(!Ranks::IsContiguous(-1, (*ranks)[tl]))
+            loss++;
+        if(!Ranks::IsContiguous((*ranks)[tr], (*ranks).GetMaxRank()+1))
+            loss++;
+	}
+	return loss*weight_;
+}
+
 bool LossChunk::IsStraight(const Ranks * ranks, int trg_midleft, int trg_midright)
 {
     return Ranks::IsStepOneUp((*ranks)[trg_midleft], (*ranks)[trg_midright]) ||
@@ -59,6 +92,7 @@ double LossChunk::AddLossToProduction(
             break;
         default:
             THROW_ERROR("Bad edge type in LossChunk");
+            break;
     }
     return loss*weight_;
 }

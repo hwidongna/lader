@@ -12,6 +12,9 @@ public:
 	virtual double AddLossToProduction(Hypothesis * hyp,
 	    		const Ranks * ranks, const FeatureDataParse * parse);
 
+	virtual double GetStateLoss(DPState * state, bool root,
+			    		const Ranks * ranks, const FeatureDataParse * parse);
+
     virtual double AddLossToProduction(
         int src_left, int src_mid, int src_right,
         int trg_left, int trg_midleft, int trg_midright, int trg_right,

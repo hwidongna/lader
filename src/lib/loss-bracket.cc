@@ -12,6 +12,28 @@ double LossBracket::AddLossToProduction(Hypothesis * hyp,
 			-1,-1,-1,-1, hyp->GetEdgeType(), ranks, parse);
         
 }
+
+double LossBracket::GetStateLoss(DPState * state, bool root,
+        const Ranks * ranks, const FeatureDataParse * parse) {
+    int count = 0;
+    if(root) {
+        typedef std::pair<std::pair<int,int>, std::string> SpanPair;
+        BOOST_FOREACH(const SpanPair & val, parse->GetSpans()) {
+            if(val.second.length() == 1)
+                count++;
+        }
+    } else {
+        const string & label = parse->GetSpanLabel(state->GetSrcL(), state->GetSrcR()-1);
+        if(label.length() == 1) {
+            if(label[0] == 'X')
+                count++;
+            else if(label[0] == (char)state->GetAction())
+                count--;
+        }
+    }
+	return count*weight_;
+}
+
 double LossBracket::AddLossToProduction(
         int src_left, int src_mid, int src_right,
         int trg_left, int trg_midleft, int trg_midright, int trg_right,

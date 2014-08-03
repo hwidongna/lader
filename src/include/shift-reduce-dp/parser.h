@@ -37,10 +37,6 @@ public:
 			const FeatureSet & feature_gen, const Sentence & sent,
 			Result * result = NULL, const Ranks * ranks = NULL,
 			const string * update = NULL);
-//	virtual void Search(ShiftReduceModel & model,
-//			const FeatureSet & feature_gen, const Sentence & sent,
-//			Result * result = NULL, const ActionVector * refseq = NULL,
-//			const string * update = NULL);
 	void GetKbestResult(vector<Parser::Result> & kbest);
 	void Simulate(ShiftReduceModel & model, const FeatureSet & feature_gen,
 			const ActionVector & actions, const Sentence & sent,
@@ -51,6 +47,12 @@ public:
 	int GetNumStates() const { return nstates_; }
 	int GetNumEdges() const { return nedges_; }
 	int GetNumUniq() const { return nuniq_; }
+	int GetNumGolds() const {
+		unsigned long count = 0;
+		BOOST_FOREACH(DPState * gold, golds_.back())
+			count += gold->GetNumDerivations();
+		return count;
+	}
 	int GetNumParses() const {
 		int k;
 		for (k = 0 ; GetKthBest(k) != NULL ; k++)
@@ -106,18 +108,8 @@ protected:
 	void DynamicProgramming(ShiftReduceModel & model,
 			const FeatureSet & feature_gen, const Sentence & sent,
 			const Ranks * ranks = NULL);
-//	// oracle sequence version, may not be accurate
-//	void DynamicProgramming(DPStateVector & golds, ShiftReduceModel & model,
-//			const FeatureSet & feature_gen, const Sentence & sent,
-//			const ActionVector * refseq = NULL);
-//	void CompleteGolds(DPStateVector & simgolds, DPStateVector & golds,
-//			ShiftReduceModel & model, const FeatureSet & feature_gen,
-//			const Sentence & sent, const ActionVector * refseq);
 	// latent variable version
 	void Update(Result * result, const string * update);
-//	// oracle sequence version, may not be accurate
-//	void Update(DPStateVector & golds, Result * result,
-//			const ActionVector * refseq, const string * update);
 	vector< DPStateVector > beams_;		// store dp states produced by decoding
 	vector< DPStateVector > golds_;		// store all possible gold states, assuming latent variable
 	int beamsize_;						// the maximum # states in a bin

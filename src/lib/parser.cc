@@ -79,9 +79,13 @@ bool Parser::IsGold(DPState::Action action, const Ranks * ranks,
 	case DPState::INVERTED:
 		return ranks->IsInverted(leftstate, old) && !ranks->HasTie(old);
 	case DPState::SHIFT: // if not reduce
-	case DPState::IDLE:
 		return !(ranks->IsStraight(leftstate, old)
-				|| (ranks->IsInverted(leftstate, old) && !ranks->HasTie(old)));
+				|| (ranks->IsInverted(leftstate, old) && !ranks->HasTie(old)))
+				// or possible to reduce after shift
+				|| Ranks::IsContiguous((*ranks)[old->GetTrgR()-1], (*ranks)[old->GetSrcREnd()])
+				|| Ranks::IsStepOneUp((*ranks)[old->GetSrcREnd()], (*ranks)[old->GetTrgR()-1]);
+	case DPState::IDLE:
+		return true;
 	default:
 		return false;
 	}
@@ -92,7 +96,9 @@ void Parser::DynamicProgramming(ShiftReduceModel & model,
 	int n = sent[0]->GetNumWords();
 	int maxstep = golds_.size();
 	beams_.resize(golds_.size(), DPStateVector());
-	beams_[0].push_back(InitialState()); // initial state
+	DPState * state = InitialState();
+	beams_[0].push_back(state); // initial state
+	golds_[0].push_back(state);
 	for (int step = 1 ; step < maxstep ; step++){
 		if (verbose_ >= 2)
 			cerr << "step " << step << endl;
@@ -177,10 +183,24 @@ void Parser::DynamicProgramming(ShiftReduceModel & model,
 			cerr << "survive " << beams_[step].size() << " items" << endl;
 		nuniq_ += rank;						// total number of uniq states
 		// clean-up the rest
+		DPStateMap gmap;
+		BOOST_FOREACH(DPState * top, golds_[step])
+			gmap[top] = top;
 		while (!q.empty()){
 			DPState * top = q.top(); q.pop();
-			if (top->IsGold())
-				golds_[step].push_back(top); // fall-off by beam search
+			DPStateMap::iterator it = gmap.find(top); // utilize hash() and operator==()
+			if (top->IsGold() && golds_[step].size() < beamsize_){
+				if (it == tmp.end()){
+					gmap[top] = top;
+					golds_[step].push_back(top); // fall-off by beam search
+				}
+				else{
+					it->second->MergeWith(top);
+					if (verbose_ >= 2)
+						cerr << "GOLD " << *top << " MERGED with " << it->second->GetRank() << endl;
+					delete top;
+				}
+			}
 			else
 				delete top;
 		}
@@ -247,239 +267,6 @@ void Parser::Update(Result * result, const string * update) {
 	}
 	SetResult(*result, beams_[naivepos][0]);
 }
-
-//void Parser::Search(ShiftReduceModel & model,
-//		const FeatureSet & feature_gen, const Sentence & sent,
-//		Result * result, const ActionVector * refseq,
-//		const string * update) {
-//	DPStateVector golds(2*sent[0]->GetNumWords(), NULL);
-//	DynamicProgramming(golds, model, feature_gen, sent, refseq);
-//	if (result && refseq && update){
-//		DPStateVector simgolds;
-//		CompleteGolds(simgolds, golds, model, feature_gen, sent, refseq);
-//		Update(golds, result, refseq, update);
-//		// clean-up the rest gold items using refseq
-//		BOOST_FOREACH(DPState * gold, simgolds)
-//			delete gold;
-//	}
-//}
-//
-//void Parser::DynamicProgramming(DPStateVector & golds, ShiftReduceModel & model,
-//		const FeatureSet & feature_gen, const Sentence & sent,
-//		const ActionVector * refseq) {
-//	int n = sent[0]->GetNumWords();
-//	int max_step = golds.size();
-//	beams_.resize(max_step, DPStateVector());
-//	DPState * state = InitialState();
-//	beams_[0].push_back(state); // initial state
-//
-//	golds[0] = beams_[0][0]; // initial state
-//	for (int step = 1 ; step < max_step ; step++){
-//		if (verbose_ >= 2)
-//			cerr << "step " << step << endl;
-//		DPStateQueue q;
-//		BOOST_FOREACH(DPState * old, beams_[step-1]){
-//			if (verbose_ >= 2){
-//				cerr << "OLD: "; old->Print(cerr); cerr << endl;
-//			}
-//			// iterate over actions
-//			BOOST_FOREACH(DPState::Action action, actions_){
-//				if (!Allow(old, action, n))
-//					continue;
-//				bool actiongold = (refseq != NULL
-//						&& (action == DPState::IDLE || action == (*refseq)[step-1]));
-//				DPStateVector stateseq;
-//				// take an action, see below shift-m
-//				old->Take(action, stateseq, actiongold, 1,
-//						&model, &feature_gen, &sent);
-//				BOOST_FOREACH(DPState * next, stateseq){
-//					next->SetSignature(model.GetMaxState());
-//					q.push(next);
-//					if (verbose_ >= 2){
-//						cerr << "  NEW: "; next->Print(cerr); cerr << endl;
-//					}
-//				}
-//			}
-//		}
-//		// shift m+1 element monotonically, i.e., shift-{shift-straight}*m
-//		// from an oldstep (=step-2*m-1) if possible
-//		// the new state is identical to the state that apply a sequence of actions
-//		// from the old state if exist. however, it may not exist due to the pruning.
-//		// therefore, this is the second chance to revive the state we needed often.
-//		for (int m = 1 ; step > 2*m && m < model.GetMaxTerm() ; m++){
-//			// from the proper previous step
-//			int oldstep = step-2*m-1;
-//			BOOST_FOREACH(DPState * old, beams_[oldstep]){
-//				if (old->GetSrcREnd()+m >= n)
-//					continue;
-//				if (verbose_ >= 2){
-//					cerr << "OLD: "; old->Print(cerr); cerr << endl;
-//				}
-//				DPState::Action action = DPState::SHIFT;
-//				bool actiongold = (refseq != NULL && action == (*refseq)[oldstep]);
-//				// get the correct judgement of actiongold
-//				for (int i = 0 ; refseq && i < 2*m-1; i += 2){
-//					actiongold &= DPState::SHIFT == (*refseq)[oldstep+i+1];
-//					actiongold &= DPState::STRAIGTH == (*refseq)[oldstep+i+2];
-//				}
-//				DPStateVector stateseq;
-//				old->Take((DPState::Action) action, stateseq, actiongold, m+1,
-//						&model, &feature_gen, &sent);
-//				if (stateseq.size() > 1)
-//					THROW_ERROR("shift-" << m+1 << " produces more than one next state")
-//				DPState * next = stateseq.back(); // only one item
-//				next->SetSignature(model.GetMaxState());
-//				q.push(next);
-//				if (verbose_ >= 2){
-//					cerr << "  NEW: " << *next; next->Print(cerr); cerr << endl;
-//				}
-//			}
-//		}
-//		nedges_ += q.size(); // number of created states (correlates with running time)
-//		if (verbose_ >= 2)
-//			cerr << "produce " << q.size() << " items" << endl;
-//
-//		DPStateMap tmp;
-//		int rank = 0;
-//		for (int k = 0 ; !q.empty() && (!beamsize_ || k < beamsize_) ; k++){
-//			DPState * top = q.top(); q.pop();
-//			DPStateMap::iterator it = tmp.find(top); // utilize hash() and operator==()
-//			if (it == tmp.end()){
-//				tmp[top] = top;
-//				beams_[step].push_back(top);
-//				top->SetRank(rank++);
-//				if (top->IsGold())
-//					golds[step] = top;
-//				if (verbose_ >= 2){
-//					top->Print(cerr); cerr << endl;
-//				}
-//
-//			}
-//			else{
-//				it->second->MergeWith(top);
-//				if (top->IsGold() && verbose_ >= 2) // fall-off by merge
-//					cerr << "GOLD at " << k << " MERGED with " << it->second->GetRank() << endl;
-//				delete top;
-//			}
-//		}
-//		nstates_ += beams_[step].size(); // number of survived states
-//		if (verbose_ >= 2)
-//			cerr << "survive " << beams_[step].size() << " items" << endl;
-//		nuniq_ += rank;
-//		// clean-up the rest
-//		while (!q.empty()){
-//			if (q.top()->IsGold())
-//				golds[step] = NULL;
-//			delete q.top(); q.pop();
-//		}
-//	}
-//}
-//
-//void Parser::CompleteGolds(DPStateVector & simgolds, DPStateVector & golds,
-//		ShiftReduceModel & model, const FeatureSet & feature_gen,
-//		const Sentence & sent, const ActionVector * refseq) {
-//	int n = sent[0]->GetNumWords();
-//	if (verbose_ >= 2){
-//		cerr << "Reference:";
-//		BOOST_FOREACH(DPState::Action action, *refseq)
-//			cerr << " " << (char) action;
-//		cerr << endl;
-//	}
-//	// complete the rest gold items using refseq
-//	for (int step = 1 ; step <= refseq->size() && step < golds.size() ; step++){
-//		if (golds[step] == NULL){
-//			DPState::Action action = (*refseq)[step-1];
-//			DPState * state = golds[step-1];
-//			DPStateVector tmp;
-//			if (state->Allow(action, n)) // take an action for golds
-//				state->Take(action, tmp, true, 1,
-//						&model, &feature_gen, &sent);
-//			else{
-//				state->PrintTrace(cerr);
-//				THROW_ERROR("Bad action " << (char)action << endl);
-//			}
-//			// may have more than one left state if merged?
-//			simgolds.push_back(tmp[0]);
-//			for (int i = 1 ; i < tmp.size() ; i++)
-//				delete tmp[i];
-//			golds[step] = simgolds.back(); // only one next item
-//			if (verbose_ >= 2)
-//				cerr << "SIMGOLD: " << *golds[step] << endl;
-//		}
-//		else if (verbose_ >= 2)
-//			cerr << "GOLD: " << *golds[step] << endl;
-//	}
-//	// padding IDLE states if possible
-//	for (int step = refseq->size()+1 ; step < golds.size() ; step++){
-//		DPState::Action action = DPState::IDLE;
-//		DPState * state = golds[step-1];
-//		DPStateVector tmp;
-//		if (state->Allow(action, n)) // take an action for golds
-//			state->Take(action, tmp, true, 1,
-//					&model, &feature_gen, &sent);
-//		else
-//			break;
-//		// may have more than one left state if merged?
-//		simgolds.push_back(tmp[0]);
-//		for (int i = 1 ; i < tmp.size() ; i++)
-//			delete tmp[i];
-//		golds[step] = simgolds.back(); // only one next item
-//	}
-//}
-//
-//// support naive, early, max update for perceptron
-//void Parser::Update(DPStateVector & golds, Result * result,
-//		const ActionVector * refseq, const string * update) {
-//	int earlypos = -1, latepos, largepos, maxpos = -1, naivepos;
-//	if (verbose_ >= 2){
-//		cerr << "update strategy: " << *update << endl;
-//		cerr << "gold size: " << golds.size() << ", beam size: " << beams_.size() << endl;
-//	}
-//	double maxdiff = 0;
-//	if (golds.size() != beams_.size())
-//		THROW_ERROR("gold size " << golds.size() << " != beam size" << beams_.size() << endl);
-//	for (int step = 1 ; step < (int)beams_.size() ; step++){
-//		const DPState * best = GetBeamBest(step); // update against best
-//		const DPState * gold = golds[step];
-//		if (!best)
-//			THROW_ERROR("Parsing failure at step " << step << endl);
-//		if (!gold) // no more update is possible
-//			break;
-//		naivepos = step;
-//		if (verbose_ >= 2){
-//			cerr << "BEST: " << *best << endl;
-//			cerr << "GOLD: " << *gold << endl;
-//		}
-//		if (gold->GetRank() < 0){
-//			if (*update == "early"){ // fall-off
-//				best->AllActions(result->actions);
-//				result->step = step;
-//				result->score = 0;
-//				if (verbose_ >= 2)
-//					cerr << "Early update at step " << result->step << endl;
-//				return;
-//			}
-//			if (earlypos < 0)
-//				earlypos = step;
-//		}
-//		if (*update == "max"){
-//			double mdiff = best->GetScore() - gold->GetScore();
-//			if (mdiff >= maxdiff){
-//				maxdiff = mdiff;
-//				maxpos = step;
-//			}
-//		}
-//	}
-//	if (*update == "max" && maxpos > 0){
-//		beams_[maxpos][0]->AllActions(result->actions);
-//		result->step = maxpos;
-//		result->score = 0;
-//		if (verbose_ >= 2)
-//			cerr << "Max update at step " << result->step << endl;
-//		return;
-//	}
-//	SetResult(*result, beams_[naivepos][0]);
-//}
 
 void Parser::SetResult(Parser::Result & result, const DPState * goal){
 	if (!goal)

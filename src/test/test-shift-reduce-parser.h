@@ -528,6 +528,8 @@ public:
     		DPState * goal = p.GetKthBest(k);
     		if (goal->GetStep() != refseq.size()){
         		cerr << "Goal step " << *goal << " != " << refseq.size() << endl;
+        		goal->PrintTrace(cerr);
+        		cerr << endl;
         		ret = 0;
     		}
     		ActionVector act;

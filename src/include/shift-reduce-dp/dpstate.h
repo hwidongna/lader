@@ -60,6 +60,7 @@ public:
 	bool IsGold() const { return gold_; }
 	void SetRank(int rank) { rank_ = rank; }
 	int GetRank() const { return rank_; }
+	unsigned long GetNumDerivations();
 	virtual void MergeWith(DPState * other);
 	virtual void Take(Action action, DPStateVector & result, bool actiongold = false,
 			int maxterm = 1, ReordererModel * model = NULL, const FeatureSet * feature_gen = NULL,

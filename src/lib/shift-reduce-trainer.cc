@@ -81,17 +81,14 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
     ReadData(config.GetString("source_in"), data_);
     if(config.GetString("align_in").length()){
         ReadAlignments(config.GetString("align_in"), ranks_, data_);
-//        GetReferenceSequences(config.GetString("align_in"), refseq_, data_);
     }
     if(config.GetString("source_dev").length() && config.GetString("align_dev").length()){
     	ReadData(config.GetString("source_dev"), dev_data_);
     	ReadAlignments(config.GetString("align_dev"), dev_ranks_, dev_data_);
-//    	GetReferenceSequences(config.GetString("align_dev"), dev_refseq_, dev_data_);
     }
     else{ // use train data as dev
     	ReadData(config.GetString("source"), dev_data_);
 		ReadAlignments(config.GetString("align"), dev_ranks_, dev_data_);
-//		GetReferenceSequences(config.GetString("align"), dev_refseq_, dev_data_);
     }
     if(config.GetString("parse_in").length())
         ReadParses(config.GetString("parse_in"));
@@ -119,7 +116,7 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
 
         int done = 0;
         double iter_model_loss = 0, iter_oracle_loss = 0, iter_total_loss = 0;
-        unsigned long iter_nedge = 0, iter_nstate = 0, iter_nuniq = 0, iter_step = 0, iter_maxstep = 0;
+        unsigned long iter_nedge = 0, iter_nstate = 0, iter_nuniq = 0, iter_ngold = 0, iter_step = 0, iter_maxstep = 0;
         int bad_update = 0, early_update = 0, prev_early = 0, skipped = 0;
         if (verbose >= 1)
         	cerr << "Start training parsing iter " << iter << endl;
@@ -130,137 +127,22 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
         	if (verbose >= 1){
         		cerr << endl << "Sentence " << sent << endl;
         	}
-        	// copy the original reference sequence because it will be resized if early update
-//        	ActionVector refseq = refseq_[sent];
-//        	if (refseq.empty()){
-//				skipped++;
-//				continue;
-//			}
         	if (verbose >= 1){
         		cerr << "Rank:";
         		BOOST_FOREACH(int rank, ranks_[sent]->GetRanks())
         			cerr << " " << rank;
         		cerr << endl;
-//        		cerr << "Reference Action:";
-//				for (int step = 0 ; step < refseq.size() ; step++)
-//					cerr << " " << (char)refseq[step]  << "_" << step+1;
-//        		cerr << endl;
         	}
         	int n = (*data_[sent])[0]->GetNumWords();
-//        	if (refseq.size() < 2*n - 1){
-//        		if (verbose >= 1)
-//        			cerr << "Fail to get correct reference sequence" << endl;
-//        		skipped++;
-//        		continue;
-//        	}
             Parser * p;
             if (m > 0)
             	p = new DParser(m);
             else
             	p = new Parser();
-//            DPState * goal = p->GuidedSearch(refseq, n);
-//        	if (goal == NULL || !goal->Allow(DPState::IDLE, n)){
-//        		if (verbose >= 1)
-//        			cerr << "Parser cannot produce the goal state" << endl;
-//        		delete p;
-//        		skipped++;
-//        		continue;
-//        	}
-//        	delete p;
-//            if (m > 0)
-//            	p = new DParser(m);
-//            else
-//            	p = new Parser();
             p->SetBeamSize(config.GetInt("beam"));
             p->SetVerbose(verbose);
-//			iter_refsize += refseq.size();
-        	// TODO Generate local features in advance, can be parallelized?
-//            if (update == "pegasos"){
-//            	clock_gettime(CLOCK_MONOTONIC, &tstart);
-//				p->Search(*model, *features_, *data_[sent]);
-//				clock_gettime(CLOCK_MONOTONIC, &tend);
-//				search.tv_sec += tend.tv_sec - tstart.tv_sec;
-//				search.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
-//				BOOST_FOREACH(LossBase * loss, losses_)
-//					p->AddLoss(loss,
-//						sent < (int)ranks_.size() ? ranks_[sent] : NULL,
-//						sent < (int)parses_.size() ? &parses_[sent] : NULL);
-//				// Parse the hypergraph, penalizing loss heavily (oracle)
-//				clock_gettime(CLOCK_MONOTONIC, &tstart);
-//				oracle_score = p->Rescore(-1e6);
-//				oracle_loss = p->AccumulateLoss(p->GetBest());
-//				feat_map.clear();
-//				p->AccumulateFeatures(feat_map, *model_, *features_,
-//								(*data_[sent]),
-//								p->GetBest());
-//				oracle_features.clear();
-//				ClearAndSet(oracle_features, feat_map);
-//				// Parse the hypergraph, slightly boosting loss by 1.0 if we are
-//				// using loss-augmented inference
-//				model_score = p->Rescore(loss_aug ? 1.0 : 0.0);
-//				model_loss = p->AccumulateLoss(p->GetBest());
-//				feat_map.clear();
-//				p->AccumulateFeatures(feat_map, *model_, *features_,
-//								(*data_[sent]),
-//								p->GetBest());
-//				ClearAndSet(model_features, feat_map);
-//				// Add the statistics for this iteration
-//	        	Parser::Result result;
-//	        	Parser::SetResult(result, p->GetBest());
-//	        	iter_step += result.step;
-//	        	vector<int> & order = result.order;
-//				iter_model_loss += model_loss;
-//				iter_oracle_loss += oracle_loss;
-//				double sent_loss = 0, sent_score = 0;
-//				BOOST_FOREACH(LossBase * loss, losses_){
-//					pair<double,double> l = loss->CalculateSentenceLoss(order,
-//							sent < (int)ranks_.size() ? ranks_[sent] : NULL,
-//									sent < (int)parses_.size() ? &parses_[sent] : NULL);
-//					sent_loss += l.first;
-//					iter_total_loss += l.second;
-//				}
-//				if(sent_loss != model_loss){
-//					ostringstream out;
-//					vector<string> words = ((FeatureDataSequence*)(*data_[sent])[0])->GetSequence();
-//					p->GetBest()->PrintParse(words, out);
-//					cerr << "sent=" << sent << " sent_loss="<< sent_loss <<" != model_loss="<< model_loss << endl;
-//					cerr << out.str() << endl;
-//				}
-//				if (verbose > 1){
-//					for(int i = 0; i < (int)order.size(); i++) {
-//						if(i != 0) cout << " "; cout << order[i];
-//					}
-//					cout << endl;
-//					for(int i = 0; i < (int)order.size(); i++) {
-//						if(i != 0) cout << " "; cout << (*data_[sent])[0]->GetElement(order[i]);
-//					}
-//					cout << endl;
-//					for(int i = 0; i < (int)order.size(); i++) {
-//						if(i != 0) cout << " "; cout << (*ranks_[sent])[i];
-//					}
-//					cout << endl;
-//					cout << "sent=" << sent << endl
-//							<< "sent_score=" << sent_score << " oracle_score=" << oracle_score << " model_score=" << model_score << endl
-//							<< "sent_loss="<< sent_loss << " oracle_loss=" << oracle_loss << " model_loss=" << model_loss << endl;
-//				}
-//				model_->AdjustWeightsPegasos(
-//						model_loss == oracle_loss ?
-//								FeatureVectorInt() :
-//								VectorSubtract(oracle_features, model_features));
-//				clock_gettime(CLOCK_MONOTONIC, &tend);
-//				simulate.tv_sec += tend.tv_sec - tstart.tv_sec;
-//				simulate.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
-//	        	if (model_->ScoreFeatureVector(VectorSubtract(oracle_features, model_features)) > 0){
-//	        		bad_update++;
-//	        		if (verbose >= 1)
-//						cerr << "Bad update at Sentence " << sent << endl;
-//	        	}
-//            }
-//            else{
 			Parser::Result result;
 			clock_gettime(CLOCK_MONOTONIC, &tstart);
-//			p->Search(*model, *features_, *data_[sent],	// obligatory
-//					&result, &refseq, &update);			// optional
 			p->Search(*model, *features_, *data_[sent],	// obligatory
 					&result, ranks_[sent], &update);	// optional
 			// do not need to set result
@@ -286,7 +168,6 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
 					dbest->PrintTrace(cerr);
 				else
 					best->PrintTrace(cerr);
-//				cerr << "Result step " << result.step << ", reference size " << refseq.size() << endl;
 			}
 			if (result.step != result.actions.size())
 				THROW_ERROR("Result step " << result.step << " != action size " << result.actions.size() << endl);
@@ -297,11 +178,10 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
 				THROW_ERROR("Fail to get the gold derivation at step " << result.step << endl);
 			ActionVector refseq;
 			gold->AllActions(refseq);
-//			refseq.resize(result.step, DPState::IDLE); // padding IDLE actions if neccessary
 			if (verbose >= 1){
 				cerr << "Gold:     ";
-				for (int step = 0 ; step < result.actions.size() ; step++)
-					cerr << " " << (char) result.actions[step];
+				for (int step = 0 ; step < refseq.size() ; step++)
+					cerr << " " << (char) refseq[step];
 				cerr << endl;
 				DDPState * dgold = dynamic_cast<DDPState*>(gold);
 				cerr << "Beam trace:" << endl;
@@ -339,12 +219,12 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
 					cerr << "Bad update at step " << result.step << endl;
 			}
 			model_->AdjustWeightsPerceptron(deltafeats);
-//		}
 			iter_step += result.step;
 			iter_maxstep += p->GetBest()->GetStep();
 			iter_nedge += p->GetNumEdges();
 			iter_nstate += p->GetNumStates();
 			iter_nuniq += p->GetNumUniq();
+//			iter_ngold += p->GetNumGolds();
 			delete p;
         }
         cerr << "Running time on average: " << std::setprecision(4)
@@ -354,27 +234,12 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
 		char* dt = ctime(&now);
 		cout << "Finished update " << dt
 		<< iter_nedge << " edges, " << iter_nstate << " states, " << iter_nuniq << " uniq, "
+//		<< iter_nuniq << " uniq, " << iter_ngold << " golds, "
 		<< std::setprecision(4)
 		<< bad_update << " bad (" << 100.0*bad_update/done << "%), "
 		<< skipped << " skip (" << 100.0*skipped/done << "%), "
 		<< early_update << " early (" << 100.0*early_update/done << "%), "
 		<< iter_step << "/" << iter_maxstep << " steps (" << 100.0*iter_step/iter_maxstep << "%)" << endl;
-//        if (update == "pegasos"){
-//            cout << " ";
-//            for (int i = 0 ; i < losses_.size() ; i++){
-//            	if (i != 0) cout << " + ";
-//            	cout << losses_[i]->GetName() << "*" << losses_[i]->GetWeight();
-//            }
-//            cout << "=" << 1 - iter_model_loss/iter_total_loss
-//            	 << " (loss " << iter_model_loss << "/" << iter_total_loss << ")" << endl;
-//            cout << "*";
-//            for (int i = 0 ; i < losses_.size() ; i++){
-//    			if (i != 0) cout << " + ";
-//    			cout << losses_[i]->GetName() << "*" << losses_[i]->GetWeight();
-//    		}
-//            cout << "=" << 1 - iter_oracle_loss/iter_total_loss <<
-//            		" (loss " << iter_oracle_loss << "/" << iter_total_loss << ")" << endl;
-//        }
         cout.flush();
         if ((update == "early" || update == "max") && (early_update == 0 || prev_early == early_update)){
         	cout << "No more update" << endl;
@@ -407,10 +272,6 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
 				BOOST_FOREACH(int rank, dev_ranks_[sent]->GetRanks())
 					cerr << " " << rank;
 				cerr << endl;
-//				cerr << "Reference Action:";
-//				BOOST_FOREACH(DPState::Action action, dev_refseq_[sent])
-//					cerr << " " << (char)action;
-//				cerr << endl;
 				cerr << "Result ActionSeq:";
 				BOOST_FOREACH(DPState::Action action, results[sent].actions)
 					cerr << " " << (char)action;
@@ -450,8 +311,9 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
 			if(i != 0) cout << "\t";
 			cout << " " << losses_[i]->GetName() << "=" << std::setprecision(3)
 					<< (1 - sum_losses[i].first/sum_losses[i].second);
-			cout << " (loss "<<sum_losses[i].first/losses_[i]->GetWeight() << "/"
-					<<sum_losses[i].second/losses_[i]->GetWeight()<<")";
+			cout << std::setprecision(5)
+					<< " (loss "<<sum_losses[i].first/losses_[i]->GetWeight() << "/"
+					<< sum_losses[i].second/losses_[i]->GetWeight()<<")";
 			prec += (1 - sum_losses[i].first/sum_losses[i].second) * losses_[i]->GetWeight();
 		}
 		cout << endl;
@@ -459,8 +321,9 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
 			if(i != 0) cout << "\t";
 			cout << "*" << losses_[i]->GetName() << "=" << std::setprecision(3)
 					<< (1 - sum_losses_kbests[i].first/sum_losses_kbests[i].second);
-			cout << " (loss "<<sum_losses_kbests[i].first/losses_[i]->GetWeight() << "/"
-					<<sum_losses_kbests[i].second/losses_[i]->GetWeight()<<")";
+			cout << std::setprecision(5)
+					<< " (loss "<<sum_losses_kbests[i].first/losses_[i]->GetWeight() << "/"
+					<< sum_losses_kbests[i].second/losses_[i]->GetWeight()<<")";
 		}
 		cout << endl;
         cout << "Finished iteration " << iter << ": " << prec << endl;

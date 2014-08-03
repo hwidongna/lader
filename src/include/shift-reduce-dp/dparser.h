@@ -50,7 +50,7 @@ public:
 			Result * result = NULL, const Ranks * ranks = NULL,
 			const string * update = NULL) {
 		Clear();
-		golds_.resize(2*sent[0]->GetNumWords() + maxswap_, DPStateVector());
+		golds_.resize(2*(sent[0]->GetNumWords() + maxswap_), DPStateVector());
 		DynamicProgramming(model, feature_gen, sent, ranks);
 		if (result && update)
 			Update(result, update);

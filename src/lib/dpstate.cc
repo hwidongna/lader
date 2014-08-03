@@ -290,4 +290,14 @@ DPStateNode * DPState::ToFlatTree(){
 	root->AddChild(root->Flatten(this));
 	return root;
 }
+
+unsigned long DPState::GetNumDerivations(){
+	unsigned long count = leftptrs_.size();
+	if (LeftChild())
+		count += LeftChild()->GetNumDerivations();
+	if (RightChild())
+		count += RightChild()->GetNumDerivations();
+	return count;
+}
+
 } /* namespace lader */

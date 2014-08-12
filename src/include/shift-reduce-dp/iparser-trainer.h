@@ -33,7 +33,8 @@ class IParserTrainer : public ShiftReduceTrainer {
 			ostringstream err;
         	if(sent && sent % 100 == 0) err << ".";
         	if(sent && sent % (100*10) == 0) err << sent << endl;
-			IParser parser(model_->GetMaxIns(), model_->GetMaxDel());
+        	int n = data_[0]->GetNumWords();
+			IParser parser(model_->GetMaxIns()*n, model_->GetMaxDel()*n);
 			parser.SetBeamSize(config_.GetInt("beam"));
 			parser.SetVerbose(config_.GetInt("verbose"));
 			parser.Search(*model_, *features_, data_);
@@ -56,7 +57,8 @@ public:
 	virtual ~IParserTrainer() { }
 	// Initialize the model
 	virtual void InitializeModel(const ConfigBase & config);
-	virtual void GetReferenceSequences(const std::string & align_in,
+	// Get an arbitrary reference sequence from word alignment
+	void GetReferenceSequences(const std::string & align_in,
 		std::vector<ActionVector> & refseq, std::vector<Sentence*> & datas);
 	// Train the reorderer incrementally, building they hypergraph each time
     // we parse

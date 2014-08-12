@@ -85,8 +85,8 @@ public:
     // we parse
     virtual void TrainIncremental(const ConfigBase & config);
 
-    virtual void GetReferenceSequences(const std::string & align_in,
-    		std::vector<ActionVector> & refseq, std::vector<Sentence*> & datas);
+//    virtual void GetReferenceSequences(const std::string & align_in,
+//    		std::vector<ActionVector> & refseq, std::vector<Sentence*> & datas);
 
 protected:
     vector<ActionVector> refseq_;		//

@@ -59,22 +59,22 @@ void ShiftReduceTrainer::InitializeModel(const ConfigBase & config) {
     }
 }
 
-void ShiftReduceTrainer::GetReferenceSequences(const std::string & align_in,
-		std::vector<ActionVector> & refseq, std::vector<Sentence*> & datas){
-	std::ifstream in(align_in.c_str());
-	if(!in) THROW_ERROR("Could not open alignment file: "
-							<<align_in);
-	std::string line;
-	int i = 0;
-	ShiftReduceModel * model = dynamic_cast<ShiftReduceModel*>(model_);
-	while(getline(in, line)){
-		const vector<string> & srcs = (*SafeAccess(datas,i++))[0]->GetSequence();
-		CombinedAlign cal2(srcs, Alignment::FromString(line),
-								attach_, combine_, bracket_);
-		Ranks ranks(cal2);
-		refseq.push_back(ranks.GetReference());
-	}
-}
+//void ShiftReduceTrainer::GetReferenceSequences(const std::string & align_in,
+//		std::vector<ActionVector> & refseq, std::vector<Sentence*> & datas){
+//	std::ifstream in(align_in.c_str());
+//	if(!in) THROW_ERROR("Could not open alignment file: "
+//							<<align_in);
+//	std::string line;
+//	int i = 0;
+//	ShiftReduceModel * model = dynamic_cast<ShiftReduceModel*>(model_);
+//	while(getline(in, line)){
+//		const vector<string> & srcs = (*SafeAccess(datas,i++))[0]->GetSequence();
+//		CombinedAlign cal2(srcs, Alignment::FromString(line),
+//								attach_, combine_, bracket_);
+//		Ranks ranks(cal2);
+//		refseq.push_back(ranks.GetReference());
+//	}
+//}
 
 void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
     InitializeModel(config);
@@ -157,17 +157,13 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
 				continue;
 			}
 			if (verbose >= 1){
-				cerr << "Result:   ";
+				cerr << "Result:";
 				for (int step = 0 ; step < result.actions.size() ; step++)
-					cerr << " " << (char) result.actions[step];
+					cerr << " " << (char) result.actions[step] << "_" << step+1;
 				cerr << endl;
 				DPState * best = p->GetBeamBest(result.step);
-				DDPState * dbest = dynamic_cast<DDPState*>(best);
 				cerr << "Beam trace:" << endl;
-				if (dbest)
-					dbest->PrintTrace(cerr);
-				else
-					best->PrintTrace(cerr);
+				best->PrintTrace(cerr);
 			}
 			if (result.step != result.actions.size())
 				THROW_ERROR("Result step " << result.step << " != action size " << result.actions.size() << endl);
@@ -179,16 +175,12 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
 			ActionVector refseq;
 			gold->AllActions(refseq);
 			if (verbose >= 1){
-				cerr << "Gold:     ";
+				cerr << "Gold:  ";
 				for (int step = 0 ; step < refseq.size() ; step++)
-					cerr << " " << (char) refseq[step];
+					cerr << " " << (char) refseq[step] << "_" << step+1;
 				cerr << endl;
-				DDPState * dgold = dynamic_cast<DDPState*>(gold);
 				cerr << "Beam trace:" << endl;
-				if (dgold)
-					dgold->PrintTrace(cerr);
-				else
-					gold->PrintTrace(cerr);
+				gold->PrintTrace(cerr);
 			}
 			int firstdiff;
 			for (firstdiff = 1 ; firstdiff <= result.step ; firstdiff++)
@@ -224,7 +216,6 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
 			iter_nedge += p->GetNumEdges();
 			iter_nstate += p->GetNumStates();
 			iter_nuniq += p->GetNumUniq();
-//			iter_ngold += p->GetNumGolds();
 			delete p;
         }
         cerr << "Running time on average: " << std::setprecision(4)
@@ -233,13 +224,12 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
 		time_t now = time(0);
 		char* dt = ctime(&now);
 		cout << "Finished update " << dt
-		<< iter_nedge << " edges, " << iter_nstate << " states, " << iter_nuniq << " uniq, "
-//		<< iter_nuniq << " uniq, " << iter_ngold << " golds, "
-		<< std::setprecision(4)
-		<< bad_update << " bad (" << 100.0*bad_update/done << "%), "
-		<< skipped << " skip (" << 100.0*skipped/done << "%), "
-		<< early_update << " early (" << 100.0*early_update/done << "%), "
-		<< iter_step << "/" << iter_maxstep << " steps (" << 100.0*iter_step/iter_maxstep << "%)" << endl;
+			<< iter_nedge << " edges, " << iter_nstate << " states, " << iter_nuniq << " uniq, "
+			<< std::setprecision(4)
+			<< bad_update << " bad (" << 100.0*bad_update/done << "%), "
+			<< skipped << " skip (" << 100.0*skipped/done << "%), "
+			<< early_update << " early (" << 100.0*early_update/done << "%), "
+			<< iter_step << "/" << iter_maxstep << " steps (" << 100.0*iter_step/iter_maxstep << "%)" << endl;
         cout.flush();
         if ((update == "early" || update == "max") && (early_update == 0 || prev_early == early_update)){
         	cout << "No more update" << endl;

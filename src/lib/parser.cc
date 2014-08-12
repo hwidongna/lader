@@ -228,8 +228,12 @@ void Parser::Update(Result * result, const string * update) {
 	for (int step = 1 ; step < (int)beams_.size() ; step++){
 		const DPState * best = GetBeamBest(step); // update against best
 		const DPState * gold = GetGoldBest(step); // update against best
-		if (!best)
+		if (!best){
+			BOOST_FOREACH(DPState * prev, beams_[step-1]){
+				prev->Print(cerr); cerr << endl;
+			}
 			THROW_ERROR("Parsing failure at step " << step << endl);
+		}
 		if (!gold) // no more update is possible
 			break;
 		naivepos = step;
@@ -338,21 +342,6 @@ void Parser::Simulate(ShiftReduceModel & model, const FeatureSet & feature_gen,
 		delete state;
 }
 
-
-//// Score a span
-//double Parser::Score(const ReordererModel & model,
-//                       double loss_multiplier,
-//                       TargetSpan* span) {
-//    if(span->GetScore() == -DBL_MAX) {
-//        std::vector<Hypothesis*> & hyps = span->GetHypotheses();
-//        for(int i = 0; i < (int)hyps.size(); i++) {
-//            Score(model, loss_multiplier, hyps[i]);
-//            if(hyps[i]->GetScore() > hyps[0]->GetScore())
-//                swap(hyps[i], hyps[0]);
-//        }
-//    }
-//    return span->GetScore();
-//}
 
 // Score a state
 double Parser::Rescore(double loss_multiplier, DPState * state) {

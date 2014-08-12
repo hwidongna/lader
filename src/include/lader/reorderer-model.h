@@ -30,7 +30,7 @@ public:
 
     // Perform one round of Pegasos or the Perceptron
     void AdjustWeightsPegasos(const FeatureVectorInt & feats);
-    void AdjustWeightsPerceptron(const FeatureVectorInt & feats);
+    virtual void AdjustWeightsPerceptron(const FeatureVectorInt & feats);
 
     // Get the feature IDs
     SymbolSet<int> & GetFeatureIds() {

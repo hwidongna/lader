@@ -99,7 +99,6 @@ void IParserTrainer::TrainIncremental(const ConfigBase & config) {
     ReadData(config.GetString("source_in"), data_);
     if(config.GetString("align_in").length()){
     	ReadAlignments(config.GetString("align_in"), ranks_, data_);
-        GetReferenceSequences(config.GetString("align_in"), refseq_, data_);
     }
     if(config.GetString("source_dev").length() && config.GetString("align_dev").length()){
     	ReadData(config.GetString("source_dev"), dev_data_);
@@ -129,81 +128,72 @@ void IParserTrainer::TrainIncremental(const ConfigBase & config) {
         	random_shuffle(sent_order.begin(), sent_order.end());
 
         int done = 0;
-        unsigned long iter_nedge = 0, iter_nstate = 0, iter_step = 0, iter_refsize = 0;
+        unsigned long iter_nedge = 0, iter_nstate = 0, iter_nuniq = 0, iter_step = 0, iter_maxstep = 0;
         int bad_update = 0, early_update = 0, prev_early = 0, skipped = 0;
         if (verbose >= 1)
         	cerr << "Start training parsing iter " << iter << endl;
         BOOST_FOREACH(int sent, sent_order) {
+        	if(++done% 100 == 0) cerr << ".";
+        	if(done % (100*10) == 0) cerr << done << endl;
         	if (verbose >= 1)
         		cerr << endl << "Sentence " << sent << endl;
         	// copy the original reference sequence because it will be resized if early update
-    		ActionVector refseq = refseq_[sent];
-			if (refseq.empty()){
-				skipped++;
-				continue;
-			}
-			if (verbose >= 1){
-				cerr << "Rank:";
-				BOOST_FOREACH(int rank, ranks_[sent]->GetRanks())
-					cerr << " " << rank;
-				cerr << endl;
-				cerr << "Reference Action:";
-				for (int step = 0 ; step < refseq.size() ; step++)
-					cerr << " " << (char)refseq[step]  << "_" << step+1;
-				cerr << endl;
-			}
 			int n = (*data_[sent])[0]->GetNumWords();
-			IParser p(n, n);
-			DPState * goal = p.GuidedSearch(refseq, n);
-			if (!goal || !goal->Allow(DPState::IDLE, n)){
-				if (verbose >= 1)
-					cerr << "Parser cannot produce the goal state" << endl;
-				skipped++;
-				continue;
-			}
-        	if(++done% 100 == 0) cerr << ".";
-        	if(done % (100*10) == 0) cerr << done << endl;
 			// Produce the parse
-			IParser parser(model->GetMaxIns()*n, model->GetMaxDel()*n);
-            parser.SetBeamSize(config.GetInt("beam"));
-            parser.SetVerbose(verbose);
+        	// max # insert/delete is propostional to the sentence length
+			IParser p(model->GetMaxIns()*n, model->GetMaxDel()*n);
+            p.SetBeamSize(config.GetInt("beam"));
+            p.SetVerbose(verbose);
         	Parser::Result result;
         	clock_gettime(CLOCK_MONOTONIC, &tstart);
-//        	parser.Search(*model, *features_, *data_[sent],	// obligatory
-//        			&result, &refseq, &update);			// optional
-			parser.Search(*model, *features_, *data_[sent],	// obligatory
+			p.Search(*model, *features_, *data_[sent],	// obligatory
 					&result, ranks_[sent], &update);	// optional
-        	// do not need to set result
+			// do not need to set result
         	clock_gettime(CLOCK_MONOTONIC, &tend);
         	search.tv_sec += tend.tv_sec - tstart.tv_sec;
         	search.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
+			if (!p.GetBest() || !p.GetGoldBest(p.GetBest()->GetStep())){
+				if (verbose >= 1)
+					cerr << "Parser cannot produce any gold derivation" << endl;
+				skipped++;
+				continue;
+			}
         	if (verbose >= 1){
-        		cerr << "Result ActionSeq:";
+        		cerr << "Result:";
 				for (int step = 0 ; step < result.actions.size() ; step++)
 					cerr << " " << (char) result.actions[step] << "_" << step+1;
 				cerr << endl;
-				DPState * best = parser.GetBeamBest(result.step);
+				DPState * best = p.GetBeamBest(result.step);
         		cerr << "Beam trace:" << endl;
         		best->PrintTrace(cerr);
-        		cerr << "Result step " << result.step << ", reference size " << refseq.size() << endl;
         	}
         	if (result.step != result.actions.size())
         		THROW_ERROR("Result step " << result.step << " != action size " << result.actions.size() << endl);
-        	if (result.step < refseq.size())
+        	if (result.step < p.GetBest()->GetStep())
         		early_update++;
-        	iter_step += result.step;
-        	iter_refsize += refseq.size();
-        	refseq.resize(result.step, DPState::IDLE); // padding IDLE actions if neccessary
-        	int step;
-        	for (step = 1 ; step <= result.step ; step++)
-        		if (result.actions[step-1] != refseq[step-1])
+        	DPState * gold = p.GetGoldBest(result.step);
+			if (!gold)
+				THROW_ERROR("Fail to get the gold derivation at step " << result.step << endl);
+			ActionVector refseq;
+			gold->AllActions(refseq);
+			if (verbose >= 1){
+				cerr << "Gold:  ";
+				for (int step = 0 ; step < refseq.size() ; step++)
+					cerr << " " << (char) refseq[step] << "_" << step+1;
+				cerr << endl;
+				cerr << "Beam trace:" << endl;
+				gold->PrintTrace(cerr);
+			}
+        	int firstdiff;
+        	for (firstdiff = 1 ; firstdiff <= result.step ; firstdiff++)
+        		if (result.actions[firstdiff-1] != refseq[firstdiff-1])
         			break;
-        	if (verbose >= 1 && result.step >= step)
-        		cerr << "Update from " << step << endl;
+        	if (verbose >= 1 && result.step >= firstdiff)
+        		cerr << "Update from " << firstdiff << endl;
         	clock_gettime(CLOCK_MONOTONIC, &tstart);
         	FeatureMapInt feat_map;
-        	parser.Simulate(*model, *features_, refseq, *data_[sent], step, feat_map, +1); // positive examples
-        	parser.Simulate(*model, *features_, result.actions, *data_[sent], step, feat_map, -1); // negative examples
+        	p.Simulate(*model, *features_, refseq, *data_[sent], firstdiff, feat_map, +1); // positive examples
+        	p.Simulate(*model, *features_, result.actions, *data_[sent], firstdiff, feat_map, -1); // negative examples
         	clock_gettime(CLOCK_MONOTONIC, &tend);
         	simulate.tv_sec += tend.tv_sec - tstart.tv_sec;
 			simulate.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
@@ -223,23 +213,26 @@ void IParserTrainer::TrainIncremental(const ConfigBase & config) {
         			cerr << "Bad update at step " << result.step << endl;
         	}
         	model_->AdjustWeightsPerceptron(deltafeats);
-        	iter_nedge += parser.GetNumEdges();
-        	iter_nstate += parser.GetNumStates();
+        	iter_step += result.step;
+        	iter_maxstep += p.GetBest()->GetStep();
+        	iter_nedge += p.GetNumEdges();
+        	iter_nstate += p.GetNumStates();
+        	iter_nuniq += p.GetNumUniq();
         }
         cerr << "Running time on average: " << setprecision(4)
         		<< "searh " << ((double)search.tv_sec + 1.0e-9*search.tv_nsec) / (iter+1) << "s"
         		<< ", simulate " << ((double)simulate.tv_sec + 1.0e-9*simulate.tv_nsec) / (iter+1) << "s" << endl;
         time_t now = time(0);
         char* dt = ctime(&now);
-        cout << "Finished update " << dt << setprecision(4)
-        	<< iter_nedge << " edges, " << iter_nstate << " states, "
+        cout << "Finished update " << dt
+			<< iter_nedge << " edges, " << iter_nstate << " states, " << iter_nuniq << " uniq, "
+			<< setprecision(4)
         	<< skipped << " skip (" << 100.0*skipped/done << "%), "
         	<< bad_update << " bad (" << 100.0*bad_update/done << "%), "
         	<< early_update << " early (" << 100.0*early_update/done << "%), "
-        	<< iter_step << "/" << iter_refsize << " steps (" << 100.0*iter_step/iter_refsize << "%)" << endl;
+        	<< iter_step << "/" << iter_maxstep << " steps (" << 100.0*iter_step/iter_maxstep << "%)" << endl;
         cout.flush();
-
-        if (early_update == 0 || prev_early == early_update){
+        if ((update == "early" || update == "max") && (early_update == 0 || prev_early == early_update)){
         	cout << "No more update" << endl;
         	break;
         }

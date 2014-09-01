@@ -10,12 +10,19 @@ using namespace boost;
 #define OVERFLOW_BOUNDARY 1e100
 
 // adjust weights according to the perceptron
+// accumulate weights for averaged perceptron
 void ReordererModel::AdjustWeightsPerceptron(const FeatureVectorInt & feats) {
     BOOST_FOREACH(FeaturePairInt feat, feats) {
         if((int)v_.size() <= feat.first)
             v_.resize(feat.first+1, 0);
         v_[feat.first] += feat.second;
     }
+    for (int i = 0 ; i < v_.size() ; i++){
+		if (w_.size() <= i)
+			w_.resize(i+1, 0);
+		w_[i] += v_[i];
+	}
+	nadjust_++;
 }
 
 // Adjust the v according to the algorithm
@@ -56,9 +63,14 @@ void ReordererModel::ToStream(std::ostream & out) {
     out << "use_reverse " << use_reverse_ << endl;
     out << "reorderer_model" << std::endl;
     const vector<double> & weights = GetWeights();
-    for(int i = 0; i < (int)weights.size(); i++)
-        if(abs(weights[i]) > MINIMUM_WEIGHT)
-            out << feature_ids_.GetSymbol(i) << "\t" << weights[i] << endl;
+    if (nadjust_ > 0)
+    	for(int i = 0; i < (int)w_.size(); i++)
+    		if (abs(w_[i]/nadjust_) > MINIMUM_WEIGHT)
+    			out << feature_ids_.GetSymbol(i) << "\t" << w_[i]/nadjust_ << endl;
+	else
+		for(int i = 0; i < (int)weights.size(); i++)
+			if(abs(weights[i]) > MINIMUM_WEIGHT)
+				out << feature_ids_.GetSymbol(i) << "\t" << weights[i] << endl;
     out << endl;
 }
 ReordererModel * ReordererModel::FromStream(std::istream & in) {

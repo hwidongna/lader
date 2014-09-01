@@ -14,10 +14,10 @@ class ReordererModel {
 	class HyperGraph;
 public:
     
-    // Initialize the pegasos model
+    // Initialize the pegasos/perceptron model
     ReordererModel() 
         : t_(1), alpha_(1), v_squared_norm_(0), lambda_(1e-5), add_features_(true),
-          max_term_(0), use_reverse_(true) { }
+          max_term_(0), use_reverse_(true), nadjust_(0) { }
     virtual ~ReordererModel() { }
 
     // Calculate the score of a feature vector
@@ -30,7 +30,7 @@ public:
 
     // Perform one round of Pegasos or the Perceptron
     void AdjustWeightsPegasos(const FeatureVectorInt & feats);
-    virtual void AdjustWeightsPerceptron(const FeatureVectorInt & feats);
+    void AdjustWeightsPerceptron(const FeatureVectorInt & feats);
 
     // Get the feature IDs
     SymbolSet<int> & GetFeatureIds() {
@@ -115,6 +115,9 @@ public:
 protected:
     // Weights over features and weights over losses
     std::vector<double> v_;
+	// for averaged perceptron
+	std::vector<double> w_;	// accumulated weights
+	int nadjust_;			// the number of times calling AdjustWeightsPerceptron
     // Parameters for the pegasos algorithm
     int t_;
     // The scaling factor, squared norm, and cost used in learning Pegasos

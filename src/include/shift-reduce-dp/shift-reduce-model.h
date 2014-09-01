@@ -17,24 +17,24 @@ namespace lader{
 
 class ShiftReduceModel : public ReordererModel {
 public:
-	ShiftReduceModel() : ReordererModel(), max_state_(1), max_swap_(0), nadjust_(0) {}
+	ShiftReduceModel() : ReordererModel(), max_state_(1), max_swap_(0) {}
 	virtual ~ShiftReduceModel() {}
 	int GetMaxState() { return max_state_; }
 	int GetMaxSwap() { return max_swap_; }
 	void SetMaxState(int max_state) { max_state_ = max_state; }
 	void SetMaxSwap(int max_swap) { max_swap_ = max_swap; }
 
-	// adjust weights according to the perceptron
-	// accumulate weights for averaged perceptron
-	void AdjustWeightsPerceptron(const FeatureVectorInt & feats) {
-		ReordererModel::AdjustWeightsPerceptron(feats);
-		for (int i = 0 ; i < v_.size() ; i++){
-			if (w_.size() <= i)
-				w_.resize(i+1, 0);
-			w_[i] += v_[i];
-		}
-		nadjust_++;
-	}
+//	// adjust weights according to the perceptron
+//	// accumulate weights for averaged perceptron
+//	virtual void AdjustWeightsPerceptron(const FeatureVectorInt & feats) {
+//		ReordererModel::AdjustWeightsPerceptron(feats);
+//		for (int i = 0 ; i < v_.size() ; i++){
+//			if (w_.size() <= i)
+//				w_.resize(i+1, 0);
+//			w_[i] += v_[i];
+//		}
+//		nadjust_++;
+//	}
 	// IO Functions
 	virtual void ToStream(std::ostream & out) {
 	    out << "max_term " << max_term_ << endl;
@@ -79,10 +79,6 @@ protected:
 	int max_state_;	// The maximum number of states in equality checking
 	// TODO: need to split swap
 	int max_swap_;	// The maximum number of swap actions for non-ITG
-	// for averaged perceptron
-	std::vector<double> w_;	// accumulated weights
-	int nadjust_;			// the number of times calling AdjustWeightsPerceptron
-
 };
 }
 

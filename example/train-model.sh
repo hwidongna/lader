@@ -16,6 +16,7 @@ SHUFFLE=true
 CUBE_GROWING=false #true
 ITERATION=500
 VERBOSE=1
+LEARNER=pegasos
 
 # define helper function: run a command and print its exit code
 function run () {
@@ -122,7 +123,7 @@ run "paste data/train.en output/train.en.class data/train.en.pos data/train.en.p
 # -threads ...	(the number of threads used for parallel feature generation, parallel cube pruning/growing at cell-level
 # -cube_growing ...	(default is false which uses a lazy search)
 
-run "../src/bin/train-lader -cost 1e-3 -attach_null right -feature_profile '$FEATURE_PROFILE' -iterations $ITERATION -threads $THREADS -cube_growing $CUBE_GROWING -shuffle $SHUFFLE -verbose $VERBOSE -model_in $MODEL_IN'' -model_out output/train.mod -source_in $SOURCE_IN -align_in $ALIGN_IN -save_features $SAVE_FEATURES -features_dir $FEATURES_DIR"
+run "../src/bin/train-lader -cost 1e-3 -attach_null right -feature_profile '$FEATURE_PROFILE' -iterations $ITERATION -threads $THREADS -cube_growing $CUBE_GROWING -shuffle $SHUFFLE -verbose $VERBOSE -model_in $MODEL_IN'' -model_out output/train.mod -source_in $SOURCE_IN -align_in $ALIGN_IN -save_features $SAVE_FEATURES -features_dir $FEATURES_DIR -learner $LEARNER"
 
 # Once training finishes, a reordering model will be placed in output/train.mod.
 # This can be used in reordering, as described in run-reordering.sh

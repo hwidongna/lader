@@ -127,7 +127,7 @@ protected:
 	bool gold_;			// whether this is a gold state or not
 	vector<DPState*> leftptrs_; // a list of left states that can be reduced with this state
 	vector<BackPtr> backptrs_;	// a list of previous states where this state comes from
-	bool keep_alternatives_;
+	static bool keep_alternatives_;
 	double loss_;				// for loss-augmented training
 	double rescore_;			// for loss-augmented training
 };

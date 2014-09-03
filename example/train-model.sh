@@ -16,7 +16,7 @@ SHUFFLE=true
 CUBE_GROWING=false #true
 ITERATION=500
 VERBOSE=1
-LEARNER=pegasos
+LEARNER=perceptron #pegasos
 
 # define helper function: run a command and print its exit code
 function run () {

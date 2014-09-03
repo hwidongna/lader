@@ -23,28 +23,6 @@ public:
 	}
 	virtual ~DParser() { }
 	virtual DPState * InitialState() { return new DDPState(); }
-//	virtual void Search(ShiftReduceModel & model,
-//			const FeatureSet & feature_gen, const Sentence & sent,
-//			Result * result = NULL, const ActionVector * refseq = NULL,
-//			const string * update = NULL) {
-//		DPStateVector golds(2*(sent[0]->GetNumWords() + m_), NULL);
-//		DynamicProgramming(golds, model, feature_gen, sent, refseq);
-//		if (!GetBest()){ // SWAP may result parsing fail with limited beam size
-//			Parser::Clear();
-//			actions_.pop_back(); // try ITG parsing instead
-//			golds.clear();
-//			golds.resize(2*(sent[0]->GetNumWords() + m_), NULL);
-//			DynamicProgramming(golds, model, feature_gen, sent, refseq);
-//		}
-//		if (result && refseq && update){
-//			DPStateVector simgolds;
-//			CompleteGolds(simgolds, golds, model, feature_gen, sent, refseq);
-//			Update(golds, result, refseq, update);
-//			// clean-up the rest gold items using refseq
-//			BOOST_FOREACH(DPState * gold, simgolds)
-//				delete gold;
-//		}
-//	}
 	virtual void Search(ShiftReduceModel & model,
 			const FeatureSet & feature_gen, const Sentence & sent,
 			Result * result = NULL, const Ranks * ranks = NULL,

@@ -16,6 +16,7 @@ using namespace std;
 
 namespace lader {
 
+bool DPState::keep_alternatives_ = false;
 ActionVector DPState::ActionFromString(const string & line){
 	istringstream iss(line);
 	char action;
@@ -34,7 +35,6 @@ DPState::DPState() {
 	rank_ = -1;
 	action_ = INIT;
 	gold_ = true;
-	keep_alternatives_ = false;
 	loss_ = 0;
 }
 
@@ -47,7 +47,6 @@ DPState::DPState(int step, int i, int j, Action action) {
 	rank_ = -1;
 	action_ = action;
 	gold_ = false;
-	keep_alternatives_ = false;
 	loss_ = 0;
 }
 
@@ -83,36 +82,6 @@ void DPState::Take(Action action, DPStateVector & result, bool actiongold,
 		DPState * next = Shift();
 		next->inside_ = 0;
 		next->score_ = score_ + actioncost;
-		while (maxterm-- > 1){ // shift more than one element monotonically
-			DPState * shifted = next->Shift();
-			double shiftcost = 0;
-			if (model != NULL && feature_gen != NULL && sent != NULL){
-				next->leftptrs_.push_back(this);
-				// TODO: reflect the maxterm information for feature generation
-				const FeatureVectorInt * fvi = feature_gen->MakeStateFeatures(*sent,
-						*next, SHIFT, model->GetFeatureIds(), model->GetAdd());
-				shiftcost = model->ScoreFeatureVector(*fvi);
-				delete fvi;
-			}
-			// shifted->inside_ = 0;
-			shifted->score_ = next->score_ + shiftcost;
-			DPState * reduced = shifted->Reduce(next, STRAIGTH);
-			double reducecost = 0;
-			if (model != NULL && feature_gen != NULL && sent != NULL){
-				shifted->leftptrs_.push_back(next);
-				// TODO: reflect the maxterm information for feature generation?
-				const FeatureVectorInt * fvi = feature_gen->MakeStateFeatures(*sent,
-						*shifted, STRAIGTH, model->GetFeatureIds(), model->GetAdd());
-				reducecost = model->ScoreFeatureVector(*fvi);
-				delete fvi;
-			}
-			// because shifted->inside_ == 0, do not need to add them
-			reduced->inside_ = next->inside_ + shiftcost + reducecost;
-			reduced->score_ = next->score_ + shiftcost + reducecost;
-			delete shifted; delete next; // intermidiate states, c++ syntax sucks!
-			next = reduced;
-			next->action_ = SHIFT; // it is actuall a shifted state
-		}
 		shiftcost_ = actioncost;
 		next->gold_ = gold_ && actiongold;
 		next->leftptrs_.push_back(this);

@@ -66,38 +66,14 @@ void DDPState::Take(Action action, DPStateVector & result, bool actiongold,
 		delete fvi;
 	}
 	if (action == SHIFT){
-		DPState * next = Shift();
-		next->inside_ = 0;
-		next->score_ = score_ + actioncost;
-		while (maxterm-- > 1){ // shift more than one element monotonically
-			DPState * shifted = next->Shift();
-			double shiftcost = 0;
-			if (model != NULL && feature_gen != NULL && sent != NULL){
-				next->leftptrs_.push_back(this);
-				// TODO: reflect the maxterm information for feature generation
-				const FeatureVectorInt * fvi = feature_gen->MakeStateFeatures(*sent,
-						*next, SHIFT, model->GetFeatureIds(), model->GetAdd());
-				shiftcost = model->ScoreFeatureVector(*fvi);
-				delete fvi;
-			}
-			// shifted->inside_ = 0;
-			shifted->score_ = next->score_ + shiftcost;
-			DPState * reduced = shifted->Reduce(next, STRAIGTH);
-			double reducecost = 0;
-			if (model != NULL && feature_gen != NULL && sent != NULL){
-				shifted->leftptrs_.push_back(next);
-				// TODO: reflect the maxterm information for feature generation?
-				const FeatureVectorInt * fvi = feature_gen->MakeStateFeatures(*sent,
-						*shifted, STRAIGTH, model->GetFeatureIds(), model->GetAdd());
-				reducecost = model->ScoreFeatureVector(*fvi);
-				delete fvi;
-			}
-			// because shifted->inside_ == 0, do not need to add them
-			reduced->inside_ = next->inside_ + shiftcost + reducecost;
-			reduced->score_ = next->score_ + shiftcost + reducecost;
-			delete shifted; delete next; // intermidiate states, c++ syntax sucks!
-			next = reduced;
-			next->action_ = SHIFT; // it is actuall a shifted state
+		DDPState * next = dynamic_cast<DDPState*>(Shift());
+		if (next->trace_ == NULL){
+			next->inside_ = 0;
+			next->score_ = score_ + actioncost;
+		}
+		else{
+			next->inside_ = next->trace_->inside_;
+			next->score_ = score_ + next->trace_->inside_ + actioncost;
 		}
 		shiftcost_ = actioncost;
 		next->gold_ = gold_ && actiongold;
@@ -176,19 +152,19 @@ void DDPState::Take(Action action, DPStateVector & result, bool actiongold,
 // either the buffer front or a swaped state
 DPState * DDPState::Shift(){
 	DDPState * next;
-	if (swaped_.empty()){
+	if (swapped_.empty()){
 		next = new DDPState(step_+1, src_rend_, src_rend_+1, SHIFT);
 		next->trg_l_ = src_rend_; next->trg_r_ = src_rend_+1;
 		next->src_c_ = -1; next->src_rend_ = src_rend_+1;
 	}
 	else{
-		DDPState * top = dynamic_cast<DDPState*>(swaped_.back());
+		DDPState * top = dynamic_cast<DDPState*>(swapped_.back());
 		if (!top)
-			THROW_ERROR("Incompetible state in swap" << *swaped_.back() << endl);
+			THROW_ERROR("Incompetible state in swap" << *swapped_.back() << endl);
 		next = new DDPState(step_+1, top->src_l_, top->src_r_, top->action_, // restore the swaped state
 									top->src_l2_, top->src_r2_);	// restore the discontinuity as well
 		next->trace_ = top;	// this is useful for later stage
-		next->swaped_.insert(next->swaped_.begin(), swaped_.begin(), swaped_.end()-1);
+		next->swapped_.insert(next->swapped_.begin(), swapped_.begin(), swapped_.end()-1);
 		next->trg_l_ = top->trg_l_; next->trg_r_ = top->trg_r_;
 		next->src_c_ = -1; next->src_rend_ = src_rend_;
 	}
@@ -235,7 +211,7 @@ DPState * DDPState::Reduce(DPState * leftstate, Action action){
 		THROW_ERROR("Reduce fails: " << (char) action << endl);
 	}
 	next->src_rend_ = src_rend_;
-	next->swaped_.insert(next->swaped_.begin(), swaped_.begin(), swaped_.end());
+	next->swapped_.insert(next->swapped_.begin(), swapped_.begin(), swapped_.end());
 	next->nswap_ = nswap_;
 	if (action == STRAIGTH){
 		next->trg_l_ = lstate->trg_l_;		next->trg_r_ = trg_r_;
@@ -249,8 +225,8 @@ DPState * DDPState::Reduce(DPState * leftstate, Action action){
 // a swaped state, push the leftstate on the top of the stack for the swaped states
 DPState * DDPState::Swap(DPState * leftstate){
 	DDPState * next = new DDPState(step_+1, src_l_, src_r_, SWAP, src_l2_, src_r2_);
-	next->swaped_.insert(next->swaped_.begin(), swaped_.begin(), swaped_.end());
-	next->swaped_.push_back(leftstate);
+	next->swapped_.insert(next->swapped_.begin(), swapped_.begin(), swapped_.end());
+	next->swapped_.push_back(leftstate);
 	next->src_c_ = src_c_; next->src_rend_ = src_rend_;
 	next->trg_l_ = trg_l_;	next->trg_r_ = trg_r_;
 	next->nswap_ = nswap_ + 1;
@@ -260,7 +236,7 @@ DPState * DDPState::Swap(DPState * leftstate){
 // an idle state, only change step count
 DPState * DDPState::Idle(){
 	DDPState * next = new DDPState(step_+1, src_l_, src_r_, IDLE, src_l2_, src_r2_);
-	next->swaped_.insert(next->swaped_.begin(), swaped_.begin(), swaped_.end());
+	next->swapped_.insert(next->swapped_.begin(), swapped_.begin(), swapped_.end());
 	next->src_c_ = src_c_; next->src_rend_ = src_rend_;
 	next->trg_l_ = trg_l_;	next->trg_r_ = trg_r_;
 	next->nswap_ = nswap_;
@@ -270,7 +246,7 @@ DPState * DDPState::Idle(){
 bool DDPState::Allow(const Action & action, const int n){
 	DDPState * lstate = dynamic_cast<DDPState*>(GetLeftState());
 	if (action == SHIFT)
-		return action_ != SWAP && (src_rend_ < n || !swaped_.empty());
+		return action_ != SWAP && (src_rend_ < n || !swapped_.empty());
 	else if (action == SWAP){// this only check the first left state, thus Take may not work
 		if (!lstate)
 			return false;

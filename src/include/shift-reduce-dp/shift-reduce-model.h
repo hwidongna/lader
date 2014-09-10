@@ -24,17 +24,6 @@ public:
 	void SetMaxState(int max_state) { max_state_ = max_state; }
 	void SetMaxSwap(int max_swap) { max_swap_ = max_swap; }
 
-//	// adjust weights according to the perceptron
-//	// accumulate weights for averaged perceptron
-//	virtual void AdjustWeightsPerceptron(const FeatureVectorInt & feats) {
-//		ReordererModel::AdjustWeightsPerceptron(feats);
-//		for (int i = 0 ; i < v_.size() ; i++){
-//			if (w_.size() <= i)
-//				w_.resize(i+1, 0);
-//			w_[i] += v_[i];
-//		}
-//		nadjust_++;
-//	}
 	// IO Functions
 	virtual void ToStream(std::ostream & out) {
 	    out << "max_term " << max_term_ << endl;
@@ -42,13 +31,16 @@ public:
 	    out << "max_swap " << max_swap_ << endl;
 	    out << "use_reverse " << use_reverse_ << endl;
 	    out << "reorderer_model" << std::endl;
-	    for(int i = 0; i < (int)w_.size(); i++)
-	    	if(abs(w_[i]/nadjust_) > MINIMUM_WEIGHT)
-	    		out << feature_ids_.GetSymbol(i) << "\t" << w_[i]/nadjust_ << endl;
-//	    const vector<double> & weights = GetWeights();
-//	    for(int i = 0; i < (int)weights.size(); i++)
-//	        if(abs(weights[i]) > MINIMUM_WEIGHT)
-//	            out << feature_ids_.GetSymbol(i) << "\t" << weights[i] << endl;
+	    const vector<double> & weights = GetWeights();
+	    if (nadjust_ > 0)
+	    	for(int i = 0; i < (int)w_.size(); i++){
+	    		if (abs(w_[i]/nadjust_) > MINIMUM_WEIGHT)
+	    			out << feature_ids_.GetSymbol(i) << "\t" << w_[i]/nadjust_ << endl;
+	    	}
+	    else
+	    	for(int i = 0; i < (int)weights.size(); i++)
+	    		if(abs(weights[i]) > MINIMUM_WEIGHT)
+	    			out << feature_ids_.GetSymbol(i) << "\t" << weights[i] << endl;
 	    out << endl;
 	}
 	static ReordererModel * FromStream(std::istream & in) {

@@ -64,13 +64,14 @@ void ReordererModel::ToStream(std::ostream & out) {
     out << "reorderer_model" << std::endl;
     const vector<double> & weights = GetWeights();
     if (nadjust_ > 0)
-    	for(int i = 0; i < (int)w_.size(); i++)
+    	for(int i = 0; i < (int)w_.size(); i++){
     		if (abs(w_[i]/nadjust_) > MINIMUM_WEIGHT)
     			out << feature_ids_.GetSymbol(i) << "\t" << w_[i]/nadjust_ << endl;
-	else
-		for(int i = 0; i < (int)weights.size(); i++)
-			if(abs(weights[i]) > MINIMUM_WEIGHT)
-				out << feature_ids_.GetSymbol(i) << "\t" << weights[i] << endl;
+    	}
+    else
+    	for(int i = 0; i < (int)weights.size(); i++)
+    		if(abs(weights[i]) > MINIMUM_WEIGHT)
+    			out << feature_ids_.GetSymbol(i) << "\t" << weights[i] << endl;
     out << endl;
 }
 ReordererModel * ReordererModel::FromStream(std::istream & in) {

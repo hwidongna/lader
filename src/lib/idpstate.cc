@@ -65,8 +65,9 @@ void IDPState::Take(Action action, DPStateVector & result, bool actiongold,
 		shiftcost_ = actioncost; // to be used later in reduce
 		next->gold_ = gold_ && actiongold;
 		next->leftptrs_.push_back(this);
-		back.action = action;
-		back.cost = 0;
+		next->actioncost_ = actioncost;
+//		back.action = action;
+//		back.cost = 0;
 		back.lchild = NULL;
 		back.rchild = NULL;
 		next->backptrs_.push_back(back);
@@ -81,8 +82,9 @@ void IDPState::Take(Action action, DPStateVector & result, bool actiongold,
 		next->score_ = score_ + actioncost;
 		next->gold_ = gold_ && actiongold;
 		next->leftptrs_ = leftptrs_; // leftstates remains same
-		back.action = action;
-		back.cost = actioncost;
+		next->actioncost_ = actioncost;
+//		back.action = action;
+//		back.cost = actioncost;
 		back.lchild = NULL;
 		back.rchild = this; // only has right child
 		next->backptrs_.push_back(back);
@@ -101,8 +103,9 @@ void IDPState::Take(Action action, DPStateVector & result, bool actiongold,
 			next->score_ = leftstate->score_ + inside_ + leftstate->shiftcost_ + actioncost;
 			next->gold_ = leftstate->gold_ && gold_ && actiongold;
 			next->leftptrs_ = leftstate->leftptrs_;
-			back.action = action;
-			back.cost = leftstate->shiftcost_ + actioncost;
+			next->actioncost_ = actioncost;
+//			back.action = action;
+//			back.cost = leftstate->shiftcost_ + actioncost;
 			back.lchild = leftstate;
 			back.rchild = this;
 			next->backptrs_.push_back(back);

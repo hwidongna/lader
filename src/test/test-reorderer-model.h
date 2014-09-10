@@ -99,14 +99,13 @@ public:
         exp.SetWeight("WEIGHT5", 0);
         ostringstream oss;
         exp.ToStream(oss);
-        cerr << oss.str() << endl;
         istringstream iss(oss.str());
         ReordererModel * act = ReordererModel::FromStream(iss);
         int ret = 1;
-//        if(exp != *act) {
-//            cerr << "Models are not equal" << endl; ret = 0;
-//        }
-//        delete act;
+        if(exp != *act) {
+            cerr << "Models are not equal" << endl; ret = 0;
+        }
+        delete act;
         return ret;
     }
 

@@ -107,7 +107,7 @@ double HyperGraph::Rescore(const ReordererModel & model, double loss_multiplier)
     BOOST_FOREACH(SpanStack * stack, stacks_)
         sort(stack->GetSpans().begin(), stack->GetSpans().end(),
                                         DescendingScore<TargetSpan>());
-    TargetSpan* best = (*stacks_.rbegin())->GetSpanOfRank(0);
+    TargetSpan* best = GetRoot();
     return best->GetScore();
 }
 

@@ -15,6 +15,7 @@ double LossTau::GetStateLoss(DPState * state, bool root,
     int loss = 0;
 	switch (state->GetAction()) {
 	// For straight and inverse non-terms, check inside values
+	// TODO: for DDPState?
 	case DPState::STRAIGTH:
 		loss = GetLossStraight(*ranks, state->GetSrcL(), state->GetSrcC(), state->GetSrcR()-1);
 		break;
@@ -61,23 +62,23 @@ double LossTau::AddLossToProduction(
 int LossTau::GetLoss(const Ranks & ranks, int l, int c, int r,
                bool straight, std::vector<int> & losses) {
     // First check if this is already calculated
-    int & loss = AccessArray(losses, l, c, r, ranks.GetSrcLen());
-    // If the loss hasn't already been calculated
-    if(loss == -1) {
+//    int & loss = AccessArray(losses, l, c, r, ranks.GetSrcLen());
+//    // If the loss hasn't already been calculated
+//    if(loss == -1) {
         // Get the loss for everything but the rightmost value
-        loss = (c==r?0:GetLoss(ranks,l,c,r-1,straight,losses));
-        // For the rightmost value, calculate the number of times the rank
-        // is out of order
-        if(straight) {
-            for(int i = l; i < c; i++)
-                if(ranks[i] > ranks[r])
-                    loss++;
-        } else {
-            for(int i = l; i < c; i++)
-                if(ranks[i] < ranks[r])
-                    loss++;
-        }
-    }
+	int loss = (c==r?0:GetLoss(ranks,l,c,r-1,straight,losses));
+	// For the rightmost value, calculate the number of times the rank
+	// is out of order
+	if(straight) {
+		for(int i = l; i < c; i++)
+			if(ranks[i] > ranks[r])
+				loss++;
+	} else {
+		for(int i = l; i < c; i++)
+			if(ranks[i] < ranks[r])
+				loss++;
+	}
+//    }
     return loss;
 }
 

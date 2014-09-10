@@ -27,7 +27,7 @@ double LossChunk::GetStateLoss(DPState * state, bool root,
     int loss = 0;
     switch(state->GetAction()){
     case DPState::STRAIGTH:
-    case DPState::SWAP:
+//    case DPState::SWAP:
     	tl = state->LeftChild()->GetTrgR()-1;
     	tr = state->RightChild()->GetTrgL();
     	if(!Ranks::IsContiguous((*ranks)[tl], (*ranks)[tr]))
@@ -40,7 +40,7 @@ double LossChunk::GetStateLoss(DPState * state, bool root,
     	if(!Ranks::IsContiguous((*ranks)[tl], (*ranks)[tr]))
 			loss++;
     	break;
-    // INIT, SHIFT and IDLE have no loss
+    // INIT, SHIFT, SWAP and IDLE have no loss
     }
 	if (root){
     	tl = state->GetTrgL();

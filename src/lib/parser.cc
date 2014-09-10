@@ -124,31 +124,31 @@ void Parser::DynamicProgramming(ShiftReduceModel & model,
 				}
 			}
 		}
-		// complete gold states if falled-off
-		BOOST_FOREACH(DPState * old, golds_[step-1]){
-			if (old->GetRank() >= 0) // fall-in cases
-				continue;
-			if (verbose_ >= 2){
-				cerr << "OLD: "; old->Print(cerr); cerr << endl;
-			}
-			DPState * leftstate = old->GetLeftState();
-			// iterate over actions
-			BOOST_FOREACH(DPState::Action action, actions_){
-				if (!Allow(old, action, n))
-					continue;
-				bool actiongold = (ranks != NULL && IsGold(action, ranks, old));
-				DPStateVector stateseq;
-				old->Take(action, stateseq, actiongold, 1,
-						&model, &feature_gen, &sent);
-				BOOST_FOREACH(DPState * next, stateseq){
-					next->SetSignature(model.GetMaxState());
-					q.push(next);
-					if (verbose_ >= 2){
-						cerr << "  NEW: "; next->Print(cerr); cerr << endl;
-					}
-				}
-			}
-		}
+//		// complete gold states if falled-off
+//		BOOST_FOREACH(DPState * old, golds_[step-1]){
+//			if (old->GetRank() >= 0) // fall-in cases
+//				continue;
+//			if (verbose_ >= 2){
+//				cerr << "OLD: "; old->Print(cerr); cerr << endl;
+//			}
+//			DPState * leftstate = old->GetLeftState();
+//			// iterate over actions
+//			BOOST_FOREACH(DPState::Action action, actions_){
+//				if (!Allow(old, action, n))
+//					continue;
+//				bool actiongold = (ranks != NULL && IsGold(action, ranks, old));
+//				DPStateVector stateseq;
+//				old->Take(action, stateseq, actiongold, 1,
+//						&model, &feature_gen, &sent);
+//				BOOST_FOREACH(DPState * next, stateseq){
+//					next->SetSignature(model.GetMaxState());
+//					q.push(next);
+//					if (verbose_ >= 2){
+//						cerr << "  NEW: "; next->Print(cerr); cerr << endl;
+//					}
+//				}
+//			}
+//		}
 		nedges_ += q.size(); // total number of created states (correlates with running time)
 		if (verbose_ >= 2)
 			cerr << "produce " << q.size() << " items" << endl;
@@ -348,8 +348,11 @@ double Parser::Rescore(double loss_multiplier, DPState * state) {
     double score = state->GetRescore();
     if(score == -DBL_MAX) {
         score = state->GetLoss()*loss_multiplier;
-        if(state->Previous())
-            score += Rescore(loss_multiplier, state->Previous());
+        if(state->LeftChild())
+            score += Rescore(loss_multiplier, state->LeftChild());
+        if(state->RightChild())
+			score += Rescore(loss_multiplier, state->RightChild());
+		score += state->GetActionCost();
         state->SetRescore(score);
     }
     return score;
@@ -373,7 +376,7 @@ double Parser::Rescore(double loss_multiplier) {
 	for (int i = 0 ; i < beams_.size() ; i++)
 		sort(beams_[i].begin(), beams_[i].end(), DescendingRescore<DPState>());
     DPState * best = GetBest();
-    return best->GetScore();
+    return best->GetRescore();
 }
 
 // Add up the loss over an entire subtree defined by state
@@ -406,6 +409,8 @@ void Parser::AccumulateFeatures(FeatureMapInt & featmap,
 	DPStateVector stateseq;
 	DPState * state = InitialState();
 	stateseq.push_back(state);
+	if (verbose_ >= 2)
+		cerr << "/************************************************************************************************/" << endl;
 	for (int i = 0 ; i < steps.size() ; i++){
 		DPState::Action & action = steps[i];
 		if (verbose_ >= 2)
@@ -439,6 +444,8 @@ void Parser::AccumulateFeatures(FeatureMapInt & featmap,
 			THROW_ERROR("Bad action! " << (char) action << endl);
 		}
 	}
+	if (verbose_ >= 2)
+		cerr << "/************************************************************************************************/" << endl;
 	// clean-up states
 	BOOST_FOREACH(DPState * state, stateseq)
 		delete state;

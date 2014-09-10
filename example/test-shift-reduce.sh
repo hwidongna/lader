@@ -5,7 +5,7 @@ TEST_IN=test.en
 SOURCE_IN=output/test.en.annot
 TARGET_IN=data/test.ja
 ALIGN_IN=data/test.en-ja.align
-MODEL_IN=output/train.mod
+MODEL_IN=output/train.srdp.mod
 OUTPUT=output/test.en.reordered
 THREADS=2
 BEAM=10
@@ -58,7 +58,7 @@ run "../src/bin/shift-reduce -model $MODEL_IN -out_format order,string,flatten,a
 # Also note that we need to set -attach-null to the same value that we set
 # during training. (In this case, we'll use the default, "right")
 
-run "../src/bin/evaluate-lader -attach_null right $ALIGN_IN $OUTPUT data/$TEST_IN $TARGET_IN'' > output/$TEST_IN.grade 2> output/$TEST_IN.log"
+run "../src/bin/evaluate-lader -attach_null right $ALIGN_IN $OUTPUT data/$TEST_IN $TARGET_IN'' > output/$TEST_IN.srdp.grade 2> output/$TEST_IN.srdp.log"
 
 tail -n3 output/$TEST_IN.grade
 	

@@ -75,12 +75,13 @@ void DDPState::Take(Action action, DPStateVector & result, bool actiongold,
 			next->inside_ = next->trace_->inside_;
 			next->score_ = score_ + next->trace_->inside_ + actioncost;
 		}
-		shiftcost_ = actioncost;
+		this->shiftcost_ = actioncost;
+		next->actioncost_ = actioncost;
 		next->gold_ = gold_ && actiongold;
 		next->leftptrs_.push_back(this);
 		BackPtr back;
-		back.action = action;
-		back.cost = 0;
+//		back.action = action;
+//		back.cost = 0;
 		back.lchild = NULL;
 		back.rchild = NULL;
 		next->backptrs_.push_back(back);
@@ -89,7 +90,8 @@ void DDPState::Take(Action action, DPStateVector & result, bool actiongold,
 	else if (action == SWAP){
 		BOOST_FOREACH(DPState * leftstate, leftptrs_){
 			DPState * next = Swap(leftstate);
-			next->shiftcost_ = shiftcost_;
+//			next->shiftcost_ = shiftcost_;
+			next->actioncost_ = actioncost;
 			next->inside_ = inside_ + actioncost;
 			next->score_ = score_ + actioncost;
 			next->gold_ = gold_ && actiongold;
@@ -104,8 +106,8 @@ void DDPState::Take(Action action, DPStateVector & result, bool actiongold,
 				continue;
 			}
 			BackPtr back;
-			back.action = action;
-			back.cost = actioncost;
+//			back.action = action;
+//			back.cost = actioncost;
 			// maintain the back ptr of the left state for AllActions
 			back.lchild = leftstate;
 			back.rchild = this;
@@ -119,9 +121,10 @@ void DDPState::Take(Action action, DPStateVector & result, bool actiongold,
 		next->score_ = score_ + actioncost;
 		next->gold_ = gold_ && actiongold;
 		next->leftptrs_ = leftptrs_;
+		next->actioncost_ = actioncost;
 		BackPtr back;
-		back.action = action;
-		back.cost = actioncost;
+//		back.action = action;
+//		back.cost = actioncost;
 		back.lchild = NULL;
 		back.rchild = this;
 		next->backptrs_.push_back(back);
@@ -137,9 +140,10 @@ void DDPState::Take(Action action, DPStateVector & result, bool actiongold,
 				next->score_ = leftstate->score_ + inside_ + leftstate->shiftcost_ + actioncost;
 				next->gold_ = leftstate->gold_ && gold_ && actiongold;
 				next->leftptrs_ = leftstate->leftptrs_;
+				next->actioncost_ = actioncost;
 				BackPtr back;
-				back.action = action;
-				back.cost = leftstate->shiftcost_ + actioncost;
+//				back.action = action;
+//				back.cost = leftstate->shiftcost_ + actioncost;
 				back.lchild = leftstate;
 				back.rchild = this;
 				next->backptrs_.push_back(back);

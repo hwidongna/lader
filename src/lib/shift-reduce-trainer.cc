@@ -59,23 +59,6 @@ void ShiftReduceTrainer::InitializeModel(const ConfigBase & config) {
     }
 }
 
-//void ShiftReduceTrainer::GetReferenceSequences(const std::string & align_in,
-//		std::vector<ActionVector> & refseq, std::vector<Sentence*> & datas){
-//	std::ifstream in(align_in.c_str());
-//	if(!in) THROW_ERROR("Could not open alignment file: "
-//							<<align_in);
-//	std::string line;
-//	int i = 0;
-//	ShiftReduceModel * model = dynamic_cast<ShiftReduceModel*>(model_);
-//	while(getline(in, line)){
-//		const vector<string> & srcs = (*SafeAccess(datas,i++))[0]->GetSequence();
-//		CombinedAlign cal2(srcs, Alignment::FromString(line),
-//								attach_, combine_, bracket_);
-//		Ranks ranks(cal2);
-//		refseq.push_back(ranks.GetReference());
-//	}
-//}
-
 void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
     InitializeModel(config);
     ReadData(config.GetString("source_in"), data_);
@@ -117,7 +100,7 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
         int done = 0;
         double iter_model_loss = 0, iter_oracle_loss = 0, iter_total_loss = 0;
         unsigned long iter_nedge = 0, iter_nstate = 0, iter_nuniq = 0, iter_ngold = 0, iter_step = 0, iter_maxstep = 0;
-        int bad_update = 0, early_update = 0, prev_early = 0, skipped = 0;
+        int bad_update = 0, early_update = 0, prev_early = 0, skipped = sent_order.size();
         if (verbose >= 1)
         	cerr << "Start training parsing iter " << iter << endl;
         BOOST_FOREACH(int sent, sent_order) {
@@ -141,83 +124,174 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
             	p = new Parser();
             p->SetBeamSize(config.GetInt("beam"));
             p->SetVerbose(verbose);
-			Parser::Result result;
+//			Parser::Result result;
 			clock_gettime(CLOCK_MONOTONIC, &tstart);
-			p->Search(*model, *features_, *data_[sent],	// obligatory
-					&result, ranks_[sent], &update);	// optional
-			// do not need to set result
+//			p->Search(*model, *features_, *data_[sent],	// obligatory
+//					&result, ranks_[sent], &update);	// optional
+//			// do not need to set result
+			p->Search(*model, *features_, *data_[sent]);
 			clock_gettime(CLOCK_MONOTONIC, &tend);
 			search.tv_sec += tend.tv_sec - tstart.tv_sec;
 			search.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
-			if (!p->GetBest() || !p->GetGoldBest(p->GetBest()->GetStep())){
-				if (verbose >= 1)
-					cerr << "Parser cannot produce any gold derivation" << endl;
-				delete p;
-				skipped++;
-				continue;
-			}
-			if (verbose >= 1){
-				cerr << "Result:";
-				for (int step = 0 ; step < result.actions.size() ; step++)
-					cerr << " " << (char) result.actions[step] << "_" << step+1;
-				cerr << endl;
-				DPState * best = p->GetBeamBest(result.step);
-				cerr << "Beam trace:" << endl;
-				best->PrintTrace(cerr);
-			}
-			if (result.step != result.actions.size())
-				THROW_ERROR("Result step " << result.step << " != action size " << result.actions.size() << endl);
-			if (result.step < p->GetBest()->GetStep())
-				early_update++;
-			DPState * gold = p->GetGoldBest(result.step);
-			if (!gold)
-				THROW_ERROR("Fail to get the gold derivation at step " << result.step << endl);
-			ActionVector refseq;
-			gold->AllActions(refseq);
-			if (verbose >= 1){
-				cerr << "Gold:  ";
-				for (int step = 0 ; step < refseq.size() ; step++)
-					cerr << " " << (char) refseq[step] << "_" << step+1;
-				cerr << endl;
-				cerr << "Beam trace:" << endl;
-				gold->PrintTrace(cerr);
-			}
-			int firstdiff;
-			for (firstdiff = 1 ; firstdiff <= result.step ; firstdiff++)
-				if (result.actions[firstdiff-1] != refseq[firstdiff-1])
-					break;
-			if (verbose >= 1 && result.step >= firstdiff)
-				cerr << "Update from " << firstdiff << endl;
 			clock_gettime(CLOCK_MONOTONIC, &tstart);
-			FeatureMapInt feat_map;
-			p->Simulate(*model, *features_, refseq, *data_[sent], firstdiff, feat_map, +1); // positive examples
-			p->Simulate(*model, *features_, result.actions, *data_[sent], firstdiff, feat_map, -1); // negative examples
+			BOOST_FOREACH(LossBase * loss, losses_)
+				p->AddLoss(loss,
+					sent < (int)ranks_.size() ? ranks_[sent] : NULL,
+					sent < (int)parses_.size() ? &parses_[sent] : NULL);
+			// penalizing loss heavily (oracle)
+			oracle_score = p->Rescore(-1e6);
+			oracle_loss = p->AccumulateLoss(p->GetBest());
+			oracle_score -= oracle_loss * -1e6;
+			feat_map.clear();
+			if (verbose >= 2){
+				p->GetBest()->Print(cerr);
+				cerr << " score: " << oracle_score << " loss: " << oracle_loss << endl;
+			}
+			p->AccumulateFeatures(feat_map, *model_, *features_,
+							(*data_[sent]), p->GetBest());
+			oracle_features.clear();
+			ClearAndSet(oracle_features, feat_map);
+			// slightly boosting loss by 1.0 if we are using loss-augmented inference
+			model_score = p->Rescore(loss_aug ? 1.0 : 0.0);
+			model_loss = p->AccumulateLoss(p->GetBest());
+			model_score -= model_loss * 1;
+			feat_map.clear();
+			if (verbose >= 2){
+				p->GetBest()->Print(cerr);
+				cerr << " score: " << model_score << " loss: " << model_loss << endl;
+			}
+			p->AccumulateFeatures(feat_map, *model_, *features_,
+							(*data_[sent]), p->GetBest());
+			ClearAndSet(model_features, feat_map);
+			// Add the statistics for this iteration
+			iter_model_loss += model_loss;
+			iter_oracle_loss += oracle_loss;
+			vector<int> order;
+			p->GetBest()->GetReordering(order);
+			// --- DEBUG: check both losses match ---
+			double sent_loss = 0, sent_score = 0;
+			BOOST_FOREACH(LossBase * loss, losses_){
+				pair<double,double> l = loss->CalculateSentenceLoss(order,
+						sent < (int)ranks_.size() ? ranks_[sent] : NULL,
+								sent < (int)parses_.size() ? &parses_[sent] : NULL);
+				sent_loss += l.first;
+				iter_total_loss += l.second;
+			}
+			if(sent_loss != model_loss){
+				ostringstream out;
+				vector<string> words = ((FeatureDataSequence*)(*data_[sent])[0])->GetSequence();
+				p->GetBest()->PrintParse(words, out);
+				cerr << "sent=" << sent << " sent_loss="<< sent_loss <<" != model_loss="<< model_loss << endl;
+				cerr << out.str() << endl;
+			}
+//			// TODO: do not skip
+//			if (!p->GetBest() || !p->GetGoldBest(p->GetBest()->GetStep())){
+//				if (verbose >= 1)
+//					cerr << "Parser cannot produce any gold derivation" << endl;
+//				delete p;
+//				skipped++;
+//				continue;
+//			}
+//			if (verbose >= 1){
+//				cerr << "Result:";
+//				for (int step = 0 ; step < result.actions.size() ; step++)
+//					cerr << " " << (char) result.actions[step] << "_" << step+1;
+//				cerr << endl;
+//				DPState * best = p->GetBeamBest(result.step);
+//				cerr << "Beam trace:" << endl;
+//				best->PrintTrace(cerr);
+//			}
+//			if (result.step != result.actions.size())
+//				THROW_ERROR("Result step " << result.step << " != action size " << result.actions.size() << endl);
+//			if (result.step < p->GetBest()->GetStep())
+//				early_update++;
+//			DPState * gold = p->GetGoldBest(result.step);
+//			if (!gold)
+//				THROW_ERROR("Fail to get the gold derivation at step " << result.step << endl);
+//			ActionVector refseq;
+//			gold->AllActions(refseq);
+//			if (verbose >= 1){
+//				cerr << "Gold:  ";
+//				for (int step = 0 ; step < refseq.size() ; step++)
+//					cerr << " " << (char) refseq[step] << "_" << step+1;
+//				cerr << endl;
+//				cerr << "Beam trace:" << endl;
+//				gold->PrintTrace(cerr);
+//			}
+//			int firstdiff;
+//			for (firstdiff = 1 ; firstdiff <= result.step ; firstdiff++)
+//				if (result.actions[firstdiff-1] != refseq[firstdiff-1])
+//					break;
+//			if (verbose >= 1 && result.step >= firstdiff)
+//				cerr << "Update from " << firstdiff << endl;
+//			clock_gettime(CLOCK_MONOTONIC, &tstart);
+//			FeatureMapInt feat_map;
+//			p->Simulate(*model, *features_, refseq, *data_[sent], firstdiff, feat_map, +1); // positive examples
+//			p->Simulate(*model, *features_, result.actions, *data_[sent], firstdiff, feat_map, -1); // negative examples
+//			clock_gettime(CLOCK_MONOTONIC, &tend);
+//			simulate.tv_sec += tend.tv_sec - tstart.tv_sec;
+//			simulate.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
+//			FeatureVectorInt deltafeats;
+//			ClearAndSet(deltafeats, feat_map);
+//			if (verbose >= 2){
+//				cerr << "Delta feats" << endl;
+//				FeatureVectorString * fvs = model_->StringifyFeatureVector(deltafeats);
+//				BOOST_FOREACH(FeaturePairString feat, *fvs)
+//				cerr << feat.first << ":" << feat.second << " ";
+//				cerr << endl;
+//				delete fvs;
+//			}
+//			if (model_->ScoreFeatureVector(deltafeats) > 0){
+//				bad_update++;
+//				if (verbose >= 1)
+//					cerr << "Bad update at step " << result.step << endl;
+//			}
+//			model_->AdjustWeightsPerceptron(deltafeats);
+			clock_gettime(CLOCK_MONOTONIC, &tstart);
+			FeatureVectorInt deltafeats = VectorSubtract(oracle_features, model_features);
+			if (model_loss != oracle_loss){
+				if (model_->ScoreFeatureVector(deltafeats) > 0){
+					bad_update++;
+					if (verbose >= 1)
+						cerr << "Bad update at Sentence " << sent << endl;
+				}
+				skipped--;
+			}
+			if(config.GetString("learner") == "pegasos") {
+				model_->AdjustWeightsPegasos(
+						model_loss == oracle_loss ?
+								FeatureVectorInt() : deltafeats);
+			} else if(config.GetString("learner") == "perceptron") {
+				if(model_loss != oracle_loss)
+					model_->AdjustWeightsPerceptron(deltafeats);
+			} else {
+				THROW_ERROR("Bad learner: " << config.GetString("learner"));
+			}
 			clock_gettime(CLOCK_MONOTONIC, &tend);
 			simulate.tv_sec += tend.tv_sec - tstart.tv_sec;
 			simulate.tv_nsec += tend.tv_nsec - tstart.tv_nsec;
-			FeatureVectorInt deltafeats;
-			ClearAndSet(deltafeats, feat_map);
-			if (verbose >= 2){
-				cerr << "Delta feats" << endl;
-				FeatureVectorString * fvs = model_->StringifyFeatureVector(deltafeats);
-				BOOST_FOREACH(FeaturePairString feat, *fvs)
-				cerr << feat.first << ":" << feat.second << " ";
-				cerr << endl;
-				delete fvs;
-			}
-			if (model_->ScoreFeatureVector(deltafeats) > 0){
-				bad_update++;
-				if (verbose >= 1)
-					cerr << "Bad update at step " << result.step << endl;
-			}
-			model_->AdjustWeightsPerceptron(deltafeats);
-			iter_step += result.step;
+//			iter_step += result.step;
 			iter_maxstep += p->GetBest()->GetStep();
 			iter_nedge += p->GetNumEdges();
 			iter_nstate += p->GetNumStates();
 			iter_nuniq += p->GetNumUniq();
 			delete p;
         }
+        // output model/oracel losses for each iteration
+        cout << " ";
+        for (int i = 0 ; i < losses_.size() ; i++){
+        	if (i != 0) cout << " + ";
+        	cout << losses_[i]->GetName() << "*" << losses_[i]->GetWeight();
+        }
+        cout << "=" << 1 - iter_model_loss/iter_total_loss
+        	 << " (loss " << iter_model_loss << "/" << iter_total_loss << ")" << endl;
+        cout << "*";
+        for (int i = 0 ; i < losses_.size() ; i++){
+			if (i != 0) cout << " + ";
+			cout << losses_[i]->GetName() << "*" << losses_[i]->GetWeight();
+		}
+        cout << "=" << 1 - iter_oracle_loss/iter_total_loss <<
+        		" (loss " << iter_oracle_loss << "/" << iter_total_loss << ")" << endl;
         cerr << "Running time on average: " << std::setprecision(4)
         		<< "searh " << ((double)search.tv_sec + 1.0e-9*search.tv_nsec) / (iter+1) << "s"
         		<< ", simulate " << ((double)simulate.tv_sec + 1.0e-9*simulate.tv_nsec) / (iter+1) << "s" << endl;
@@ -231,7 +305,8 @@ void ShiftReduceTrainer::TrainIncremental(const ConfigBase & config) {
 			<< early_update << " early (" << 100.0*early_update/done << "%), "
 			<< iter_step << "/" << iter_maxstep << " steps (" << 100.0*iter_step/iter_maxstep << "%)" << endl;
         cout.flush();
-        if ((update == "early" || update == "max") && (early_update == 0 || prev_early == early_update)){
+//        if ((update == "early" || update == "max") && (early_update == 0 || prev_early == early_update)){
+        if (skipped == sent_order.size()){
         	cout << "No more update" << endl;
         	break;
         }

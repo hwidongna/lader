@@ -27,7 +27,7 @@ ActionVector DPState::ActionFromString(const string & line){
 }
 // initial state
 DPState::DPState() {
-	score_ = 0; inside_ = 0; shiftcost_ = 0;
+	score_ = 0; inside_ = 0; shiftcost_ = 0; actioncost_ = 0;
 	step_ = 0;
 	src_l_ = 0; src_r_ = 0;
 	src_c_ = -1;
@@ -41,7 +41,7 @@ DPState::DPState() {
 // new state
 // set src_c_, trg_l_ and trg_r_ latter
 DPState::DPState(int step, int i, int j, Action action) {
-	score_ = 0; inside_ = 0; shiftcost_ = 0;
+	score_ = 0; inside_ = 0; shiftcost_ = 0; actioncost_ = 0;
 	step_ = step;
 	src_l_ = i; src_r_ = j;
 	rank_ = -1;
@@ -82,12 +82,13 @@ void DPState::Take(Action action, DPStateVector & result, bool actiongold,
 		DPState * next = Shift();
 		next->inside_ = 0;
 		next->score_ = score_ + actioncost;
-		shiftcost_ = actioncost;
+		this->shiftcost_ = actioncost;
+		next->actioncost_ = actioncost;
 		next->gold_ = gold_ && actiongold;
 		next->leftptrs_.push_back(this);
 		BackPtr back;
-		back.action = action;
-		back.cost = 0;
+//		back.action = action;
+//		back.cost = 0;
 		back.lchild = NULL;
 		back.rchild = NULL;
 		next->backptrs_.push_back(back);
@@ -100,9 +101,10 @@ void DPState::Take(Action action, DPStateVector & result, bool actiongold,
 			next->score_ = leftstate->score_ + inside_ + leftstate->shiftcost_ + actioncost;
 			next->gold_ = leftstate->gold_ && gold_ && actiongold;
 			next->leftptrs_ = leftstate->leftptrs_;
+			next->actioncost_ = actioncost;
 			BackPtr back;
-			back.action = action;
-			back.cost = leftstate->shiftcost_ + actioncost;
+//			back.action = action;
+//			back.cost = leftstate->shiftcost_ + actioncost;
 			back.lchild = leftstate;
 			back.rchild = this;
 			next->backptrs_.push_back(back);

@@ -49,8 +49,8 @@ public:
 	typedef struct {
 		DPState * lchild;
 		DPState * rchild;
-		Action action;
-		double cost;
+//		Action action;
+//		double cost;
 	} BackPtr;
 
 	DPState(); // for initial state
@@ -97,6 +97,7 @@ public:
 	double GetLoss() const { return loss_; }
 	void SetRescore(double rescore) { rescore_ = rescore; }
 	double GetRescore() const { return rescore_; }
+	double GetActionCost() const { return actioncost_; }
 
 	// a simple hash function
 	size_t hash() const { return trg_l_ * MULTI_K + trg_r_; }
@@ -116,7 +117,9 @@ public:
 protected:
 	virtual DPState * Shift();
 	virtual DPState * Reduce(DPState * leftstate, Action action);
-	double score_, inside_, shiftcost_;
+	// prefix/inside scores are accumulated
+	// shift/action costs are for this step only
+	double score_, inside_, shiftcost_, actioncost_;
 	int step_;
 	int src_l_, src_r_;	// source span
 	int src_c_; 		// the split point of subspans if exists, otherwise -1

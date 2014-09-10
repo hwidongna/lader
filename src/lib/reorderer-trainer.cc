@@ -180,26 +180,27 @@ void ReordererTrainer::TrainIncremental(const ConfigBase & config) {
 					 << "sent_score=" << sent_score << " oracle_score=" << oracle_score << " model_score=" << model_score << endl
 					 << "sent_loss="<< sent_loss << " oracle_loss=" << oracle_loss << " model_loss=" << model_loss << endl;
 			}
-        	if (model_->ScoreFeatureVector(VectorSubtract(oracle_features, model_features)) > 0){
-        		bad_update++;
+			// Add the difference between the vectors
+			// if there is at least some loss
+			clock_gettime(CLOCK_MONOTONIC, &tstart);
+			FeatureVectorInt deltafeats = VectorSubtract(oracle_features, model_features);
+			if (model_loss != oracle_loss && model_->ScoreFeatureVector(deltafeats) > 0){
+				bad_update++;
         		if (verbose >= 1)
 					cerr << "Bad update at Sentence " << sent << endl;
-        	}
-			// Add the difference between the vectors if there is at least
-			//  some loss
-			clock_gettime(CLOCK_MONOTONIC, &tstart);
+			}
+//			model_->AdjustWeightsPerceptron(deltafeats);
 			if(config.GetString("learner") == "pegasos") {
 				model_->AdjustWeightsPegasos(
 						model_loss == oracle_loss ?
-								FeatureVectorInt() :
-								VectorSubtract(oracle_features, model_features));
+								FeatureVectorInt() : deltafeats);
 			} else if(config.GetString("learner") == "perceptron") {
 				if(model_loss != oracle_loss)
-					model_->AdjustWeightsPerceptron(
-							VectorSubtract(oracle_features, model_features));
+					model_->AdjustWeightsPerceptron(deltafeats);
 			} else {
 				THROW_ERROR("Bad learner: " << config.GetString("learner"));
 			}
+
 
 			clock_gettime(CLOCK_MONOTONIC, &tend);
 			adjust.tv_sec += tend.tv_sec - tstart.tv_sec;

@@ -61,13 +61,10 @@ DPState * Parser::GuidedSearch(const ActionVector & refseq, int n){
 
 void Parser::Search(ShiftReduceModel & model,
 		const FeatureSet & feature_gen, const Sentence & sent,
-		Result * result, const Ranks * ranks,
-		const string * update) {
+		const Ranks * ranks) {
 	Clear();
 	golds_.resize(2*sent[0]->GetNumWords(), DPStateVector());
 	DynamicProgramming(model, feature_gen, sent, ranks);
-	if (result && update)
-		Update(result, update);
 }
 
 bool Parser::IsGold(DPState::Action action, const Ranks * ranks,
@@ -124,31 +121,31 @@ void Parser::DynamicProgramming(ShiftReduceModel & model,
 				}
 			}
 		}
-//		// complete gold states if falled-off
-//		BOOST_FOREACH(DPState * old, golds_[step-1]){
-//			if (old->GetRank() >= 0) // fall-in cases
-//				continue;
-//			if (verbose_ >= 2){
-//				cerr << "OLD: "; old->Print(cerr); cerr << endl;
-//			}
-//			DPState * leftstate = old->GetLeftState();
-//			// iterate over actions
-//			BOOST_FOREACH(DPState::Action action, actions_){
-//				if (!Allow(old, action, n))
-//					continue;
-//				bool actiongold = (ranks != NULL && IsGold(action, ranks, old));
-//				DPStateVector stateseq;
-//				old->Take(action, stateseq, actiongold, 1,
-//						&model, &feature_gen, &sent);
-//				BOOST_FOREACH(DPState * next, stateseq){
-//					next->SetSignature(model.GetMaxState());
-//					q.push(next);
-//					if (verbose_ >= 2){
-//						cerr << "  NEW: "; next->Print(cerr); cerr << endl;
-//					}
-//				}
-//			}
-//		}
+		// complete gold states if falled-off
+		BOOST_FOREACH(DPState * old, golds_[step-1]){
+			if (old->GetRank() >= 0) // fall-in cases
+				continue;
+			if (verbose_ >= 2){
+				cerr << "OLD: "; old->Print(cerr); cerr << endl;
+			}
+			DPState * leftstate = old->GetLeftState();
+			// iterate over actions
+			BOOST_FOREACH(DPState::Action action, actions_){
+				if (!Allow(old, action, n))
+					continue;
+				bool actiongold = (ranks != NULL && IsGold(action, ranks, old));
+				DPStateVector stateseq;
+				old->Take(action, stateseq, actiongold, 1,
+						&model, &feature_gen, &sent);
+				BOOST_FOREACH(DPState * next, stateseq){
+					next->SetSignature(model.GetMaxState());
+					q.push(next);
+					if (verbose_ >= 2){
+						cerr << "  NEW: "; next->Print(cerr); cerr << endl;
+					}
+				}
+			}
+		}
 		nedges_ += q.size(); // total number of created states (correlates with running time)
 		if (verbose_ >= 2)
 			cerr << "produce " << q.size() << " items" << endl;
@@ -208,7 +205,7 @@ void Parser::DynamicProgramming(ShiftReduceModel & model,
 			if (golds_[step].empty()){ // unreachable trainning instance
 				if (verbose_ >= 1)
 					cerr << "Fail to produce any gold derivation at step " << step << endl;
-				break; // stop decoding
+//				break; // stop decoding
 			}
 			if (verbose_ >= 2)
 				cerr << "survive " << golds_[step].size() << " golds" << endl;

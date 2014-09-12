@@ -28,12 +28,12 @@ MAX_STATE=3
 THREADS=4
 SHUFFLE=false
 ITERATION=10
-VERBOSE=2
+VERBOSE=1
 LEARNER=pegasos  
-UPDATE=max
+UPDATE=none
 BEAM=10
 MAX_TERM=1
-MAX_SWAP=0
+MAX_SWAP=1
 
 # define helper function: run a command and print its exit code
 function run () {

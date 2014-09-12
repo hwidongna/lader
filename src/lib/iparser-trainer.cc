@@ -147,7 +147,8 @@ void IParserTrainer::TrainIncremental(const ConfigBase & config) {
         	Parser::Result result;
         	clock_gettime(CLOCK_MONOTONIC, &tstart);
 			p.Search(*model, *features_, *data_[sent],	// obligatory
-					&result, ranks_[sent], &update);	// optional
+					ranks_[sent]);	// optional
+			p.Update(&result, &update);
 			// do not need to set result
         	clock_gettime(CLOCK_MONOTONIC, &tend);
         	search.tv_sec += tend.tv_sec - tstart.tv_sec;

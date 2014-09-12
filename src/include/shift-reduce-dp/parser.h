@@ -35,8 +35,9 @@ public:
 	DPState * GuidedSearch(const ActionVector & refseq, int n);
 	virtual void Search(ShiftReduceModel & model,
 			const FeatureSet & feature_gen, const Sentence & sent,
-			Result * result = NULL, const Ranks * ranks = NULL,
-			const string * update = NULL);
+			const Ranks * ranks = NULL);
+	// latent variable version
+	void Update(Result * result, const string * update);
 	void GetKbestResult(vector<Parser::Result> & kbest);
 	void Simulate(ShiftReduceModel & model, const FeatureSet & feature_gen,
 			const ActionVector & actions, const Sentence & sent,
@@ -108,8 +109,6 @@ protected:
 	void DynamicProgramming(ShiftReduceModel & model,
 			const FeatureSet & feature_gen, const Sentence & sent,
 			const Ranks * ranks = NULL);
-	// latent variable version
-	void Update(Result * result, const string * update);
 	vector< DPStateVector > beams_;		// store dp states produced by decoding
 	vector< DPStateVector > golds_;		// store all possible gold states, assuming latent variable
 	int beamsize_;						// the maximum # states in a bin

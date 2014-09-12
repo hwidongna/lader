@@ -28,13 +28,10 @@ public:
 	virtual DPState * InitialState() { return new IDPState(); }
 	virtual void Search(ShiftReduceModel & model,
 			const FeatureSet & feature_gen, const Sentence & sent,
-			Result * result = NULL, const Ranks * ranks = NULL,
-			const string * update = NULL) {
+			const Ranks * ranks = NULL) {
 		Clear();
 		golds_.resize(2*sent[0]->GetNumWords() + maxins_, DPStateVector());
 		DynamicProgramming(model, feature_gen, sent, ranks);
-		if (result && update)
-			Update(result, update);
 	}
 protected:
 	virtual bool Allow(DPState * state, DPState::Action action, int n) {
